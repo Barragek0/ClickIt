@@ -17,28 +17,46 @@ namespace ClickIt.Shared.Game
             return false;
         }
 
-        /// <summary>
-        /// Returns true if a RitualBlocker is present in the current entity list.
-        /// Centralised helper so multiple classes can share the same implementation.
-        /// </summary>
+        // Ritual state is queried per frame (LazyModeOverlay) and per click tick (offscreen
+        // pathing + runtime state); each call scanned every valid entity's Path via DLR. Cache the
+        // result per thread, keyed on the entity-list reference (rebuilt when entities change) with
+        // a short time window as a secondary bound.
+        [ThreadStatic]
+        private static object? s_ritualEntitiesOwner;
+        [ThreadStatic]
+        private static long s_ritualScanTimestampMs;
+        [ThreadStatic]
+        private static bool s_ritualActive;
+        private const long RitualDetectionCacheMs = 200;
+
         public static bool IsRitualActive(GameController? gameController)
         {
-            if (gameController?.EntityListWrapper?.OnlyValidEntities == null)
+            List<Entity>? entities = gameController?.EntityListWrapper?.OnlyValidEntities;
+            if (entities == null)
                 return false;
 
+            long now = Environment.TickCount64;
+            if (ReferenceEquals(entities, s_ritualEntitiesOwner) && now - s_ritualScanTimestampMs < RitualDetectionCacheMs)
+                return s_ritualActive;
 
-            foreach (Entity entity in gameController.EntityListWrapper.OnlyValidEntities)
+            bool active = false;
+            for (int i = 0; i < entities.Count; i++)
             {
-                string path = DynamicAccess.TryReadString(entity, DynamicAccessProfiles.Path, out string resolvedPath)
+                string path = DynamicAccess.TryReadString(entities[i], DynamicAccessProfiles.Path, out string resolvedPath)
                     ? resolvedPath
                     : string.Empty;
 
                 if (path.Contains("RitualBlocker", StringComparison.Ordinal))
-                    return true;
-
+                {
+                    active = true;
+                    break;
+                }
             }
 
-            return false;
+            s_ritualEntitiesOwner = entities;
+            s_ritualActive = active;
+            s_ritualScanTimestampMs = now;
+            return active;
         }
 
         public static string ResolveWorldItemMetadataPath(

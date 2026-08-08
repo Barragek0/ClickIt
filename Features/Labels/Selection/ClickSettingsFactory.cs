@@ -81,10 +81,12 @@ namespace ClickIt.Features.Labels.Selection
             };
         }
 
+        private static readonly HashSet<string> s_emptyEnabledLeagueChestIds = new(StringComparer.OrdinalIgnoreCase);
+
         internal static IReadOnlySet<string> BuildEnabledLeagueChestSpecificIds(ClickItSettings settings, bool leagueChestsEnabled)
         {
             if (!leagueChestsEnabled)
-                return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                return s_emptyEnabledLeagueChestIds;
 
             HashSet<string> enabled = new(StringComparer.OrdinalIgnoreCase);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickMirageGoldenDjinnCache.Value, MechanicIds.MirageGoldenDjinnCache);

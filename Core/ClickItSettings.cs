@@ -129,7 +129,7 @@ namespace ClickIt
         public ToggleNode ClickBlightTowers { get; set; } = new ToggleNode(false);
 
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
-        public RangeNode<int> BlightTowerStrategy { get; set; } = new RangeNode<int>(0, 0, 1);
+        public RangeNode<int> BlightTowerStrategy { get; set; } = new RangeNode<int>(0, 0, 3);
 
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode BlightVisualizePaths { get; set; } = new ToggleNode(true);

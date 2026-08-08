@@ -417,6 +417,55 @@ namespace ClickIt.Tests.Features.Observability.Performance
         }
 
         [TestMethod]
+        public void GcTableTotalBytesPerFrame_AggregatesPerFrameRatePerSecondAndMaxRun_AcrossSections()
+        {
+            var fps = new FpsMetricsSnapshot(Current: 60, Average: 60, Max: 60);
+            var allocations = new Dictionary<ProcessingSection, GcAllocationSnapshot>
+            {
+                [ProcessingSection.Altar] = new GcAllocationSnapshot(
+                    AllocPerSecond: 2_000_000, AvgBytesPerRun: 200_000, MaxBytesPerRun: 4_000_000, SampleCount: 10, LastBytesPerRun: 150_000, AvgPeriodMs: 100),
+                [ProcessingSection.Click] = new GcAllocationSnapshot(
+                    AllocPerSecond: 4_000_000, AvgBytesPerRun: 400_000, MaxBytesPerRun: 8_000_000, SampleCount: 10, LastBytesPerRun: 300_000, AvgPeriodMs: 100),
+            };
+            PerformanceMetricsSnapshot snapshot = new(
+                Fps: fps, Render: default, LazyMode: default, DebugOverlay: default,
+                AltarOverlay: default, UltimatumOverlay: default, StrongboxOverlay: default,
+                PathfindingOverlay: default, HarvestOverlay: default, BlightOverlay: default,
+                TextFlush: default, FrameFlush: default,
+                AltarCoroutine: default, ClickCoroutine: default,
+                FlareCoroutine: default, BlightCoroutine: default,
+                UltimatumCoroutine: default, LabelOverlayCoroutine: default,
+                ClickTargetIntervalMs: 0, AverageSuccessfulClickTimingMs: 0, AverageClickIntervalMs: 0,
+                Allocations: allocations);
+
+            // Col 1 = last rate in bytes/frame; col 2 = total bytes/s; col 3 = total max bytes/run.
+            (double lastPerFrame, double totalPerSecond, double totalMaxRun) = snapshot.GcTableTotalBytesPerFrame;
+            lastPerFrame.Should().BeApproximately(6_000_000 / 60.0, 0.001);
+            totalPerSecond.Should().BeApproximately(6_000_000, 0.001);
+            totalMaxRun.Should().BeApproximately(12_000_000, 0.001);
+        }
+
+        [TestMethod]
+        public void GcTableTotalBytesPerFrame_IsZero_WhenNoAllocationSections()
+        {
+            var fps = new FpsMetricsSnapshot(Current: 60, Average: 60, Max: 60);
+            PerformanceMetricsSnapshot snapshot = new(
+                Fps: fps, Render: default, LazyMode: default, DebugOverlay: default,
+                AltarOverlay: default, UltimatumOverlay: default, StrongboxOverlay: default,
+                PathfindingOverlay: default, HarvestOverlay: default, BlightOverlay: default,
+                TextFlush: default, FrameFlush: default,
+                AltarCoroutine: default, ClickCoroutine: default,
+                FlareCoroutine: default, BlightCoroutine: default,
+                UltimatumCoroutine: default, LabelOverlayCoroutine: default,
+                ClickTargetIntervalMs: 0, AverageSuccessfulClickTimingMs: 0, AverageClickIntervalMs: 0);
+
+            (double lastPerFrame, double totalPerSecond, double totalMaxRun) = snapshot.GcTableTotalBytesPerFrame;
+            lastPerFrame.Should().Be(0);
+            totalPerSecond.Should().Be(0);
+            totalMaxRun.Should().Be(0);
+        }
+
+        [TestMethod]
         public void TimingMetricsSnapshot_DutyCycleAndPerFrame_NormalizeByRunPeriod()
         {
             var snap = new TimingMetricsSnapshot(LastMs: 5, AverageMs: 2, MaxMs: 10, SampleCount: 10, AveragePeriodMs: 50);
@@ -450,8 +499,9 @@ namespace ClickIt.Tests.Features.Observability.Performance
             stats.SampleCount.Should().Be(1000);
             stats.LastMs.Should().Be(2.0);
             stats.MaxMs.Should().Be(2.0);
-            // Max window holds 999×1.0 + 1×2.0; average covers the last 100 samples.
-            stats.AverageMs.Should().BeApproximately(1.01, 0.001);
+            // The 1000-sample cap drops the first sample, so the average covers 999×1.0 + 1×2.0
+            // (the time window keeps every live sample, not just the most recent 100).
+            stats.AverageMs.Should().BeApproximately(1.001, 0.0001);
         }
 
         [TestMethod]

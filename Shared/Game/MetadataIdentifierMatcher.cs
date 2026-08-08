@@ -43,9 +43,9 @@ namespace ClickIt.Shared.Game
 
             if (identifier.StartsWith("name:", StringComparison.OrdinalIgnoreCase))
             {
-                string nameFragment = identifier["name:".Length..].Trim();
-                return !string.IsNullOrWhiteSpace(nameFragment)
-                    && itemName.Contains(nameFragment, StringComparison.OrdinalIgnoreCase);
+                ReadOnlySpan<char> nameFragment = identifier.AsSpan("name:".Length..).Trim();
+                return !nameFragment.IsEmpty
+                    && itemName.AsSpan().Contains(nameFragment, StringComparison.OrdinalIgnoreCase);
             }
 
             bool strongboxIdentifier = identifier.Contains("StrongBoxes/", StringComparison.OrdinalIgnoreCase);

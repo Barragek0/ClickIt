@@ -1,13 +1,13 @@
 namespace ClickIt.Features.Harvest
 {
     /// <summary>
-    /// Owns the harvest lifeforce-estimation overlay: refresh recomputes the plot estimates on the
-    /// host coroutine; Draw renders the cached estimates each frame with fresh label bounds.
+    /// Owns the harvest lifeforce-estimation overlay: refresh recomputes the plot estimates every
+    /// frame on the host coroutine (ProcessHarvestPlots re-scans only when the 50ms label snapshot
+    /// reference changes, so the per-frame call is cheap); Draw renders the cached estimates each
+    /// frame with fresh label bounds.
     /// </summary>
     public sealed class HarvestOverlay : IOverlay
     {
-        private const int HarvestRefreshIntervalMs = 50;
-
         private static readonly Color ChosenHighlightColor = new(0, 255, 0, 255);
         private static readonly Color NotChosenHighlightColor = new(255, 0, 0, 255);
         private static readonly Color EqualEstimateHighlightColor = new(255, 165, 0, 255);
@@ -23,7 +23,7 @@ namespace ClickIt.Features.Harvest
 
         public RenderSection Section => RenderSection.HarvestOverlay;
 
-        public OverlayRefreshPolicy RefreshPolicy => OverlayRefreshPolicy.Throttled(HarvestRefreshIntervalMs);
+        public OverlayRefreshPolicy RefreshPolicy => OverlayRefreshPolicy.Throttled(0);
 
         public TimingChannel? RefreshTimingChannel => TimingChannel.LabelOverlay;
 
@@ -51,7 +51,7 @@ namespace ClickIt.Features.Harvest
             {
                 HarvestPlotEstimate estimate = estimates[i];
 
-                RectangleF labelBounds = HarvestService.ResolveLabelBounds(estimate.Label);
+                RectangleF labelBounds = estimate.LabelBounds;
                 if (labelBounds == RectangleF.Empty || labelBounds.IsEmpty)
                     continue;
 

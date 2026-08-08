@@ -16,15 +16,32 @@ namespace ClickIt.Shared.Game
             if (element == null || !isValid)
                 return false;
 
-            object? maybeRect = element.GetClientRect();
-            if (maybeRect is not RectangleF resolvedRect)
+            return TryGetElementRect(element, out rect);
+        }
+
+        // Rect of an arbitrary element (e.g. a label's Child[0] frame), safe for render-thread use.
+        internal static bool TryGetElementRect(Element? element, out RectangleF rect)
+        {
+            rect = default;
+            if (element == null)
                 return false;
 
-            if (resolvedRect.Width <= 0 || resolvedRect.Height <= 0)
-                return false;
+            try
+            {
+                object? maybeRect = element.GetClientRect();
+                if (maybeRect is not RectangleF resolvedRect)
+                    return false;
 
-            rect = resolvedRect;
-            return true;
+                if (resolvedRect.Width <= 0 || resolvedRect.Height <= 0)
+                    return false;
+
+                rect = resolvedRect;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         internal static bool TryGetLabelRectOnScreen(LabelOnGround? label, RectangleF windowArea, out RectangleF rect)
@@ -35,17 +52,33 @@ namespace ClickIt.Shared.Game
                 return false;
             }
 
+            return TryProjectOnScreen(labelRect, windowArea, out rect);
+        }
+
+        internal static bool TryGetElementRectOnScreen(Element? element, RectangleF windowArea, out RectangleF rect)
+        {
+            if (!TryGetElementRect(element, out RectangleF elementRect))
+            {
+                rect = default;
+                return false;
+            }
+
+            return TryProjectOnScreen(elementRect, windowArea, out rect);
+        }
+
+        private static bool TryProjectOnScreen(RectangleF rect, RectangleF windowArea, out RectangleF result)
+        {
             if (windowArea.Width > 0 && windowArea.Height > 0)
             {
-                RectangleF rectAbs = new(labelRect.X + windowArea.X, labelRect.Y + windowArea.Y, labelRect.Width, labelRect.Height);
+                RectangleF rectAbs = new(rect.X + windowArea.X, rect.Y + windowArea.Y, rect.Width, rect.Height);
                 if (!rectAbs.Intersects(windowArea))
                 {
-                    rect = default;
+                    result = default;
                     return false;
                 }
             }
 
-            rect = labelRect;
+            result = rect;
             return true;
         }
 
@@ -81,6 +114,11 @@ namespace ClickIt.Shared.Game
         }
 
         public static void SortLabelsByDistance(List<LabelOnGround> labels)
+            => SortLabelsByDistance(labels, GetLabelDistance);
+
+        // Sort against caller-supplied distances so callers that already hold cached per-label
+        // distances (the 50ms label scan) avoid re-reading DistancePlayer during the sort.
+        public static void SortLabelsByDistance(List<LabelOnGround> labels, Func<LabelOnGround, float> getDistance)
         {
             int count = labels.Count;
             if (count <= 1)
@@ -91,7 +129,7 @@ namespace ClickIt.Shared.Game
             // label list against the cached values instead.
             Span<float> distances = count <= 256 ? stackalloc float[count] : new float[count];
             for (int i = 0; i < count; i++)
-                distances[i] = GetLabelDistance(labels[i]);
+                distances[i] = getDistance(labels[i]);
 
             if (count <= 50)
             {

@@ -13,9 +13,6 @@ namespace ClickIt
         public ToggleNode DebugWindowVisible { get; set; } = new ToggleNode(false);
 
         [IgnoreMenu]
-        public TextNode DebugWindowPosition { get; set; } = new TextNode("");
-
-        [IgnoreMenu]
         public TextNode DebugWindowSplitterWidth { get; set; } = new TextNode("");
 
         [IgnoreMenu]

@@ -170,9 +170,10 @@ namespace ClickIt.Tests.Features.Strongboxes
         }
 
         [TestMethod]
-        public void Refresh_RescansLabels_OnEveryCall()
+        public void Refresh_RescansLabels_WhenLabelSetChanges()
         {
-            // Cadence is owned by the OverlayRenderHost coroutine; Refresh always rescans.
+            // Refresh runs every frame; the expensive scan re-runs only when the label snapshot or
+            // render state changes (the label-ref guard short-circuits unchanged calls).
             var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
             var queue = new DeferredFrameQueue();
             var overlay = new StrongboxOverlay();
@@ -182,11 +183,71 @@ namespace ClickIt.Tests.Features.Strongboxes
             overlay.Draw(CreateDrawContext(settings, window, queue));
             queue.GetPendingFrameSnapshot().Should().ContainSingle();
 
-            // A later refresh picks up the new label set immediately (no internal throttle).
+            // A later refresh with a new label set picks it up immediately.
             queue.ClearPending();
             overlay.Refresh(CreateRefreshContext(settings, [], window));
             overlay.Draw(CreateDrawContext(settings, window, queue));
             queue.GetPendingFrameSnapshot().Should().BeEmpty();
+        }
+
+        [TestMethod]
+        public void Refresh_DoesNotRescan_WhenLabelSnapshotUnchanged()
+        {
+            var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
+            var overlay = new StrongboxOverlay();
+            RectangleF window = new(100f, 100f, 1280f, 720f);
+
+            IReadOnlyList<LabelOnGround> labels = [CreateStrongboxLabel("Metadata/Chests/StrongBoxes/Arcanist", new RectangleF(50f, 60f, 100f, 40f))];
+            overlay.Refresh(CreateRefreshContext(settings, labels, window));
+
+            GetPrivateField<IReadOnlyList<LabelOnGround>>(overlay, "_lastScannedLabels").Should().BeSameAs(labels);
+
+            // Same snapshot instance again — the guard short-circuits (the cached reference stays).
+            overlay.Refresh(CreateRefreshContext(settings, labels, window));
+            GetPrivateField<IReadOnlyList<LabelOnGround>>(overlay, "_lastScannedLabels").Should().BeSameAs(labels);
+        }
+
+        [TestMethod]
+        public void Refresh_Rescans_WhenRenderStateChanges()
+        {
+            var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
+            var overlay = new StrongboxOverlay();
+            RectangleF window = new(100f, 100f, 1280f, 720f);
+
+            IReadOnlyList<LabelOnGround> first = [CreateStrongboxLabel("Metadata/Chests/StrongBoxes/Arcanist", new RectangleF(50f, 60f, 100f, 40f))];
+            overlay.Refresh(CreateRefreshContext(settings, first, window));
+
+            // Changing the click filter replaces the cached metadata -> different render state.
+            settings.StrongboxClickIds = ["artisan"];
+            IReadOnlyList<LabelOnGround> second = [CreateStrongboxLabel("Metadata/Chests/StrongBoxes/Artisan", new RectangleF(50f, 60f, 100f, 40f))];
+            overlay.Refresh(CreateRefreshContext(settings, second, window));
+
+            GetPrivateField<IReadOnlyList<LabelOnGround>>(overlay, "_lastScannedLabels").Should().BeSameAs(second);
+        }
+
+        [TestMethod]
+        public void Draw_ProjectsBoxFromChild0_WhenPresent()
+        {
+            var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
+            var queue = new DeferredFrameQueue();
+            var overlay = new StrongboxOverlay();
+            RectangleF window = new(100f, 100f, 1280f, 720f);
+
+            // The label rect (50,60,100,40) is larger than the child frame (55,65,30,20) — the box
+            // must be drawn around the child, not the parent label rect.
+            StrongboxProbeElement label = new(new RectangleF(50f, 60f, 100f, 40f))
+            {
+                Child0 = new StrongboxProbeElement(new RectangleF(55f, 65f, 30f, 20f)),
+            };
+            LabelOnGround sb = CreateStrongboxLabel("Metadata/Chests/StrongBoxes/Arcanist", label.GetClientRect(), labelElement: label);
+
+            overlay.Refresh(CreateRefreshContext(settings, [sb], window));
+            overlay.Draw(CreateDrawContext(settings, window, queue));
+
+            var frames = queue.GetPendingFrameSnapshot();
+            frames.Should().ContainSingle();
+            frames[0].Rectangle.X.Should().Be(55f);
+            frames[0].Rectangle.Width.Should().Be(30f);
         }
 
         [TestMethod]
@@ -210,12 +271,12 @@ namespace ClickIt.Tests.Features.Strongboxes
         private static OverlayRenderContext CreateDrawContext(ClickItSettings settings, RectangleF window, DeferredFrameQueue queue)
             => new(settings, GameController: null, Graphics: null, WindowArea: window, Labels: null, new DeferredTextQueue(), queue, new DeferredDrawQueue());
 
-        private static LabelOnGround CreateStrongboxLabel(string path, RectangleF rect, string renderName = "Strongbox")
+        private static LabelOnGround CreateStrongboxLabel(string path, RectangleF rect, string renderName = "Strongbox", StrongboxProbeElement? labelElement = null)
         {
             Entity item = EntityProbeFactory.Create(path: path, renderName: renderName);
             StrongboxProbeLabel label = (StrongboxProbeLabel)RuntimeHelpers.GetUninitializedObject(typeof(StrongboxProbeLabel));
             label.ItemOnGround = item;
-            label.Label = new StrongboxProbeElement(rect);
+            label.Label = labelElement ?? new StrongboxProbeElement(rect);
             return label;
         }
 
@@ -230,7 +291,11 @@ namespace ClickIt.Tests.Features.Strongboxes
         {
             public new bool IsValid { get; set; } = true;
 
+            public Element? Child0 { get; set; }
+
             public override RectangleF GetClientRect() => clientRect;
+
+            public new object? GetChildAtIndex(int index) => index == 0 ? Child0 : null;
         }
 
         private static bool InvokeHasMatchingSnapshot(HashSet<string>? currentIds, HashSet<string>? snapshot)
@@ -249,6 +314,11 @@ namespace ClickIt.Tests.Features.Strongboxes
 
         private static IReadOnlyList<string> GetCachedMetadata(StrongboxOverlay overlay, string fieldName)
             => (IReadOnlyList<string>)typeof(StrongboxOverlay)
+                .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(overlay)!;
+
+        private static T GetPrivateField<T>(StrongboxOverlay overlay, string fieldName)
+            => (T)typeof(StrongboxOverlay)
                 .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)!
                 .GetValue(overlay)!;
     }

@@ -6,6 +6,11 @@ namespace ClickIt.Features.Labels.Selection
         string? MechanicId,
         LabelCandidateRejectReason RejectReason);
 
+    // Distance + cursor distance for ranking. Production resolves both from a per-label cache keyed
+    // on the label address (the DLR reads behind each are the dominant Click-Acquire allocation);
+    // tests supply plain values.
+    internal readonly record struct LabelRankInput(float Distance, float CursorDistance);
+
     internal readonly record struct LabelSelectionStats(
         int ConsideredCandidates,
         int NullOrDistanceRejected,
@@ -55,7 +60,7 @@ namespace ClickIt.Features.Labels.Selection
             int endExclusive,
             ClickSettings clickSettings,
             Func<LabelOnGround, LabelCandidateBuildResult> candidateBuilder,
-            Func<LabelOnGround, float> cursorDistanceResolver)
+            Func<LabelOnGround, LabelRankInput> rankInputResolver)
         {
             if (allLabels.Count == 0)
                 return default;
@@ -89,11 +94,11 @@ namespace ClickIt.Features.Labels.Selection
                     continue;
                 }
 
-                float cursorDistance = cursorDistanceResolver(label);
+                LabelRankInput rankInput = rankInputResolver(label);
                 MechanicCandidateRanker.CandidateRank score = MechanicCandidateRanker.Build(
-                    candidate.Item!.DistancePlayer,
-                    candidate.MechanicId!,
-                    cursorDistance,
+                    rankInput.Distance,
+                    candidate.MechanicId,
+                    rankInput.CursorDistance,
                     scoreContext);
 
                 if (score.Ignored)

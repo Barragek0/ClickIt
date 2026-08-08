@@ -114,7 +114,7 @@ namespace ClickIt.Features.Pathfinding
 
             AddDebugStage(terrainFromCache
                 ? $"Pathfind: terrain cache hit grid={dims.X}x{dims.Y}"
-                : $"Pathfind: terrain REBUILT grid={dims.X}x{dims.Y}");
+                : $"Pathfind: terrain REBUILT grid={dims.X}x{dims.Y} churn={_terrainCache.ChurnRebuildCount}");
 
             RuntimeState.SetTerrainSnapshot(walkable, dims);
 

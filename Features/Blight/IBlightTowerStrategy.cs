@@ -38,7 +38,13 @@ internal readonly record struct TowerBuildRule(
     bool UpgradeBeforeMovingOntoLowerPriority = false,
     bool AlwaysUpgradeBeforeBuildingNew = false,
     int TowersPerBranch = 1,
-    int MaxBuildCount = 0);
+    int MaxBuildCount = 0,
+    IReadOnlyList<BlightTowerType>? TowersToEmpower = null)
+{
+    // Empowering rules declare the tower types they must be within range of; null/empty = not an
+    // empowering rule.
+    internal IReadOnlyList<BlightTowerType> EmpowerTargets => TowersToEmpower ?? [];
+}
 
 internal enum TowerSpecialization
 {
@@ -86,6 +92,7 @@ internal static class TowerStrategyBuilder
         private bool _alwaysUpgradeBeforeBuildingNew;
         private int _towersPerBranch = 1;
         private int _maxBuildCount;
+        private IReadOnlyList<BlightTowerType> _towersToEmpower = [];
 
         internal TowerBuildRuleBuilder SetTower(BlightTowerType type) { _towerType = type; return this; }
         internal TowerBuildRuleBuilder SetPriority(TowerBuildPriority p) { _priority = p; return this; }
@@ -108,6 +115,14 @@ internal static class TowerStrategyBuilder
         internal TowerBuildRuleBuilder TowersPerBranch(int count) { _towersPerBranch = SystemMath.Max(1, count); return this; }
 
         internal TowerBuildRuleBuilder MaxBuildCount(int count) { _maxBuildCount = SystemMath.Max(0, count); return this; }
+
+        // Empowering towers placed by this rule must be in range of at least one tower of the given
+        // types, and are built until every such tower is within range of an Empowering tower.
+        internal TowerBuildRuleBuilder BuildUntilTowersAreEmpowered(params BlightTowerType[] types)
+        {
+            _towersToEmpower = types ?? [];
+            return this;
+        }
 
         internal TowerBuildRuleBuilder UpgradeOnlyWhenNeededForCoverage(bool v = true)
         {
@@ -133,7 +148,7 @@ internal static class TowerStrategyBuilder
             _isCoverageTower,
             _specialization, _placement, _upgradePolicy,
             _upgradeBeforeMovingOntoLowerPriority, _alwaysUpgradeBeforeBuildingNew,
-            _towersPerBranch, _maxBuildCount);
+            _towersPerBranch, _maxBuildCount, _towersToEmpower);
 
         public static implicit operator TowerBuildRule(TowerBuildRuleBuilder b)
         {
@@ -176,7 +191,7 @@ internal interface IBlightTowerStrategy
             BlightTowerType.Chilling => new Color(50, 130, 255, 100),   // blue — matches lane "only chilling"
             BlightTowerType.ShockNova => new Color(180, 60, 255, 100),  // purple
             BlightTowerType.Empowering => new Color(0, 200, 0, 100),    // green — matches lane "both covered"
-            BlightTowerType.Seismic => new Color(255, 200, 0, 100),     // amber — matches lane "only seismic"
+            BlightTowerType.Seismic => new Color(255, 128, 0, 100),      // orange — matches lane "only seismic"
             BlightTowerType.Summoning => new Color(255, 160, 50, 100),  // orange
             BlightTowerType.Fireball => new Color(200, 60, 60, 100),    // red — matches lane "uncovered" red
             _ => Color.Gray

@@ -21,7 +21,6 @@ internal sealed class ImGuiDebugOverlay(
     private const string WindowTitle = "ClickIt Debug Info";
     private const float WindowMinWidth = 1240f;
     private const float WindowMinHeight = 400f;
-    private static readonly NumVec2 DefaultPosN = new(100f, 80f);
 
     private static readonly NumVec4 CWarn = Vec4(Color.Yellow);
     private static readonly NumVec4 CError = Vec4(Color.Red);
@@ -44,9 +43,6 @@ internal sealed class ImGuiDebugOverlay(
     private DebugTelemetrySnapshot? _lastSnapshot;
     private PerformanceMetricsSnapshot _lastPerformance;
     private float _leftColWidth;
-    private bool _windowPosApplied;
-    private float _savedWinX;
-    private float _savedWinY;
     private int _blightChestDebugSelectedIndex;
     private readonly List<(string Label, string Value, NumVec4 Color)> _kvRows = [];
 
@@ -116,14 +112,6 @@ internal sealed class ImGuiDebugOverlay(
         if (_performanceMonitor != null)
             _lastPerformance = _performanceMonitor.GetDebugSnapshot();
 
-        if (!_windowPosApplied)
-        {
-            ImGui.SetNextWindowPos(TryLoadWindowPosition(out float winX, out float winY)
-                ? new NumVec2(winX, winY)
-                : DefaultPosN);
-            _windowPosApplied = true;
-        }
-
         ImGui.SetNextWindowSizeConstraints(
             new NumVec2(WindowMinWidth, WindowMinHeight),
             new NumVec2(2000f, 2000f));
@@ -135,8 +123,6 @@ internal sealed class ImGuiDebugOverlay(
             return;
         }
         _settings.DebugWindowVisible.Value = visible;
-
-        PersistWindowPosition();
 
         DrawToolbar();
         ImGui.Separator();
@@ -559,15 +545,14 @@ internal sealed class ImGuiDebugOverlay(
     // Table-wide GC totals as the first data row: KB/f, KB/s and Max summed across every row beneath.
     private static void RenderGcTotalRow(PerformanceMetricsSnapshot perf)
     {
-        (_, double avgKf, double maxKf) = perf.GcTableTotalBytesPerFrame;
+        (_, double totalPerSecond, double totalMaxRun) = perf.GcTableTotalBytesPerFrame;
         double mb = 1024.0 * 1024.0;
-        double allocPerSecond = avgKf * perf.Fps.Current;
-        NumVec4 c = allocPerSecond >= 15 * mb ? CError : allocPerSecond >= 6 * mb ? CWarn : CGreen;
+        NumVec4 c = totalPerSecond >= 15 * mb ? CError : totalPerSecond >= 6 * mb ? CWarn : CGreen;
         ImGui.TableNextRow();
         _ = ImGui.TableNextColumn(); ImGui.TextColored(CHeader, "Total");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, FormatBytes(avgKf));
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, FormatAllocRate(allocPerSecond));
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, FormatBytes(maxKf));
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, totalPerSecond > 0 && perf.Fps.Current > 0 ? FormatBytes(totalPerSecond / perf.Fps.Current) : "-");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, FormatAllocRate(totalPerSecond));
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, FormatBytes(totalMaxRun));
     }
 
     private static string FormatMemoryMb(double mb)
@@ -616,6 +601,7 @@ internal sealed class ImGuiDebugOverlay(
     private readonly record struct FrequencyTargetModel(
         double TargetMs,
         double ProcessingMs,
+        double SleepMs,
         double DelayMs,
         double ModeledTotalMs,
         double ObservedTotalMs,
@@ -626,12 +612,14 @@ internal sealed class ImGuiDebugOverlay(
     private static FrequencyTargetModel BuildFrequencyTargetModel(PerformanceMetricsSnapshot perf, ClickFrequencyTargetTelemetrySnapshot? freqTarget)
     {
         double targetMs = freqTarget is { SettingsAvailable: true } ? freqTarget.TargetIntervalMs : perf.ClickTargetIntervalMs;
-        double processingMs = perf.ClickCoroutine.AverageMs;
-        if (processingMs <= 0) processingMs = perf.AverageSuccessfulClickTimingMs;
+        double fullTickMs = perf.ClickCoroutine.AverageMs;
+        if (fullTickMs <= 0) fullTickMs = perf.AverageSuccessfulClickTimingMs;
+        double sleepMs = SystemMath.Min(perf.AverageClickSleepMs, fullTickMs);
+        double processingMs = SystemMath.Max(0, fullTickMs - sleepMs);
         double observedMs = perf.AverageClickIntervalMs;
 
-        double delayMs = Math.Max(0, targetMs - processingMs);
-        double modeledTotalMs = delayMs + processingMs;
+        double delayMs = Math.Max(0, targetMs - fullTickMs);
+        double modeledTotalMs = delayMs + fullTickMs;
         double observedTotalMs = observedMs > 0 ? observedMs : modeledTotalMs;
         double schedulerDeltaMs = observedTotalMs - modeledTotalMs;
         double deviation = observedTotalMs > 0 ? (observedTotalMs - targetMs) / targetMs : 0;
@@ -640,7 +628,7 @@ internal sealed class ImGuiDebugOverlay(
             ? (observedMs > 0 ? "meeting target" : "estimating")
             : "not meeting target";
 
-        return new FrequencyTargetModel(targetMs, processingMs, delayMs, modeledTotalMs, observedTotalMs, schedulerDeltaMs, deviation, targetStatus);
+        return new FrequencyTargetModel(targetMs, processingMs, sleepMs, delayMs, modeledTotalMs, observedTotalMs, schedulerDeltaMs, deviation, targetStatus);
     }
 
     private void RenderClickFrequencyTarget(PerformanceMetricsSnapshot perf, bool hasCoroutines = true)
@@ -657,6 +645,7 @@ internal sealed class ImGuiDebugOverlay(
 
             FreqTargetRow("Target", $"{m.TargetMs:F0} ms{(freqTarget.ShowLazyModeTarget ? " (Lazy)" : "")}", CWarn);
             FreqTargetRow("Processing", $"{m.ProcessingMs:F0} ms", m.ProcessingMs > m.TargetMs ? CError : m.ProcessingMs >= m.TargetMs * 0.75 ? CWarn : CGreen);
+            FreqTargetRow("Sleep", $"{m.SleepMs:F0} ms", m.SleepMs > 0 ? CWarn : CGreen);
             FreqTargetRow("Total (model)", $"{m.ModeledTotalMs:F0} ms", m.Deviation <= 0.05 ? CGreen : m.Deviation <= 0.10 ? CWarn : CError);
             FreqTargetRow("Scheduler", $"{m.SchedulerDeltaMs:+0;-0;0} ms", Math.Abs(m.SchedulerDeltaMs) <= 5 ? CGreen : Math.Abs(m.SchedulerDeltaMs) <= 20 ? CWarn : COrangeRed);
             FreqTargetRow("Observed", $"{m.ObservedTotalMs:F0} ms ({m.TargetStatus})", m.Deviation <= 0.05 ? CGreen : m.Deviation <= 0.10 ? CWarn : CError);
@@ -1653,6 +1642,7 @@ internal sealed class ImGuiDebugOverlay(
             sb.AppendLine($"    Target: {m.TargetMs:F0} ms{(freqTarget?.ShowLazyModeTarget == true ? " (Lazy)" : "")}");
             sb.AppendLine($"    Delay: {m.DelayMs:F0} ms");
             sb.AppendLine($"    Processing: {m.ProcessingMs:F0} ms");
+            sb.AppendLine($"    Sleep: {m.SleepMs:F0} ms");
             sb.AppendLine($"    Total (model): {m.ModeledTotalMs:F0} ms");
             sb.AppendLine($"    Scheduler: {m.SchedulerDeltaMs:+0;-0;0} ms");
             sb.AppendLine($"    Observed: {m.ObservedTotalMs:F0} ms");
@@ -2042,20 +2032,6 @@ internal sealed class ImGuiDebugOverlay(
 
     private static NumVec4 BoolColor(bool v) => v ? CGreen : CError;
 
-    private bool TryLoadWindowPosition(out float x, out float y)
-    {
-        x = 0f;
-        y = 0f;
-        string raw = _settings.DebugWindowPosition.Value;
-        if (string.IsNullOrWhiteSpace(raw))
-            return false;
-        int comma = raw.IndexOf(',');
-        if (comma <= 0 || comma == raw.Length - 1)
-            return false;
-        return float.TryParse(raw.AsSpan(0, comma), NumberStyles.Float, CultureInfo.InvariantCulture, out x)
-            && float.TryParse(raw.AsSpan(comma + 1), NumberStyles.Float, CultureInfo.InvariantCulture, out y);
-    }
-
     private bool TryLoadSplitterWidth(out float width)
     {
         width = 0f;
@@ -2063,16 +2039,6 @@ internal sealed class ImGuiDebugOverlay(
         return !string.IsNullOrWhiteSpace(raw)
             && float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out width)
             && width > 0f;
-    }
-
-    private void PersistWindowPosition()
-    {
-        NumVec2 pos = ImGui.GetWindowPos();
-        if (SystemMath.Abs(pos.X - _savedWinX) < 1f && SystemMath.Abs(pos.Y - _savedWinY) < 1f)
-            return;
-        _savedWinX = pos.X;
-        _savedWinY = pos.Y;
-        _settings.DebugWindowPosition.Value = $"{pos.X:F0},{pos.Y:F0}";
     }
 
     private static void AppendTrailSb(System.Text.StringBuilder sb, string header, IReadOnlyList<string> trail, int maxRows)

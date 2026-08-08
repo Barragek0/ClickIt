@@ -14,6 +14,12 @@ namespace ClickIt.Features.Pathfinding
         private static readonly float CameraAngleSin = (float)SystemMath.Sin(CameraAngle);
 
         private readonly PathfindingService _pathfindingService;
+        private object? _heightDataOwner;
+        private long _heightDataOwnerAddress;
+        private float[][]? _cachedHeightData;
+        private object? _playerHeightOwner;
+        private long _playerHeightOwnerAddress;
+        private float _cachedPlayerHeight;
 
         public PathfindingOverlay(PathfindingService pathfindingService)
         {
@@ -109,7 +115,7 @@ namespace ClickIt.Features.Pathfinding
         private static void DrawLine(DeferredDrawQueue queue, Vector2 start, Vector2 end, int thickness, Color color)
             => queue.EnqueueLine(new NumVector2(start.X, start.Y), new NumVector2(end.X, end.Y), thickness, color);
 
-        private static bool TryRenderMapPath(OverlayRenderContext ctx, IReadOnlyList<PathfindingService.GridPoint> gridPath)
+        private bool TryRenderMapPath(OverlayRenderContext ctx, IReadOnlyList<PathfindingService.GridPoint> gridPath)
         {
             GameController? gameController = ctx.GameController;
             SubMap? mapElement = gameController?.IngameState?.IngameUi?.Map?.LargeMap;
@@ -127,8 +133,8 @@ namespace ClickIt.Features.Pathfinding
             if (startIndex < 0 || startIndex >= gridPath.Count)
                 return false;
 
-            float[][]? rawHeights = gameController!.IngameState?.Data?.RawTerrainHeightData;
-            float playerHeight = GetPlayerHeightEstimate(gameController);
+            float[][]? rawHeights = ResolveHeightData(gameController!);
+            float playerHeight = GetPlayerHeightEstimate(gameController!);
             Vector2 mapCenter = new(largeMap.MapCenter.X, largeMap.MapCenter.Y);
             float mapScale = (float)largeMap.MapScale;
 
@@ -176,14 +182,41 @@ namespace ClickIt.Features.Pathfinding
             return mapCenter + projectedDelta;
         }
 
-        private static float GetPlayerHeightEstimate(GameController gameController)
+        // RawTerrainHeightData is a multi-million-cell float[][] rebuilt from game memory on every
+        // access; cache it per IngameData ADDRESS (ExileCore's CachedValue recreates the wrapper every
+        // ~25ms at the same per-area address) instead of re-reading it every frame the map path is
+        // drawn. Reference identity alone churned and forced a ~21MB re-read on every recreation.
+        private float[][]? ResolveHeightData(GameController gameController)
+        {
+            object? data = gameController.IngameState?.Data;
+            if (data == null)
+                return null;
+
+            long address = data is RemoteMemoryObject rmo ? rmo.Address : 0;
+            if (!ReferenceEquals(data, _heightDataOwner) && address != _heightDataOwnerAddress)
+            {
+                _heightDataOwner = data;
+                _heightDataOwnerAddress = address;
+                _cachedHeightData = gameController.IngameState!.Data!.RawTerrainHeightData;
+            }
+            return _cachedHeightData;
+        }
+
+        private float GetPlayerHeightEstimate(GameController gameController)
         {
             Entity? player = gameController.Game?.IngameState?.Data?.LocalPlayer;
             if (player == null)
                 return 0f;
 
-            Render render = player.GetComponent<Render>();
-            return render == null ? 0f : -render.RenderStruct.Height;
+            long address = player.Address;
+            if (!ReferenceEquals(player, _playerHeightOwner) && address != _playerHeightOwnerAddress)
+            {
+                _playerHeightOwner = player;
+                _playerHeightOwnerAddress = address;
+                Render render = player.GetComponent<Render>();
+                _cachedPlayerHeight = render == null ? 0f : -render.RenderStruct.Height;
+            }
+            return _cachedPlayerHeight;
         }
     }
 }

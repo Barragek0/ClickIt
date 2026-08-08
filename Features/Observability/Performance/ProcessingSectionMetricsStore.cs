@@ -84,10 +84,8 @@ namespace ClickIt.Features.Observability.Performance
 
         private sealed class PeriodTrackedBuffer
         {
-            private const int MaxWindow = 1000;
-
             private readonly RollingSampleBuffer _samples = new();
-            private readonly Queue<long> _periods = new(MaxWindow);
+            private readonly ExpiringSampleBuffer _periods = new();
             private readonly object _lock = new();
             private long _lastTimestampMs;
             private bool _hasPrevious;
@@ -98,12 +96,7 @@ namespace ClickIt.Features.Observability.Performance
                 {
                     long now = Environment.TickCount64;
                     if (_hasPrevious)
-                    {
-                        long period = SystemMath.Max(1, now - _lastTimestampMs);
-                        _periods.Enqueue(period);
-                        if (_periods.Count > MaxWindow)
-                            _periods.Dequeue();
-                    }
+                        _periods.Record(SystemMath.Max(1, now - _lastTimestampMs));
                     _lastTimestampMs = now;
                     _hasPrevious = true;
                     _samples.Record(ms);
@@ -117,15 +110,7 @@ namespace ClickIt.Features.Observability.Performance
                     lock (_lock)
                     {
                         (double last, double avg, double max, long count) = _samples.Stats;
-                        double avgPeriod = 0;
-                        if (_periods.Count > 0)
-                        {
-                            long total = 0;
-                            foreach (long p in _periods)
-                                total += p;
-                            avgPeriod = total / (double)_periods.Count;
-                        }
-                        return (last, avg, max, count, avgPeriod);
+                        return (last, avg, max, count, _periods.Stats.Average);
                     }
                 }
             }

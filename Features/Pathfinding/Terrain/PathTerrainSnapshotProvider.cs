@@ -5,6 +5,14 @@ namespace ClickIt.Features.Pathfinding.Terrain
         internal Vector2i AreaDims;
         internal long AreaHash;
         internal bool[][]? Walkable;
+        internal object? DataOwner;
+        // IngameData.Address is the per-area game-memory identity. ExileCore's CachedValue<IngameData>
+        // recreates the wrapper every ~25ms at the same address, so reference identity alone churns
+        // and would re-read RawPathfindingData (~20MB) on every rebuild. The address is stable within
+        // an area and changes on area change, so it is the authoritative cache key.
+        internal long DataOwnerAddress;
+        // Rebuilds caused purely by wrapper recreation (same address, different reference).
+        internal long ChurnRebuildCount;
     }
 
     internal static class PathTerrainSnapshotProvider
@@ -20,36 +28,36 @@ namespace ClickIt.Features.Pathfinding.Terrain
                 return false;
 
             Vector2i areaDims = data.AreaDimensions;
-            bool cacheableArea = areaDims.X > 0 && areaDims.Y > 0;
-            bool hasAreaHash = AreaUiSnapshotReader.TryReadCurrentAreaHash(gameController, out long areaHash);
-            if (ShouldUseTerrainCache(cache, areaDims, areaHash, cacheableArea, hasAreaHash))
+            if (cache.Walkable != null
+                && cache.AreaDims.X == areaDims.X
+                && cache.AreaDims.Y == areaDims.Y
+                && (ReferenceEquals(data, cache.DataOwner) || data.Address == cache.DataOwnerAddress))
             {
                 dims = new PathfindingService.GridPoint(
-                    areaDims.X > 0 ? areaDims.X : cache.Walkable![0].Length,
-                    areaDims.Y > 0 ? areaDims.Y : cache.Walkable!.Length);
-                walkable = cache.Walkable!;
+                    areaDims.X > 0 ? areaDims.X : cache.Walkable[0].Length,
+                    areaDims.Y > 0 ? areaDims.Y : cache.Walkable.Length);
+                walkable = cache.Walkable;
                 fromCache = true;
                 return true;
             }
 
-            if (!TryConvertPathfindingData(data.RawPathfindingData, out int[][]? rawGrid) || rawGrid == null || rawGrid.Length == 0)
+            if (!TryBuildWalkableGrid(data.RawPathfindingData, cache.Walkable, out bool[][] converted, out int gridWidth, out int gridHeight) || gridHeight == 0)
                 return false;
 
-            int gridHeight = rawGrid.Length;
-            int gridWidth = rawGrid[0]?.Length ?? 0;
-            if (gridWidth <= 0)
-                return false;
+            if (cache.DataOwner != null
+                && cache.DataOwnerAddress == data.Address
+                && !ReferenceEquals(data, cache.DataOwner))
+            {
+                cache.ChurnRebuildCount++;
+            }
 
-            bool[][] converted = ConvertRawGridToWalkable(rawGrid);
             dims = new PathfindingService.GridPoint(
                 areaDims.X > 0 ? areaDims.X : gridWidth,
                 areaDims.Y > 0 ? areaDims.Y : gridHeight);
-            if (cacheableArea && hasAreaHash)
-            {
-                cache.AreaDims = areaDims;
-                cache.AreaHash = areaHash;
-                cache.Walkable = converted;
-            }
+            cache.AreaDims = areaDims;
+            cache.DataOwner = data;
+            cache.DataOwnerAddress = data.Address;
+            cache.Walkable = converted;
             walkable = converted;
             return true;
         }
@@ -154,6 +162,130 @@ namespace ClickIt.Features.Pathfinding.Terrain
             }
 
             return walkable;
+        }
+
+        internal static bool TryBuildWalkableGrid(object? rawPathData, bool[][]? existing, out bool[][] walkable, out int width, out int height)
+        {
+            walkable = [];
+            width = 0;
+            height = 0;
+
+            if (rawPathData == null)
+                return false;
+
+            if (rawPathData is int[][] direct && direct.Length > 0)
+                return BuildWalkableGridFromIntRows(direct, existing, out walkable, out width, out height);
+
+            if (rawPathData is not Array rows || rows.Length == 0)
+                return false;
+
+            return BuildWalkableGridFromArrayRows(rows, existing, out walkable, out width, out height);
+        }
+
+        private static bool BuildWalkableGridFromIntRows(int[][] rows, bool[][]? existing, out bool[][] walkable, out int width, out int height)
+        {
+            walkable = [];
+            height = rows.Length;
+            width = rows[0]?.Length ?? 0;
+            if (width <= 0)
+                return false;
+
+            bool[][] target = AcquireGrid(height, width, existing);
+            for (int y = 0; y < height; y++)
+            {
+                int[] source = rows[y];
+                bool[] dest = target[y];
+                for (int x = 0; x < width; x++)
+                    dest[x] = source[x] > 0;
+            }
+
+            walkable = target;
+            return true;
+        }
+
+        private static bool BuildWalkableGridFromArrayRows(Array rows, bool[][]? existing, out bool[][] walkable, out int width, out int height)
+        {
+            walkable = [];
+            width = 0;
+            height = rows.Length;
+
+            // Validate shape and values first (no writes) so a failed rebuild never leaves a
+            // partially-updated cached grid behind.
+            int expectedWidth = -1;
+            for (int y = 0; y < height; y++)
+            {
+                object? row = rows.GetValue(y);
+                int rowWidth;
+                if (row is int[] intRow)
+                    rowWidth = intRow.Length;
+                else if (row is Array arrayRow)
+                    rowWidth = arrayRow.Length;
+                else
+                    return false;
+
+                if (rowWidth == 0)
+                    return false;
+                if (expectedWidth == -1)
+                    expectedWidth = rowWidth;
+                else if (rowWidth != expectedWidth)
+                    return false;
+
+                if (row is int[])
+                    continue;
+
+                Array valueRow = (Array)row!;
+                for (int x = 0; x < rowWidth; x++)
+                {
+                    object? value = valueRow.GetValue(x);
+                    if (value == null)
+                        return false;
+
+                    try
+                    {
+                        _ = Convert.ToInt32(value);
+                    }
+                    catch
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            if (expectedWidth <= 0)
+                return false;
+
+            width = expectedWidth;
+            bool[][] target = AcquireGrid(height, width, existing);
+            for (int y = 0; y < height; y++)
+            {
+                object? row = rows.GetValue(y);
+                bool[] dest = target[y];
+                if (row is int[] intRow)
+                {
+                    for (int x = 0; x < width; x++)
+                        dest[x] = intRow[x] > 0;
+                }
+                else
+                {
+                    Array valueRow = (Array)row!;
+                    for (int x = 0; x < width; x++)
+                        dest[x] = Convert.ToInt32(valueRow.GetValue(x)) > 0;
+                }
+            }
+
+            walkable = target;
+            return true;
+        }
+
+        private static bool[][] AcquireGrid(int height, int width, bool[][]? existing)
+        {
+            if (existing != null && existing.Length == height && height > 0 && existing[0].Length == width)
+                return existing;
+
+            bool[][] fresh = new bool[height][];
+            for (int y = 0; y < height; y++)
+                fresh[y] = new bool[width];
+            return fresh;
         }
     }
 }

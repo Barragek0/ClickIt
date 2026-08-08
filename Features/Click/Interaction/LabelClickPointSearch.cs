@@ -2,6 +2,17 @@ namespace ClickIt.Features.Click.Interaction
 {
     internal static class LabelClickPointSearch
     {
+        [ThreadStatic]
+        private static List<RectangleF>? s_blockerRects;
+        [ThreadStatic]
+        private static List<RectangleF>? s_intersectionRects;
+
+        private static List<RectangleF> GetBlockerRects()
+            => s_blockerRects ??= [];
+
+        private static List<RectangleF> GetIntersectionRects()
+            => s_intersectionRects ??= [];
+
         internal static bool IsPointInsideRect(Vector2 point, RectangleF rect)
             => point.X >= rect.Left && point.X <= rect.Right && point.Y >= rect.Top && point.Y <= rect.Bottom;
 
@@ -82,7 +93,7 @@ namespace ClickIt.Features.Click.Interaction
 
         internal static bool TryResolveVisibleClickPoint(RectangleF targetRect, Vector2 preferredPoint, IReadOnlyList<RectangleF> blockedAreas, out Vector2 resolvedPoint)
         {
-            return TryResolveVisiblePoint(targetRect, preferredPoint, blockedAreas, static _ => true, out resolvedPoint);
+            return TryResolveVisiblePoint(targetRect, preferredPoint, blockedAreas, null, out resolvedPoint);
         }
 
         internal static bool TryResolveVisibleClickablePoint(
@@ -92,7 +103,7 @@ namespace ClickIt.Features.Click.Interaction
             Func<Vector2, bool>? isClickableArea,
             out Vector2 resolvedPoint)
         {
-            return TryResolveVisiblePoint(targetRect, preferredPoint, blockedAreas, point => IsPointClickable(point, isClickableArea), out resolvedPoint);
+            return TryResolveVisiblePoint(targetRect, preferredPoint, blockedAreas, isClickableArea, out resolvedPoint);
         }
 
         internal static Vector2 ResolveVisibleClickPoint(RectangleF targetRect, Vector2 preferredPoint, IReadOnlyList<RectangleF> blockedAreas)
@@ -102,8 +113,26 @@ namespace ClickIt.Features.Click.Interaction
         }
 
         internal static List<RectangleF> CollectPotentialBlockingLabelRects(LabelOnGround targetLabel, RectangleF targetRect, IReadOnlyList<LabelOnGround>? allLabels)
+            => CollectPotentialBlockingLabelRects(
+                targetLabel,
+                targetRect,
+                allLabels,
+                static other =>
+                {
+                    bool hasRect = LabelGeometry.TryGetLabelRect(other, out RectangleF rect);
+                    return (rect, hasRect);
+                });
+
+        // Rect-resolver overload lets callers supply cached per-label rects (overlap checks run per
+        // Execute tick and would otherwise re-read every other label's rect each time).
+        internal static List<RectangleF> CollectPotentialBlockingLabelRects(
+            LabelOnGround targetLabel,
+            RectangleF targetRect,
+            IReadOnlyList<LabelOnGround>? allLabels,
+            Func<LabelOnGround, (RectangleF Rect, bool HasRect)> rectResolver)
         {
-            List<RectangleF> potentialBlockers = [];
+            List<RectangleF> potentialBlockers = GetBlockerRects();
+            potentialBlockers.Clear();
             if (allLabels == null || allLabels.Count == 0)
                 return potentialBlockers;
 
@@ -113,7 +142,8 @@ namespace ClickIt.Features.Click.Interaction
                 if (other == null || ReferenceEquals(other, targetLabel))
                     continue;
 
-                if (!LabelGeometry.TryGetLabelRect(other, out RectangleF otherRect))
+                (RectangleF otherRect, bool hasRect) = rectResolver(other);
+                if (!hasRect)
                     continue;
 
                 if (otherRect.Right <= targetRect.Left
@@ -132,7 +162,8 @@ namespace ClickIt.Features.Click.Interaction
 
         internal static List<RectangleF> BuildIntersectionOverlaps(RectangleF targetRect, IReadOnlyList<RectangleF> potentialBlockers)
         {
-            List<RectangleF> blockedAreas = [];
+            List<RectangleF> blockedAreas = GetIntersectionRects();
+            blockedAreas.Clear();
             if (potentialBlockers == null || potentialBlockers.Count == 0)
                 return blockedAreas;
 
@@ -149,12 +180,12 @@ namespace ClickIt.Features.Click.Interaction
             RectangleF targetRect,
             Vector2 preferredPoint,
             IReadOnlyList<RectangleF> blockedAreas,
-            Func<Vector2, bool> isAllowedPoint,
+            Func<Vector2, bool>? isAllowedPoint,
             out Vector2 resolvedPoint)
         {
             Vector2 clampedPreferred = ClampPointToRect(preferredPoint, targetRect);
             if ((blockedAreas == null || blockedAreas.Count == 0 || !IsPointBlocked(clampedPreferred, blockedAreas))
-                && isAllowedPoint(clampedPreferred))
+                && (isAllowedPoint == null || isAllowedPoint(clampedPreferred)))
             {
                 resolvedPoint = clampedPreferred;
                 return true;
@@ -179,7 +210,7 @@ namespace ClickIt.Features.Click.Interaction
                     if (blockedAreas != null && blockedAreas.Count > 0 && IsPointBlocked(candidate, blockedAreas))
                         continue;
 
-                    if (!isAllowedPoint(candidate))
+                    if (isAllowedPoint != null && !isAllowedPoint(candidate))
                         continue;
 
                     float dx = candidate.X - clampedPreferred.X;

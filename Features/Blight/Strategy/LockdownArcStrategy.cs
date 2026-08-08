@@ -1,6 +1,6 @@
 namespace ClickIt.Features.Blight.Strategy;
 
-internal sealed class ChillingSeismicMeteorStrategy : IBlightTowerStrategy
+internal sealed class LockdownArcStrategy : IBlightTowerStrategy
 {
     private static readonly TowerBuildRule[] s_rules =
     [
@@ -21,10 +21,10 @@ internal sealed class ChillingSeismicMeteorStrategy : IBlightTowerStrategy
             .UpgradeOnlyWhenNeededForCoverage()
             .UpgradeBeforeMovingOntoLowerPriority(),
         TowerStrategyBuilder.CreateRule()
-            .SetTower(BlightTowerType.Fireball)
+            .SetTower(BlightTowerType.ShockNova)
             .SetPriority(TowerBuildPriority.High)
             .SetMaxUpgradeLevel(4)
-            .SetSpecialization(TowerSpecialization.Meteor)
+            .SetSpecialization(TowerSpecialization.ArcTower)
             .PreferCloseFoundationToPump()
             .AlwaysUpgradeBeforeBuildingNew(),
         TowerStrategyBuilder.CreateRule()
@@ -35,15 +35,15 @@ internal sealed class ChillingSeismicMeteorStrategy : IBlightTowerStrategy
             .BuildUntilTowersAreEmpowered(BlightTowerType.Seismic, BlightTowerType.Chilling),
     ];
 
-    public string Name => "Empowered Lockdown + Meteor";
+    public string Name => "Empowered Lockdown + Arc";
     public string Description =>
         "Rules in order of priority:\n" +
         "-> Builds Chilling and Seismic Towers to cover every lane.\n" +
         "-> Builds Empowering Towers to buff Chilling and Seismic.\n" +
-        "-> Builds Meteor Towers for damage.\n\n" +
+        "-> Builds Arc Towers for damage.\n\n" +
         "Recommended ring anoints:\n" +
         "- Silver + Opalescent -> Chilling Tower (Chilling Beams)\n" +
-        "- Indigo + Violet -> Meteor Tower (Burning Ground)\n";
+        "- Silver + Clear -> Arc Tower (+1 repeat)";
     public Color DefaultLaneColor => new(194, 200, 0, 57);
     public IReadOnlyList<TowerBuildRule> Rules => s_rules;
 

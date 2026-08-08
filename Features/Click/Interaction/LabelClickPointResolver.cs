@@ -5,6 +5,21 @@ namespace ClickIt.Features.Click.Interaction
         private readonly ClickItSettings _settings = settings;
         private readonly Random _random = new();
 
+        // Same label's metadata (ItemOnGround/Type/Path/RenderName — 4 DLR reads) is resolved for
+        // overlap checks and click-position resolution 2-3x per tick; keyed on the label ADDRESS
+        // (stable across snapshots even when wrapper instances differ) with a short TTL.
+        private readonly Dictionary<long, ResolvedLabelMetadata> _metadataCache = [];
+        private long _metadataCacheWindowStartMs;
+        private const long MetadataCacheWindowMs = 250;
+
+        // Overlap-blocker collection reads every other label's rect (3 DLR reads each) per Execute
+        // tick; cache per label address so the reads happen once per window.
+        private readonly Dictionary<long, (RectangleF Rect, bool HasRect)> _rectCache = [];
+        private long _rectCacheWindowStartMs;
+        private const long RectCacheWindowMs = 250;
+
+        private readonly record struct ResolvedLabelMetadata(EntityType ItemType, string? ItemPath, string? RenderName);
+
         /**
         Keep this runtime wrapper so live overlap resolution still reads the real
         LabelOnGround geometry and Entity metadata. The internal overload keeps a
@@ -19,7 +34,7 @@ namespace ClickIt.Features.Click.Interaction
             if (!TryResolveLabelRect(label, out RectangleF rect))
                 return false;
 
-            ResolveLabelMetadata(label, out EntityType itemType, out string? itemPath, out string? renderName);
+            ResolveLabelMetadataCached(label, out EntityType itemType, out string? itemPath, out string? renderName);
 
             List<RectangleF> potentialBlockers = CollectPotentialBlockingLabelRects(label, rect, allLabels);
             return IsLabelFullyOverlapped(rect, itemType, itemPath, renderName, potentialBlockers);
@@ -54,7 +69,7 @@ namespace ClickIt.Features.Click.Interaction
             if (!TryResolveLabelRect(label, out RectangleF rect))
                 throw new InvalidOperationException("Label element is invalid");
 
-            ResolveLabelMetadata(label, out EntityType itemType, out string? itemPath, out string? renderName);
+            ResolveLabelMetadataCached(label, out EntityType itemType, out string? itemPath, out string? renderName);
 
             bool avoidOverlapsEnabled = ShouldAvoidOverlaps();
             IReadOnlyList<RectangleF> blockedAreas = ResolveBlockedAreas(label, rect, allLabels, avoidOverlapsEnabled);
@@ -109,7 +124,7 @@ namespace ClickIt.Features.Click.Interaction
             if (!TryResolveLabelRect(label, out RectangleF rect))
                 return false;
 
-            ResolveLabelMetadata(label, out EntityType itemType, out string? itemPath, out string? renderName);
+            ResolveLabelMetadataCached(label, out EntityType itemType, out string? itemPath, out string? renderName);
 
             bool avoidOverlapsEnabled = ShouldAvoidOverlaps();
             IReadOnlyList<RectangleF> blockedAreas = ResolveBlockedAreas(label, rect, allLabels, avoidOverlapsEnabled);
@@ -181,7 +196,7 @@ namespace ClickIt.Features.Click.Interaction
         private static bool TryResolveLabelRect(LabelOnGround label, out RectangleF rect)
             => LabelGeometry.TryGetLabelRect(label, out rect);
 
-        private static List<RectangleF> ResolveBlockedAreas(
+        private List<RectangleF> ResolveBlockedAreas(
             LabelOnGround targetLabel,
             RectangleF targetRect,
             IReadOnlyList<LabelOnGround>? allLabels,
@@ -193,8 +208,59 @@ namespace ClickIt.Features.Click.Interaction
         internal static List<RectangleF> CollectPotentialBlockingLabelRects(LabelOnGround targetLabel, RectangleF targetRect, IReadOnlyList<LabelOnGround>? allLabels)
             => LabelClickPointSearch.CollectPotentialBlockingLabelRects(targetLabel, targetRect, allLabels);
 
-        private static List<RectangleF> CollectBlockingOverlaps(LabelOnGround targetLabel, RectangleF targetRect, IReadOnlyList<LabelOnGround>? allLabels)
-            => LabelClickPointSearch.BuildIntersectionOverlaps(targetRect, CollectPotentialBlockingLabelRects(targetLabel, targetRect, allLabels));
+        private List<RectangleF> CollectBlockingOverlaps(LabelOnGround targetLabel, RectangleF targetRect, IReadOnlyList<LabelOnGround>? allLabels)
+            => LabelClickPointSearch.BuildIntersectionOverlaps(
+                targetRect,
+                LabelClickPointSearch.CollectPotentialBlockingLabelRects(
+                    targetLabel, targetRect, allLabels, ResolveLabelRectCached));
+
+        private (RectangleF Rect, bool HasRect) ResolveLabelRectCached(LabelOnGround label)
+        {
+            long address = label.Address;
+            long now = Environment.TickCount64;
+            if (now - _rectCacheWindowStartMs >= RectCacheWindowMs)
+            {
+                _rectCache.Clear();
+                _rectCacheWindowStartMs = now;
+            }
+
+            if (_rectCache.TryGetValue(address, out (RectangleF Rect, bool HasRect) cached))
+                return cached;
+
+            bool hasRect = LabelGeometry.TryGetLabelRect(label, out RectangleF rect);
+            (RectangleF Rect, bool HasRect) result = (rect, hasRect);
+            _rectCache[address] = result;
+            return result;
+        }
+
+        private void ResolveLabelMetadataCached(LabelOnGround? label, out EntityType itemType, out string? itemPath, out string? renderName)
+        {
+            if (label == null)
+            {
+                itemType = EntityType.WorldItem;
+                itemPath = null;
+                renderName = null;
+                return;
+            }
+
+            long address = label.Address;
+            long now = Environment.TickCount64;
+            if (now - _metadataCacheWindowStartMs >= MetadataCacheWindowMs)
+            {
+                _metadataCache.Clear();
+                _metadataCacheWindowStartMs = now;
+            }
+            if (_metadataCache.TryGetValue(address, out ResolvedLabelMetadata cached))
+            {
+                itemType = cached.ItemType;
+                itemPath = cached.ItemPath;
+                renderName = cached.RenderName;
+                return;
+            }
+
+            ResolveLabelMetadata(label, out itemType, out itemPath, out renderName);
+            _metadataCache[address] = new ResolvedLabelMetadata(itemType, itemPath, renderName);
+        }
 
         private static void ResolveLabelMetadata(LabelOnGround? label, out EntityType itemType, out string? itemPath, out string? renderName)
         {

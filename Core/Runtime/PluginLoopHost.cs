@@ -17,23 +17,42 @@ namespace ClickIt.Core.Runtime
         // timer, so the observed click interval tracks the target instead of overshooting by up to
         // the coarse idle-wait window. Falls back to ClickIdleWaitMs otherwise.
         private int _clickIdleWaitMs = ClickIdleWaitMs;
+        private double _clickTargetTimeCorrectionMs;
+        private bool _lastClickTimerRestarted;
 
         private static double GetElapsedMs(long startTimestamp)
             => (Stopwatch.GetTimestamp() - startTimestamp) * 1000.0 / Stopwatch.Frequency;
 
-        private void RecordProcessing(ProcessingSection section, long startTimestamp, long startAllocatedBytes)
+        private void RecordProcessing(ProcessingSection section, long startTimestamp, long startAllocatedBytes, double subtractMs = 0)
         {
             PerformanceMonitor? pm = _state.Services.PerformanceMonitor;
             if (pm == null)
                 return;
-            pm.RecordProcessingTiming(section, GetElapsedMs(startTimestamp));
+            pm.RecordProcessingTiming(section, SystemMath.Max(0, GetElapsedMs(startTimestamp) - subtractMs));
             pm.RecordAllocation(section, GC.GetAllocatedBytesForCurrentThread() - startAllocatedBytes);
         }
 
         private double ResolveClickTargetTime(double frequencyTarget)
         {
             double avgClickTime = _state.Services.PerformanceMonitor?.GetAverageTiming(TimingChannel.Click) ?? 0;
-            return frequencyTarget - avgClickTime + _state.Random.Next(0, 6);
+            return SystemMath.Clamp(
+                frequencyTarget - avgClickTime + _state.Random.Next(0, 6) - _clickTargetTimeCorrectionMs,
+                1,
+                SystemMath.Max(1, frequencyTarget));
+        }
+
+        private void RecordClickStartDelay(long elapsedMilliseconds, double frequencyTarget)
+        {
+            double avgClickTime = _state.Services.PerformanceMonitor?.GetAverageTiming(TimingChannel.Click) ?? 0;
+            double desiredDelay = frequencyTarget - avgClickTime;
+            if (desiredDelay <= 0)
+                return;
+
+            double error = elapsedMilliseconds - desiredDelay;
+            _clickTargetTimeCorrectionMs = SystemMath.Clamp(
+                _clickTargetTimeCorrectionMs + (error * 0.5),
+                0,
+                SystemMath.Max(0, desiredDelay - 1));
         }
 
         private long GetSuccessfulClickSequence()
@@ -46,7 +65,10 @@ namespace ClickIt.Core.Runtime
 
             long clickSequenceAfter = GetSuccessfulClickSequence();
             if (PluginClickRuntimeStateEvaluator.ShouldRestartClickTimerAfterSuccessfulClick(clickSequenceBefore, clickSequenceAfter))
+            {
                 _state.Runtime.Timer.Restart();
+                _lastClickTimerRestarted = true;
+            }
 
         }
 
@@ -222,6 +244,13 @@ namespace ClickIt.Core.Runtime
             }
             _clickIdleWaitMs = ClickIdleWaitMs;
 
+            if (_lastClickTimerRestarted)
+            {
+                _lastClickTimerRestarted = false;
+                if (_state.Runtime.Timer.ElapsedMilliseconds < frequencyTarget.TargetIntervalMs + 100)
+                    RecordClickStartDelay(_state.Runtime.Timer.ElapsedMilliseconds, frequencyTarget.TargetIntervalMs);
+            }
+
             // Harvest labels are processed in the render path
             // (PluginRenderHost) so the overlay renders correctly and the
             // click path reads the decision via GetLabelToClick without
@@ -231,8 +260,11 @@ namespace ClickIt.Core.Runtime
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
             long clickStart = Stopwatch.GetTimestamp();
             long clickAllocStart = GC.GetAllocatedBytesForCurrentThread();
+            ClickPipelineTiming.ResetSleepTime();
             yield return clickPort.ProcessRegularClick();
-            RecordProcessing(ProcessingSection.Click, clickStart, clickAllocStart);
+            double clickSleepMs = ClickPipelineTiming.ConsumeSleepTimeMs();
+            _state.Services.PerformanceMonitor.RecordClickSleepTiming(clickSleepMs);
+            RecordProcessing(ProcessingSection.Click, clickStart, clickAllocStart, clickSleepMs);
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
             _lastClickTickDidWork = clickPort.LastClickTickWasActionable;
@@ -282,8 +314,11 @@ namespace ClickIt.Core.Runtime
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
             long hoverStart = Stopwatch.GetTimestamp();
             long hoverAllocStart = GC.GetAllocatedBytesForCurrentThread();
+            ClickPipelineTiming.ResetSleepTime();
             bool clicked = clickPort.TryClickManualUiHoverLabel(labels);
-            RecordProcessing(ProcessingSection.ManualUiHover, hoverStart, hoverAllocStart);
+            double hoverSleepMs = ClickPipelineTiming.ConsumeSleepTimeMs();
+            _state.Services.PerformanceMonitor.RecordClickSleepTiming(hoverSleepMs);
+            RecordProcessing(ProcessingSection.ManualUiHover, hoverStart, hoverAllocStart, hoverSleepMs);
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
             RestartClickTimerAfterSuccessfulInteraction(clickSequenceBefore, clicked);

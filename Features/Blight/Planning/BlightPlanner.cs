@@ -38,20 +38,23 @@ internal static class BlightPlanner
 
         int branchCount = pumpBranches.Count;
 
-        bool[] branchHasChilling = new bool[branchCount];
-        bool[] branchHasSeismic = new bool[branchCount];
-        int chillingTarget = BlightFillPlanner.FindRule(rules, BlightTowerType.Chilling)?.MaxUpgradeLevel ?? BlightTowerData.MaxUpgradeLevel;
-        int seismicTarget = BlightFillPlanner.FindRule(rules, BlightTowerType.Seismic)?.MaxUpgradeLevel ?? BlightTowerData.MaxUpgradeLevel;
-        for (int b = 0; b < branchCount; b++)
-        {
-            branchHasChilling[b] = BranchHasCoverage(pumpBranches[b], coverage, seismic: false, knownTowers, chillingTarget);
-            branchHasSeismic[b] = BranchHasCoverage(pumpBranches[b], coverage, seismic: true, knownTowers, seismicTarget);
-        }
+        List<BlightTowerType> coverageTypes = [];
+        for (int r = 0; r < rules.Count; r++)
+            if (rules[r].IsCoverageTower && !coverageTypes.Contains(rules[r].TowerType))
+                coverageTypes.Add(rules[r].TowerType);
 
-        bool[] plannedChilling = new bool[branchCount];
-        bool[] plannedSeismic = new bool[branchCount];
-        Array.Copy(branchHasChilling, plannedChilling, branchCount);
-        Array.Copy(branchHasSeismic, plannedSeismic, branchCount);
+        Dictionary<BlightTowerType, bool[]> branchHasType = [];
+        Dictionary<BlightTowerType, bool[]> plannedType = [];
+        for (int t = 0; t < coverageTypes.Count; t++)
+        {
+            BlightTowerType type = coverageTypes[t];
+            int target = BlightFillPlanner.FindRule(rules, type)?.MaxUpgradeLevel ?? BlightTowerData.MaxUpgradeLevel;
+            bool[] has = new bool[branchCount];
+            for (int b = 0; b < branchCount; b++)
+                has[b] = BranchHasCoverage(pumpBranches[b], coverage, type, knownTowers, target);
+            branchHasType[type] = has;
+            plannedType[type] = (bool[])has.Clone();
+        }
 
         Dictionary<NumVector2, (BlightTowerType Type, int MaxLevel)> assignments = [];
         HashSet<int> assignedIndices = [];
@@ -99,10 +102,10 @@ internal static class BlightPlanner
             .GroupBy(r => r.Priority)
             .OrderBy(g => g.Key)];
 
-        // A zero branch count does NOT mean coverage is complete — fill only activates after all branches have both types.
-        bool hasCoverageRules = rules.Any(r => r.IsCoverageTower);
+        // A zero branch count does NOT mean coverage is complete — fill only activates after all
+        // branches have full coverage of every coverage type the strategy declares.
+        bool hasCoverageRules = coverageTypes.Count > 0;
         bool coverageComplete = !hasCoverageRules;
-        int nowCoveredC = 0, nowCoveredS = 0;
 
         foreach (IGrouping<TowerBuildPriority, TowerBuildRule> group in priorityGroups)
         {
@@ -112,13 +115,13 @@ internal static class BlightPlanner
 
             AssignCoverage(
                 tierRules, knownTowers, coverage, pumpBranches,
-                plannedChilling, plannedSeismic,
+                plannedType,
                 failedPositions, assignedIndices, assignments,
                 pumpPosition, playerPosition, coveragePlacements);
 
-            // Coverage is complete ONLY when every branch has BOTH coverage types — the fill tier must
-            // never run while any branch still lacks a coverage type.
-            if (branchCount > 0 && AllBranchesCovered(plannedChilling, plannedSeismic))
+            // Coverage is complete ONLY when every branch has full coverage of every coverage type
+            // — the fill tier must never run while any branch still lacks a coverage type.
+            if (branchCount > 0 && AllBranchesCovered(plannedType))
                 coverageComplete = true;
         }
 
@@ -127,39 +130,33 @@ internal static class BlightPlanner
         // a live coverage segment can be assessed this way.
         if (hasCoverageRules && branchCount > 0 && !coverageComplete)
         {
-            bool[] skippedChilling = new bool[branchCount];
-            bool[] skippedSeismic = new bool[branchCount];
-            for (int b = 0; b < branchCount; b++)
-            {
-                if (pumpBranches[b].CoverageSegment < 0)
-                    continue;
-                if (!plannedChilling[b])
-                    skippedChilling[b] = !SubtreeHasReachableFoundation(
-                        coverage, pumpBranches[b],
-                        CoverageMaxRadiusSq(rules, BlightTowerType.Chilling),
-                        knownTowers, failedPositions, assignedIndices);
-                if (!plannedSeismic[b])
-                    skippedSeismic[b] = !SubtreeHasReachableFoundation(
-                        coverage, pumpBranches[b],
-                        CoverageMaxRadiusSq(rules, BlightTowerType.Seismic),
-                        knownTowers, failedPositions, assignedIndices);
-            }
-
             coverageComplete = true;
-            for (int b = 0; b < branchCount; b++)
+            for (int t = 0; t < coverageTypes.Count; t++)
             {
-                if (!(plannedChilling[b] || skippedChilling[b]) || !(plannedSeismic[b] || skippedSeismic[b]))
+                BlightTowerType type = coverageTypes[t];
+                bool[] planned = plannedType[type];
+                bool[] skipped = new bool[branchCount];
+                for (int b = 0; b < branchCount; b++)
                 {
-                    coverageComplete = false;
-                    break;
+                    if (pumpBranches[b].CoverageSegment < 0)
+                        continue;
+                    if (!planned[b])
+                        skipped[b] = !SubtreeHasReachableFoundation(
+                            coverage, pumpBranches[b],
+                            CoverageMaxRadiusSq(rules, type),
+                            knownTowers, failedPositions, assignedIndices);
                 }
+                for (int b = 0; b < branchCount; b++)
+                {
+                    if (!(planned[b] || skipped[b]))
+                    {
+                        coverageComplete = false;
+                        break;
+                    }
+                }
+                if (!coverageComplete)
+                    break;
             }
-        }
-
-        for (int b = 0; b < branchCount; b++)
-        {
-            if (plannedChilling[b]) nowCoveredC++;
-            if (plannedSeismic[b]) nowCoveredS++;
         }
 
         // Pass 2 — fill tiers in priority order.  Fill always runs after the coverage passes, even
@@ -180,11 +177,21 @@ internal static class BlightPlanner
                 pumpPosition, playerPosition);
         }
 
-        int cBefore = 0, cAfter = 0;
-        for (int b = 0; b < branchCount; b++)
+        // Per-type coverage counts (branchHas -> planned) for the debug summaries.
+        System.Text.StringBuilder covStat = new();
+        for (int t = 0; t < coverageTypes.Count; t++)
         {
-            if (plannedChilling[b]) cAfter++;
-            if (branchHasChilling[b]) cBefore++;
+            BlightTowerType type = coverageTypes[t];
+            int before = 0, after = 0;
+            bool[] has = branchHasType[type];
+            bool[] planned = plannedType[type];
+            for (int b = 0; b < branchCount; b++)
+            {
+                if (has[b]) before++;
+                if (planned[b]) after++;
+            }
+            if (covStat.Length > 0) covStat.Append(' ');
+            covStat.Append(type.ToString()[..3]).Append('=').Append(before).Append("->").Append(after).Append('/').Append(branchCount);
         }
 
         // Debug summaries — one pass over branches, one over towers, producing all formats.
@@ -194,7 +201,14 @@ internal static class BlightPlanner
             PumpBranch pb = pumpBranches[b];
             char letter = (char)('A' + b);
             if (b > 0) { branchDbg.Append(' '); anchorDbg.Append(' '); branchSegDbg.Append(' '); }
-            branchDbg.Append(letter).Append('(').Append(branchHasChilling[b] ? 'C' : 'c').Append(branchHasSeismic[b] ? 'S' : 's').Append(')');
+            branchDbg.Append(letter).Append('(');
+            for (int t = 0; t < coverageTypes.Count; t++)
+            {
+                BlightTowerType type = coverageTypes[t];
+                char ch = char.ToUpperInvariant(type.ToString()[0]);
+                branchDbg.Append(branchHasType[type][b] ? ch : char.ToLowerInvariant(ch));
+            }
+            branchDbg.Append(')');
             anchorDbg.Append('(').Append(pb.Anchor.X.ToString("F0")).Append(',').Append(pb.Anchor.Y.ToString("F0")).Append(')');
             branchSegDbg.Append(letter).Append("(seg=").Append(pb.CoverageSegment);
             if (pb.CoverageSegment >= 0)
@@ -227,13 +241,20 @@ internal static class BlightPlanner
             knownTowers, assignments, rules, coveragePlacements, orderedFillPositions);
 
         if (groupStepsByProximity)
-            steps = ReorderStepsByProximity(steps, rules);
+        {
+            // A step is a coverage step when its foundation is a coverage placement (rules can have
+            // both coverage and fill rules for the same tower type, so type alone is ambiguous).
+            HashSet<NumVector2> coveragePositions = [];
+            for (int i = 0; i < coveragePlacements.Count; i++)
+                coveragePositions.Add(knownTowers[coveragePlacements[i].KnownTowerIndex].WorldPosition);
+            steps = ReorderStepsByProximity(steps, coveragePositions);
+        }
 
         string summary = $"v{version} ({steps.Count} steps, {branchCount} branches, {(coverageComplete ? "full" : "partial")} coverage) [{branchDbg}]"
             + $" anchors={anchorDbg}"
             + $" pump={(pumpPosition.HasValue ? $"({pumpPosition.Value.X:F0},{pumpPosition.Value.Y:F0})" : "none")}"
             + $" preB={preAssignedBuilt}"
-            + $" C={cBefore}->{cAfter}/{branchCount} S={nowCoveredS}/{branchCount}"
+            + $" {covStat}"
             + $" |{assignDbg}";
         string details = $"[{branchDbg}]"
             + $" anchors={anchorDbg}"
@@ -242,7 +263,7 @@ internal static class BlightPlanner
             + $" pump={(pumpPosition.HasValue ? $"({pumpPosition.Value.X:F0},{pumpPosition.Value.Y:F0})" : "none")}"
             + $" found={foundDbg}"
             + $" preBuilt={preAssignedBuilt}"
-            + $" tierCcov={nowCoveredC}/{branchCount} tierScov={nowCoveredS}/{branchCount}"
+            + $" tierCov={covStat}"
             + $" assigned={assignments.Count}"
             + $" | {assignDbg}";
 
@@ -251,21 +272,17 @@ internal static class BlightPlanner
 
     internal static List<BlightPlanStep> ReorderStepsByProximity(
         List<BlightPlanStep> steps,
-        IReadOnlyList<TowerBuildRule> rules)
+        HashSet<NumVector2> coveragePositions)
     {
         if (steps.Count <= 1)
             return steps;
-
-        Dictionary<BlightTowerType, TowerBuildRule> ruleByType = [];
-        for (int r = 0; r < rules.Count; r++)
-            ruleByType[rules[r].TowerType] = rules[r];
 
         List<BlightPlanStep> coverageSteps = [];
         List<BlightPlanStep> fillSteps = [];
         for (int i = 0; i < steps.Count; i++)
         {
             BlightPlanStep step = steps[i];
-            if (ruleByType.TryGetValue(step.TowerType, out TowerBuildRule rule) && rule.IsCoverageTower)
+            if (coveragePositions.Contains(step.FoundationPosition))
                 coverageSteps.Add(step);
             else
                 fillSteps.Add(step);
@@ -351,11 +368,15 @@ internal static class BlightPlanner
         float DistanceToPlayerSq,
         float RequiredRadiusSq);
 
-    private static bool AllBranchesCovered(bool[] chilling, bool[] seismic)
+    private static bool AllBranchesCovered(Dictionary<BlightTowerType, bool[]> planned)
     {
-        for (int b = 0; b < chilling.Length; b++)
-            if (!chilling[b] || !seismic[b])
-                return false;
+        foreach (KeyValuePair<BlightTowerType, bool[]> entry in planned)
+        {
+            bool[] arr = entry.Value;
+            for (int b = 0; b < arr.Length; b++)
+                if (!arr[b])
+                    return false;
+        }
         return true;
     }
 
@@ -403,8 +424,7 @@ internal static class BlightPlanner
         IReadOnlyList<BlightCachedTower> knownTowers,
         LaneCoverageResult[] coverage,
         List<PumpBranch> branches,
-        bool[] plannedChilling,
-        bool[] plannedSeismic,
+        Dictionary<BlightTowerType, bool[]> plannedByType,
         HashSet<NumVector2> failedPositions,
         HashSet<int> assignedIndices,
         Dictionary<NumVector2, (BlightTowerType Type, int MaxLevel)> assignments,
@@ -412,22 +432,22 @@ internal static class BlightPlanner
         NumVector2? playerPosition,
         List<CoveragePlacement> coveragePlacements)
     {
-        TowerBuildRule? chillingRule = BlightFillPlanner.FindRule(tierRules, BlightTowerType.Chilling);
-        TowerBuildRule? seismicRule = BlightFillPlanner.FindRule(tierRules, BlightTowerType.Seismic);
-        if (chillingRule == null && seismicRule == null)
-            return;
+        for (int r = 0; r < tierRules.Count; r++)
+        {
+            TowerBuildRule rule = tierRules[r];
+            if (!rule.IsCoverageTower)
+                continue;
+            if (!plannedByType.TryGetValue(rule.TowerType, out bool[] planned))
+            {
+                planned = new bool[branches.Count];
+                plannedByType[rule.TowerType] = planned;
+            }
 
-        if (chillingRule != null)
-            AssignCoverageType(chillingRule.Value, BlightTowerType.Chilling,
-                knownTowers, coverage, branches, plannedChilling,
+            AssignCoverageType(rule, rule.TowerType,
+                knownTowers, coverage, branches, planned,
                 failedPositions, assignedIndices, assignments,
                 pumpPosition, playerPosition, coveragePlacements);
-
-        if (seismicRule != null)
-            AssignCoverageType(seismicRule.Value, BlightTowerType.Seismic,
-                knownTowers, coverage, branches, plannedSeismic,
-                failedPositions, assignedIndices, assignments,
-                pumpPosition, playerPosition, coveragePlacements);
+        }
     }
 
     private static void AssignCoverageType(
@@ -447,7 +467,6 @@ internal static class BlightPlanner
         int maxBuild = rule.MaxBuildCount;
         int placed = maxBuild > 0 ? BlightFillPlanner.CountBuilt(knownTowers, type) : 0;
         float maxRadiusSq = Sq(BlightService.GetCoverageRadiusForLevel(type, rule.MaxUpgradeLevel));
-        bool seismic = type == BlightTowerType.Seismic;
 
         // Only segments that belong to a pump branch are coverable — isolated fragments far from the
         // pump are ignored (spec §4.7), and covering them would steal foundations from the fill tier.
@@ -465,7 +484,7 @@ internal static class BlightPlanner
         // upgraded.  New towers extend this state through the SAME propagation rules, so a tower on one
         // fork arm that completes the fork correctly covers the trunk (Rule 2), and a trunk tower covers
         // both arms (Rule 3) — the greedy below is propagation-aware, not per-midpoint.
-        bool[] covered = ComputePlannedCoveredState(coverage, seismic, knownTowers, rule.MaxUpgradeLevel);
+        bool[] covered = ComputePlannedCoveredState(coverage, type, knownTowers, rule.MaxUpgradeLevel);
 
         while (maxBuild <= 0 || placed < maxBuild)
         {
@@ -538,7 +557,7 @@ internal static class BlightPlanner
         for (int b = 0; b < branches.Count; b++)
         {
             if (planned[b]) continue;
-            if (SubtreeFullyCovered(branches[b], coverage, covered, knownTowers, seismic, rule.MaxUpgradeLevel))
+            if (SubtreeFullyCovered(branches[b], coverage, covered, knownTowers, type, rule.MaxUpgradeLevel))
                 planned[b] = true;
         }
 

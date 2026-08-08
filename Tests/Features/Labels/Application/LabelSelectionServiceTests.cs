@@ -128,8 +128,21 @@ namespace ClickIt.Tests.Features.Labels.Application
                 MechanicPriorityDistancePenalty = 0,
             };
 
-        private static LabelOnGround CreateOpaqueLabel()
-            => (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
+        private static LabelOnGround CreateOpaqueLabel(long address = 0)
+        {
+            LabelOnGround label = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
+            if (address != 0)
+                SetLabelAddress(label, address);
+            return label;
+        }
+
+        private static void SetLabelAddress(LabelOnGround label, long address)
+        {
+            System.Reflection.PropertyInfo addressProperty = typeof(RemoteMemoryObject).GetProperty(
+                nameof(RemoteMemoryObject.Address),
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)!;
+            addressProperty!.SetValue(label, address);
+        }
 
         [TestMethod]
         public void GetNextLabelToClick_ReusesCache_WhenLabelsReferenceUnchanged()
@@ -166,8 +179,8 @@ namespace ClickIt.Tests.Features.Labels.Application
         [TestMethod]
         public void GetNextLabelToClick_Invalidates_WhenLabelsReferenceChanges()
         {
-            LabelOnGround firstLabel = CreateOpaqueLabel();
-            LabelOnGround secondLabel = CreateOpaqueLabel();
+            LabelOnGround firstLabel = CreateOpaqueLabel(address: 0x1000);
+            LabelOnGround secondLabel = CreateOpaqueLabel(address: 0x2000);
             int scanCount = 0;
             var service = new LabelSelectionService(new LabelSelectionServiceDependencies(
                 GameController: null,
@@ -196,18 +209,21 @@ namespace ClickIt.Tests.Features.Labels.Application
         }
 
         [TestMethod]
-        public void GetNextLabelToClick_DifferentRange_DoesNotReuseCachedResult()
+        public void GetNextLabelToClick_DifferentRange_RerunsSelectionScan()
         {
             LabelOnGround label = CreateOpaqueLabel();
             int scanCount = 0;
             var service = new LabelSelectionService(new LabelSelectionServiceDependencies(
                 GameController: null,
-                CreateClickSettings: static _ => TestClickSettings(),
-                ShouldCaptureLabelDebug: static () => false,
-                PublishLabelDebugStage: static _ => { },
-                TryBuildLabelCandidate: (LabelOnGround candidate, ClickSettings _, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
+                CreateClickSettings: _ =>
                 {
                     scanCount++;
+                    return TestClickSettings();
+                },
+                ShouldCaptureLabelDebug: static () => false,
+                PublishLabelDebugStage: static _ => { },
+                TryBuildLabelCandidate: static (LabelOnGround candidate, ClickSettings _, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
+                {
                     item = EntityProbeFactory.Create();
                     mechanicId = MechanicIds.Items;
                     rejectReason = LabelCandidateRejectReason.None;
@@ -220,7 +236,7 @@ namespace ClickIt.Tests.Features.Labels.Application
             service.GetNextLabelToClick(labels, 0, 10);
             service.GetNextLabelToClick(labels, 0, 5);
 
-            scanCount.Should().Be(2, "a different query range must not reuse the cached scan");
+            scanCount.Should().Be(2, "a different query range must re-run the selection scan");
         }
     }
 }

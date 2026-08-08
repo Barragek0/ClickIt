@@ -268,7 +268,7 @@ namespace ClickIt.Features.Click.Core
                     {
                         // Let the game register the hover on the menu button before the click lands —
                         // clicking too soon after the cursor arrives can miss the element entirely.
-                        Thread.Sleep(BlightMenuClickSettleMs);
+                        ClickPipelineTiming.Sleep(BlightMenuClickSettleMs);
                     }
                     _dependencies.LabelInteraction.PerformMechanicClick(clickPos);
                     return true;

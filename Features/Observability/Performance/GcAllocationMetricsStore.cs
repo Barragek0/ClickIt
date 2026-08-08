@@ -39,60 +39,59 @@ namespace ClickIt.Features.Observability.Performance
 
         private sealed class SectionSamples
         {
-            private readonly Queue<long> _bytes = new(MaxWindow);
-            private readonly Queue<long> _periods = new(MaxWindow);
-            private long _lastTimestampMs;
-            private long _lastBytes;
-            private bool _hasPrevious;
+            private const long ExpiryMs = 30_000;
+
+            private readonly Queue<(long TimestampMs, long Bytes)> _samples = new(MaxWindow);
+            private readonly Func<long> _now = static () => Environment.TickCount64;
 
             public void Record(long bytes)
             {
-                long now = Environment.TickCount64;
-                if (_hasPrevious)
-                {
-                    long period = SystemMath.Max(1, now - _lastTimestampMs);
-                    _periods.Enqueue(period);
-                    if (_periods.Count > MaxWindow)
-                        _periods.Dequeue();
-                }
-                _lastTimestampMs = now;
-                _lastBytes = bytes;
-                _hasPrevious = true;
-
-                _bytes.Enqueue(bytes);
-                if (_bytes.Count > MaxWindow)
-                    _bytes.Dequeue();
+                long now = _now();
+                Expire(now);
+                _samples.Enqueue((now, bytes));
+                if (_samples.Count > MaxWindow)
+                    _samples.Dequeue();
             }
 
             public GcAllocationSnapshot Stats
             {
                 get
                 {
-                    if (_bytes.Count == 0)
+                    long now = _now();
+                    Expire(now);
+                    if (_samples.Count == 0)
                         return default;
 
                     long total = 0;
                     long max = 0;
-                    foreach (long b in _bytes)
+                    long last = 0;
+                    long periodTotal = 0;
+                    int periodCount = 0;
+                    long? previousTimestamp = null;
+                    foreach ((long timestampMs, long bytes) in _samples)
                     {
-                        total += b;
-                        if (b > max)
-                            max = b;
+                        total += bytes;
+                        if (bytes > max)
+                            max = bytes;
+                        last = bytes;
+                        if (previousTimestamp is long previous)
+                        {
+                            periodTotal += SystemMath.Max(1, timestampMs - previous);
+                            periodCount++;
+                        }
+                        previousTimestamp = timestampMs;
                     }
-                    double avgBytes = total / (double)_bytes.Count;
-
-                    double avgPeriodMs = 0;
-                    if (_periods.Count > 0)
-                    {
-                        long periodTotal = 0;
-                        foreach (long p in _periods)
-                            periodTotal += p;
-                        avgPeriodMs = periodTotal / (double)_periods.Count;
-                    }
-
+                    double avgBytes = total / (double)_samples.Count;
+                    double avgPeriodMs = periodCount > 0 ? periodTotal / (double)periodCount : 0;
                     double allocPerSecond = avgPeriodMs > 0 ? avgBytes * 1000.0 / avgPeriodMs : 0;
-                    return new GcAllocationSnapshot(allocPerSecond, avgBytes, max, _bytes.Count, _lastBytes, avgPeriodMs);
+                    return new GcAllocationSnapshot(allocPerSecond, avgBytes, max, _samples.Count, last, avgPeriodMs);
                 }
+            }
+
+            private void Expire(long now)
+            {
+                while (_samples.Count > 0 && now - _samples.Peek().TimestampMs > ExpiryMs)
+                    _samples.Dequeue();
             }
         }
     }

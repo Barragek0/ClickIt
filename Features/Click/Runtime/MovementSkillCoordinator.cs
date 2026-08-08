@@ -88,7 +88,7 @@ namespace ClickIt.Features.Click.Runtime
             if (!Mouse.DisableNativeInput)
             {
                 Input.SetCursorPos(new NumVector2(castPoint.X, castPoint.Y));
-                Thread.Sleep(10);
+                ClickPipelineTiming.Sleep(10);
             }
 
             Keyboard.KeyPress(binding.BoundKey, MovementSkillMath.KeyTapDelayMs);

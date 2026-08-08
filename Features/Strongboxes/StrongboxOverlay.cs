@@ -1,21 +1,21 @@
 namespace ClickIt.Features.Strongboxes
 {
     /// <summary>
-    /// Owns the strongbox frame overlay end-to-end: refresh cadence (host coroutine), the
-    /// off-frame label scan, and the per-frame draw of cached frames. Decision helpers are
+    /// Owns the strongbox frame overlay end-to-end: every-frame refresh cadence (host coroutine)
+    /// with a label-snapshot guard so the off-frame scan only runs when labels or settings change,
+    /// and the per-frame draw of cached frames around each label's Child[0]. Decision helpers are
     /// internal static so the classifier and tests share the same rules.
     /// </summary>
     public sealed class StrongboxOverlay : IOverlay
     {
         private const string StrongboxUniqueIdentifier = "special:strongbox-unique";
-        private const int StrongboxScanIntervalMs = 100;
 
         private readonly record struct StrongboxFrame(RectangleF Rect, Color Color);
         private readonly record struct StrongboxRenderState(
             bool ShowFrames,
             IReadOnlyList<string> ClickMetadata,
             IReadOnlyList<string> DontClickMetadata);
-        private readonly record struct StrongboxLabelMetadata(Element? Label, Chest? Chest, string Path, string RenderName, bool IsUnique);
+        private readonly record struct StrongboxLabelMetadata(Element? Label, Chest? Chest, string Path, string RenderName, bool IsUnique, Element? ChildLabel = null);
         private readonly record struct CachedStrongbox(LabelOnGround Label, StrongboxLabelMetadata Metadata);
 
         private static readonly List<CachedStrongbox> s_emptyStrongboxes = [];
@@ -26,12 +26,15 @@ namespace ClickIt.Features.Strongboxes
         private IReadOnlyList<string> _cachedDontClickMetadata = [];
         private HashSet<string>? _clickIdsSnapshot;
         private HashSet<string>? _dontClickIdsSnapshot;
+        private IReadOnlyList<LabelOnGround>? _lastScannedLabels;
+        private int _lastScannedCount;
+        private StrongboxRenderState _lastScannedRenderState;
 
         public string Name => "Strongbox";
 
         public RenderSection Section => RenderSection.StrongboxOverlay;
 
-        public OverlayRefreshPolicy RefreshPolicy => OverlayRefreshPolicy.Throttled(StrongboxScanIntervalMs);
+        public OverlayRefreshPolicy RefreshPolicy => OverlayRefreshPolicy.Throttled(0);
 
         public TimingChannel? RefreshTimingChannel => TimingChannel.LabelOverlay;
 
@@ -49,9 +52,22 @@ namespace ClickIt.Features.Strongboxes
             if (!ShouldRenderAnyStrongboxes(renderState))
             {
                 _snapshot.Replace(s_emptyStrongboxes);
+                _lastScannedLabels = null;
                 return;
             }
 
+            // The refresh runs every frame; the expensive scan only re-runs when the label snapshot
+            // or the render state (settings) actually changed.
+            if (ReferenceEquals(_lastScannedLabels, ctx.Labels)
+                && _lastScannedCount == (ctx.Labels?.Count ?? 0)
+                && _lastScannedRenderState == renderState)
+            {
+                return;
+            }
+
+            _lastScannedLabels = ctx.Labels;
+            _lastScannedCount = ctx.Labels?.Count ?? 0;
+            _lastScannedRenderState = renderState;
             _snapshot.Replace(ScanStrongboxes(ctx.Labels, ctx.WindowArea, renderState));
         }
 
@@ -63,7 +79,9 @@ namespace ClickIt.Features.Strongboxes
             for (int i = 0; i < cached.Count; i++)
             {
                 CachedStrongbox sb = cached[i];
-                if (!LabelGeometry.TryGetLabelRectOnScreen(sb.Label, ctx.WindowArea, out RectangleF rect))
+                // The label's actual text frame is Child[0]; the parent label rect is larger, so the
+                // box is projected from the child (cached during the scan, rect resolved per frame).
+                if (!TryResolveStrongboxRect(sb, ctx.WindowArea, out RectangleF rect))
                     continue;
 
                 if (!TryResolveStrongboxFrame(rect, renderState, sb.Metadata, out StrongboxFrame frame))
@@ -72,6 +90,11 @@ namespace ClickIt.Features.Strongboxes
                 ctx.FrameQueue.Enqueue(frame.Rect, frame.Color, 2);
             }
         }
+
+        private static bool TryResolveStrongboxRect(CachedStrongbox sb, RectangleF windowArea, out RectangleF rect)
+            => sb.Metadata.ChildLabel is { } child
+                ? LabelGeometry.TryGetElementRectOnScreen(child, windowArea, out rect)
+                : LabelGeometry.TryGetLabelRectOnScreen(sb.Label, windowArea, out rect);
 
         private static List<CachedStrongbox> ScanStrongboxes(
             IReadOnlyList<LabelOnGround>? labels,
@@ -223,7 +246,13 @@ namespace ClickIt.Features.Strongboxes
                 ? resolvedChest
                 : null;
 
-            return new StrongboxLabelMetadata(labelElement, chest, path, renderName, isUnique);
+            // The box is drawn around the label's text frame (Child[0]); resolved once per scan so
+            // the per-frame draw only reads its cached rect.
+            Element? child0 = DynamicAccess.TryGetChildAtIndex(labelElement, 0, out object? rawChild0)
+                ? rawChild0 as Element
+                : null;
+
+            return new StrongboxLabelMetadata(labelElement, chest, path, renderName, isUnique, child0);
         }
     }
 }

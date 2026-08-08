@@ -201,6 +201,7 @@ namespace ClickIt.Shared.Diagnostics
                 GetClickTargetInterval(),
                 GetAverageSuccessfulClickTiming(),
                 GetAverageClickInterval(),
+                GetAverageClickSleepMs(),
                 MapAllocations(),
                 GetLabelScanAllocationStats(),
                 GetClickAllocationStats(),
@@ -321,6 +322,16 @@ namespace ClickIt.Shared.Diagnostics
         public double GetAverageSuccessfulClickTiming()
         {
             return _timingTracker.GetAverageSuccessfulClickTiming();
+        }
+
+        public void RecordClickSleepTiming(double ms)
+        {
+            _timingTracker.RecordClickSleepTiming(ms);
+        }
+
+        public double GetAverageClickSleepMs()
+        {
+            return _timingTracker.GetAverageClickSleepMs();
         }
 
         internal int GetTimingSampleCount(TimingChannel channel)

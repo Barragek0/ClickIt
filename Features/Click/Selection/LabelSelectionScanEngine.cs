@@ -11,7 +11,12 @@ namespace ClickIt.Features.Click.Selection
         ClickLabelInteractionService LabelInteraction,
         MechanicPriorityContextProvider MechanicPriorityContextProvider,
         ClickDebugPublicationService ClickDebugPublisher,
-        Action<string> DebugLog);
+        Action<string> DebugLog)
+    {
+        // When essence clicking is disabled the UI-hover essence preference is dead work (it walks
+        // the whole label element tree), so it is skipped entirely.
+        public Func<bool> IsEssenceClickingEnabled { get; init; } = static () => true;
+    }
 
     internal sealed class LabelSelectionScanEngine(LabelSelectionScanEngineDependencies dependencies)
     {
@@ -56,7 +61,7 @@ namespace ClickIt.Features.Click.Selection
 
         private LabelOnGround? PreferUiHoverEssenceLabel(LabelOnGround? nextLabel, IReadOnlyList<LabelOnGround>? allLabels)
         {
-            if (allLabels == null)
+            if (allLabels == null || !_dependencies.IsEssenceClickingEnabled())
                 return nextLabel;
 
             Element? uiHover;

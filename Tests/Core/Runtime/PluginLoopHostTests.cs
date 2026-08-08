@@ -352,6 +352,112 @@ namespace ClickIt.Tests.Core.Runtime
             ctx.Runtime.Timer.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(elapsedBefore);
         }
 
+        [TestMethod]
+        public void RestartClickTimerAfterSuccessfulInteraction_MarksTimerRestart_WhenSequenceAdvances()
+        {
+            var settings = new ClickItSettings();
+            var ctx = new PluginContext();
+            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => true);
+            RuntimeMemberAccessor.SetRequiredMember(executor, "_successfulClickSequence", 7L);
+            ctx.Services.LockedInteractionDispatcher = new LockedInteractionDispatcher(executor);
+
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
+            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+            var host = new PluginLoopHost(ctx, settings, gc!, eh);
+
+            InvokePrivate(host, "RestartClickTimerAfterSuccessfulInteraction", 6L, true);
+
+            GetPrivateField<bool>(host, "_lastClickTimerRestarted").Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void RestartClickTimerAfterSuccessfulInteraction_DoesNotMarkTimerRestart_WhenSequenceDoesNotAdvance()
+        {
+            var settings = new ClickItSettings();
+            var ctx = new PluginContext();
+            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => true);
+            RuntimeMemberAccessor.SetRequiredMember(executor, "_successfulClickSequence", 7L);
+            ctx.Services.LockedInteractionDispatcher = new LockedInteractionDispatcher(executor);
+
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
+            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+            var host = new PluginLoopHost(ctx, settings, gc!, eh);
+
+            InvokePrivate(host, "RestartClickTimerAfterSuccessfulInteraction", 7L, true);
+
+            GetPrivateField<bool>(host, "_lastClickTimerRestarted").Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void RecordClickStartDelay_IncreasesCorrection_WhenStartDelayed()
+        {
+            var settings = new ClickItSettings();
+            var ctx = new PluginContext();
+            ctx.Services.PerformanceMonitor = new PerformanceMonitor(settings);
+
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
+            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+            var host = new PluginLoopHost(ctx, settings, gc!, eh);
+
+            // No click timing samples yet → desired delay = frequency target (80 ms).
+            InvokePrivate(host, "RecordClickStartDelay", 100L, 80d);
+
+            GetPrivateField<double>(host, "_clickTargetTimeCorrectionMs").Should().Be(10d);
+        }
+
+        [TestMethod]
+        public void RecordClickStartDelay_DecreasesCorrection_WhenStartEarly()
+        {
+            var settings = new ClickItSettings();
+            var ctx = new PluginContext();
+            ctx.Services.PerformanceMonitor = new PerformanceMonitor(settings);
+
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
+            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+            var host = new PluginLoopHost(ctx, settings, gc!, eh);
+
+            RuntimeMemberAccessor.SetRequiredMember(host, "_clickTargetTimeCorrectionMs", 10d);
+            InvokePrivate(host, "RecordClickStartDelay", 60L, 80d);
+
+            GetPrivateField<double>(host, "_clickTargetTimeCorrectionMs").Should().Be(0d);
+        }
+
+        [TestMethod]
+        public void RecordClickStartDelay_ClampsCorrection_ToKeepTargetPositive()
+        {
+            var settings = new ClickItSettings();
+            var ctx = new PluginContext();
+            ctx.Services.PerformanceMonitor = new PerformanceMonitor(settings);
+
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
+            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+            var host = new PluginLoopHost(ctx, settings, gc!, eh);
+
+            // A stale huge elapsed would otherwise push the target below 1 ms.
+            InvokePrivate(host, "RecordClickStartDelay", 1000L, 80d);
+
+            GetPrivateField<double>(host, "_clickTargetTimeCorrectionMs").Should().Be(79d);
+        }
+
+        [TestMethod]
+        public void ResolveClickTargetTime_AppliesFeedbackCorrection()
+        {
+            var settings = new ClickItSettings();
+            var ctx = new PluginContext();
+            ctx.Services.PerformanceMonitor = new PerformanceMonitor(settings);
+
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
+            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+            var host = new PluginLoopHost(ctx, settings, gc!, eh);
+
+            RuntimeMemberAccessor.SetRequiredMember(host, "_clickTargetTimeCorrectionMs", 10d);
+
+            // 80 - avg(0) + jitter(0..5) - 10 → [70, 75].
+            double result = InvokePrivate<double>(host, "ResolveClickTargetTime", 80d);
+
+            result.Should().BeInRange(70, 75);
+        }
+
         private static IEnumerator InvokePrivateCoroutine(PluginLoopHost host, string methodName)
         {
             MethodInfo method = typeof(PluginLoopHost).GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)!;
@@ -368,6 +474,12 @@ namespace ClickIt.Tests.Core.Runtime
         {
             MethodInfo method = typeof(PluginLoopHost).GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)!;
             return (T)method.Invoke(host, arguments)!;
+        }
+
+        private static T GetPrivateField<T>(PluginLoopHost host, string fieldName)
+        {
+            FieldInfo field = typeof(PluginLoopHost).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)!;
+            return (T)field.GetValue(host)!;
         }
 
         private static void SetSafeLazyModeContextCache(PluginLoopHost host, ClickItSettings settings, IReadOnlyList<LabelOnGround> labels)

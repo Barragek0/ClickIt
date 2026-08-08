@@ -319,7 +319,10 @@ namespace ClickIt.Features.Click
                 LabelInteraction,
                 _mechanicPriorityContextProvider,
                 ClickDebugPublisher,
-                ClickAutomationSupport.DebugLog);
+                ClickAutomationSupport.DebugLog)
+            {
+                IsEssenceClickingEnabled = () => _settings.ClickEssences.Value
+            };
 
         private ManualCursorLabelSelectorDependencies CreateManualCursorLabelSelectorDependencies()
             => new(

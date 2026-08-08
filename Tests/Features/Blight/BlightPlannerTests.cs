@@ -1134,7 +1134,9 @@ public class BlightPlannerTests
             new(BlightPlanAction.Build, new NumVector2(300, 0), BlightTowerType.Fireball, 1),
         ];
 
-        List<BlightPlanStep> reordered = BlightPlanner.ReorderStepsByProximity(steps, rules);
+        List<BlightPlanStep> reordered = BlightPlanner.ReorderStepsByProximity(
+            steps,
+            [new NumVector2(200, 200)]);
 
         reordered.Should().HaveCount(4);
         int lastCoverage = reordered.FindLastIndex(s => s.TowerType == BlightTowerType.Seismic);
@@ -1143,6 +1145,140 @@ public class BlightPlannerTests
         reordered.Where(s => s.TowerType == BlightTowerType.Seismic)
             .Select(s => s.Action)
             .Should().Equal(BlightPlanAction.Build, BlightPlanAction.Upgrade);
+    }
+
+    [TestMethod]
+    public void EmpoweringRule_OnlyPlacesFoundationsInRangeOfEmpowerTargets()
+    {
+        // Two built coverage towers (Chilling + Seismic) with an Empowering rule that must empower
+        // them. Only foundations within Empowering's max radius of a target tower may be assigned.
+        var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
+        var foundations = new List<BlightCachedTower>
+        {
+            new(new NumVector2(0, 0), BlightTowerType.Chilling, 3),  // built target tower
+            new(new NumVector2(20, 0), BlightTowerType.Seismic, 3),  // built target tower
+            new(new NumVector2(5, 0), BlightTowerType.Chilling),     // in range of both targets
+            new(new NumVector2(15, 0), BlightTowerType.Chilling),    // in range of the Seismic target
+            new(new NumVector2(100, 100), BlightTowerType.Chilling), // far from every target
+        };
+
+        var rules = new List<TowerBuildRule>
+        {
+            TowerStrategyBuilder.CreateRule()
+                .SetTower(BlightTowerType.Empowering)
+                .SetPriority(TowerBuildPriority.High)
+                .SetMaxUpgradeLevel(3)
+                .BuildUntilTowersAreEmpowered(BlightTowerType.Seismic, BlightTowerType.Chilling)
+                .Build(),
+        };
+
+        BlightPlan plan = BuildPlan(lane, foundations, rules, pump: new NumVector2(0, 0));
+
+        var empoweringBuilds = plan.Steps
+            .Where(s => s.Action == BlightPlanAction.Build && s.TowerType == BlightTowerType.Empowering)
+            .Select(s => s.FoundationPosition)
+            .ToList();
+
+        empoweringBuilds.Should().NotContain(new NumVector2(100, 100),
+            "an Empowering tower must never be placed where it empowers no target tower");
+        empoweringBuilds.Should().NotBeEmpty("at least one in-range foundation should be assigned");
+    }
+
+    [TestMethod]
+    public void EmpoweringRule_StopsOnceEveryTargetIsInRange()
+    {
+        // Two built target towers close together: one Empowering foundation covers both, so the rule
+        // must not keep assigning further Empowering towers after both targets are in range.
+        var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
+        var foundations = new List<BlightCachedTower>
+        {
+            new(new NumVector2(0, 0), BlightTowerType.Chilling, 3),
+            new(new NumVector2(10, 0), BlightTowerType.Seismic, 3),
+            new(new NumVector2(5, 5), BlightTowerType.Chilling),   // covers both targets
+            new(new NumVector2(5, -5), BlightTowerType.Chilling),  // also covers both — must NOT be used
+        };
+
+        var rules = new List<TowerBuildRule>
+        {
+            TowerStrategyBuilder.CreateRule()
+                .SetTower(BlightTowerType.Empowering)
+                .SetPriority(TowerBuildPriority.High)
+                .SetMaxUpgradeLevel(3)
+                .BuildUntilTowersAreEmpowered(BlightTowerType.Seismic, BlightTowerType.Chilling)
+                .Build(),
+        };
+
+        BlightPlan plan = BuildPlan(lane, foundations, rules, pump: new NumVector2(0, 0));
+
+        var empoweringBuilds = plan.Steps
+            .Where(s => s.Action == BlightPlanAction.Build && s.TowerType == BlightTowerType.Empowering)
+            .ToList();
+
+        empoweringBuilds.Should().HaveCount(1,
+            "one Empowering tower in range of both targets is enough — the rule stops there");
+    }
+
+    [TestMethod]
+    public void EmpoweringRule_NoTargets_NeverPlacesAnyEmpoweringTower()
+    {
+        // No Chilling/Seismic towers exist at all — the Empowering rule must not build anything.
+        var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
+        var foundations = Foundations((5, 0), (15, 0), (25, 0));
+
+        var rules = new List<TowerBuildRule>
+        {
+            TowerStrategyBuilder.CreateRule()
+                .SetTower(BlightTowerType.Empowering)
+                .SetPriority(TowerBuildPriority.High)
+                .SetMaxUpgradeLevel(3)
+                .BuildUntilTowersAreEmpowered(BlightTowerType.Seismic, BlightTowerType.Chilling)
+                .Build(),
+        };
+
+        BlightPlan plan = BuildPlan(lane, foundations, rules, pump: new NumVector2(0, 0));
+
+        plan.Steps.Should().NotContain(s => s.TowerType == BlightTowerType.Empowering,
+            "with no Seismic/Chilling towers to empower, no Empowering tower may be planned");
+    }
+
+    [TestMethod]
+    public void EmpoweringRule_InterleavesWithOtherFillRuleInSameTier()
+    {
+        // Empowering (High) + Fireball (High): the plan must carry both, with Empowering only on
+        // in-range foundations and Fireball filling the remaining spots.
+        var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
+        var foundations = new List<BlightCachedTower>
+        {
+            new(new NumVector2(0, 0), BlightTowerType.Chilling, 3),
+            new(new NumVector2(20, 0), BlightTowerType.Seismic, 3),
+            new(new NumVector2(5, 0), BlightTowerType.Chilling),
+            new(new NumVector2(15, 0), BlightTowerType.Chilling),
+            new(new NumVector2(100, 100), BlightTowerType.Chilling),
+        };
+
+        var rules = new List<TowerBuildRule>
+        {
+            TowerStrategyBuilder.CreateRule()
+                .SetTower(BlightTowerType.Fireball)
+                .SetPriority(TowerBuildPriority.High)
+                .SetMaxUpgradeLevel(4)
+                .Build(),
+            TowerStrategyBuilder.CreateRule()
+                .SetTower(BlightTowerType.Empowering)
+                .SetPriority(TowerBuildPriority.High)
+                .SetMaxUpgradeLevel(3)
+                .BuildUntilTowersAreEmpowered(BlightTowerType.Seismic, BlightTowerType.Chilling)
+                .Build(),
+        };
+
+        BlightPlan plan = BuildPlan(lane, foundations, rules, pump: new NumVector2(0, 0));
+
+        plan.Steps.Should().Contain(s => s.TowerType == BlightTowerType.Fireball,
+            "the normal fill rule must still run alongside the empowering rule");
+        plan.Steps.Should().NotContain(s =>
+                s.TowerType == BlightTowerType.Empowering &&
+                MathF.Abs(s.FoundationPosition.X - 100f) < 1f && MathF.Abs(s.FoundationPosition.Y - 100f) < 1f,
+            "the far foundation may be a Fireball tower but never an Empowering tower");
     }
 
     [TestMethod]
@@ -1167,13 +1303,83 @@ public class BlightPlannerTests
             new(BlightPlanAction.Upgrade, new NumVector2(500, 500), BlightTowerType.Fireball, 3),
         ];
 
-        List<BlightPlanStep> reordered = BlightPlanner.ReorderStepsByProximity(steps, rules);
+        List<BlightPlanStep> reordered = BlightPlanner.ReorderStepsByProximity(steps, []);
 
         reordered[0].FoundationPosition.X.Should().Be(0f, "the plan starts at the first step's cluster");
         reordered.Where(s => s.FoundationPosition.X == 0f).Select(s => s.TargetLevel)
             .Should().Equal(new[] { 1, 2, 3 }, "each position's build+upgrades stay together, in order");
         reordered.Where(s => s.FoundationPosition.X == 500f).Select(s => s.TargetLevel)
             .Should().Equal(new[] { 1, 2, 3 });
+    }
+
+    [TestMethod]
+    public void EmpoweredScoutsStrategy_BuildsScoutsAndEmpoweringTowers()
+    {
+        var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
+        var foundations = new List<BlightCachedTower>
+        {
+            new(new NumVector2(0, 0), BlightTowerType.Chilling),
+            new(new NumVector2(10, 0), BlightTowerType.Chilling),
+            new(new NumVector2(20, 0), BlightTowerType.Chilling),
+            new(new NumVector2(30, 0), BlightTowerType.Chilling),
+        };
+
+        var strategy = new EmpoweredScoutsStrategy();
+        BlightPlan plan = BuildPlan(lane, foundations, [.. strategy.Rules], pump: new NumVector2(0, 0));
+
+        plan.Steps.Should().Contain(s => s.Action == BlightPlanAction.Build && s.TowerType == BlightTowerType.Summoning,
+            "coverage scouts are planned first");
+        plan.Steps.Should().Contain(s => s.Action == BlightPlanAction.Build && s.TowerType == BlightTowerType.Empowering,
+            "empowering towers are planned to cover the scouts");
+
+        int scoutBuilds = plan.Steps.Count(s => s.Action == BlightPlanAction.Build && s.TowerType == BlightTowerType.Summoning);
+        int empowerBuilds = plan.Steps.Count(s => s.Action == BlightPlanAction.Build && s.TowerType == BlightTowerType.Empowering);
+        empowerBuilds.Should().BeGreaterThan(0);
+        empowerBuilds.Should().BeLessThanOrEqualTo(scoutBuilds,
+            "an Empowering tower may cover one or more Scouts, never more Empowering towers than Scouts");
+    }
+
+    [TestMethod]
+    public void EmpoweredScoutsStrategy_Rules_DeclareScoutCoverageAndEmpowerTargets()
+    {
+        var strategy = new EmpoweredScoutsStrategy();
+
+        TowerBuildRule coverage = strategy.GetRule(BlightTowerType.Summoning).GetValueOrDefault();
+        coverage.IsCoverageTower.Should().BeTrue();
+        coverage.MaxUpgradeLevel.Should().Be(4);
+        coverage.Specialization.Should().Be((int)TowerSpecialization.ScoutMinion);
+
+        TowerBuildRule empowering = strategy.GetRule(BlightTowerType.Empowering).GetValueOrDefault();
+        empowering.EmpowerTargets.Should().Contain(BlightTowerType.Summoning);
+        empowering.MaxUpgradeLevel.Should().Be(3);
+    }
+
+    [TestMethod]
+    public void LockdownArcStrategy_UsesArcSpecializationAndEmpowersLockdownTowers()
+    {
+        var strategy = new LockdownArcStrategy();
+
+        strategy.Name.Should().Be("Empowered Lockdown + Arc");
+        TowerBuildRule shock = strategy.GetRule(BlightTowerType.ShockNova).GetValueOrDefault();
+        shock.MaxUpgradeLevel.Should().Be(4);
+        shock.Specialization.Should().Be((int)TowerSpecialization.ArcTower);
+
+        TowerBuildRule empowering = strategy.GetRule(BlightTowerType.Empowering).GetValueOrDefault();
+        empowering.EmpowerTargets.Should().Contain(BlightTowerType.Seismic);
+        empowering.EmpowerTargets.Should().Contain(BlightTowerType.Chilling);
+    }
+
+    [TestMethod]
+    public void BlightStrategyResolver_ResolvesNewStrategies()
+    {
+        BlightStrategyResolver.StrategyNames.Should().Contain("Empowered Lockdown + Arc");
+        BlightStrategyResolver.StrategyNames.Should().Contain("Empowered Scouts");
+
+        var settings = new ClickItSettings { BlightTowerStrategy = new RangeNode<int>(2, 0, 3) };
+        BlightStrategyResolver.Resolve(settings).Should().BeOfType<LockdownArcStrategy>();
+
+        settings.BlightTowerStrategy = new RangeNode<int>(3, 0, 3);
+        BlightStrategyResolver.Resolve(settings).Should().BeOfType<EmpoweredScoutsStrategy>();
     }
 
     private static List<TowerBuildRule> CoverageRules()

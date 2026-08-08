@@ -110,13 +110,32 @@ namespace ClickIt.Shared.Game
             }
         }
 
+        // Child indices used by the hot paths (strongbox child 0, blight menu children 0-3) are
+        // pre-built so no closure is allocated per call; larger indices fall back to a per-call
+        // closure.
+        private static readonly Func<dynamic, object?>[] s_childAccessors = BuildChildAccessors(16);
+
+        private static Func<dynamic, object?>[] BuildChildAccessors(int count)
+        {
+            Func<dynamic, object?>[] accessors = new Func<dynamic, object?>[count];
+            for (int i = 0; i < count; i++)
+            {
+                int index = i;
+                accessors[i] = current => current.GetChildAtIndex(index);
+            }
+            return accessors;
+        }
+
         public static bool TryGetChildAtIndex(object? source, int index, out object? value)
         {
             value = null;
             if (index < 0)
                 return false;
 
-            return TryGetDynamicValue(source, current => current.GetChildAtIndex(index), out value);
+            Func<dynamic, object?> accessor = index < s_childAccessors.Length
+                ? s_childAccessors[index]
+                : current => current.GetChildAtIndex(index);
+            return TryGetDynamicValue(source, accessor, out value);
         }
 
         public static bool TryProjectWorldToScreen(object? camera, System.Numerics.Vector3 position, out object? value)

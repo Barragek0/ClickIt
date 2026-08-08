@@ -89,21 +89,134 @@ internal static class BlightFillPlanner
         }
         candidates.Sort((a, b) => a.Metric.CompareTo(b.Metric));
 
-        foreach ((int index, float _) in candidates)
+        bool[] ruleDone = new bool[tierRules.Count];
+
+        int c = 0;
+        while (c < candidates.Count)
         {
-            int ruleIdx = PickFillRule(tierRules, counts);
+            int index = candidates[c].Index;
+            if (assignedIndices.Contains(index)) { c++; continue; }
+
+            int ruleIdx = PickFillRule(tierRules, counts, ruleDone);
             if (ruleIdx < 0)
                 break;
             if (tierRules[ruleIdx].Placement == BlightPlacementPreference.NearestUncoveredLane)
                 break;
 
             TowerBuildRule rule = tierRules[ruleIdx];
+
+            if (rule.EmpowerTargets.Count > 0)
+            {
+                int empowerIdx = FindBestEmpowerFoundation(
+                    rule, knownTowers, assignments,
+                    assignedIndices, failedPositions, pumpPosition);
+                if (empowerIdx < 0)
+                {
+                    ruleDone[ruleIdx] = true;
+                    continue; // reuse this candidate for the next rule
+                }
+                assignments[knownTowers[empowerIdx].WorldPosition]
+                    = (rule.TowerType, rule.MaxUpgradeLevel);
+                assignedIndices.Add(empowerIdx);
+                orderedFillPositions.Add(knownTowers[empowerIdx].WorldPosition);
+                counts[ruleIdx]++;
+                continue; // do not consume this candidate — the empowering tower may sit elsewhere
+            }
+
             assignments[knownTowers[index].WorldPosition]
                 = (rule.TowerType, BlightTowerData.MaxUpgradeLevel);
             assignedIndices.Add(index);
             orderedFillPositions.Add(knownTowers[index].WorldPosition);
             counts[ruleIdx]++;
+            c++;
         }
+    }
+
+    private static int FindBestEmpowerFoundation(
+        TowerBuildRule rule,
+        IReadOnlyList<BlightCachedTower> knownTowers,
+        Dictionary<NumVector2, (BlightTowerType Type, int MaxLevel)> assignments,
+        HashSet<int> assignedIndices,
+        HashSet<NumVector2> failedPositions,
+        NumVector2? pumpPosition)
+    {
+        // Target towers: built or planned towers of the types this rule must empower.
+        List<(NumVector2 Pos, BlightTowerType Type)> targets = [];
+        for (int i = 0; i < knownTowers.Count; i++)
+        {
+            BlightCachedTower t = knownTowers[i];
+            bool built = t.UpgradeLevel > 0;
+            BlightTowerType? planned = assignments.TryGetValue(t.WorldPosition, out (BlightTowerType Type, int MaxLevel) a) ? a.Type : null;
+            BlightTowerType? type = built ? t.TowerType : planned;
+            if (type is BlightTowerType tt && rule.EmpowerTargets.Contains(tt))
+                targets.Add((t.WorldPosition, tt));
+        }
+        if (targets.Count == 0)
+            return -1;
+
+        float radiusSq = Sq(BlightService.GetCoverageRadiusForLevel(rule.TowerType, rule.MaxUpgradeLevel));
+
+        // Which targets are already within range of a built or planned Empowering tower?
+        bool[] empowered = new bool[targets.Count];
+        for (int i = 0; i < knownTowers.Count; i++)
+        {
+            BlightCachedTower t = knownTowers[i];
+            bool isEmpowering = t.UpgradeLevel > 0
+                ? t.TowerType == BlightTowerType.Empowering
+                : (assignments.TryGetValue(t.WorldPosition, out (BlightTowerType Type, int MaxLevel) ae)
+                    && ae.Type == BlightTowerType.Empowering);
+            if (!isEmpowering) continue;
+            for (int k = 0; k < targets.Count; k++)
+                if (!empowered[k] && SqDist(t.WorldPosition, targets[k].Pos) <= radiusSq)
+                    empowered[k] = true;
+        }
+
+        // Stop once every target tower is already empowered.
+        bool allEmpowered = true;
+        for (int k = 0; k < targets.Count; k++)
+            if (!empowered[k]) { allEmpowered = false; break; }
+        if (allEmpowered)
+            return -1;
+
+        int targetTypeMask = 0;
+        for (int r = 0; r < rule.EmpowerTargets.Count; r++)
+            targetTypeMask |= 1 << (int)rule.EmpowerTargets[r];
+
+        int bestIdx = -1;
+        int bestNewly = 0;
+        bool bestAllTypes = false;
+        float bestMetric = float.MaxValue;
+        for (int i = 0; i < knownTowers.Count; i++)
+        {
+            if (assignedIndices.Contains(i)) continue;
+            if (failedPositions.Contains(knownTowers[i].WorldPosition)) continue;
+            NumVector2 pos = knownTowers[i].WorldPosition;
+
+            int newly = 0;
+            int coveredMask = 0;
+            for (int k = 0; k < targets.Count; k++)
+            {
+                if (empowered[k]) continue;
+                if (SqDist(pos, targets[k].Pos) > radiusSq) continue;
+                newly++;
+                coveredMask |= 1 << (int)targets[k].Type;
+            }
+            if (newly == 0) continue; // must be in range of at least one un-empowered target
+
+            bool allTypes = (coveredMask & targetTypeMask) == targetTypeMask;
+            float metric = PlacementMetric(knownTowers, assignedIndices, i, 0f, rule.Placement, pumpPosition);
+            if (bestIdx < 0
+                || newly > bestNewly
+                || (newly == bestNewly && allTypes && !bestAllTypes)
+                || (newly == bestNewly && allTypes == bestAllTypes && metric < bestMetric))
+            {
+                bestIdx = i;
+                bestNewly = newly;
+                bestAllTypes = allTypes;
+                bestMetric = metric;
+            }
+        }
+        return bestIdx;
     }
 
     private static (int Index, float DistSq) FindFoundationNearUncoveredLane(
@@ -161,9 +274,18 @@ internal static class BlightFillPlanner
         List<BlightPlanner.CoveragePlacement> coveragePlacements,
         List<NumVector2> orderedFillPositions)
     {
-        Dictionary<BlightTowerType, TowerBuildRule> ruleByType = [];
+        // A strategy may declare a coverage rule AND a fill rule for the same tower type (e.g.
+        // coverage scouts + fill scouts), so resolve each step against the rule matching its role.
+        Dictionary<BlightTowerType, TowerBuildRule> coverageRuleByType = [];
+        Dictionary<BlightTowerType, TowerBuildRule> fillRuleByType = [];
         for (int r = 0; r < rules.Count; r++)
-            ruleByType[rules[r].TowerType] = rules[r];
+        {
+            TowerBuildRule rule = rules[r];
+            if (rule.IsCoverageTower)
+                coverageRuleByType[rule.TowerType] = rule;
+            else
+                fillRuleByType[rule.TowerType] = rule;
+        }
 
         List<BlightPlanStep> steps = [];
 
@@ -177,7 +299,7 @@ internal static class BlightFillPlanner
 
         foreach (BlightPlanner.CoveragePlacement p in coveragePlacements)
         {
-            if (!ruleByType.TryGetValue(p.Type, out TowerBuildRule rule))
+            if (!coverageRuleByType.TryGetValue(p.Type, out TowerBuildRule rule))
                 continue;
 
             BlightCachedTower t = knownTowers[p.KnownTowerIndex];
@@ -199,9 +321,7 @@ internal static class BlightFillPlanner
             NumVector2 pos = orderedFillPositions[f];
             if (!assignments.TryGetValue(pos, out (BlightTowerType Type, int MaxLevel) assigned))
                 continue;
-            if (!ruleByType.TryGetValue(assigned.Type, out TowerBuildRule rule))
-                continue;
-            if (rule.IsCoverageTower)
+            if (!fillRuleByType.TryGetValue(assigned.Type, out TowerBuildRule rule))
                 continue;
 
             int currentLevel = BlightHelpers.FindTowerAt(knownTowers, pos)?.UpgradeLevel ?? 0;
@@ -251,12 +371,14 @@ internal static class BlightFillPlanner
         return steps;
     }
 
-    private static int PickFillRule(List<TowerBuildRule> tierRules, int[] counts)
+    private static int PickFillRule(List<TowerBuildRule> tierRules, int[] counts, bool[]? ruleDone = null)
     {
         int bestIdx = -1;
         int bestCount = int.MaxValue;
         for (int r = 0; r < tierRules.Count; r++)
         {
+            if (ruleDone != null && ruleDone[r])
+                continue; // exhausted — e.g. an Empowering rule with no more valid foundations
             if (tierRules[r].MaxBuildCount > 0 && counts[r] >= tierRules[r].MaxBuildCount)
                 continue; // capped
             if (counts[r] < bestCount)

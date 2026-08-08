@@ -63,8 +63,8 @@ namespace ClickIt.UI.Debug
 
             left.Blank();
             left.ColumnHeader(GcCol, "Last", "Avg", "Max");
-            (double gcLastKf, double gcAvgKf, double gcMaxKf) = perf.GcTableTotalBytesPerFrame;
-            left.TitleRow(GcCol, "GC", GcColor(gcAvgKf * perf.Fps.Current), FormatBytes(gcLastKf), FormatBytes(gcAvgKf), FormatBytes(gcMaxKf));
+            (double gcLastKf, double gcTotalRate, double gcTotalMaxRun) = perf.GcTableTotalBytesPerFrame;
+            left.TitleRow(GcCol, "GC", GcColor(gcTotalRate), FormatBytes(gcLastKf), FormatAllocRate(gcTotalRate), FormatBytes(gcTotalMaxRun));
             RenderGcTable(left, perf);
 
             left.Blank();
@@ -218,12 +218,14 @@ namespace ClickIt.UI.Debug
         private static void RenderClickFrequencyTarget(TextBlock b, PerformanceMetricsSnapshot perf)
         {
             double targetMs = perf.ClickTargetIntervalMs;
-            double processingMs = perf.ClickCoroutine.AverageMs;
-            if (processingMs <= 0) processingMs = perf.AverageSuccessfulClickTimingMs;
+            double fullTickMs = perf.ClickCoroutine.AverageMs;
+            if (fullTickMs <= 0) fullTickMs = perf.AverageSuccessfulClickTimingMs;
+            double sleepMs = SystemMath.Min(perf.AverageClickSleepMs, fullTickMs);
+            double processingMs = SystemMath.Max(0, fullTickMs - sleepMs);
             double observedMs = perf.AverageClickIntervalMs;
 
-            double delayMs = SystemMath.Max(0, targetMs - processingMs);
-            double modeledTotalMs = delayMs + processingMs;
+            double delayMs = SystemMath.Max(0, targetMs - fullTickMs);
+            double modeledTotalMs = delayMs + fullTickMs;
             double observedTotalMs = observedMs > 0 ? observedMs : modeledTotalMs;
             double schedulerDeltaMs = observedTotalMs - modeledTotalMs;
             double deviation = observedTotalMs > 0
@@ -236,6 +238,7 @@ namespace ClickIt.UI.Debug
 
             b.Row(TwoCol, Color.Yellow, "Target", $"{targetMs:F0} ms");
             b.Row(TwoCol, processingMs > targetMs ? Color.Red : processingMs >= targetMs * 0.75 ? Color.Yellow : Color.LightGreen, "Processing", $"{processingMs:F0} ms");
+            b.Row(TwoCol, sleepMs > 0 ? Color.Yellow : Color.LightGreen, "Sleep", $"{sleepMs:F0} ms");
             b.Row(TwoCol, deviation <= 0.05 ? Color.LightGreen : deviation <= 0.10 ? Color.Yellow : Color.Red, "Total (model)", $"{modeledTotalMs:F0} ms");
             b.Row(TwoCol, SystemMath.Abs(schedulerDeltaMs) <= 5 ? Color.LightGreen : SystemMath.Abs(schedulerDeltaMs) <= 20 ? Color.Yellow : Color.OrangeRed, "Scheduler", $"{schedulerDeltaMs:+0;-0;0} ms");
             b.Row(TwoCol, deviation <= 0.05 ? Color.LightGreen : deviation <= 0.10 ? Color.Yellow : Color.Red, "Observed", $"{observedTotalMs:F0} ms ({targetStatus})");

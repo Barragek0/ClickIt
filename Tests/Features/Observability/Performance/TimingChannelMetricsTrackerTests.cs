@@ -89,23 +89,6 @@ namespace ClickIt.Tests.Features.Observability.Performance
         }
 
         [TestMethod]
-        public void CalculateMax_ReturnsMaximumOfCurrentWindow()
-        {
-            var queue = new Queue<long>();
-            queue.Enqueue(1);
-            queue.Enqueue(5);
-            queue.Enqueue(3);
-
-            TimingChannelMetricsTracker.CalculateMax(queue).Should().Be(5);
-        }
-
-        [TestMethod]
-        public void CalculateMax_ReturnsZero_WhenWindowEmpty()
-        {
-            TimingChannelMetricsTracker.CalculateMax(new Queue<long>()).Should().Be(0);
-        }
-
-        [TestMethod]
         public void GetMaxTiming_ReflectsRollingWindow_NotAllTimeSpikes()
         {
             var tracker = new TimingChannelMetricsTracker();

@@ -130,6 +130,7 @@ namespace ClickIt.Features.Observability
         double ClickTargetIntervalMs = 0,
         double AverageSuccessfulClickTimingMs = 0,
         double AverageClickIntervalMs = 0,
+        double AverageClickSleepMs = 0,
         IReadOnlyDictionary<ProcessingSection, GcAllocationSnapshot>? Allocations = null,
         LabelScanAllocationStats LabelScanAllocation = default,
         ClickAllocationStats ClickAllocation = default,
@@ -329,27 +330,26 @@ namespace ClickIt.Features.Observability
             }
         }
 
-        // GC-table totals in bytes-per-frame: last/avg/max summed across every allocation section
-        // with samples (each normalized by its own run period), so the totals row is the combination
-        // of all rows beneath it.
-        public (double LastBytesPerFrame, double AvgBytesPerFrame, double MaxBytesPerFrame) GcTableTotalBytesPerFrame
+        // GC-table totals matching the units of each row beneath: last rate normalized to bytes per
+        // frame, total average allocation per second, and total max bytes per single run.
+        public (double LastBytesPerFrame, double TotalBytesPerSecond, double TotalMaxBytesPerRun) GcTableTotalBytesPerFrame
         {
             get
             {
                 double fps = Fps.Current;
-                double last = 0, avg = 0, max = 0;
+                double last = 0, totalPerSecond = 0, totalMaxRun = 0;
                 if (Allocations != null)
                 {
                     foreach (KeyValuePair<ProcessingSection, GcAllocationSnapshot> entry in Allocations)
                     {
                         GcAllocationSnapshot s = entry.Value;
-                        double periodMs = s.AvgPeriodMs > 0 ? s.AvgPeriodMs : 1;
-                        last += s.LastBytesPerRun * 1000.0 / periodMs / fps;
-                        avg += s.AllocPerSecond / fps;
-                        max += s.MaxBytesPerRun * 1000.0 / periodMs / fps;
+                        if (fps > 0)
+                            last += s.AllocPerSecond / fps;
+                        totalPerSecond += s.AllocPerSecond;
+                        totalMaxRun += s.MaxBytesPerRun;
                     }
                 }
-                return (last, avg, max);
+                return (last, totalPerSecond, totalMaxRun);
             }
         }
 

@@ -9,7 +9,7 @@ namespace ClickIt.Features.Click.Core
             in MechanicCandidateSignal label,
             in MechanicCandidateSignal shrine,
             in MechanicPriorityContext context)
-            => ShouldPreferCandidate(lostShipment, context, label, shrine);
+            => ShouldPreferCandidate(lostShipment, context, [label, shrine]);
 
         internal static bool ShouldPreferSettlersOreOverCandidates(
             in MechanicCandidateSignal settlers,
@@ -17,13 +17,13 @@ namespace ClickIt.Features.Click.Core
             in MechanicCandidateSignal shrine,
             in MechanicCandidateSignal lostShipment,
             in MechanicPriorityContext context)
-            => ShouldPreferCandidate(settlers, context, label, shrine, lostShipment);
+            => ShouldPreferCandidate(settlers, context, [label, shrine, lostShipment]);
 
         internal static bool ShouldPreferShrineOverLabel(
             in MechanicCandidateSignal shrine,
             in MechanicCandidateSignal label,
             in MechanicPriorityContext context)
-            => ShouldPreferCandidate(shrine, context, label);
+            => ShouldPreferCandidate(shrine, context, [label]);
 
         internal static MechanicRank BuildRank(float distance, string? mechanicId, in MechanicPriorityContext context)
             => BuildRank(new MechanicCandidateSignal(mechanicId, distance, null), context);
@@ -143,7 +143,7 @@ namespace ClickIt.Features.Click.Core
         private static bool ShouldPreferCandidate(
             in MechanicCandidateSignal candidate,
             in MechanicPriorityContext context,
-            params MechanicCandidateSignal[] others)
+            ReadOnlySpan<MechanicCandidateSignal> others)
         {
             if (!candidate.Exists)
                 return false;

@@ -27,6 +27,20 @@ namespace ClickIt.Features.Labels.Application
         private IReadOnlyList<LabelOnGround>? _selectionCacheLabelsRef;
         private readonly Dictionary<(int Start, int MaxCount), LabelOnGround?> _selectionCacheByRange = new();
 
+        // Per-label scan cache: the selection scan re-runs whenever the 50ms label-list reference
+        // changes, and each label build costs ~15 DLR reads on the obfuscated game types (the
+        // dominant Acquire allocation). Keyed on the label ADDRESS (stable across snapshots even
+        // when wrapper instances differ) with a short TTL; distance is re-read fresh on miss so the
+        // ranking stays live within the window. The interaction path re-validates before clicking.
+        private readonly record struct CachedLabelScanEntry(
+            LabelCandidateBuildResult Candidate,
+            float Distance,
+            RectangleF Rect,
+            bool HasRect);
+        private readonly Dictionary<long, CachedLabelScanEntry> _scanCache = [];
+        private long _scanCacheWindowStartMs;
+        private const long ScanCacheWindowMs = 250;
+
         public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
         {
             if (ReferenceEquals(allLabels, _selectionCacheLabelsRef))
@@ -120,6 +134,66 @@ namespace ClickIt.Features.Labels.Application
             });
         }
 
+        private LabelCandidateBuildResult BuildLabelCandidateCached(LabelOnGround label, ClickSettings clickSettings)
+            => GetOrBuildScanEntry(label, clickSettings).Candidate;
+
+        private LabelRankInput ResolveRankInputCached(LabelOnGround label, ClickSettings clickSettings)
+        {
+            CachedLabelScanEntry entry = GetOrBuildScanEntry(label, clickSettings);
+            return new LabelRankInput(entry.Distance, ComputeCursorDistance(entry.Rect, entry.HasRect));
+        }
+
+        private CachedLabelScanEntry GetOrBuildScanEntry(LabelOnGround label, ClickSettings clickSettings)
+        {
+            long address = label.Address;
+            long now = Environment.TickCount64;
+            if (now - _scanCacheWindowStartMs >= ScanCacheWindowMs)
+            {
+                _scanCache.Clear();
+                _scanCacheWindowStartMs = now;
+            }
+
+            if (_scanCache.TryGetValue(address, out CachedLabelScanEntry cached))
+                return cached;
+
+            LabelCandidateBuildResult result = _dependencies.TryBuildLabelCandidate(label, clickSettings, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason)
+                ? new LabelCandidateBuildResult(true, item, mechanicId, LabelCandidateRejectReason.None)
+                : new LabelCandidateBuildResult(false, item, mechanicId, rejectReason);
+
+            float distance = item != null
+                && DynamicAccess.TryReadFloat(item, DynamicAccessProfiles.DistancePlayer, out float resolvedDistance)
+                ? resolvedDistance
+                : float.MaxValue;
+            bool hasRect = LabelGeometry.TryGetLabelRect(label, out RectangleF rect);
+
+            CachedLabelScanEntry entry = new(result, distance, rect, hasRect);
+            _scanCache[address] = entry;
+            return entry;
+        }
+
+        private float ComputeCursorDistance(RectangleF rect, bool hasRect)
+        {
+            if (!hasRect || _dependencies.GameController?.Window == null)
+                return float.MaxValue;
+
+            Vector2 center = rect.Center;
+            RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
+            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+            SystemDrawingPoint cursor = Mouse.GetCursorPosition();
+            Vector2 cursorAbsolute = new(cursor.X, cursor.Y);
+            Vector2 cursorClient = cursorAbsolute - windowTopLeft;
+
+            float absDx = cursorAbsolute.X - center.X;
+            float absDy = cursorAbsolute.Y - center.Y;
+            float absoluteDistanceSq = (absDx * absDx) + (absDy * absDy);
+
+            float clientDx = cursorClient.X - center.X;
+            float clientDy = cursorClient.Y - center.Y;
+            float clientDistanceSq = (clientDx * clientDx) + (clientDy * clientDy);
+
+            return SystemMath.Min(absoluteDistanceSq, clientDistanceSq);
+        }
+
         private LabelOnGround? SelectNextLabelByPriority(IReadOnlyList<LabelOnGround> allLabels, int startIndex, int endExclusive, ClickSettings clickSettings)
         {
             int start = SystemMath.Max(0, startIndex);
@@ -129,10 +203,8 @@ namespace ClickIt.Features.Labels.Application
                 start,
                 end,
                 clickSettings,
-                label => _dependencies.TryBuildLabelCandidate(label, clickSettings, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason)
-                    ? new LabelCandidateBuildResult(true, item, mechanicId, LabelCandidateRejectReason.None)
-                    : new LabelCandidateBuildResult(false, item, mechanicId, rejectReason),
-                GetCursorDistanceSquaredToLabel);
+                label => BuildLabelCandidateCached(label, clickSettings),
+                label => ResolveRankInputCached(label, clickSettings));
 
             LabelOnGround? selected = selection.SelectedCandidate;
             if (_dependencies.ShouldCaptureLabelDebug())
@@ -161,43 +233,6 @@ namespace ClickIt.Features.Labels.Application
             }
 
             return selected;
-        }
-
-        private float GetCursorDistanceSquaredToLabel(LabelOnGround? label)
-        {
-            if (label == null || _dependencies.GameController?.Window == null)
-                return float.MaxValue;
-
-            if (!TryGetClickableLabelRectCenter(label, out Vector2 center))
-                return float.MaxValue;
-
-            RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
-            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            SystemDrawingPoint cursor = Mouse.GetCursorPosition();
-            Vector2 cursorAbsolute = new(cursor.X, cursor.Y);
-            Vector2 cursorClient = cursorAbsolute - windowTopLeft;
-
-            float absDx = cursorAbsolute.X - center.X;
-            float absDy = cursorAbsolute.Y - center.Y;
-            float absoluteDistanceSq = (absDx * absDx) + (absDy * absDy);
-
-            float clientDx = cursorClient.X - center.X;
-            float clientDy = cursorClient.Y - center.Y;
-            float clientDistanceSq = (clientDx * clientDx) + (clientDy * clientDy);
-
-            return SystemMath.Min(absoluteDistanceSq, clientDistanceSq);
-        }
-
-        private static bool TryGetClickableLabelRectCenter(LabelOnGround? label, out Vector2 center)
-        {
-            center = default;
-            Element? element = label?.Label;
-            if (element == null || !element.IsValid)
-                return false;
-
-            RectangleF rect = element.GetClientRect();
-            center = rect.Center;
-            return rect.Width > 0f && rect.Height > 0f;
         }
     }
 }

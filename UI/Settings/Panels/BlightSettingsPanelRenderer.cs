@@ -136,21 +136,27 @@ internal sealed class BlightSettingsPanelRenderer(ClickItSettings settings)
         ImGui.Text("Tower Strategy:");
         ImGui.SameLine();
 
-        int currentStrategy = _settings.BlightTowerStrategy.Value;
+        // The combo works on the display index; the setting stores the persisted strategy value.
         string[] strategyNames = BlightStrategyResolver.StrategyNames;
-
-        if (ImGui.Combo("##BlightTowerStrategy", ref currentStrategy, strategyNames, strategyNames.Length))
+        int currentIndex = BlightStrategyResolver.GetComboIndex(_settings.BlightTowerStrategy.Value);
+        if (ImGui.Combo("##BlightTowerStrategy", ref currentIndex, strategyNames, strategyNames.Length))
         {
-            _settings.BlightTowerStrategy.Value = currentStrategy;
+            _settings.BlightTowerStrategy.Value = (int)BlightStrategyResolver.Strategies[currentIndex];
         }
 
         ImGui.Spacing();
 
-        BlightTowerStrategy strategy = (BlightTowerStrategy)currentStrategy;
+        BlightTowerStrategy strategy = BlightStrategyResolver.Strategies[currentIndex];
         string description = BlightStrategyResolver.GetDescription(strategy);
         if (!string.IsNullOrEmpty(description))
         {
-            SettingsUiRenderHelpers.DrawWrappedText(description, new Vector4(0.95f, 0.85f, 0.35f, 1f));
+            // Muted grey base (same tone as item-description text elsewhere); oil colour names,
+            // tower names, and tower phrases (e.g. "Chilling Beams") are tinted to their actual
+            // hues by the resolver.
+            SettingsUiRenderHelpers.DrawColoredText(
+                description,
+                new Vector4(0.65f, 0.65f, 0.65f, 1f),
+                BlightDescriptionColors.TryResolvePhrase);
         }
     }
 

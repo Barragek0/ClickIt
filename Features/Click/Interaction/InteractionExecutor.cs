@@ -47,7 +47,7 @@ namespace ClickIt.Features.Click.Interaction
             else
                 Mouse.LeftClick();
 
-            Thread.Sleep(10);
+            ClickPipelineTiming.Sleep(10);
             RestoreCursorIfLazyMode(before, gameController);
             MarkLazyModeClickCompleted();
             Interlocked.Increment(ref _successfulClickSequence);
@@ -94,14 +94,14 @@ namespace ClickIt.Features.Click.Interaction
                 {
                     Mouse.RightMouseDown();
                     while (Keyboard.IsKeyDown(clickKey))
-                        Thread.Sleep(10);
+                        ClickPipelineTiming.Sleep(10);
                     Mouse.RightMouseUp();
                 }
                 else
                 {
                     Mouse.LeftMouseDown();
                     while (Keyboard.IsKeyDown(clickKey))
-                        Thread.Sleep(10);
+                        ClickPipelineTiming.Sleep(10);
                     Mouse.LeftMouseUp();
                 }
             }
@@ -132,7 +132,7 @@ namespace ClickIt.Features.Click.Interaction
                 if (!Mouse.DisableNativeInput)
                     Input.SetCursorPos(new NumVector2(screenPoint.X, screenPoint.Y));
 
-                Thread.Sleep(sleepMs);
+                ClickPipelineTiming.Sleep(sleepMs);
                 return gameController.IngameState?.UIHoverElement;
             }
             catch
@@ -214,7 +214,7 @@ namespace ClickIt.Features.Click.Interaction
             if (!avoidCursorMove && !Mouse.DisableNativeInput)
                 Input.SetCursorPos(new NumVector2(executionPosition.X, executionPosition.Y));
 
-            Thread.Sleep(_settings?.LazyMode?.Value == true ? _settings.LazyModeUIHoverSleep.Value : 10);
+            ClickPipelineTiming.Sleep(_settings?.LazyMode?.Value == true ? _settings.LazyModeUIHoverSleep.Value : 10);
 
             Element? uiHover = gameController?.IngameState?.UIHoverElement;
             bool lazyModeEnabled = _settings?.LazyMode?.Value == true;
@@ -265,7 +265,7 @@ namespace ClickIt.Features.Click.Interaction
                 try
                 {
                     int restoreDelayMs = _settings?.LazyModeRestoreCursorDelayMs?.Value ?? 10;
-                    Thread.Sleep(restoreDelayMs);
+                    ClickPipelineTiming.Sleep(restoreDelayMs);
 
                     Vector2 beforeVec = new(before.X, before.Y);
                     if (!LabelClickPointSearch.TryValidateAutomationScreenPoint(beforeVec, gameController, out _))

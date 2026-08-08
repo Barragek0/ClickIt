@@ -118,21 +118,20 @@ internal static class BlightBranches
     // false "full coverage" on forks: a tower covering just the branch base can leave fork arms
     // downstream uncovered, so the whole subtree must be verified.
     internal static bool BranchHasCoverage(
-        PumpBranch branch, LaneCoverageResult[] coverage, bool seismic,
+        PumpBranch branch, LaneCoverageResult[] coverage, BlightTowerType type,
         IReadOnlyList<BlightCachedTower> knownTowers, int targetLevel)
     {
-        bool[] covered = ComputePlannedCoveredState(coverage, seismic, knownTowers, targetLevel);
-        return SubtreeFullyCovered(branch, coverage, covered, knownTowers, seismic, targetLevel);
+        bool[] covered = ComputePlannedCoveredState(coverage, type, knownTowers, targetLevel);
+        return SubtreeFullyCovered(branch, coverage, covered, knownTowers, type, targetLevel);
     }
 
     // The working coverage state the planner plans against: the current coverage array (which already
     // includes AND/OR propagation of built towers) plus the segments an in-progress (below-max) built
     // tower of the type will cover once upgraded to max, re-propagated through the same rules.
     internal static bool[] ComputePlannedCoveredState(
-        LaneCoverageResult[] coverage, bool seismic, IReadOnlyList<BlightCachedTower> knownTowers,
+        LaneCoverageResult[] coverage, BlightTowerType type, IReadOnlyList<BlightCachedTower> knownTowers,
         int targetLevel)
     {
-        BlightTowerType type = seismic ? BlightTowerType.Seismic : BlightTowerType.Chilling;
         bool[] local = new bool[coverage.Length];
         for (int s = 0; s < coverage.Length; s++)
         {
@@ -175,11 +174,10 @@ internal static class BlightBranches
 
     internal static bool SubtreeFullyCovered(
         PumpBranch branch, LaneCoverageResult[] coverage, bool[] covered,
-        IReadOnlyList<BlightCachedTower> knownTowers, bool seismic, int targetLevel)
+        IReadOnlyList<BlightCachedTower> knownTowers, BlightTowerType type, int targetLevel)
     {
         if (branch.CoverageSegment < 0)
         {
-            BlightTowerType type = seismic ? BlightTowerType.Seismic : BlightTowerType.Chilling;
             return BuiltTowerCovers(branch.Anchor, type, knownTowers, includeAtMax: true, targetLevel);
         }
         foreach (int s in BranchSegments(coverage, branch))
@@ -193,7 +191,11 @@ internal static class BlightBranches
         {
             BlightTowerType.Chilling => segment.HasChilling,
             BlightTowerType.Seismic => segment.HasSeismic,
-            _ => segment.HasFireball,
+            BlightTowerType.Fireball => segment.HasFireball,
+            BlightTowerType.Empowering => segment.HasEmpowering,
+            BlightTowerType.ShockNova => segment.HasShockNova,
+            BlightTowerType.Summoning => segment.HasSummoning,
+            _ => false,
         };
 
     internal static bool BuiltTowerCovers(

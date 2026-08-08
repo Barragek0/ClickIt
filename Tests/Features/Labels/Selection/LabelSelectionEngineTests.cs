@@ -14,7 +14,7 @@ namespace ClickIt.Tests.Features.Labels.Selection
                 endExclusive: 4,
                 CreateClickSettings(),
                 _ => CreateSuccessfulCandidate("items"),
-                _ => 0f);
+                _ => new LabelRankInput(0f, 0f));
 
             result.SelectedCandidate.Should().BeNull();
             result.SelectedMechanicId.Should().BeNull();
