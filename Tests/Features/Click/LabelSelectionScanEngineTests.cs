@@ -4,6 +4,22 @@ namespace ClickIt.Tests.Features.Click
     public class LabelSelectionScanEngineTests
     {
         [TestMethod]
+        public void ResolveNextLabelCandidate_SkipsLockedStrongboxLabel()
+        {
+            LabelOnGround locked = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
+            LabelOnGround selected = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
+            IReadOnlyList<LabelOnGround> labels = [locked, selected];
+            var port = new FakeLabelInteractionPort(getMechanicIdForLabel: _ => MechanicIds.Shrines);
+            var engine = CreateEngine(
+                labelInteractionPort: port,
+                labelSelectionService: new FakeLabelSelectionService(
+                    getNextLabelToClick: (allLabels, startIndex, maxCount) => allLabels?[startIndex]),
+                shouldSuppressLockedStrongboxClick: label => ReferenceEquals(label, locked));
+
+            engine.ResolveNextLabelCandidate(labels).Should().BeSameAs(selected);
+        }
+
+        [TestMethod]
         public void ResolveNextLabelCandidate_ReturnsNull_WhenNoLabels()
         {
             var engine = CreateEngine();
@@ -122,6 +138,7 @@ namespace ClickIt.Tests.Features.Click
             Func<LabelOnGround, bool>? shouldSuppressLeverClick = null,
             Func<LabelOnGround, bool>? shouldSuppressInactiveUltimatumLabel = null,
             Func<LabelOnGround, bool>? shouldSuppressBlightChestClick = null,
+            Func<LabelOnGround, bool>? shouldSuppressLockedStrongboxClick = null,
             ClickDebugPublicationService? clickDebugPublisher = null)
         {
             GameController gameController = (GameController)RuntimeHelpers.GetUninitializedObject(typeof(GameController));
@@ -146,7 +163,10 @@ namespace ClickIt.Tests.Features.Click
                 labelInteraction,
                 mechanicPriorityContextProvider,
                 ClickDebugPublisher: clickDebugPublisher ?? ClickTestDebugPublisherFactory.Create(),
-                DebugLog: static _ => { }));
+                DebugLog: static _ => { })
+            {
+                ShouldSuppressLockedStrongboxClick = shouldSuppressLockedStrongboxClick ?? (static _ => false)
+            });
         }
 
         private sealed class FakeLabelInteractionPort(

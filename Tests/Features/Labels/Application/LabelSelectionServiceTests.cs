@@ -311,5 +311,58 @@ namespace ClickIt.Tests.Features.Labels.Application
             service.GetNextLabelToClick([label], 0, 10).Should().BeSameAs(label,
                 "an OutOfDistance rejection must be re-checked against the live distance when the player closes in");
         }
+
+        [TestMethod]
+        public void GetNextLabelToClick_ReevaluatesNullSelection_AfterCacheWindow()
+        {
+            // Regression guard: a stable label-list reference plus a cached null selection deadlocked
+            // item pickup (the scan never re-ran, so items that became clickable were never picked
+            // up). A stale null result must be re-evaluated after the cache window.
+            LabelOnGround label = CreateOpaqueLabel(address: 0x1000);
+            bool shouldSelect = false;
+            int buildCount = 0;
+            var service = new LabelSelectionService(new LabelSelectionServiceDependencies(
+                GameController: null,
+                CreateClickSettings: static _ => TestClickSettings(),
+                ShouldCaptureLabelDebug: static () => false,
+                PublishLabelDebugStage: static _ => { },
+                TryBuildLabelCandidate: (LabelOnGround _, ClickSettings _, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
+                {
+                    buildCount++;
+                    if (!shouldSelect)
+                    {
+                        item = null;
+                        mechanicId = null;
+                        rejectReason = LabelCandidateRejectReason.NullItem;
+                        return false;
+                    }
+
+                    item = EntityProbeFactory.Create();
+                    mechanicId = MechanicIds.Items;
+                    rejectReason = LabelCandidateRejectReason.None;
+                    return true;
+                },
+                GetMechanicIdForLabelCore: static _ => null));
+
+            IReadOnlyList<LabelOnGround> labels = [label];
+
+            // Initial scan rejects everything and caches the null result for this stable reference.
+            service.GetNextLabelToClick(labels, 0, 10).Should().BeNull();
+            int buildsAfterFirstScan = buildCount;
+
+            // Within the cache window the null is served from cache (no re-scan).
+            service.GetNextLabelToClick(labels, 0, 10).Should().BeNull();
+            buildCount.Should().Be(buildsAfterFirstScan, "the cached null must be served within the window");
+
+            // The label becomes selectable; after the window the selection must re-evaluate and pick
+            // it up instead of being pinned to the stale null result.
+            shouldSelect = true;
+            Thread.Sleep(300);
+
+            service.GetNextLabelToClick(labels, 0, 10).Should().BeSameAs(label,
+                "a stale null selection must be re-evaluated after the cache window");
+            buildCount.Should().BeGreaterThan(buildsAfterFirstScan,
+                "the re-scan must rebuild the previously NullItem-rejected label");
+        }
     }
 }

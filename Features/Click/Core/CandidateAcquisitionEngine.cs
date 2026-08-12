@@ -28,7 +28,7 @@ namespace ClickIt.Features.Click.Core
                 {
                     if (captureClickDebug)
                         _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenLabelFound",
-                            $"{labelSourceSummary} | mechanic={hiddenLabelMechanicId} entity={hiddenLabel.ItemOnGround?.Path}", hiddenLabelMechanicId);
+                            $"{labelSourceSummary} | mechanic={hiddenLabelMechanicId} {ClickLabelSelectionMath.DescribeLabel(hiddenLabel)} {ClickLabelSelectionMath.DescribeCursorPosition()}", hiddenLabelMechanicId);
                 }
                 else if (captureClickDebug)
                 {
@@ -53,7 +53,7 @@ namespace ClickIt.Features.Click.Core
             {
                 if (captureClickDebug)
                     _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("VisibleLabelFound",
-                        $"{labelSourceSummary} | mechanic={nextLabelMechanicId} entity={nextLabel.ItemOnGround?.Path}", nextLabelMechanicId);
+                        $"{labelSourceSummary} | mechanic={nextLabelMechanicId} {ClickLabelSelectionMath.DescribeLabel(nextLabel)} {ClickLabelSelectionMath.DescribeCursorPosition()}", nextLabelMechanicId);
             }
             else if (captureClickDebug)
             {

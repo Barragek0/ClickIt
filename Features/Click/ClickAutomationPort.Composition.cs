@@ -190,7 +190,8 @@ namespace ClickIt.Features.Click
                 ClickAutomationSupport.IsClickableInEitherSpace,
                 ClickAutomationSupport.IsInsideWindowInEitherSpace,
                 PathfindingLabelSuppression,
-                DebugLog: ClickAutomationSupport.DebugLog);
+                DebugLog: ClickAutomationSupport.DebugLog,
+                IsLabelFullyOverlapped: _labelClickPointResolver.IsLabelFullyOverlapped);
 
         private OffscreenPathingCoordinatorDependencies CreateOffscreenPathingCoordinatorDependencies()
         {
@@ -321,7 +322,9 @@ namespace ClickIt.Features.Click
                 ClickDebugPublisher,
                 ClickAutomationSupport.DebugLog)
             {
-                IsEssenceClickingEnabled = () => _settings.ClickEssences.Value
+                IsEssenceClickingEnabled = () => _settings.ClickEssences.Value,
+                IsStrongboxClickingEnabled = () => _settings.ClickStrongboxes.Value,
+                ShouldSuppressLockedStrongboxClick = LockedStrongboxLabelSuppression.ShouldSuppress
             };
 
         private ManualCursorLabelSelectorDependencies CreateManualCursorLabelSelectorDependencies()

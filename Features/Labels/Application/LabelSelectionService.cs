@@ -19,9 +19,14 @@ namespace ClickIt.Features.Labels.Application
     {
         private readonly LabelSelectionServiceDependencies _dependencies = dependencies;
 
-        // Ref-keyed selection cache (single-threaded click coroutine): the full label scan only re-runs when the label-list reference changes or a new range is queried.
+        // Selection cache (single-threaded click coroutine): the full label scan only re-runs when
+        // the label-list reference changes, a new range is queried, or the cached result goes stale.
+        // A null result must not be pinned for the life of a stable label set - validity, distance,
+        // and lock state change without the label-list reference changing (a pinned null deadlocks
+        // item pickup), so entries are time-bounded like the other click caches.
         private IReadOnlyList<LabelOnGround>? _selectionCacheLabelsRef;
-        private readonly Dictionary<(int Start, int MaxCount), LabelOnGround?> _selectionCacheByRange = new();
+        private readonly Dictionary<(int Start, int MaxCount), (LabelOnGround? Selected, long AtMs)> _selectionCacheByRange = new();
+        private const long SelectionCacheWindowMs = 250;
 
         // Per-label build cache: the selection scan re-runs whenever the 50ms label-list reference
         // changes (and on every suppression-fallback range), and each candidate build costs ~13 DLR
@@ -41,10 +46,14 @@ namespace ClickIt.Features.Labels.Application
 
         public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
         {
+            long now = Environment.TickCount64;
             if (ReferenceEquals(allLabels, _selectionCacheLabelsRef))
             {
-                if (_selectionCacheByRange.TryGetValue((startIndex, maxCount), out LabelOnGround? cached))
-                    return cached;
+                if (_selectionCacheByRange.TryGetValue((startIndex, maxCount), out (LabelOnGround? Selected, long AtMs) cached)
+                    && now - cached.AtMs < SelectionCacheWindowMs)
+                {
+                    return cached.Selected;
+                }
             }
             else
             {
@@ -53,7 +62,7 @@ namespace ClickIt.Features.Labels.Application
             }
 
             LabelOnGround? selected = SelectCore(allLabels, startIndex, maxCount);
-            _selectionCacheByRange[(startIndex, maxCount)] = selected;
+            _selectionCacheByRange[(startIndex, maxCount)] = (selected, now);
             return selected;
         }
 
@@ -156,6 +165,16 @@ namespace ClickIt.Features.Labels.Application
                 candidate = _dependencies.TryBuildLabelCandidate(label, clickSettings, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason)
                     ? new LabelCandidateBuildResult(true, item, mechanicId, LabelCandidateRejectReason.None)
                     : new LabelCandidateBuildResult(false, item, mechanicId, rejectReason);
+                _buildCache[address] = candidate;
+            }
+
+            // A NullItem rejection is usually a transient item read failure (entity streaming) and
+            // must not pin the label as unclickable for the rest of the build-cache window.
+            if (!candidate.Success && candidate.RejectReason == LabelCandidateRejectReason.NullItem)
+            {
+                candidate = _dependencies.TryBuildLabelCandidate(label, clickSettings, out Entity? freshItem, out string? freshMechanicId, out LabelCandidateRejectReason freshRejectReason)
+                    ? new LabelCandidateBuildResult(true, freshItem, freshMechanicId, LabelCandidateRejectReason.None)
+                    : new LabelCandidateBuildResult(false, freshItem, freshMechanicId, freshRejectReason);
                 _buildCache[address] = candidate;
             }
 

@@ -84,5 +84,14 @@ namespace ClickIt.Tests.Features.Click
             ManualCursorSelectionMath.ShouldPreferHoveredEssenceLabel(true, false, false, true).Should().BeFalse();
             ManualCursorSelectionMath.ShouldPreferHoveredEssenceLabel(false, true, true, true).Should().BeFalse();
         }
+
+        [TestMethod]
+        public void ShouldPreferHoveredStrongboxLabel_PrefersOverlappingOrStrongboxFallback()
+        {
+            ManualCursorSelectionMath.ShouldPreferHoveredStrongboxLabel(true, true, false, true).Should().BeTrue();
+            ManualCursorSelectionMath.ShouldPreferHoveredStrongboxLabel(true, false, true, true).Should().BeTrue();
+            ManualCursorSelectionMath.ShouldPreferHoveredStrongboxLabel(true, false, false, true).Should().BeFalse();
+            ManualCursorSelectionMath.ShouldPreferHoveredStrongboxLabel(false, true, true, true).Should().BeFalse();
+        }
     }
 }

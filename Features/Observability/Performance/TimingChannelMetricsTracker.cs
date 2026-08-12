@@ -190,6 +190,12 @@ namespace ClickIt.Features.Observability.Performance
         public double GetAverageClickSleepMs()
             => _clickSleepTimings.Stats.Average;
 
+        public (double LastMs, double AverageMs, double MaxMs, int SampleCount) GetClickSleepTimingStats()
+        {
+            (double last, double average, double max, long count) = _clickSleepTimings.Stats;
+            return (last, average, max, (int)count);
+        }
+
         public double GetMaxTiming(TimingChannel channel)
         {
             return channel switch

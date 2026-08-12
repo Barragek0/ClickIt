@@ -77,5 +77,23 @@ namespace ClickIt.Features.Click.Runtime
 
             return nextIsEssence;
         }
+
+        internal static bool ShouldPreferHoveredStrongboxLabel(
+            bool hoveredIsStrongbox,
+            bool hoveredHasOverlappingStrongbox,
+            bool nextIsStrongbox,
+            bool hoveredDiffersFromNext)
+        {
+            if (!hoveredIsStrongbox)
+                return false;
+
+            if (!hoveredDiffersFromNext)
+                return false;
+
+            if (hoveredHasOverlappingStrongbox)
+                return true;
+
+            return nextIsStrongbox;
+        }
     }
 }

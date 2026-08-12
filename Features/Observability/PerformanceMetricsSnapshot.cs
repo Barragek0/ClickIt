@@ -205,7 +205,8 @@ namespace ClickIt.Features.Observability
         LabelScanAllocationStats LabelScanAllocation = default,
         ClickAllocationStats ClickAllocation = default,
         MemoryMetricsSnapshot Memory = default,
-        IReadOnlyDictionary<ProcessingSection, BreakdownStats>? Breakdowns = null)
+        IReadOnlyDictionary<ProcessingSection, BreakdownStats>? Breakdowns = null,
+        TimingMetricsSnapshot ClickSleepTiming = default)
     {
         public GcAllocationSnapshot GetAllocationSection(ProcessingSection section)
             => Allocations != null && Allocations.TryGetValue(section, out GcAllocationSnapshot value)

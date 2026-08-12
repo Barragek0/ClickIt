@@ -10,7 +10,8 @@ namespace ClickIt.Features.Click.Selection
         Func<Vector2, string, bool> IsClickableInEitherSpace,
         Func<Vector2, bool> IsInsideWindowInEitherSpace,
         PathfindingLabelSuppressionEvaluator PathfindingLabelSuppression,
-        Action<string>? DebugLog = null);
+        Action<string>? DebugLog = null,
+        Func<LabelOnGround, IReadOnlyList<LabelOnGround>?, bool>? IsLabelFullyOverlapped = null);
 
     internal sealed class OffscreenTraversalTargetResolver(OffscreenTraversalTargetResolverDependencies dependencies)
     {
@@ -166,6 +167,7 @@ namespace ClickIt.Features.Click.Selection
             int rejectedSuppressed = 0;
             int rejectedNoMechanic = 0;
             int rejectedShouldContinue = 0;
+            int rejectedFullyOverlapped = 0;
             Entity? best = null;
             string? bestMechanicId = null;
             MechanicRank bestRank = default;
@@ -198,6 +200,12 @@ namespace ClickIt.Features.Click.Selection
                     continue;
                 }
 
+                if (_dependencies.IsLabelFullyOverlapped?.Invoke(label, labels) == true)
+                {
+                    rejectedFullyOverlapped++;
+                    continue;
+                }
+
                 string? mechanicId = _dependencies.LabelInteractionPort.GetMechanicIdForLabel(label);
                 if (string.IsNullOrWhiteSpace(mechanicId))
                 {
@@ -222,9 +230,9 @@ namespace ClickIt.Features.Click.Selection
                     rank);
             }
 
-            _dependencies.DebugLog?.Invoke(string.Format("[TraversalResolver] Label scan done: total={0} noEntity={1} dist={2} supp={3} noMech={4} skipCont={5} best={6}",
+            _dependencies.DebugLog?.Invoke(string.Format("[TraversalResolver] Label scan done: total={0} noEntity={1} dist={2} supp={3} noMech={4} skipCont={5} overlapped={6} best={7}",
                     labels.Count, rejectedNoEntity, rejectedDistance, rejectedSuppressed,
-                    rejectedNoMechanic, rejectedShouldContinue,
+                    rejectedNoMechanic, rejectedShouldContinue, rejectedFullyOverlapped,
                     best != null ? (best.Path ?? "?") : "null"));
 
             return (best, bestMechanicId);
@@ -322,15 +330,17 @@ namespace ClickIt.Features.Click.Selection
             string path = DynamicAccess.TryReadString(entity, DynamicAccessProfiles.Path, out string resolvedPath)
                 ? resolvedPath
                 : string.Empty;
-            bool labelInWindow = _dependencies.IsInsideWindowInEitherSpace(rect.Center);
-            bool labelClickable = _dependencies.IsClickableInEitherSpace(rect.Center, path);
 
-            if (!labelInWindow || !labelClickable)
-                return true;
+            // Blight menus need the full label on screen; other labels just need a clickable part.
+            bool blightRequiresFullLabel = path.Contains(Constants.BlightPump, StringComparison.OrdinalIgnoreCase)
+                || path.Contains(Constants.BlightFoundation, StringComparison.OrdinalIgnoreCase);
+
+            bool labelInWindow = blightRequiresFullLabel && _dependencies.IsInsideWindowInEitherSpace(rect.Center);
+            bool labelClickable = blightRequiresFullLabel && _dependencies.IsClickableInEitherSpace(rect.Center, path);
 
             (bool clickResolvable, _) = _dependencies.LabelInteraction.TryResolveLabelClickPositionResult(label, null, windowTopLeft, allLabels, path);
-            return OffscreenPathingMath.ShouldContinuePathfindingWhenLabelActionable(
-                labelInWindow, labelClickable, clickResolvable, distance, _dependencies.Settings.ClickDistance.Value);
+            return OffscreenPathingMath.ShouldContinuePathfindingForLabel(
+                blightRequiresFullLabel, labelInWindow, labelClickable, clickResolvable, distance, _dependencies.Settings.ClickDistance.Value);
         }
 
         private static MechanicRank BuildMechanicRank(float distance, string? mechanicId, MechanicPriorityContext mechanicPriorityContext)

@@ -489,8 +489,8 @@ namespace ClickIt.Features.Labels.Classification
             if (string.IsNullOrEmpty(path) || !TryGetLabelItem(label, out object? item) || item == null)
                 return false;
 
-            // A locked strongbox cannot be opened, so it is never accepted regardless of mode.
-            if (!TryGetChestLocked(item, out bool isLocked) || isLocked)
+            // Only reject on a confirmed locked read; an unreadable flag must not hide an openable strongbox.
+            if (TryGetChestLocked(item, out bool isLocked) && isLocked)
                 return false;
 
             IReadOnlyList<string> clickMetadata = settings.StrongboxClickMetadata ?? [];

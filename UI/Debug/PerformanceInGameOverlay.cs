@@ -69,23 +69,17 @@ namespace ClickIt.UI.Debug
             left.Blank();
             RenderDlrTable(left, perf);
 
-            if (perf.ClickTargetIntervalMs > 0)
-            {
-                left.Blank();
-                left.Header("Click Frequency Target");
-                RenderClickFrequencyTarget(left, perf);
-            }
-
             left.Blank();
             left.Header("Memory");
             RenderMemoryTable(left, perf);
 
             // Column 2: processing + GC.
             center.ColumnHeader(FourCol, "Last", "Avg", "Max");
-            TimingMetricsSnapshot procFrameTotal = perf.ProcessingTotalPerFrameSnapshot;
-            center.TitleRow3(FourCol, "Process ms/f",
-                FrameColor(procFrameTotal.LastMs), FrameColor(procFrameTotal.AverageMs), FrameColor(procFrameTotal.MaxMs),
-                $"{procFrameTotal.LastMs:F2}", $"{procFrameTotal.AverageMs:F2}", $"{procFrameTotal.MaxMs:F2}");
+            TimingMetricsSnapshot procRunTotal = perf.ProcessingTotal;
+            double clickTarget = perf.ClickTargetIntervalMs;
+            center.TitleRow3(FourCol, "Process ms/click",
+                ClickTargetColor(procRunTotal.LastMs, clickTarget), ClickTargetColor(procRunTotal.AverageMs, clickTarget), ClickTargetColor(procRunTotal.MaxMs, clickTarget),
+                $"{procRunTotal.LastMs:F1}", $"{procRunTotal.AverageMs:F1}", $"{procRunTotal.MaxMs:F1}");
             RenderProcessingTable(center, perf);
 
             center.Blank();
@@ -184,61 +178,105 @@ namespace ClickIt.UI.Debug
 
         private static void RenderProcessingTable(TextBlock b, PerformanceMetricsSnapshot perf)
         {
-            double fps = perf.Fps.Current;
-            FrameRow(b, "Altar", perf.GetProcessingSection(ProcessingSection.Altar), fps);
-            RenderBreakdownTiming(b, perf, ProcessingSection.Altar);
-            FrameRow(b, "Area.Blocked", perf.GetProcessingSection(ProcessingSection.AreaBlockedUi), fps);
-            FrameRow(b, "Blight", perf.GetProcessingSection(ProcessingSection.Blight), fps);
-            RenderBreakdownTiming(b, perf, ProcessingSection.Blight);
-            FrameRow(b, "Click", perf.GetProcessingSection(ProcessingSection.Click), fps);
-            RenderClickBreakdownTiming(b, perf);
-            FrameRow(b, "Dump", perf.GetProcessingSection(ProcessingSection.GameStateDump), fps);
-            FrameRow(b, "Flare", perf.GetProcessingSection(ProcessingSection.Flare), fps);
-            RenderBreakdownTiming(b, perf, ProcessingSection.Flare);
-            FrameRow(b, "Harvest", perf.GetProcessingSection(ProcessingSection.Harvest), fps);
-            FrameRow(b, "Label Scan", perf.GetProcessingSection(ProcessingSection.Label), fps);
-            FrameRow(b, "Manual Hover", perf.GetProcessingSection(ProcessingSection.ManualUiHover), fps);
-            FrameRow(b, "Pathfinding", perf.GetProcessingSection(ProcessingSection.Pathfinding), fps);
-            RenderBreakdownTiming(b, perf, ProcessingSection.Pathfinding);
-            FrameRow(b, "Strongbox", perf.GetProcessingSection(ProcessingSection.Strongbox), fps);
-            RenderBreakdownTiming(b, perf, ProcessingSection.Strongbox);
-            FrameRow(b, "Ultimatum", perf.GetProcessingSection(ProcessingSection.Ultimatum), fps);
+            double targetMs = perf.ClickTargetIntervalMs;
+            RunRow(b, "Altar", perf.GetProcessingSection(ProcessingSection.Altar), targetMs);
+            RenderBreakdownTiming(b, perf, ProcessingSection.Altar, targetMs);
+            RunRow(b, "Area.Blocked", perf.GetProcessingSection(ProcessingSection.AreaBlockedUi), targetMs);
+            RunRow(b, "Blight", perf.GetProcessingSection(ProcessingSection.Blight), targetMs);
+            RenderBreakdownTiming(b, perf, ProcessingSection.Blight, targetMs);
+            RenderClickProcessingRows(b, perf);
+            RunRow(b, "Dump", perf.GetProcessingSection(ProcessingSection.GameStateDump), targetMs);
+            RunRow(b, "Flare", perf.GetProcessingSection(ProcessingSection.Flare), targetMs);
+            RenderBreakdownTiming(b, perf, ProcessingSection.Flare, targetMs);
+            RunRow(b, "Harvest", perf.GetProcessingSection(ProcessingSection.Harvest), targetMs);
+            RunRow(b, "Label Scan", perf.GetProcessingSection(ProcessingSection.Label), targetMs);
+            RunRow(b, "Manual Hover", perf.GetProcessingSection(ProcessingSection.ManualUiHover), targetMs);
+            RunRow(b, "Pathfinding", perf.GetProcessingSection(ProcessingSection.Pathfinding), targetMs);
+            RenderBreakdownTiming(b, perf, ProcessingSection.Pathfinding, targetMs);
+            RunRow(b, "Strongbox", perf.GetProcessingSection(ProcessingSection.Strongbox), targetMs);
+            RenderBreakdownTiming(b, perf, ProcessingSection.Strongbox, targetMs);
+            RunRow(b, "Ultimatum", perf.GetProcessingSection(ProcessingSection.Ultimatum), targetMs);
         }
 
-        private static void RenderBreakdownTiming(TextBlock b, PerformanceMetricsSnapshot perf, ProcessingSection section)
+        private static void RunRow(TextBlock b, string label, TimingMetricsSnapshot s, double targetMs)
+        {
+            b.Row3(FourCol, label,
+                ClickTargetColor(s.LastMs, targetMs),
+                ClickTargetColor(s.AverageMs, targetMs),
+                ClickTargetColor(s.MaxMs, targetMs),
+                $"{s.LastMs:F1}", $"{s.AverageMs:F1}", $"{s.MaxMs:F1}");
+        }
+
+        private static void RenderBreakdownTiming(TextBlock b, PerformanceMetricsSnapshot perf, ProcessingSection section, double targetMs)
         {
             if (perf.Breakdowns == null || !perf.Breakdowns.TryGetValue(section, out BreakdownStats stats) || stats.SampleCount == 0)
                 return;
-            double fps = perf.Fps.Current;
-            double periodMs = perf.GetAllocationSection(section).AvgPeriodMs;
             foreach (BreakdownStageSnapshot stage in stats.Stages)
-                StageTimingRow(b, stage.Name, stage.Time, periodMs, fps);
+                StageTimingRow(b, stage.Name, stage.Time, targetMs);
         }
 
-        private static void RenderClickBreakdownTiming(TextBlock b, PerformanceMetricsSnapshot perf)
+        private static void RenderClickProcessingRows(TextBlock b, PerformanceMetricsSnapshot perf)
         {
-            ClickAllocationStats s = perf.ClickAllocation;
-            if (s.SampleCount == 0)
+            double targetMs = perf.ClickTargetIntervalMs;
+            TimingMetricsSnapshot click = perf.GetProcessingSection(ProcessingSection.Click);
+            if (click.SampleCount > 0)
+            {
+                b.Row3(FourCol, "Click",
+                    ClickTargetColor(click.LastMs, targetMs),
+                    ClickTargetColor(click.AverageMs, targetMs),
+                    ClickTargetColor(click.MaxMs, targetMs),
+                    $"{click.LastMs:F1}", $"{click.AverageMs:F1}", $"{click.MaxMs:F1}");
+            }
+
+            ClickAllocationStats alloc = perf.ClickAllocation;
+            if (alloc.SampleCount > 0)
+            {
+                StageTimingRow(b, "Context", alloc.ContextTime, targetMs);
+                StageTimingRow(b, "Acquire", alloc.AcquireTime, targetMs);
+                StageTimingRow(b, "Rank", alloc.RankTime, targetMs);
+                StageTimingRow(b, "Execute", alloc.ExecuteTime, targetMs);
+                StageTimingRow(b, "Post", alloc.PostTime, targetMs);
+            }
+
+            RenderClickFrequencyTargetRows(b, perf);
+        }
+
+        private static void RenderClickFrequencyTargetRows(TextBlock b, PerformanceMetricsSnapshot perf)
+        {
+            double targetMs = perf.ClickTargetIntervalMs;
+            if (targetMs <= 0)
                 return;
-            double fps = perf.Fps.Current;
-            double periodMs = perf.GetAllocationSection(ProcessingSection.Click).AvgPeriodMs;
-            StageTimingRow(b, "Context", s.ContextTime, periodMs, fps);
-            StageTimingRow(b, "Acquire", s.AcquireTime, periodMs, fps);
-            StageTimingRow(b, "Rank", s.RankTime, periodMs, fps);
-            StageTimingRow(b, "Execute", s.ExecuteTime, periodMs, fps);
-            StageTimingRow(b, "Post", s.PostTime, periodMs, fps);
+
+            b.Row(FourCol, Color.Yellow, "Click Frequency", $"{targetMs:F0}");
+            ClickFrequencyRow(b, "Processing", perf.GetProcessingSection(ProcessingSection.Click), targetMs);
+            ClickFrequencyRow(b, "Sleep", perf.ClickSleepTiming, targetMs);
+            ClickFrequencyRow(b, "Total", perf.ClickCoroutine, targetMs);
         }
 
-        private static void StageTimingRow(TextBlock b, string label, TimingStageSnapshot s, double periodMs, double fps)
+        private static void ClickFrequencyRow(TextBlock b, string label, TimingMetricsSnapshot s, double targetMs)
         {
-            double scale = periodMs > 0 && fps > 0 ? 1000.0 / periodMs / fps : 0;
             b.SubRow3(FourCol, label,
-                scale > 0 ? FrameColor(s.LastMs * scale) : Color.LightGreen,
-                scale > 0 ? FrameColor(s.AvgMs * scale) : Color.LightGreen,
-                scale > 0 ? FrameColor(s.MaxMs * scale) : Color.LightGreen,
-                scale > 0 ? $"{s.LastMs * scale:F2}" : "-",
-                scale > 0 ? $"{s.AvgMs * scale:F2}" : "-",
-                scale > 0 ? $"{s.MaxMs * scale:F2}" : "-");
+                ClickTargetColor(s.LastMs, targetMs),
+                ClickTargetColor(s.AverageMs, targetMs),
+                ClickTargetColor(s.MaxMs, targetMs),
+                $"{s.LastMs:F1}", $"{s.AverageMs:F1}", $"{s.MaxMs:F1}");
+        }
+
+        // ms/click coloring relative to the click frequency target: green within the target, yellow
+        // up to +25% over it, red beyond that.
+        private static Color ClickTargetColor(double msPerClick, double targetMs)
+            => targetMs <= 0 ? FrameColor(msPerClick)
+                : msPerClick <= targetMs ? Color.LightGreen
+                : msPerClick <= targetMs * 1.25 ? Color.Yellow
+                : Color.Red;
+
+        private static void StageTimingRow(TextBlock b, string label, TimingStageSnapshot s, double targetMs)
+        {
+            b.SubRow3(FourCol, label,
+                ClickTargetColor(s.LastMs, targetMs),
+                ClickTargetColor(s.AvgMs, targetMs),
+                ClickTargetColor(s.MaxMs, targetMs),
+                $"{s.LastMs:F1}", $"{s.AvgMs:F1}", $"{s.MaxMs:F1}");
         }
 
         private static void RenderGcTable(TextBlock b, PerformanceMetricsSnapshot perf)
@@ -354,31 +392,6 @@ namespace ClickIt.UI.Debug
             b.Row(TwoCol, GcPauseColor(m.GcPauseMaxMs),
                 "GC Pause",
                 $"{m.GcPauseLastMs:F0}/{m.GcPauseAvgMs:F0}/{m.GcPauseMaxMs:F0} ms");
-        }
-
-        private static void RenderClickFrequencyTarget(TextBlock b, PerformanceMetricsSnapshot perf)
-        {
-            double targetMs = perf.ClickTargetIntervalMs;
-            double fullTickMs = perf.ClickCoroutine.AverageMs;
-            if (fullTickMs <= 0) fullTickMs = perf.AverageSuccessfulClickTimingMs;
-            double sleepMs = SystemMath.Min(perf.AverageClickSleepMs, fullTickMs);
-            double processingMs = SystemMath.Max(0, fullTickMs - sleepMs);
-            double observedMs = perf.AverageClickIntervalMs;
-
-            double delayMs = SystemMath.Max(0, targetMs - fullTickMs);
-            double modeledTotalMs = delayMs + fullTickMs;
-            double observedTotalMs = observedMs > 0 ? observedMs : modeledTotalMs;
-            double schedulerDeltaMs = observedTotalMs - modeledTotalMs;
-            double deviation = observedTotalMs > 0
-                ? (observedTotalMs - targetMs) / targetMs
-                : 0;
-
-            b.Row(TwoCol, Color.Yellow, "Target", $"{targetMs:F0} ms");
-            b.Row(TwoCol, processingMs > targetMs ? Color.Red : processingMs >= targetMs * 0.75 ? Color.Yellow : Color.LightGreen, "Processing", $"{processingMs:F0} ms");
-            b.Row(TwoCol, sleepMs > 0 ? Color.Yellow : Color.LightGreen, "Sleep", $"{sleepMs:F0} ms");
-            b.Row(TwoCol, deviation <= 0.05 ? Color.LightGreen : deviation <= 0.10 ? Color.Yellow : Color.Red, "Total (model)", $"{modeledTotalMs:F0} ms");
-            b.Row(TwoCol, SystemMath.Abs(schedulerDeltaMs) <= 5 ? Color.LightGreen : SystemMath.Abs(schedulerDeltaMs) <= 20 ? Color.Yellow : Color.OrangeRed, "Scheduler", $"{schedulerDeltaMs:+0;-0;0} ms");
-            b.Row(TwoCol, deviation <= 0.05 ? Color.LightGreen : deviation <= 0.10 ? Color.Yellow : Color.Red, "Observed", $"{observedTotalMs:F0} ms");
         }
 
         // Per-value ms/f coloring: each Last/Avg/Max column is colored by its OWN value so a single

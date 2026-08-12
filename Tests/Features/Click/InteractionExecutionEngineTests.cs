@@ -541,6 +541,74 @@ namespace ClickIt.Tests.Features.Click
                 && snapshot.Notes.Contains("waiting for chest loot to settle", StringComparison.Ordinal));
         }
 
+        [TestMethod]
+        public void Execute_VisibleWalksTowardLabel_WhenClickPointCannotBeResolved()
+        {
+            // A selected label whose click point cannot be resolved must pathfind toward its entity
+            // (the shared click-vs-walk decision) rather than silently dropping the tick.
+            var settings = new ClickItSettings();
+            settings.WalkTowardOffscreenLabels.Value = true;
+            Entity item = EntityProbeFactory.Create(path: "Metadata/MiscellaneousObjects/WorldItem");
+            LabelOnGround label = new LabelProbe { ItemOnGround = item };
+            var snapshots = new List<ClickDebugSnapshot>();
+
+            InteractionExecutionEngine engine = CreateEngine(
+                settingsOverride: settings,
+                labelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(
+                    labelInteractionPort: ClickTestServiceFactory.CreateNoOpLabelInteractionPort(),
+                    tryResolveClickPosition: static (_, _, _, _) => (false, default),
+                    groundItemsVisible: static () => true),
+                clickDebugPublisher: ClickTestDebugPublisherFactory.Create(
+                    shouldCaptureClickDebug: static () => true,
+                    setLatestClickDebug: snapshots.Add));
+
+            ExecutionResult result = engine.Execute(
+                CreateContext(groundItemsVisible: true),
+                new ClickCandidates(null, null, label, "items"),
+                CreateDecision(trySettlers: false, tryLostShipment: false, tryShrine: false, groundItemsVisible: true));
+
+            result.ShouldRunPostActions.Should().BeFalse();
+            result.DidActionableWork.Should().BeTrue();
+            snapshots.Should().Contain(snapshot => snapshot.Stage == "WalkTowardLabel");
+        }
+
+        [TestMethod]
+        public void Execute_VisibleClicksLabelInPlace_WhenClickPointIsResolvableAndClickable()
+        {
+            // A selected label whose click point resolves into a clickable area must be clicked in
+            // place, never walked to (the walk-to-onscreen-target regression guard). If the engine
+            // had walked instead, the tick would have stopped before HandleVisibleLabel, so the
+            // interaction never running proves the walk was skipped.
+            var settings = new ClickItSettings();
+            settings.WalkTowardOffscreenLabels.Value = true;
+            Entity item = EntityProbeFactory.Create(path: "Metadata/MiscellaneousObjects/WorldItem");
+            LabelOnGround label = new LabelProbe { ItemOnGround = item };
+            bool interactionExecuted = false;
+
+            InteractionExecutionEngine engine = CreateEngine(
+                settingsOverride: settings,
+                labelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(
+                    labelInteractionPort: ClickTestServiceFactory.CreateNoOpLabelInteractionPort(),
+                    tryResolveClickPosition: static (_, _, _, _) => (true, new Vector2(10f, 10f)),
+                    executeInteraction: _ =>
+                    {
+                        interactionExecuted = true;
+                        return true;
+                    },
+                    isClickableInEitherSpace: static (_, _) => true,
+                    isInsideWindowInEitherSpace: static _ => true,
+                    groundItemsVisible: static () => true));
+
+            ExecutionResult result = engine.Execute(
+                CreateContext(groundItemsVisible: true),
+                new ClickCandidates(null, null, label, "items"),
+                CreateDecision(trySettlers: false, tryLostShipment: false, tryShrine: false, groundItemsVisible: true));
+
+            result.ShouldRunPostActions.Should().BeTrue();
+            result.DidActionableWork.Should().BeTrue();
+            interactionExecuted.Should().BeTrue();
+        }
+
         private static InteractionExecutionEngine CreateEngine(
             ILabelInteractionPort? labelInteractionPort = null,
             IVisibleMechanicRuntimePort? visibleMechanics = null,
@@ -550,9 +618,10 @@ namespace ClickIt.Tests.Features.Click
             Action<string>? debugLog = null,
             Action<string>? holdDebugTelemetryAfterSuccess = null,
             ClickDebugPublicationService? clickDebugPublisher = null,
-            Func<LabelOnGround?>? getHarvestLabelToClick = null)
+            Func<LabelOnGround?>? getHarvestLabelToClick = null,
+            ClickItSettings? settingsOverride = null)
         {
-            ClickItSettings settings = new();
+            ClickItSettings settings = settingsOverride ?? new();
             ClickRuntimeState runtimeState = new();
             ILabelInteractionPort resolvedLabelInteractionPort = labelInteractionPort ?? ClickTestServiceFactory.CreateNoOpLabelInteractionPort();
             ClickDebugPublicationService resolvedClickDebugPublisher = clickDebugPublisher ?? ClickTestDebugPublisherFactory.Create();

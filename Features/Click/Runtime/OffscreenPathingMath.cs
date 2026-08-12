@@ -96,15 +96,20 @@ namespace ClickIt.Features.Click.Runtime
         internal static bool IsEldritchAltarPath(string path)
             => !string.IsNullOrWhiteSpace(GetEldritchAltarMechanicIdForPath(true, true, path));
 
-        // Continue pathfinding toward a label when it is outside the click-distance range (it cannot
-        // be clicked in place) or when it is not actionable on screen at all.
-        internal static bool ShouldContinuePathfindingWhenLabelActionable(
+        // Continue pathfinding until the label is clickable in place; blight additionally requires the full label on screen.
+        internal static bool ShouldContinuePathfindingForLabel(
+            bool blightRequiresFullLabel,
             bool labelInWindow,
             bool labelClickable,
             bool clickPointResolvable,
             float distance,
             int clickDistance)
-            => distance > clickDistance || !(labelInWindow && labelClickable && clickPointResolvable);
+        {
+            if (blightRequiresFullLabel && (!labelInWindow || !labelClickable))
+                return true;
+
+            return distance > clickDistance || !clickPointResolvable;
+        }
 
         internal static bool ShouldPathfindToEntityAfterClickPointResolveFailure(
             bool walkTowardOffscreenLabelsEnabled,

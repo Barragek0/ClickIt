@@ -140,20 +140,21 @@ namespace ClickIt.Features.Click.Core
             return _dependencies.OffscreenPathing.TryWalkTowardOffscreenTarget(entity);
         }
 
-        private bool WalkTowardTargetLabel(LabelOnGround label, string? mechanicId, Entity? entity)
+        // Unified click-vs-walk decision for a selected label, shared by the visible and hidden
+        // ground-item paths: click the label in place when its click point resolves into a
+        // clickable area; otherwise pathfind toward its entity.
+        private bool TryPathfindToLabelInsteadOfClick(ClickTickContext context, LabelOnGround label, string? mechanicId, Entity? entity)
         {
-            if (!_dependencies.Settings.WalkTowardOffscreenLabels.Value)
-                return false;
-            if (entity == null)
+            if (!_dependencies.Settings.WalkTowardOffscreenLabels.Value || entity == null)
                 return false;
 
             (bool resolved, Vector2 clickPos) = _dependencies.LabelInteraction.TryResolveLabelClickPositionResult(
-                label, mechanicId, default, null);
+                label, mechanicId, default, context.AllLabels);
             if (resolved && _dependencies.PointIsInClickableArea(clickPos, mechanicId ?? string.Empty))
                 return false;
 
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
-                "WalkTowardLabel", $"Pathfinding toward label entity", mechanicId);
+                "WalkTowardLabel", "Label not clickable in place; pathfinding toward entity", mechanicId);
             return _dependencies.OffscreenPathing.TryWalkTowardOffscreenTarget(entity);
         }
 
@@ -180,7 +181,7 @@ namespace ClickIt.Features.Click.Core
                     _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenLabelCheck",
                         $"label has entity={(TryGetLabelItemOnGround(candidates.NextLabel) != null)} mechanic={candidates.NextLabelMechanicId}", candidates.NextLabelMechanicId);
                 Entity? labelEntity = TryGetLabelItemOnGround(candidates.NextLabel);
-                if (labelEntity != null && WalkTowardTargetLabel(candidates.NextLabel, candidates.NextLabelMechanicId, labelEntity))
+                if (labelEntity != null && TryPathfindToLabelInsteadOfClick(context, candidates.NextLabel, candidates.NextLabelMechanicId, labelEntity))
                     return StopExecution(didActionableWork: true);
             }
             else
@@ -218,7 +219,7 @@ namespace ClickIt.Features.Click.Core
             // Unified clickability check: if the selected label's click position
             // is not in a clickable area, pathfind toward its entity instead of
             // attempting a click that would fail.
-            if (WalkTowardTargetLabel(candidates.NextLabel, candidates.NextLabelMechanicId,
+            if (TryPathfindToLabelInsteadOfClick(context, candidates.NextLabel, candidates.NextLabelMechanicId,
                 TryGetLabelItemOnGround(candidates.NextLabel)))
                 return StopExecution(didActionableWork: true);
 
@@ -319,7 +320,7 @@ namespace ClickIt.Features.Click.Core
         private ExecutionResult HandleNoVisibleLabel(ClickTickContext context)
         {
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HandleNoVisibleLabel",
-                $"labelsInContext={context.AllLabels?.Count ?? 0} walkSetting={_dependencies.Settings.WalkTowardOffscreenLabels.Value}", null);
+                $"labelsInContext={context.AllLabels?.Count ?? 0} walkSetting={_dependencies.Settings.WalkTowardOffscreenLabels.Value} {ClickLabelSelectionMath.DescribeCursorPosition()}", null);
 
             if (TryPublishPostChestLootSettleBlock(context))
                 return StopExecution();
@@ -366,7 +367,7 @@ namespace ClickIt.Features.Click.Core
             if (nextLabelItem != null && MechanicClassifier.IsLockedStrongbox(nextLabelItem))
             {
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("LockedChestSkipped",
-                    "Strongbox is locked - not clickable", candidates.NextLabelMechanicId);
+                    $"Strongbox is locked - not clickable | {ClickLabelSelectionMath.DescribeLabel(nextLabel)} {ClickLabelSelectionMath.DescribeCursorPosition()}", candidates.NextLabelMechanicId);
                 return HandleNoVisibleLabel(context);
             }
 

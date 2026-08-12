@@ -8,7 +8,7 @@ namespace ClickIt.Features.Labels
         private readonly GameController? _gameController;
         private readonly IWorldItemMetadataPolicy _worldItemMetadataPolicy = new WorldItemMetadataPolicy();
         private readonly IMechanicPrioritySnapshotProvider _mechanicPrioritySnapshotService = new MechanicPrioritySnapshotService();
-        private readonly LabelSelectionDiagnostics _labelSelectionDiagnostics = new(24);
+        private readonly LabelSelectionDiagnostics _labelSelectionDiagnostics = new(100);
         private InventoryDomainServices? _inventoryDomainServices;
 
         internal LabelFilterPort(ClickItSettings settings, EssenceService essenceService, ErrorHandler errorHandler, GameController? gameController)

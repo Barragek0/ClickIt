@@ -231,6 +231,7 @@ namespace ClickIt.Shared.Diagnostics
 
             (double LastMs, double AverageMs, double MaxMs, int SampleCount) renderStats = GetRenderTimingStats();
             (double Current, double Average, double Max) = GetFpsStats();
+            (double LastMs, double AverageMs, double MaxMs, int SampleCount) clickSleepStats = GetClickSleepTimingStats();
 
             return new PerformanceMetricsSnapshot(
                 new FpsMetricsSnapshot(Current, Average, Max),
@@ -275,7 +276,8 @@ namespace ClickIt.Shared.Diagnostics
                 GetLabelScanAllocationStats(),
                 GetClickAllocationStats(),
                 GetMemorySnapshot(),
-                GetBreakdownStats());
+                GetBreakdownStats(),
+                ClickSleepTiming: new TimingMetricsSnapshot(clickSleepStats.LastMs, clickSleepStats.AverageMs, clickSleepStats.MaxMs, clickSleepStats.SampleCount));
         }
 
         internal void RecordFpsSample(double fps)
@@ -465,6 +467,9 @@ namespace ClickIt.Shared.Diagnostics
         {
             return _timingTracker.GetAverageClickSleepMs();
         }
+
+        public (double LastMs, double AverageMs, double MaxMs, int SampleCount) GetClickSleepTimingStats()
+            => _timingTracker.GetClickSleepTimingStats();
 
         internal int GetTimingSampleCount(TimingChannel channel)
             => _timingTracker.GetTimingSampleCount(channel);

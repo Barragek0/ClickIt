@@ -2,9 +2,9 @@ namespace ClickIt.Features.Observability
 {
     internal sealed class ClickTelemetryStore
     {
-        private const int ClickDebugTrailCapacity = 24;
-        private const int RuntimeDebugLogTrailCapacity = 48;
-        private const int UltimatumDebugTrailCapacity = 48;
+        private const int ClickDebugTrailCapacity = 100;
+        private const int RuntimeDebugLogTrailCapacity = 80;
+        private const int UltimatumDebugTrailCapacity = 80;
         private readonly ClickItSettings _settings;
         private readonly DebugSnapshotChannel<ClickDebugSnapshot, ClickDebugSnapshot> _clickDebugChannel;
         private readonly DebugSnapshotChannel<RuntimeDebugLogSnapshot, string> _runtimeDebugLogChannel;

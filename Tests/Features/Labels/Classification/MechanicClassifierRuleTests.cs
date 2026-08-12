@@ -244,7 +244,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
         }
 
         [TestMethod]
-        public void ShouldClickStrongbox_ReturnsFalse_WhenChestComponentIsMissing()
+        public void ShouldClickStrongbox_ReturnsTrue_WhenChestComponentIsMissing()
         {
             var settings = new ClickSettings
             {
@@ -260,11 +260,11 @@ namespace ClickIt.Tests.Features.Labels.Classification
 
             bool result = MechanicClassifier.ShouldClickStrongbox(settings, "Metadata/Chests/StrongBoxes/Arcanist", label);
 
-            result.Should().BeFalse();
+            result.Should().BeTrue();
         }
 
         [TestMethod]
-        public void ShouldClickStrongbox_ReturnsFalse_WhenItemHasNoGetComponentMember()
+        public void ShouldClickStrongbox_ReturnsTrue_WhenItemHasNoGetComponentMember()
         {
             var settings = new ClickSettings
             {
@@ -279,7 +279,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
 
             bool result = MechanicClassifier.ShouldClickStrongbox(settings, "Metadata/Chests/StrongBoxes/Arcanist", label);
 
-            result.Should().BeFalse();
+            result.Should().BeTrue();
         }
 
         [TestMethod]

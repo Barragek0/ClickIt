@@ -204,10 +204,9 @@ public class PerformanceInGameOverlayTests
         overlay.Draw(CreateContext(textQueue));
 
         string[] lines = textQueue.GetPendingTextSnapshot();
-        lines.Should().Contain("Click Frequency Target");
-        lines.Should().Contain("Target");
+        lines.Should().Contain("Click Frequency");
         lines.Should().Contain("Processing");
-        lines.Should().Contain("Observed");
+        lines.Should().Contain("Total");
     }
 
     [TestMethod]

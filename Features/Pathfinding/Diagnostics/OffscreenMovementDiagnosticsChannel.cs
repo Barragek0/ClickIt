@@ -2,7 +2,7 @@ namespace ClickIt.Features.Pathfinding.Diagnostics
 {
     internal sealed class OffscreenMovementDiagnosticsChannel
     {
-        private const int TrailCapacity = 24;
+        private const int TrailCapacity = 64;
 
         private readonly DebugSnapshotChannel<OffscreenMovementDebugSnapshot, OffscreenMovementDebugEvent> _channel = new(
             OffscreenMovementDebugSnapshot.Empty,
