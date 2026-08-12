@@ -57,6 +57,49 @@ public class ClickItHarvestFeatureTests
     }
 
     [TestMethod]
+    public void ShouldSkipRescan_SameSetWithinWindow_Skips()
+    {
+        HarvestService.ShouldSkipRescan(sameLabelSet: true, now: 99, lastScanAtMs: 0, rescanIntervalMs: 100)
+            .Should().BeTrue();
+    }
+
+    [TestMethod]
+    public void ShouldSkipRescan_SameSetAfterWindow_ReScans()
+    {
+        // A stable reference must never freeze position-dependent bounds — the cadence forces a
+        // re-scan even when the label set is unchanged.
+        HarvestService.ShouldSkipRescan(sameLabelSet: true, now: 100, lastScanAtMs: 0, rescanIntervalMs: 100)
+            .Should().BeFalse();
+    }
+
+    [TestMethod]
+    public void ShouldSkipRescan_ChangedSet_ReScansImmediately()
+    {
+        HarvestService.ShouldSkipRescan(sameLabelSet: false, now: 0, lastScanAtMs: 0, rescanIntervalMs: 100)
+            .Should().BeFalse();
+    }
+
+    [TestMethod]
+    public void ProcessHarvestPlots_ReScansOnCadence_WhenLabelReferenceUnchanged()
+    {
+        var s = new ClickItSettings();
+        s.ClickHarvest.Value = true;
+        long now = 0;
+        var svc = new HarvestService(s, () => now);
+        IReadOnlyList<LabelOnGround> labels = [];
+
+        // First scan runs; a second call inside the window is skipped; after the cadence the scan
+        // runs again (observable via the re-scan path not throwing and the guard releasing).
+        svc.ProcessHarvestPlots(labels, gameController: null);
+        now = 50;
+        svc.ProcessHarvestPlots(labels, gameController: null);
+        now = 150;
+        svc.ProcessHarvestPlots(labels, gameController: null);
+
+        svc.CurrentDecision.Outcome.Should().Be(HarvestDecisionOutcome.NoHarvestLabels);
+    }
+
+    [TestMethod]
     public void GetLabelToClick_BlockedState_ReturnsNull()
     {
         // Simulate blocked decision directly

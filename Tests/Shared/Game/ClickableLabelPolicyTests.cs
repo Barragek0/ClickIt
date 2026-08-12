@@ -202,5 +202,48 @@ namespace ClickIt.Tests.Shared.Game
         {
             ClickableLabelPolicy.IsPathForClickableObject(path).Should().Be(expected);
         }
+
+        [TestMethod]
+        public void IsBasicLabelValid_ReturnsTrue_WhenItemEntityIsValid()
+        {
+            LabelOnGround label = CreateBasicValidLabel(EntityProbeFactory.Create(address: 0x100, type: EntityType.WorldItem));
+
+            ClickableLabelPolicy.IsBasicLabelValid(label).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void IsBasicLabelValid_ReturnsFalse_WhenItemEntityIsInvalid()
+        {
+            LabelOnGround label = CreateBasicValidLabel(EntityProbeFactory.Create(isValid: false, address: 0x100, type: EntityType.WorldItem));
+
+            ClickableLabelPolicy.IsBasicLabelValid(label).Should().BeFalse();
+        }
+
+        private static LabelOnGround CreateBasicValidLabel(Entity item)
+        {
+            var label = (BasicValidProbeLabel)RuntimeHelpers.GetUninitializedObject(typeof(BasicValidProbeLabel));
+            label.ItemOnGround = item;
+            label.IsVisible = true;
+            label.Label = new BasicValidProbeElement { IsValid = true, IsVisible = true };
+            return label;
+        }
+    }
+
+    public sealed class BasicValidProbeLabel : LabelOnGround
+    {
+        public new bool IsVisible { get; set; }
+
+        public new Entity ItemOnGround { get; set; } = null!;
+
+        public new Element? Label { get; set; }
+    }
+
+    public sealed class BasicValidProbeElement : Element
+    {
+        public new bool IsValid { get; set; } = true;
+
+        public new bool IsVisible { get; set; } = true;
+
+        public override RectangleF GetClientRect() => new(10f, 10f, 40f, 20f);
     }
 }

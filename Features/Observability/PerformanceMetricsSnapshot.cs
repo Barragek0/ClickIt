@@ -8,7 +8,8 @@ namespace ClickIt.Features.Observability
     // GC pressure per processing section: steady-state alloc/s (bytes per run / run period) plus
     // per-run bytes, so the debug table can rank where allocations actually happen. LastBytesPerRun
     // and AvgPeriodMs let the summary normalize per-run bytes to per-frame last/avg/max;
-    // MaxAllocPerSecond is the peak single-sample rate (bytes / that sample's own period).
+    // MaxAllocPerSecond is the highest per-sample rate in the live window (a run's bytes / its
+    // observed period, floored to a 50ms observation window) — the Max KB/s column on every surface.
     internal readonly record struct GcAllocationSnapshot(
         double AllocPerSecond,
         double AvgBytesPerRun,
@@ -26,10 +27,14 @@ namespace ClickIt.Features.Observability
         long SortBytes,
         long TotalBytes);
 
+    // Per-stage allocation snapshot over the same 10s rolling window as the main GC sections:
+    // MaxAllocPerSecond is the highest per-sample rate (a run's bytes / its observed period, floored
+    // to a 50ms observation window) — the Max KB/s column on every surface.
     public readonly record struct AllocationStageSnapshot(
         double LastBytesPerRun,
         double AvgBytesPerRun,
-        double MaxBytesPerRun);
+        double MaxBytesPerRun,
+        double MaxAllocPerSecond = 0);
 
     // Rolling per-stage label-scan allocation stats so the debug tables can show last/avg/max
     // bytes-per-run for each stage instead of the whole scan's aggregate.
@@ -60,6 +65,18 @@ namespace ClickIt.Features.Observability
 
     public readonly record struct TimingStageSnapshot(double LastMs, double AvgMs, double MaxMs);
 
+    // One named stage of a feature breakdown (allocation + wall time, like the click stages).
+    public readonly record struct BreakdownStageSnapshot(
+        string Name,
+        AllocationStageSnapshot Allocation,
+        TimingStageSnapshot Time);
+
+    // Per-stage breakdown of one processing section over the same rolling windows as the main GC
+    // table, so the debug surfaces can drill from an area into its sub-steps.
+    public readonly record struct BreakdownStats(
+        IReadOnlyList<BreakdownStageSnapshot> Stages,
+        long SampleCount);
+
     // Rolling per-stage click-pipeline allocation stats for the same last/avg/max breakdown.
     public readonly record struct ClickAllocationStats(
         AllocationStageSnapshot Context,
@@ -77,7 +94,11 @@ namespace ClickIt.Features.Observability
 
     // Process + managed-heap memory picture. ProcessWorkingSetMb is the WHOLE process (game +
     // ExileCore/ExileApi + plugin), so per-feature attribution is not possible — the GC table's
-    // alloc/s column is the per-feature allocation proxy instead.
+    // alloc/s column is the per-feature allocation proxy instead. GcPause* carries the recent
+    // blocking GC pause picture (last/avg/max ms + pause-time % of the last observed window), which
+    // is what actually stalls all threads when the plugin churns the heap. DlrReads* carries the
+    // recent DynamicAccess read picture — reads/sec plus the actual ms/sec spent inside the dynamic
+    // reads (the freeze-relevant cost) — with the share of reads that failed (%).
     internal readonly record struct MemoryMetricsSnapshot(
         double ProcessWorkingSetMb,
         double ManagedHeapMb,
@@ -86,7 +107,40 @@ namespace ClickIt.Features.Observability
         double Gen2Mb,
         double LohMb,
         double FragmentedMb,
-        double MemoryLoadPercent);
+        double MemoryLoadPercent,
+        double GcPauseLastMs = 0,
+        double GcPauseAvgMs = 0,
+        double GcPauseMaxMs = 0,
+        double GcPauseTimePercent = 0,
+        double DlrReadsLastPerSec = 0,
+        double DlrReadsAvgPerSec = 0,
+        double DlrReadsMaxPerSec = 0,
+        double DlrFailPercent = 0,
+        double DlrReadsMsLastPerSec = 0,
+        double DlrReadsMsAvgPerSec = 0,
+        double DlrReadsMsMaxPerSec = 0,
+        IReadOnlyList<DlrSectionSnapshot>? DlrSections = null,
+        IReadOnlyList<GcSectionSnapshot>? GcSections = null);
+
+    // One feature's DLR-read attribution over the recent window: reads/sec plus the actual ms/sec
+    // spent inside the dynamic reads (last/avg/max). Indexed by ProcessingSection value; the DLR
+    // table maps each entry to a feature row so the per-feature dynamic-read pressure is visible.
+    internal readonly record struct DlrSectionSnapshot(
+        double ReadsLastPerSec = 0,
+        double ReadsAvgPerSec = 0,
+        double ReadsMaxPerSec = 0,
+        double MsLastPerSec = 0,
+        double MsAvgPerSec = 0,
+        double MsMaxPerSec = 0);
+
+    // One feature's GC allocation-rate attribution over the recent window: bytes/sec (last/avg/max),
+    // sampled on the same 500ms cadence as the timing tables so the GC table's Last/Avg/Max matches
+    // the other tables (10s expiry, 10-sample average, max over the live window). Indexed by
+    // ProcessingSection value; the GC table maps each entry to a feature row.
+    internal readonly record struct GcSectionSnapshot(
+        double BytesLastPerSec = 0,
+        double BytesAvgPerSec = 0,
+        double BytesMaxPerSec = 0);
 
     internal readonly record struct TimingMetricsSnapshot(
         double LastMs,
@@ -142,6 +196,7 @@ namespace ClickIt.Features.Observability
         TimingMetricsSnapshot UltimatumProcessing = default,
         TimingMetricsSnapshot AreaBlockedUiProcessing = default,
         TimingMetricsSnapshot ManualUiHoverProcessing = default,
+        TimingMetricsSnapshot GameStateDumpProcessing = default,
         double ClickTargetIntervalMs = 0,
         double AverageSuccessfulClickTimingMs = 0,
         double AverageClickIntervalMs = 0,
@@ -149,7 +204,8 @@ namespace ClickIt.Features.Observability
         IReadOnlyDictionary<ProcessingSection, GcAllocationSnapshot>? Allocations = null,
         LabelScanAllocationStats LabelScanAllocation = default,
         ClickAllocationStats ClickAllocation = default,
-        MemoryMetricsSnapshot Memory = default)
+        MemoryMetricsSnapshot Memory = default,
+        IReadOnlyDictionary<ProcessingSection, BreakdownStats>? Breakdowns = null)
     {
         public GcAllocationSnapshot GetAllocationSection(ProcessingSection section)
             => Allocations != null && Allocations.TryGetValue(section, out GcAllocationSnapshot value)
@@ -191,6 +247,7 @@ namespace ClickIt.Features.Observability
                 ProcessingSection.Ultimatum => UltimatumProcessing,
                 ProcessingSection.AreaBlockedUi => AreaBlockedUiProcessing,
                 ProcessingSection.ManualUiHover => ManualUiHoverProcessing,
+                ProcessingSection.GameStateDump => GameStateDumpProcessing,
                 ProcessingSection.Unknown => default,
                 _ => default,
             };
@@ -292,6 +349,7 @@ namespace ClickIt.Features.Observability
                 Aggregate(UltimatumProcessing);
                 Aggregate(AreaBlockedUiProcessing);
                 Aggregate(ManualUiHoverProcessing);
+                Aggregate(GameStateDumpProcessing);
                 return new TimingMetricsSnapshot(last, avg, max, sections);
 
                 void Aggregate(TimingMetricsSnapshot s)
@@ -368,8 +426,9 @@ namespace ClickIt.Features.Observability
             }
         }
 
-        // Total peak allocation rate across every GC section (sum of each section's MaxAllocPerSecond),
-        // for the on-screen GC title's Max cell — same sum convention as TotalMaxBytesPerRun above.
+        // Total peak allocation rate across every main GC row (the section rows only — the click and
+        // label-scan stage breakdown rows are sub-parts of their parent section, so including them
+        // would double-count), matching the section-only sum convention of GcTableTotalBytesPerFrame.
         public double GcTableTotalMaxBytesPerSecond
         {
             get

@@ -1,8 +1,6 @@
 namespace ClickIt.Features.Labels.Classification.Policies
 {
-    // The six Settlers ore toggles read from either settings type (the root ClickItSettings
-    // ToggleNodes or the flattened ClickSettings snapshot). The enabled rule is a single method
-    // over this value; each settings type converts to it once.
+    // The six Settlers ore toggles read from either settings type; the enabled rule is a single method over this value.
     internal readonly record struct SettlersClickFlags(
         bool ClickOre,
         bool ClickCrimsonIron,

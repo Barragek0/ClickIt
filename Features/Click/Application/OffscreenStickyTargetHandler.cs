@@ -15,11 +15,23 @@ namespace ClickIt.Features.Click.Application
     {
         private readonly OffscreenStickyTargetHandlerDependencies _dependencies = dependencies;
 
+        // Retained live reference to the sticky target, so TryResolveStickyOffscreenTarget avoids the
+        // full valid-entity walk (FindEntityByAddress) on every click tick while the target is still
+        // on-screen/valid. Cleared together with the address; falls back to the scan when the reference
+        // is stale (streamed out / replaced) or the address was set directly without a reference.
+        private Entity? _stickyEntity;
+
         internal void SetStickyOffscreenTarget(Entity target)
-            => _dependencies.RuntimeState.StickyOffscreenTargetAddress = TryGetEntityAddress(target, out long address) ? address : 0;
+        {
+            _stickyEntity = target;
+            _dependencies.RuntimeState.StickyOffscreenTargetAddress = TryGetEntityAddress(target, out long address) ? address : 0;
+        }
 
         internal void ClearStickyOffscreenTarget()
-            => _dependencies.RuntimeState.StickyOffscreenTargetAddress = 0;
+        {
+            _stickyEntity = null;
+            _dependencies.RuntimeState.StickyOffscreenTargetAddress = 0;
+        }
 
         internal bool IsStickyTarget(Entity? entity)
             => entity != null
@@ -34,7 +46,22 @@ namespace ClickIt.Features.Click.Application
             if (stickyAddress == 0)
                 return false;
 
-            target = EntityQueryService.FindEntityByAddress(_dependencies.GameController, stickyAddress);
+            // Fast path: the retained reference is still the same entity (same address) and passes the
+            // active check — no full valid-entity walk. Falls back to the scan only when the reference
+            // is stale (streamed out, replaced, or the address was set without a reference).
+            Entity? retained = _stickyEntity;
+            if (retained != null
+                && TryGetEntityAddress(retained, out long retainedAddress)
+                && OffscreenPathingMath.IsSameEntityAddress(stickyAddress, retainedAddress)
+                && TryIsActiveStickyTarget(retained, out _, out _))
+            {
+                target = retained;
+            }
+            else
+            {
+                target = EntityQueryService.FindEntityByAddress(_dependencies.GameController, stickyAddress);
+            }
+
             if (target == null)
             {
                 ClearStickyOffscreenTarget();
@@ -120,7 +147,10 @@ namespace ClickIt.Features.Click.Application
         {
             LabelOnGround? stickyLabel = OffscreenPathingMath.FindVisibleLabelForEntity(stickyTarget, allLabels);
             if (stickyLabel == null)
+            {
+                ClearStickyOffscreenTarget();
                 return false;
+            }
 
             if (_dependencies.PathfindingLabelSuppression.ShouldSuppressPathfindingLabel(stickyLabel))
             {
@@ -144,11 +174,17 @@ namespace ClickIt.Features.Click.Application
                     ? targetPath
                     : string.Empty);
             if (!resolved)
+            {
+                ClearStickyOffscreenTarget();
                 return false;
+            }
 
             bool clickedLabel = _dependencies.LabelInteraction.PerformResolvedLabelInteraction(clickPos, stickyLabel, mechanicId);
             if (!clickedLabel)
+            {
+                ClearStickyOffscreenTarget();
                 return false;
+            }
 
             ApplySuccessfulStickyLabelClick(
                 DynamicAccess.TryReadString(stickyTarget, DynamicAccessProfiles.Path, out string stickyTargetPath)

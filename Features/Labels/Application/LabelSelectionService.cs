@@ -19,27 +19,25 @@ namespace ClickIt.Features.Labels.Application
     {
         private readonly LabelSelectionServiceDependencies _dependencies = dependencies;
 
-        // Ref-keyed selection cache (single-threaded click coroutine): the full label scan only
-        // re-runs when the 50ms label-list reference changes or a new range is queried.  The
-        // cursor-distance tiebreak is the LAST rank comparator and its staleness is bounded by the
-        // label snapshot itself; the interaction path re-validates the label before clicking, and
-        // suppression (lever/ultimatum/blight-chest/overlap) is applied by the caller per tick.
+        // Ref-keyed selection cache (single-threaded click coroutine): the full label scan only re-runs when the label-list reference changes or a new range is queried.
         private IReadOnlyList<LabelOnGround>? _selectionCacheLabelsRef;
         private readonly Dictionary<(int Start, int MaxCount), LabelOnGround?> _selectionCacheByRange = new();
 
-        // Per-label scan cache: the selection scan re-runs whenever the 50ms label-list reference
-        // changes, and each label build costs ~15 DLR reads on the obfuscated game types (the
-        // dominant Acquire allocation). Keyed on the label ADDRESS (stable across snapshots even
-        // when wrapper instances differ) with a short TTL; distance is re-read fresh on miss so the
-        // ranking stays live within the window. The interaction path re-validates before clicking.
+        // Per-label build cache: the selection scan re-runs whenever the 50ms label-list reference
+        // changes (and on every suppression-fallback range), and each candidate build costs ~13 DLR
+        // reads on the obfuscated game types (the dominant Acquire allocation). The build result is
+        // static per entity, so it is cached on the label ADDRESS (stable across snapshots even when
+        // wrapper instances differ) with a long window. Distance and label rect are re-read fresh on
+        // every scan, so out-of-range rejection and ranking stay live as the player moves. The
+        // interaction path re-validates the chosen label before clicking.
         private readonly record struct CachedLabelScanEntry(
             LabelCandidateBuildResult Candidate,
             float Distance,
             RectangleF Rect,
             bool HasRect);
-        private readonly Dictionary<long, CachedLabelScanEntry> _scanCache = [];
-        private long _scanCacheWindowStartMs;
-        private const long ScanCacheWindowMs = 250;
+        private readonly Dictionary<long, LabelCandidateBuildResult> _buildCache = [];
+        private long _buildCacheWindowStartMs;
+        private const long BuildCacheWindowMs = 1000;
 
         public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
         {
@@ -147,28 +145,47 @@ namespace ClickIt.Features.Labels.Application
         {
             long address = label.Address;
             long now = Environment.TickCount64;
-            if (now - _scanCacheWindowStartMs >= ScanCacheWindowMs)
+            if (now - _buildCacheWindowStartMs >= BuildCacheWindowMs)
             {
-                _scanCache.Clear();
-                _scanCacheWindowStartMs = now;
+                _buildCache.Clear();
+                _buildCacheWindowStartMs = now;
             }
 
-            if (_scanCache.TryGetValue(address, out CachedLabelScanEntry cached))
-                return cached;
+            if (!_buildCache.TryGetValue(address, out LabelCandidateBuildResult candidate))
+            {
+                candidate = _dependencies.TryBuildLabelCandidate(label, clickSettings, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason)
+                    ? new LabelCandidateBuildResult(true, item, mechanicId, LabelCandidateRejectReason.None)
+                    : new LabelCandidateBuildResult(false, item, mechanicId, rejectReason);
+                _buildCache[address] = candidate;
+            }
 
-            LabelCandidateBuildResult result = _dependencies.TryBuildLabelCandidate(label, clickSettings, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason)
-                ? new LabelCandidateBuildResult(true, item, mechanicId, LabelCandidateRejectReason.None)
-                : new LabelCandidateBuildResult(false, item, mechanicId, rejectReason);
-
-            float distance = item != null
-                && DynamicAccess.TryReadFloat(item, DynamicAccessProfiles.DistancePlayer, out float resolvedDistance)
+            // Fresh per scan: the on-screen rect and distance change as the player moves, so they
+            // are read live instead of being cached alongside the (static) build result.
+            Entity? buildItem = candidate.Item;
+            float distance = buildItem != null
+                && DynamicAccess.TryReadFloat(buildItem, DynamicAccessProfiles.DistancePlayer, out float resolvedDistance)
                 ? resolvedDistance
                 : float.MaxValue;
+
+            // An OutOfDistance rejection is distance-dependent and must not stay cached while the
+            // player closes in: re-check the fresh distance and rebuild (clears the rejection) when
+            // the label is now within range.
+            if (candidate.RejectReason == LabelCandidateRejectReason.OutOfDistance
+                && distance <= clickSettings.ClickDistance)
+            {
+                candidate = _dependencies.TryBuildLabelCandidate(label, clickSettings, out buildItem, out string? freshMechanicId, out LabelCandidateRejectReason freshRejectReason)
+                    ? new LabelCandidateBuildResult(true, buildItem, freshMechanicId, LabelCandidateRejectReason.None)
+                    : new LabelCandidateBuildResult(false, buildItem, freshMechanicId, freshRejectReason);
+                _buildCache[address] = candidate;
+                distance = buildItem != null
+                    && DynamicAccess.TryReadFloat(buildItem, DynamicAccessProfiles.DistancePlayer, out float reResolvedDistance)
+                    ? reResolvedDistance
+                    : distance;
+            }
+
             bool hasRect = LabelGeometry.TryGetLabelRect(label, out RectangleF rect);
 
-            CachedLabelScanEntry entry = new(result, distance, rect, hasRect);
-            _scanCache[address] = entry;
-            return entry;
+            return new CachedLabelScanEntry(candidate, distance, rect, hasRect);
         }
 
         private float ComputeCursorDistance(RectangleF rect, bool hasRect)

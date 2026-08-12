@@ -48,4 +48,21 @@ public class LabelScanAllocationStoreTests
         stats.SampleCount.Should().Be(1);
         stats.ListRead.AvgBytesPerRun.Should().Be(0);
     }
+
+    [TestMethod]
+    public void MaxAllocPerSecond_RequiresPeriod_ThenReflectsFastestStageSample()
+    {
+        var store = new LabelScanAllocationStore();
+
+        store.Record(new LabelScanAllocationBreakdown(ListReadBytes: 1000, ListAllocBytes: 0, ValidityBytes: 0, SortBytes: 0, TotalBytes: 1000));
+        store.GetStats().Validity.MaxAllocPerSecond.Should().Be(0, "a single sample has no period to derive a rate from");
+
+        Thread.Sleep(80);
+        store.Record(new LabelScanAllocationBreakdown(ListReadBytes: 5000, ListAllocBytes: 0, ValidityBytes: 0, SortBytes: 0, TotalBytes: 5000));
+
+        LabelScanAllocationStats stats = store.GetStats();
+        // The second 5000-byte sample over a real ~80ms period = ~62KB/s peak; keep the bound loose.
+        stats.ListRead.MaxAllocPerSecond.Should().BeGreaterThan(20_000);
+        stats.Sort.MaxAllocPerSecond.Should().Be(0, "stages without a second sample have no peak rate");
+    }
 }

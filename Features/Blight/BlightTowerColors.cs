@@ -1,10 +1,6 @@
 namespace ClickIt.Features.Blight;
 
-// Single source of truth for the Blight tower palette. Every consumer — strategy default colours,
-// overlay dots/foundations/ranges, the settings description colouring, and the plan debug box —
-// resolves a tower's colour through this type, so each tower renders the same hue everywhere.
-// Stores opaque RGB; overlay consumers apply their own alpha (DefaultTowerColor uses 100 to blend
-// with the lanes).
+// Single source of truth for the Blight tower palette so every consumer renders the same hue; stores opaque RGB.
 internal static class BlightTowerColors
 {
     private static readonly Vector4[] s_rgb = BuildRgb();

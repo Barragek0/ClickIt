@@ -18,46 +18,20 @@ namespace ClickIt.Shared.Game
         }
 
         // Ritual state is queried per frame (LazyModeOverlay) and per click tick (offscreen
-        // pathing + runtime state); each call scanned every valid entity's Path via DLR. Cache the
-        // result per thread, keyed on the entity-list reference (rebuilt when entities change) with
-        // a short time window as a secondary bound.
-        [ThreadStatic]
-        private static object? s_ritualEntitiesOwner;
-        [ThreadStatic]
-        private static long s_ritualScanTimestampMs;
-        [ThreadStatic]
-        private static bool s_ritualActive;
-        private const long RitualDetectionCacheMs = 200;
-
+        // pathing + runtime state); the shared EntityEventHub retains RitualBlocker entities with
+        // ONE subscription and ONE path read per event. Streamed-out blockers fail the live IsValid
+        // check, so the result still means "a currently-valid RitualBlocker exists".
         public static bool IsRitualActive(GameController? gameController)
         {
-            List<Entity>? entities = gameController?.EntityListWrapper?.OnlyValidEntities;
-            if (entities == null)
+            if (gameController == null)
                 return false;
 
-            long now = Environment.TickCount64;
-            if (ReferenceEquals(entities, s_ritualEntitiesOwner) && now - s_ritualScanTimestampMs < RitualDetectionCacheMs)
-                return s_ritualActive;
-
-            bool active = false;
-            for (int i = 0; i < entities.Count; i++)
-            {
-                string path = DynamicAccess.TryReadString(entities[i], DynamicAccessProfiles.Path, out string resolvedPath)
-                    ? resolvedPath
-                    : string.Empty;
-
-                if (path.Contains("RitualBlocker", StringComparison.Ordinal))
-                {
-                    active = true;
-                    break;
-                }
-            }
-
-            s_ritualEntitiesOwner = entities;
-            s_ritualActive = active;
-            s_ritualScanTimestampMs = now;
-            return active;
+            EntityEventHub.Instance.EnsureSubscribed(gameController);
+            return EntityEventHub.Instance.RitualBlockers.Any(static entity => IsEntityCurrentlyValid(entity));
         }
+
+        private static bool IsEntityCurrentlyValid(Entity entity)
+            => DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsValid, out bool isValid) && isValid;
 
         public static string ResolveWorldItemMetadataPath(
             Entity? item,

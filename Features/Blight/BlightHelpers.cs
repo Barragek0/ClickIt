@@ -2,6 +2,14 @@ namespace ClickIt.Features.Blight;
 
 internal static class BlightHelpers
 {
+    // Robust StateMachine-state value read: the obfuscated per-state Value can be an int/long/byte
+    // and can throw for an unrelated state, so convert defensively and treat an unreadable value as 0.
+    internal static long TryReadStateValue(dynamic state)
+    {
+        try { return Convert.ToInt64(state.Value); }
+        catch { return 0; }
+    }
+
     internal static BlightTowerType? MapTowerIdToType(string towerId)
     {
         if (string.IsNullOrEmpty(towerId))
@@ -23,6 +31,32 @@ internal static class BlightHelpers
 
         string suffix = path[(idx + "BlightFoundation".Length)..];
         return BlightTowerData.MapFoundationSuffix(suffix) ?? BlightTowerType.Chilling;
+    }
+
+    // Path-derived tower type from a retained/stale tower entity (e.g. "...BlightTowerFlameRank3@83").
+    // The BlightTower component is unreadable once the entity streams out, so the path marker between
+    // "BlightTower" and "Rank" is the only signal — used to keep far-away towers in the coverage set.
+    internal static BlightTowerType? DetectTowerTypeFromPath(string? path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return null;
+        int idx = path.LastIndexOf("BlightTower", StringComparison.OrdinalIgnoreCase);
+        if (idx < 0)
+            return null;
+        int rankIdx = path.LastIndexOf("Rank", StringComparison.OrdinalIgnoreCase);
+        if (rankIdx <= idx)
+            return null;
+        string marker = path[(idx + "BlightTower".Length)..rankIdx];
+        return marker switch
+        {
+            "Flame" => BlightTowerType.Fireball,
+            "Chilling" => BlightTowerType.Chilling,
+            "Stunning" => BlightTowerType.Seismic,
+            "Buff" => BlightTowerType.Empowering,
+            "Shocking" => BlightTowerType.ShockNova,
+            "Minion" => BlightTowerType.Summoning,
+            _ => null,
+        };
     }
 
     internal static int DetectUpgradeRankFromEntityPath(Entity? entity)
@@ -114,6 +148,20 @@ internal static class BlightHelpers
 
     internal static float GridToWorldRadius(float gridRadius)
         => gridRadius / PoeMapExtension.WorldToGridConversion;
+
+    // World (beam) coordinates -> grid. Beams are stored in world space; the coverage/geometry
+    // pipeline works in grid space, so each beam's start becomes the segment's grid anchor.
+    internal static NumVector2 WorldToGrid(System.Numerics.Vector3 world)
+        => new(world.X * PoeMapExtension.WorldToGridConversion, world.Y * PoeMapExtension.WorldToGridConversion);
+
+    // The beam is the true lane geometry; fall back to the icon's dot position when the beam could
+    // not be read (a zero start).
+    internal static NumVector2 BeamAnchorToGrid(NumVector2 gridPos, System.Numerics.Vector3 beamStart)
+        => (beamStart.X == 0f && beamStart.Y == 0f && beamStart.Z == 0f) ? gridPos : WorldToGrid(beamStart);
+
+    // The beam's world start carries the terrain Z that lane labels and arrows project against.
+    internal static System.Numerics.Vector3 BeamWorld(NumVector2 gridPos, System.Numerics.Vector3 beamStart)
+        => (beamStart.X == 0f && beamStart.Y == 0f && beamStart.Z == 0f) ? GridToWorld(gridPos) : beamStart;
 
     internal static bool IsScreenPosInWindow(NumVector2 screenPos, Size2F windowSize, float allowance)
         => screenPos.X >= -allowance && screenPos.X <= windowSize.Width + allowance

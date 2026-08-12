@@ -16,6 +16,10 @@ namespace ClickIt.Features.Click.Selection
     {
         private readonly OffscreenTraversalTargetResolverDependencies _dependencies = dependencies;
 
+        // Offscreen-walkable structures (eldritch altars, area transitions, shrines) are retained by
+        // the shared EntityEventHub with ONE subscription and ONE path read per event. The
+        // resolution re-reads each retained entity's fresh dynamic state
+        // (distance/targetable/clickable) because that changes in place and does not fire events.
         // The offscreen walk-target scan runs every click tick whenever no label is clickable and
         // walks all enabled entity categories (altars/shrines/transitions) with per-entity DLR reads
         // — the dominant click-processing cost in that state. Cache the resolution for a short window;
@@ -23,6 +27,38 @@ namespace ClickIt.Features.Click.Selection
         private Entity? _cachedWalkTarget;
         private long _cachedWalkTargetAtMs;
         private const long OffscreenTargetCacheWindowMs = 250;
+
+        // Retains any entity that could be an offscreen walk target: an eldritch altar (path marker),
+        // an area transition (type or path marker), or a shrine (path marker). One path read + type
+        // read per EntityAdded keeps the event handler cheap. The per-category resolution still
+        // applies its own targetable/clickable filters on top of this coarse retained set.
+        internal static bool IsOffscreenWalkableStructure(Entity entity)
+        {
+            if (entity == null)
+                return false;
+            string path = DynamicAccess.TryReadString(entity, DynamicAccessProfiles.Path, out string resolvedPath)
+                ? resolvedPath
+                : string.Empty;
+            if (EntityEventHub.IsShrineEntity(path, entity))
+                return true;
+            if (EntityEventHub.IsOffscreenStructurePath(path))
+                return true;
+            try { return entity.Type == EntityType.AreaTransition; }
+            catch { return false; }
+        }
+
+        private void EnsureStructureSubscription()
+        {
+            EntityEventHub.Instance.EnsureSubscribed(_dependencies.GameController);
+            if (EntityEventHub.Instance.OffscreenStructures.Count == 0 && Environment.TickCount64 - _lastStructureReseedMs >= StructureReseedIntervalMs)
+            {
+                _lastStructureReseedMs = Environment.TickCount64;
+                EntityEventHub.Instance.Reseed();
+            }
+        }
+
+        private const long StructureReseedIntervalMs = 2000;
+        private long _lastStructureReseedMs;
 
         internal Entity? ResolveNearestOffscreenWalkTarget()
         {
@@ -169,7 +205,7 @@ namespace ClickIt.Features.Click.Selection
                     continue;
                 }
 
-                if (!ShouldContinuePathfindingToLabel(label, entity, labels, windowTopLeft))
+                if (!ShouldContinuePathfindingToLabel(label, entity, labels, windowTopLeft, distance))
                 {
                     rejectedShouldContinue++;
                     continue;
@@ -203,29 +239,49 @@ namespace ClickIt.Features.Click.Selection
             float bestDistance = float.MaxValue;
             string? bestMechanicId = null;
 
-            EntityQueryService.VisitValidEntities(_dependencies.GameController, entity =>
+            void Consider(Entity entity)
             {
                 if (!TryPrepareOffscreenEntityTargetCandidate(entity, maxDistance, out string path))
-                    return false;
+                    return;
 
                 if (!includeEntity(entity, path))
-                    return false;
+                    return;
 
                 string? mechanicId = resolveMechanicId(entity, path);
                 if (string.IsNullOrWhiteSpace(mechanicId))
-                    return false;
+                    return;
 
                 if (!DynamicAccess.TryReadFloat(entity, DynamicAccessProfiles.DistancePlayer, out float distance))
-                    return false;
+                    return;
 
                 if (distance >= bestDistance)
-                    return false;
+                    return;
 
                 bestDistance = distance;
                 best = entity;
                 bestMechanicId = mechanicId;
-                return false;
-            });
+            }
+
+            EnsureStructureSubscription();
+            List<Entity> structures = EntityEventHub.Instance.OffscreenStructures.Snapshot();
+            if (structures.Count > 0)
+            {
+                // Event-maintained retained set: only the fixed offscreen structures, not every
+                // entity in the area. Far-away structures survive stream-out (the retained cache),
+                // so offscreen targets are found without the full valid-entity walk.
+                for (int i = 0; i < structures.Count; i++)
+                    Consider(structures[i]);
+            }
+            else
+            {
+                // Discovery fallback (only when nothing is retained yet): a stale/unseeded retained
+                // cache or structures that appeared after the last reseed.
+                EntityQueryService.VisitValidEntities(_dependencies.GameController, entity =>
+                {
+                    Consider(entity);
+                    return false;
+                });
+            }
 
             return (best, bestMechanicId);
         }
@@ -257,7 +313,8 @@ namespace ClickIt.Features.Click.Selection
             LabelOnGround label,
             Entity entity,
             IReadOnlyList<LabelOnGround>? allLabels,
-            Vector2 windowTopLeft)
+            Vector2 windowTopLeft,
+            float distance)
         {
             if (!LabelGeometry.TryGetLabelRect(label, out RectangleF rect))
                 return true;
@@ -272,7 +329,8 @@ namespace ClickIt.Features.Click.Selection
                 return true;
 
             (bool clickResolvable, _) = _dependencies.LabelInteraction.TryResolveLabelClickPositionResult(label, null, windowTopLeft, allLabels, path);
-            return OffscreenPathingMath.ShouldContinuePathfindingWhenLabelActionable(labelInWindow, labelClickable, clickResolvable);
+            return OffscreenPathingMath.ShouldContinuePathfindingWhenLabelActionable(
+                labelInWindow, labelClickable, clickResolvable, distance, _dependencies.Settings.ClickDistance.Value);
         }
 
         private static MechanicRank BuildMechanicRank(float distance, string? mechanicId, MechanicPriorityContext mechanicPriorityContext)

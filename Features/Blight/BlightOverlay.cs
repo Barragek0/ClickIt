@@ -1,23 +1,26 @@
 namespace ClickIt.Features.Blight
 {
-    // Coordinate-space contract: map helpers take GRID positions (GridPosNum); in-world helpers take
-    // WORLD positions (PosNum) + world-space radii; Camera.WorldToScreen takes WORLD positions.
+    // Map helpers take GRID positions; in-world helpers take WORLD positions + world-space radii.
     public sealed class BlightOverlay : IOverlay
     {
         private const int BlightRefreshIntervalMs = 200;
 
         private readonly BlightService _blightService;
 
-        private static readonly Color PumpColor = new(0, 200, 255, 120);
-        internal static readonly Color PhantomLaneColor = new(235, 235, 235, 200);
         private static readonly Color LaneLabelColor = new(235, 235, 235, 215);
+        private static readonly Color UnassignedLaneLabelColor = new(255, 210, 70, 230);
         private const int LaneLineWidthMap = 2;
         private const int LaneLineWidthGame = 4;
 
         private const float TowerDotRadius = 3.5f;
         private const int TowerDotSegments = 12;
-        private const float PumpGridRadius = 12f;
-        private const float PumpWorldCircleRadius = 42f;
+
+        // Small map-only dots per lane icon colored by visual state (1 red spawning, 2 green sending, 3 none).
+        private const float PathwayDotRadius = 1.5f;
+        private const int PathwayDotSegments = 3;
+        private const float MapCullMargin = 60f;
+        private static readonly Color PathwayDotSpawningColor = new(255, 70, 70, 230);
+        private static readonly Color PathwayDotActiveColor = new(70, 255, 90, 230);
 
         private static readonly IReadOnlyList<int> EmptyPendingNumbers = [];
         private static readonly IReadOnlyList<string> EmptyPendingStrings = [];
@@ -26,6 +29,21 @@ namespace ClickIt.Features.Blight
         private int _pendingNumbersCursor = -1;
         private Dictionary<NumVector2, List<int>>? _pendingNumbersByPosition;
         private Dictionary<NumVector2, List<string>>? _pendingNumberTextsByPosition;
+        // Grid cells that already drew a tower dot this frame, so overlapping dots never stack.
+        private readonly HashSet<(int X, int Y)> _drawnDotKeys = [];
+        // Grid cells that already drew a pathway dot this frame, so overlapping lane dots never stack.
+        private readonly HashSet<(int X, int Y)> _drawnPathwayDotKeys = [];
+
+        // Per-frame icon screen-visibility arrays (reused across frames; resized on snapshot change).
+        private bool[]? _iconMapVis;
+        private bool[]? _iconWorldVis;
+
+        // Lane-label render cache rebuilt only when the coverage reference or strategy changes.
+        private LaneCoverageResult[]? _labelCacheCoverage;
+        private IBlightTowerStrategy? _labelCacheStrategy;
+        private string?[]? _labelCacheText;
+        private System.Numerics.Vector3[]? _labelCacheWorld;
+        private bool[]? _labelCacheUnassigned;
 
         internal BlightOverlay(BlightService blightService)
         {
@@ -48,9 +66,30 @@ namespace ClickIt.Features.Blight
         // Coroutine thread — entity refresh + foundation scanning + lane coverage, off the render thread.
         public void Refresh(OverlayRefreshContext ctx)
         {
+            long entityStart = Stopwatch.GetTimestamp();
+            long entityAllocStart = GC.GetAllocatedBytesForCurrentThread();
             _blightService.RefreshEntities(ctx.GameController);
+            double entityMs = (Stopwatch.GetTimestamp() - entityStart) * 1000.0 / Stopwatch.Frequency;
+            long entityBytes = GC.GetAllocatedBytesForCurrentThread() - entityAllocStart;
+
+            long foundationStart = Stopwatch.GetTimestamp();
+            long foundationAllocStart = GC.GetAllocatedBytesForCurrentThread();
             _blightService.ScanFoundations(ctx.Labels);
+            double foundationMs = (Stopwatch.GetTimestamp() - foundationStart) * 1000.0 / Stopwatch.Frequency;
+            long foundationBytes = GC.GetAllocatedBytesForCurrentThread() - foundationAllocStart;
+
+            long coverageStart = Stopwatch.GetTimestamp();
+            long coverageAllocStart = GC.GetAllocatedBytesForCurrentThread();
             _blightService.ComputeLaneCoverage();
+            double coverageMs = (Stopwatch.GetTimestamp() - coverageStart) * 1000.0 / Stopwatch.Frequency;
+            long coverageBytes = GC.GetAllocatedBytesForCurrentThread() - coverageAllocStart;
+
+            Span<long> bytes = stackalloc long[3];
+            Span<double> ms = stackalloc double[3];
+            bytes[0] = entityBytes; ms[0] = entityMs;
+            bytes[1] = foundationBytes; ms[1] = foundationMs;
+            bytes[2] = coverageBytes; ms[2] = coverageMs;
+            _blightService.RecordBreakdown(bytes, ms);
         }
 
         private readonly record struct RenderContext(
@@ -66,8 +105,7 @@ namespace ClickIt.Features.Blight
             if (!_blightService.IsEncounterActive)
                 return;
 
-            // Resolve camera/window/player/map once per frame — the per-foundation and per-lane
-            // projection code was re-reading all of these for every tower, dot, and lane segment.
+            // Resolve camera/window/player/map once per frame.
             Camera? camera = ctx.GameController?.Game?.IngameState?.Camera;
             if (camera == null)
                 return;
@@ -81,31 +119,25 @@ namespace ClickIt.Features.Blight
                 largeMap?.MapCenter ?? new NumVector2(),
                 largeMap?.MapScale ?? 1f);
 
-            bool lanesMap = ctx.Settings.BlightVisualizePaths.Value && ctx.Settings.BlightVisualizePathsMap.Value;
-            bool lanesGame = ctx.Settings.BlightVisualizePaths.Value && ctx.Settings.BlightVisualizePathsGame.Value;
-            if (lanesMap || lanesGame)
-                DrawBlightLanes(rctx, ctx.DrawQueue, _blightService, lanesMap, lanesGame);
-
-            // Lane labels ride on the in-game lane rendering so they stay anchored over the lanes; the
-            // debug-box toggle can hide just the labels while the lanes stay visible.
-            if (lanesGame && ctx.Settings.BlightDebugShowLaneLabels.Value)
+            DrawIconPathways(rctx, ctx.DrawQueue);
+            if (ctx.Settings.BlightDebugShowLaneLabels.Value)
                 DrawLaneLabels(rctx, ctx.DrawQueue);
 
             bool dotsMap = ctx.Settings.BlightVisualizeTowers.Value && ctx.Settings.BlightVisualizeTowersMap.Value;
             bool dotsGame = ctx.Settings.BlightVisualizeTowers.Value && ctx.Settings.BlightVisualizeTowersGame.Value;
             if (dotsMap || dotsGame)
-                DrawTowerDots(rctx, ctx.DrawQueue, dotsMap, dotsGame, ctx.Settings.BlightVisualizeUpgrades.Value);
+                // Upgrade order numbers ride on the game dots (no separate toggle).
+                DrawTowerDots(rctx, ctx.DrawQueue, dotsMap, dotsGame, dotsGame);
 
             bool rangesMap = ctx.Settings.BlightVisualizeTowerRanges.Value && ctx.Settings.BlightVisualizeTowerRangesMap.Value;
             bool rangesGame = ctx.Settings.BlightVisualizeTowerRanges.Value && ctx.Settings.BlightVisualizeTowerRangesGame.Value;
             if (rangesMap || rangesGame)
                 DrawTowerRanges(rctx, ctx.DrawQueue, rangesMap, rangesGame);
-
-            DrawPump(rctx, ctx.DrawQueue);
         }
 
         private void DrawTowerDots(RenderContext ctx, DeferredDrawQueue queue, bool dotsMap, bool dotsGame, bool showUpgrades)
         {
+            _drawnDotKeys.Clear();
             IReadOnlyList<BlightCachedTower> ordered = _blightService.KnownTowers;
             IBlightTowerStrategy strategy = _blightService.CurrentStrategy;
 
@@ -121,6 +153,10 @@ namespace ClickIt.Features.Blight
                 IReadOnlyList<string> pendingNumberTexts = GetPendingNumberTexts(plan, cursor, ft.WorldPosition);
 
                 if (!ShouldRenderTowerDot(isCurrentStep, pendingNumbers.Count))
+                    continue;
+
+                // Keep one dot per grid cell; overlapping tower/foundation dots render corrupted.
+                if (!_drawnDotKeys.Add(((int)MathF.Round(ft.WorldPosition.X), (int)MathF.Round(ft.WorldPosition.Y))))
                     continue;
 
                 if (ctx.LargeMapOpen && dotsMap)
@@ -153,9 +189,9 @@ namespace ClickIt.Features.Blight
             => isCurrentStep || pendingStepCount > 0;
 
         internal static Color LaneColorFor(LaneCoverageResult segment, IBlightTowerStrategy strategy)
-            => segment.IsPhantom ? PhantomLaneColor : strategy.GetLaneColor(segment);
+            => strategy.GetLaneColor(segment);
 
-        private void DrawTowerDot(DeferredDrawQueue queue, NumVector2 center, float radius, BlightCachedTower ft, bool hasTower, IBlightTowerStrategy strategy)
+        private static void DrawTowerDot(DeferredDrawQueue queue, NumVector2 center, float radius, BlightCachedTower ft, bool hasTower, IBlightTowerStrategy strategy)
         {
             Color dotColor = hasTower
                 ? strategy.GetFoundationColour(hasTower: true, ft.TowerType)
@@ -210,36 +246,173 @@ namespace ClickIt.Features.Blight
                 mapCenter.Y + (mapScale * (-(dx + dy) * SubMap.CameraAngleSin)));
         }
 
-        private static void DrawBlightLanes(RenderContext ctx, DeferredDrawQueue queue, BlightService blight, bool lanesMap, bool lanesGame)
+        // Whether a grid position projects onto the visible large-map window (with a margin), like the in-game IsGridPosOnScreen cull.
+        private static bool IsOnLargeMapScreen(RenderContext ctx, NumVector2 gridPos)
         {
-            (NumVector2[] Pathways, LaneCoverageResult[] Coverage)? bundle = blight.TryGetRenderBundle();
-            if (bundle == null || bundle.Value.Pathways.Length < 2)
+            NumVector2 pos = ProjectGridToLargeMap(ctx.PlayerGrid, ctx.LargeMapCenter, ctx.LargeMapScale, gridPos);
+            return pos.X >= -MapCullMargin && pos.X <= ctx.WindowSize.Width + MapCullMargin
+                && pos.Y >= -MapCullMargin && pos.Y <= ctx.WindowSize.Height + MapCullMargin;
+        }
+
+        private static readonly Color ActivePathwayColor = new(0, 255, 120, 200);
+
+        // Only flowing lanes render; during the build phase (no lane active yet) every lane draws.
+        private void DrawIconPathways(RenderContext ctx, DeferredDrawQueue queue)
+        {
+            IReadOnlyList<BlightPathwayIcon> icons = _blightService.IconPathwaySnapshot;
+            if (icons.Count == 0)
                 return;
 
-            NumVector2[] pathways = bundle.Value.Pathways;
-            LaneCoverageResult[] coverage = bundle.Value.Coverage;
-
-            IBlightTowerStrategy strategy = blight.CurrentStrategy;
-
-            for (int s = 0; s < coverage.Length; s++)
+            bool drawAll = true;
+            for (int i = 0; i < icons.Count; i++)
             {
-                int par = coverage[s].ParentIndex;
-                if (par < 0 || par == s || par >= pathways.Length || coverage[s].IsPumpStub)
+                if (icons[i].IsActive)
+                {
+                    drawAll = false;
+                    break;
+                }
+            }
+
+            // Per-segment coverage colours; fall back to green while coverage lags the icon scan.
+            (NumVector2[] Pathways, LaneCoverageResult[] Coverage)? bundle = _blightService.TryGetRenderBundle();
+            NumVector2[]? beamPaths = null;
+            LaneCoverageResult[]? coverage = null;
+            if (bundle != null && bundle.Value.Pathways.Length == icons.Count)
+            {
+                beamPaths = bundle.Value.Pathways;
+                if (bundle.Value.Coverage.Length == icons.Count)
+                    coverage = bundle.Value.Coverage;
+            }
+            IBlightTowerStrategy strategy = _blightService.CurrentStrategy;
+
+            // Precompute each icon's map/world screen visibility once so edge culling never
+            // re-projects the same beam anchor (hundreds of edges share few anchor points).
+            EnsureIconVisArrays(icons.Count);
+            for (int i = 0; i < icons.Count; i++)
+            {
+                NumVector2 p = beamPaths != null ? beamPaths[i] : icons[i].GridPos;
+                _iconMapVis![i] = ctx.LargeMapOpen && IsOnLargeMapScreen(ctx, p);
+                _iconWorldVis![i] = BlightHelpers.IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, p);
+            }
+
+            for (int i = 0; i < icons.Count; i++)
+            {
+                BlightPathwayIcon icon = icons[i];
+                if (!drawAll && !icon.IsActive)
                     continue;
 
-                NumVector2 a = pathways[par];
-                NumVector2 b = pathways[s];
-                Color laneColor = LaneColorFor(coverage[s], strategy);
+                // Draw from the coverage tree's parent links (never the raw beam links) so a just-attached chain never shows a detached stub.
+                int next = coverage != null ? coverage[i].ParentIndex : -1;
+                if (next >= 0 && next < icons.Count)
+                {
+                    BlightPathwayIcon to = icons[next];
+                    if (drawAll || to.IsActive)
+                        EnqueueLaneEdge(ctx, queue, beamPaths, icons, i, next, coverage, strategy, _iconMapVis!, _iconWorldVis!);
+                }
 
-                if (ctx.LargeMapOpen && lanesMap)
-                    queue.EnqueueLineOnLargeMap(a, b, LaneLineWidthMap, laneColor);
-
-                // Draw the in-world line when EITHER endpoint is on-screen: a lane — especially a
-                // phantom bridge spanning a gap — whose far end sits off-screen would otherwise vanish
-                // even though the near end (and the player) are on screen.
-                if (lanesGame && (BlightHelpers.IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, a) || BlightHelpers.IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, b)))
-                    queue.EnqueueLineInWorld(a, b, LaneLineWidthGame, laneColor);
+                // Draw every extra beam parent at a convergence junction (the tree keeps only Parents[0]).
+                if (icon.Parents.Length > 1)
+                {
+                    for (int x = 1; x < icon.Parents.Length; x++)
+                    {
+                        int p = icon.Parents[x];
+                        if (p < 0 || p >= icons.Count)
+                            continue;
+                        if (p == next)
+                            continue;
+                        BlightPathwayIcon to = icons[p];
+                        if (!drawAll && !to.IsActive)
+                            continue;
+                        EnqueueLaneEdge(ctx, queue, beamPaths, icons, i, p, coverage, strategy, _iconMapVis!, _iconWorldVis!);
+                    }
+                }
             }
+
+            DrawPathwayDots(ctx, queue);
+        }
+
+        // Map-only dots per lane icon colored by visual state (1 red spawning, 2 green sending, 3 none).
+        private void DrawPathwayDots(RenderContext ctx, DeferredDrawQueue queue)
+        {
+            if (!ctx.LargeMapOpen)
+                return;
+            _drawnPathwayDotKeys.Clear();
+            IReadOnlyList<BlightPathwayIcon> icons = _blightService.IconPathwaySnapshot;
+            LaneCoverageResult[]? coverage = _blightService.TryGetCachedCoverage();
+            // The coverage array only aligns with the icon snapshot when both came from the same
+            // scan; guard the index like DrawIconPathways so a transient refresh never overruns it.
+            bool aligned = coverage != null && coverage.Length == icons.Count;
+            for (int i = 0; i < icons.Count; i++)
+            {
+                // Half the dots: skip every other icon, always keeping branch roots and junctions.
+                if ((i & 1) != 0)
+                {
+                    int parent = aligned ? coverage![i].ParentIndex : -1;
+                    bool junction = icons[i].Parents.Length > 1 || parent < 0;
+                    if (!junction)
+                        continue;
+                }
+
+                BlightPathwayIcon icon = icons[i];
+                Color? dotColor = icon.VisualState switch
+                {
+                    1 => PathwayDotSpawningColor,
+                    2 => PathwayDotActiveColor,
+                    _ => null,
+                };
+                if (dotColor is not { } color)
+                    continue;
+
+                // Cull dots that project outside the visible map region (the web can hold hundreds).
+                if (!_iconMapVis![i])
+                    continue;
+
+                // Co-located twin lane entities share a grid cell; keep one dot per cell.
+                if (!_drawnPathwayDotKeys.Add(((int)MathF.Round(icon.GridPos.X), (int)MathF.Round(icon.GridPos.Y))))
+                    continue;
+
+                queue.EnqueueFilledCircleOnLargeMap(icon.GridPos, true, PathwayDotRadius, color, PathwayDotSegments);
+            }
+        }
+
+        // Reuse the per-frame icon visibility arrays; only resize when the icon snapshot changes.
+        private void EnsureIconVisArrays(int count)
+        {
+            if (_iconMapVis == null || _iconMapVis.Length != count)
+            {
+                _iconMapVis = new bool[count];
+                _iconWorldVis = new bool[count];
+            }
+        }
+
+        // Draw one lane edge, skipping the zero-length co-located twin edges so stacked forks don't pile lines on the node.
+        private static void EnqueueLaneEdge(
+            RenderContext ctx,
+            DeferredDrawQueue queue,
+            NumVector2[]? beamPaths,
+            IReadOnlyList<BlightPathwayIcon> icons,
+            int fromIdx,
+            int toIdx,
+            LaneCoverageResult[]? coverage,
+            IBlightTowerStrategy strategy,
+            bool[] mapVis,
+            bool[] worldVis)
+        {
+            BlightPathwayIcon fromIcon = icons[fromIdx];
+            BlightPathwayIcon to = icons[toIdx];
+            // Use the beam-anchored positions so lanes follow the beams the monsters walk.
+            NumVector2 from = beamPaths != null ? beamPaths[fromIdx] : fromIcon.GridPos;
+            NumVector2 toPos = beamPaths != null ? beamPaths[toIdx] : to.GridPos;
+            if (toPos == from)
+                return;  // co-located twin merged into this node — the edge is zero-length
+
+            Color laneColor = coverage != null ? LaneColorFor(coverage[fromIdx], strategy) : ActivePathwayColor;
+
+            // Cull map edges to the visible map using the per-icon precomputed visibility.
+            if (ctx.LargeMapOpen && (mapVis[fromIdx] || mapVis[toIdx]))
+                queue.EnqueueLineOnLargeMap(from, toPos, LaneLineWidthMap, laneColor);
+            if (worldVis[fromIdx] || worldVis[toIdx])
+                queue.EnqueueLineInWorld(from, toPos, LaneLineWidthGame, laneColor);
         }
 
         private void DrawLaneLabels(RenderContext ctx, DeferredDrawQueue queue)
@@ -249,48 +422,83 @@ namespace ClickIt.Features.Blight
                 return;
 
             LaneCoverageResult[] coverage = bundle.Value.Coverage;
-            (List<NumVector2> Positions, List<(PumpBranch Branch, List<int> Segments)> Branches) =
-                _blightService.GetBranchDebug();
-            if (Branches.Count == 0 || Positions.Count != coverage.Length)
+            IBlightTowerStrategy strategy = _blightService.CurrentStrategy;
+            if (!ReferenceEquals(coverage, _labelCacheCoverage) || !ReferenceEquals(strategy, _labelCacheStrategy))
+                RebuildLaneLabelCache(coverage, bundle.Value.Pathways, strategy);
+            if (_labelCacheText == null)
                 return;
 
-            List<List<int>> children = BlightLaneTopology.BuildCoverageChildren(coverage);
+            string?[]? text = _labelCacheText;
+            System.Numerics.Vector3[]? world = _labelCacheWorld;
+            bool[]? unassigned = _labelCacheUnassigned;
+            if (text == null || world == null || unassigned == null)
+                return;
+
+            for (int s = 0; s < coverage.Length; s++)
+            {
+                string? label = text[s];
+                if (label == null)
+                    continue;
+
+                // Project the cached terrain-midpoint once and cull on the screen position.
+                NumVector2 screen = ctx.Camera.WorldToScreen(world[s]);
+                if (!BlightHelpers.IsScreenPosInWindow(screen, ctx.WindowSize, 24f))
+                    continue;
+                DrawLaneLabel(queue, label, screen, unassigned[s] ? UnassignedLaneLabelColor : LaneLabelColor);
+            }
+        }
+
+        private void RebuildLaneLabelCache(LaneCoverageResult[] coverage, NumVector2[] pathways, IBlightTowerStrategy strategy)
+        {
+            _labelCacheCoverage = coverage;
+            _labelCacheStrategy = strategy;
+            _labelCacheText = null;
+
+            (List<NumVector2> Positions, List<(PumpBranch Branch, List<int> Segments)> Branches, List<int> Unassigned, List<List<int>>? _, List<List<BlightLaneNode>>? Forests) =
+                _blightService.GetBranchDebug();
+            if (Branches.Count == 0 || Positions.Count != coverage.Length || Forests == null)
+                return;
+
+            // The per-branch lane forests are built on the scan thread; the render thread only labels
+            // the cached lanes when the coverage reference changes.
             string?[] labelFor = new string?[coverage.Length];
             for (int b = 0; b < Branches.Count; b++)
             {
-                (PumpBranch branch, List<int> segments) = Branches[b];
+                (PumpBranch branch, _) = Branches[b];
                 if (branch.CoverageSegment < 0)
                     continue;
-                char letter = (char)('A' + (b % 26));
-                List<BlightLaneNode> forest = BlightLaneTopology.BuildBranchLaneForest(
-                    coverage, children, segments, branch.CoverageSegment, letter.ToString());
+                List<BlightLaneNode> forest = Forests[b];
                 for (int l = 0; l < forest.Count; l++)
                     LabelLanes(forest[l], labelFor);
             }
 
-            IBlightTowerStrategy strategy = _blightService.CurrentStrategy;
+            // Unassigned lanes get U{n} labels so unattached chains stay visible and distinguishable.
+            HashSet<int> unassignedSet = [.. Unassigned];
+            for (int u = 0; u < Unassigned.Count; u++)
+                labelFor[Unassigned[u]] = $"U{u + 1}";
+
             IReadOnlySet<BlightTowerType> coverageTypes = BlightCoverageFlags.ForStrategy(strategy);
             IReadOnlyDictionary<NumVector2, System.Numerics.Vector3> worldByGrid = _blightService.PathwayWorldPositions;
 
-            NumVector2[] pathways = bundle.Value.Pathways;
+            string?[] text = new string?[coverage.Length];
+            System.Numerics.Vector3[] world = new System.Numerics.Vector3[coverage.Length];
+            bool[] unassigned = new bool[coverage.Length];
             for (int s = 0; s < coverage.Length; s++)
             {
-                string? label = labelFor[s];
-                if (label == null)
+                string? baseLabel = labelFor[s];
+                if (baseLabel == null)
                     continue;
-                NumVector2 grid = coverage[s].Midpoint;
-                if (!BlightHelpers.IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, grid))
-                    continue;
-
-                // The lanes are drawn following the terrain, so the label must project at the segment's
-                // world midpoint (terrain Z from the pathway entities) — projecting the grid midpoint at
-                // Z=0 lands the text vertically off the lane, offset by terrain height and camera angle.
-                System.Numerics.Vector3 world = ResolveSegmentWorldMidpoint(pathways, coverage, s, worldByGrid)
-                    ?? BlightHelpers.GridToWorld(grid);
-                NumVector2 screen = ctx.Camera.WorldToScreen(world);
                 LaneCoverageResult seg = coverage[s];
-                DrawLaneLabel(queue, $"{label} {BlightCoverageFlags.Compact(seg, coverageTypes)}", screen);
+                text[s] = $"{baseLabel} {BlightCoverageFlags.Compact(seg, coverageTypes)}";
+                // The lanes follow the terrain, so labels project at the segment's world midpoint (terrain Z).
+                world[s] = ResolveSegmentWorldMidpoint(pathways, coverage, s, worldByGrid)
+                    ?? BlightHelpers.GridToWorld(coverage[s].Midpoint);
+                unassigned[s] = unassignedSet.Contains(s);
             }
+
+            _labelCacheText = text;
+            _labelCacheWorld = world;
+            _labelCacheUnassigned = unassigned;
         }
 
         internal static System.Numerics.Vector3? ResolveSegmentWorldMidpoint(
@@ -309,13 +517,12 @@ namespace ClickIt.Features.Blight
             return new System.Numerics.Vector3((a.X + b.X) * 0.5f, (a.Y + b.Y) * 0.5f, (a.Z + b.Z) * 0.5f);
         }
 
-        // Lane labels sit on top of the lane colour, so they use a light fill with a dark 2-way shadow
-        // to stay readable over both dark lanes and the white phantom bridges.
-        private static void DrawLaneLabel(DeferredDrawQueue queue, string text, NumVector2 pos)
+        // Lane labels use a light fill with a dark 2-way shadow to stay readable over the lane colours.
+        private static void DrawLaneLabel(DeferredDrawQueue queue, string text, NumVector2 pos, Color color)
         {
             queue.EnqueueText(text, new NumVector2(pos.X - 1f, pos.Y - 1f), Color.Black, FontAlign.Center);
             queue.EnqueueText(text, new NumVector2(pos.X + 1f, pos.Y + 1f), Color.Black, FontAlign.Center);
-            queue.EnqueueText(text, pos, LaneLabelColor, FontAlign.Center);
+            queue.EnqueueText(text, pos, color, FontAlign.Center);
         }
 
         private static void LabelLanes(BlightLaneNode lane, string?[] labelFor)
@@ -328,42 +535,25 @@ namespace ClickIt.Features.Blight
 
         private void DrawTowerRanges(RenderContext ctx, DeferredDrawQueue queue, bool rangesMap, bool rangesGame)
         {
-            IReadOnlyList<(Entity Entity, string TowerId)> towers = _blightService.TowerEntities;
+            // Ranges draw from the cached tower snapshot, never the live entities (game-memory reads on the render thread).
+            IReadOnlyList<BlightCachedTower> towers = _blightService.KnownTowers;
             IBlightTowerStrategy strategy = _blightService.CurrentStrategy;
 
             for (int i = 0; i < towers.Count; i++)
             {
-                (Entity entity, string towerId) = towers[i];
-                int radius = _blightService.GetTowerRadiusCached(towerId);
+                BlightCachedTower t = towers[i];
+                if (t.UpgradeLevel <= 0)
+                    continue;
 
-                BlightTowerType? mapped = BlightHelpers.MapTowerIdToType(towerId);
-                Color rangeColor = mapped.HasValue
-                    ? strategy.GetTowerRangeColor(mapped.Value)
-                    : Color.Gray;
+                int radius = t.Radius > 0 ? t.Radius : BlightService.GetRadiusForLevel(t.TowerType, t.UpgradeLevel);
+                Color rangeColor = strategy.GetTowerRangeColor(t.TowerType);
 
                 if (ctx.LargeMapOpen && rangesMap)
-                    queue.EnqueueCircleOnLargeMap(entity.GridPosNum, false, radius, rangeColor, LaneLineWidthMap);
+                    queue.EnqueueCircleOnLargeMap(t.WorldPosition, false, radius, rangeColor, LaneLineWidthMap);
 
-                if (rangesGame && BlightHelpers.IsWorldPosOnScreen(ctx.Camera, ctx.WindowSize, entity.PosNum))
-                    queue.EnqueueCircleInWorld(entity.PosNum, BlightHelpers.GridToWorldRadius(radius), rangeColor, 2, 24, false);
+                if (rangesGame && t.WorldPos3 is { } world && BlightHelpers.IsWorldPosOnScreen(ctx.Camera, ctx.WindowSize, world))
+                    queue.EnqueueCircleInWorld(world, BlightHelpers.GridToWorldRadius(radius), rangeColor, 2, 24, false);
             }
-        }
-
-        private void DrawPump(RenderContext ctx, DeferredDrawQueue queue)
-        {
-            // The pump entity streams out of scan range when the player walks away from the encounter;
-            // fall back to the persisted position so the dot/circle stays visible while it is active.
-            Entity? pump = _blightService.PumpEntity;
-            NumVector2? pumpGrid = pump != null ? new NumVector2(pump.GridPosNum.X, pump.GridPosNum.Y) : _blightService.PumpGridPosition;
-            System.Numerics.Vector3? pumpWorld = pump != null ? pump.PosNum : _blightService.PumpWorldPosition;
-            if (!pumpGrid.HasValue || !pumpWorld.HasValue)
-                return;
-
-            if (ctx.LargeMapOpen)
-                queue.EnqueueFilledCircleOnLargeMap(pumpGrid.Value, false, PumpGridRadius, PumpColor, 16);
-
-            if (BlightHelpers.IsWorldPosOnScreen(ctx.Camera, ctx.WindowSize, pumpWorld.Value))
-                queue.EnqueueCircleInWorld(pumpWorld.Value, BlightHelpers.GridToWorldRadius(PumpWorldCircleRadius), PumpColor, 4, 24, false);
         }
 
         internal static IReadOnlyList<int> PendingPlanStepNumbers(
@@ -408,8 +598,7 @@ namespace ClickIt.Features.Blight
             if (cache.TryGetValue(position, out List<T>? numbers))
                 return numbers;
 
-            // Exact-key miss (positions only ever differ by the <1 grid-unit tolerance): fall back to the
-            // tolerance scan once, then cache the result so later frames reuse it.
+            // Exact-key miss: fall back to the tolerance scan once, then cache the result so later frames reuse it.
             List<T> computed = [];
             foreach (int number in PendingPlanStepNumbers(plan, cursor, position))
                 computed.Add(convert(number));

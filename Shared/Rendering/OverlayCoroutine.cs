@@ -39,6 +39,21 @@ namespace ClickIt.Shared.Rendering
         {
             while (_shouldContinue())
             {
+                // Resolve the refresh context (which can trigger the 50ms label read-model scan via
+                // CachedLabels.Value) once, so the Enable gate below and the refresh share one scan.
+                OverlayRefreshContext context;
+                try { context = _refreshContextFactory(); }
+                catch { context = default; }
+
+                // Idle-yield while the Enable master switch is off instead of terminating: a
+                // finished coroutine can never be resumed, so terminating here would leave this
+                // overlay's refresh dead after the user toggles Enable back on (until a reload).
+                if (!context.Settings.Enable)
+                {
+                    yield return new WaitTime(250);
+                    continue;
+                }
+
                 bool failed = false;
                 try
                 {
@@ -50,7 +65,8 @@ namespace ClickIt.Shared.Rendering
                     long allocStart = GC.GetAllocatedBytesForCurrentThread();
                     try
                     {
-                        _overlay.Refresh(_refreshContextFactory());
+                        using (new DlrReadScope(_overlay.ProcessingSection))
+                            _overlay.Refresh(context);
                     }
                     finally
                     {

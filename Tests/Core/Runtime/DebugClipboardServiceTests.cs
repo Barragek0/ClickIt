@@ -36,92 +36,41 @@ namespace ClickIt.Tests.Core.Runtime
         }
 
         [TestMethod]
-        public void QueueDeepMemoryDumpCoroutine_LeavesRuntimeCoroutineUnset_WhenFeatureDisabled()
-        {
-            PluginContext state = new PluginContext();
-            DebugClipboardService service = CreateService(state: state);
-
-            service.QueueDeepMemoryDumpCoroutine();
-
-            state.Runtime.DeepMemoryDumpCoroutine.Should().BeNull();
-        }
-
-        [TestMethod]
-        public void DeepMemoryDumpCoordinator_StatusMessage_IsEmpty_WhenFeatureDisabled()
+        public void CompleteAdditionalDebugInfoCopy_EmptyLines_DoesNotInvokeRecorder()
         {
             DebugClipboardService service = CreateService();
-            DeepMemoryDumpCoordinator coordinator = (DeepMemoryDumpCoordinator)RuntimeMemberAccessor.GetRequiredMemberValue(service, "_deepMemoryDumpCoordinator")!;
+            bool recorderInvoked = false;
 
-            string status = coordinator.GetDeepMemoryDumpStatusMessage();
+            service.CompleteAdditionalDebugInfoCopy([], (_, _) => recorderInvoked = true);
 
-            status.Should().BeEmpty();
+            recorderInvoked.Should().BeFalse("empty lines skip the background copy entirely");
+            service.HasPendingAdditionalDebugInfoCopyRequest.Should().BeFalse();
         }
 
         [TestMethod]
-        public void DeepMemoryDumpCoordinator_OnDeepMemoryDumpProgress_ClampsAndPublishesUiState()
+        public void GameStateDump_IsExposed()
         {
-            var settings = new ClickItSettings();
-            DebugClipboardService service = CreateService(getSettings: () => settings);
-            DeepMemoryDumpCoordinator coordinator = GetDeepMemoryDumpCoordinator(service);
+            DebugClipboardService service = CreateService();
 
-            InvokePrivateVoid(coordinator, "OnDeepMemoryDumpProgress", 250);
+            service.GameStateDump.Should().NotBeNull();
+            service.GameStateDump.GetStatusMessage().Should().BeEmpty("nothing has been dumped yet");
 
-            settings.MemoryDumpInProgress.Should().BeTrue();
-            settings.MemoryDumpProgressPercent.Should().Be(100);
-            settings.MemoryDumpLastRunSucceeded.Should().BeFalse();
-            settings.MemoryDumpStatusText.Should().Contain("Writing ");
-            settings.MemoryDumpStatusText.Should().EndWith("...");
-            settings.MemoryDumpOutputPath.Should().BeEmpty();
+            GameStateDumpSnapshot progress = service.GameStateDump.GetProgress();
+            progress.InProgress.Should().BeFalse();
+            progress.ProgressPercent.Should().Be(0);
+            progress.Errors.Should().BeEmpty();
+            progress.Steps.Should().BeEmpty();
         }
 
         [TestMethod]
-        public void DeepMemoryDumpCoordinator_OnDeepMemoryDumpCompleted_PublishesSuccessState()
+        public void CancelDump_WhenNotRunning_DoesNothing()
         {
-            var settings = new ClickItSettings();
-            DebugClipboardService service = CreateService(getSettings: () => settings);
-            DeepMemoryDumpCoordinator coordinator = GetDeepMemoryDumpCoordinator(service);
+            DebugClipboardService service = CreateService();
 
-            InvokePrivateVoid(coordinator, "OnDeepMemoryDumpCompleted", @"C:\temp\memory.dat", null);
-
-            settings.MemoryDumpInProgress.Should().BeFalse();
-            settings.MemoryDumpProgressPercent.Should().Be(100);
-            settings.MemoryDumpLastRunSucceeded.Should().BeTrue();
-            settings.MemoryDumpStatusText.Should().Contain("written successfully");
-            settings.MemoryDumpOutputPath.Should().Be(@"C:\temp\memory.dat");
-        }
-
-        [TestMethod]
-        public void DeepMemoryDumpCoordinator_OnDeepMemoryDumpCompleted_PublishesFailureState()
-        {
-            var settings = new ClickItSettings();
-            DebugClipboardService service = CreateService(getSettings: () => settings);
-            DeepMemoryDumpCoordinator coordinator = GetDeepMemoryDumpCoordinator(service);
-
-            InvokePrivateVoid(coordinator, "OnDeepMemoryDumpCompleted", null, "disk full");
-
-            settings.MemoryDumpInProgress.Should().BeFalse();
-            settings.MemoryDumpProgressPercent.Should().Be(0);
-            settings.MemoryDumpLastRunSucceeded.Should().BeFalse();
-            settings.MemoryDumpStatusText.Should().Contain("Memory dump failed: disk full");
-            settings.MemoryDumpOutputPath.Should().BeEmpty();
-        }
-
-        [TestMethod]
-        public void DeepMemoryDumpCoordinator_SetMemoryDumpUiState_Returns_WhenSettingsUnavailable()
-        {
-            DebugClipboardService service = CreateService(getSettings: static () => null);
-            DeepMemoryDumpCoordinator coordinator = GetDeepMemoryDumpCoordinator(service);
-
-            Action act = () => InvokePrivateVoid(
-                coordinator,
-                "SetMemoryDumpUiState",
-                true,
-                42,
-                false,
-                "status",
-                "path");
+            Action act = () => service.GameStateDump.CancelDump();
 
             act.Should().NotThrow();
+            service.GameStateDump.GetProgress().InProgress.Should().BeFalse();
         }
 
         private static DebugClipboardService CreateService(
@@ -136,9 +85,6 @@ namespace ClickIt.Tests.Core.Runtime
                 getSettings ?? (() => new ClickItSettings()),
                 getGameController ?? (() => null)));
         }
-
-        private static DeepMemoryDumpCoordinator GetDeepMemoryDumpCoordinator(DebugClipboardService service)
-            => (DeepMemoryDumpCoordinator)RuntimeMemberAccessor.GetRequiredMemberValue(service, "_deepMemoryDumpCoordinator")!;
 
         private static void InvokePrivateVoid(object instance, string methodName, params object?[] args)
         {

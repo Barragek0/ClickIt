@@ -112,26 +112,22 @@ public class BlightTowerDataTests
     }
 
     [TestMethod]
-    public void GetSpecializationMenuChildIndex_FireballMenuOrder_IsReverseOfEnum()
+    public void GetSpecializationMenuChildIndex_FireballMenuOrder_MatchesDatOrder()
     {
-        // Verified in-game: the Fireball 3→4 upgrade panel shows the two
-        // specialization buttons as DIRECT siblings of Child[0].Child[3] with
-        // Flamethrower at index 0 and Meteor at index 1 — the REVERSE of the
-        // TowerSpecialization enum (Meteor=0, Flamethrower=1).  The executor
-        // must click the game menu index, never the enum value.
+        // User-confirmed in-game (2026-08-11): the Fireball 3→4 upgrade panel's two specialization
+        // buttons are DIRECT siblings of Child[0].Child[3] with Flamethrower at index 0 and Meteor at
+        // index 1 — the same order as the BlightTowerDat file (FlamethrowerTower is declared before
+        // MeteorTower), NOT the TowerSpecialization enum order. A plan step of 'SPECIAL Meteor' must
+        // click index 1, never index 0 (index 0 is Flamethrower — the reported bug).
         BlightTowerData.GetSpecializationMenuChildIndex(BlightTowerType.Fireball, TowerSpecialization.Meteor)
             .Should().Be(1, "Meteor is the second button in the Fireball upgrade panel");
         BlightTowerData.GetSpecializationMenuChildIndex(BlightTowerType.Fireball, TowerSpecialization.Flamethrower)
             .Should().Be(0, "Flamethrower is the first button in the Fireball upgrade panel");
-
-        // The enum value for Meteor is 0 — it must NOT be used as the menu
-        // index (clicking index 0 would pick Flamethrower).
-        int enumValue = (int)TowerSpecialization.Meteor;
-        int menuIndex = BlightTowerData.GetSpecializationMenuChildIndex(BlightTowerType.Fireball, TowerSpecialization.Meteor);
-        enumValue.Should().NotBe(menuIndex, "the enum value is not the game menu index");
     }
 
     [TestMethod]
+    // Menu indices follow the BlightTowerDat file order (user-confirmed for Fireball: Flamethrower=0,
+    // Meteor=1); the same dat-order pattern applies to every base type. Summoning already matched.
     [DataRow((int)BlightTowerType.Fireball, (int)TowerSpecialization.Meteor, 1)]
     [DataRow((int)BlightTowerType.Fireball, (int)TowerSpecialization.Flamethrower, 0)]
     [DataRow((int)BlightTowerType.Chilling, (int)TowerSpecialization.GlacialCage, 1)]
@@ -142,8 +138,8 @@ public class BlightTowerDataTests
     [DataRow((int)BlightTowerType.Empowering, (int)TowerSpecialization.BuffPlayers, 0)]
     [DataRow((int)BlightTowerType.Seismic, (int)TowerSpecialization.StoneGaze, 1)]
     [DataRow((int)BlightTowerType.Seismic, (int)TowerSpecialization.Temporal, 0)]
-    [DataRow((int)BlightTowerType.Summoning, (int)TowerSpecialization.ScoutMinion, 1)]
-    [DataRow((int)BlightTowerType.Summoning, (int)TowerSpecialization.TankMinion, 0)]
+    [DataRow((int)BlightTowerType.Summoning, (int)TowerSpecialization.ScoutMinion, 0)]
+    [DataRow((int)BlightTowerType.Summoning, (int)TowerSpecialization.TankMinion, 1)]
     public void GetSpecializationMenuChildIndex_MapsEverySpecialization(int type, int spec, int expected)
     {
         BlightTowerData.GetSpecializationMenuChildIndex((BlightTowerType)type, (TowerSpecialization)spec)

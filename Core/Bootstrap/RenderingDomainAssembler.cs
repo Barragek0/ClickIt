@@ -8,30 +8,23 @@ namespace ClickIt.Core.Bootstrap
 
     internal static class RenderingDomainAssembler
     {
-        /**
-        Keep this thin runtime entry wrapper so the production bootstrap path stays
-        readable and stable. The injected internal overload preserves direct proof
-        over rendering composition without forcing tests through owner clipboard or
-        graphics setup, so do not collapse this wrapper unless the replacement keeps
-        the same testable separation.
-         */
+        // Thin runtime entry wrapper so the injected internal overload stays testable without runtime traversal.
         public static RenderingDomainServices Assemble(ClickIt owner, ClickItSettings settings, CoreDomainServices core)
             => Assemble(
                 owner,
                 settings,
                 core,
-                owner.Graphics,
                 owner.LogMessage);
 
         internal static RenderingDomainServices Assemble(
             BaseSettingsPlugin<ClickItSettings> plugin,
             ClickItSettings settings,
             CoreDomainServices core,
-            Graphics graphics,
             Action<string, int> logMessage)
         {
             OverlayRenderHost overlayRenderHost = new();
-            overlayRenderHost.Register(new StrongboxOverlay());
+            overlayRenderHost.Register(new StrongboxOverlay(
+                (ReadOnlySpan<long> bytes, ReadOnlySpan<double> ms) => core.PerformanceMonitor.RecordBreakdown(ProcessingSection.Strongbox, bytes, ms)));
 
             AltarChoiceEvaluator altarChoiceEvaluator = new(settings, logMessage);
             overlayRenderHost.Register(new AltarOverlay(core.WeightCalculator, altarChoiceEvaluator, core.AltarService, logMessage));
@@ -43,7 +36,7 @@ namespace ClickIt.Core.Bootstrap
             overlayRenderHost.Register(new BlightOverlay(core.BlightService));
             overlayRenderHost.Register(new PerformanceInGameOverlay(core.PerformanceMonitor.GetDebugSnapshot, () => AreaService.IsInMap(plugin.GameController)));
 
-            ImGuiDebugOverlay guiDebugOverlay = new(settings, core.PerformanceMonitor, core.BlightService, new PluginDebugTelemetrySource(plugin));
+            ImGuiDebugOverlay guiDebugOverlay = new(settings, core.PerformanceMonitor, core.BlightService, new PluginDebugTelemetrySource(plugin), core.HarvestService);
 
             UiRegionRectangleOverlay uiRegionRectangleOverlay = new(settings, core.AreaService);
 
@@ -54,7 +47,7 @@ namespace ClickIt.Core.Bootstrap
                 overlayRenderHost);
         }
 
-        public static UltimatumOverlay CreateUltimatumOverlay(ClickItSettings settings, ClickAutomationPort clickAutomationPort)
+        public static UltimatumOverlay CreateUltimatumOverlay(ClickAutomationPort clickAutomationPort)
             => new(
                 () => clickAutomationPort.TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews) ? previews : null,
                 () => clickAutomationPort.RefreshUltimatumPreview());

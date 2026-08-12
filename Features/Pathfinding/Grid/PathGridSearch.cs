@@ -29,10 +29,7 @@ namespace ClickIt.Features.Pathfinding.Grid
         [ThreadStatic] private static int s_generation;
         [ThreadStatic] private static PriorityQueue<int, float>? s_open;
 
-        // A* runs over the full area grid (millions of cells): the old per-call arrays were
-        // ~21MB of LOH garbage plus a full-grid init loop per pathfind. Reuse per-thread buffers
-        // (reallocated only when the area grid size changes) and lazily reset them via a generation
-        // stamp instead of clearing the whole grid.
+        // Reuse per-thread buffers sized to the area grid, lazily reset via a generation stamp.
         private static void EnsureSearchBuffers(int width, int height, int nodeCount)
         {
             if (s_closed != null && s_gScore != null && s_parent != null && s_version != null

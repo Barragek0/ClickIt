@@ -37,4 +37,21 @@ public class ClickAllocationStoreTests
         stats.SampleCount.Should().Be(0);
         stats.Execute.AvgBytesPerRun.Should().Be(0);
     }
+
+    [TestMethod]
+    public void MaxAllocPerSecond_RequiresPeriod_ThenReflectsFastestStageSample()
+    {
+        var store = new ClickAllocationStore();
+
+        store.Record(new ClickAllocationBreakdown(ContextBytes: 1000, AcquireBytes: 0, RankBytes: 0, ExecuteBytes: 0, PostBytes: 0, OtherBytes: 0));
+        store.GetStats().Context.MaxAllocPerSecond.Should().Be(0, "a single sample has no period to derive a rate from");
+
+        Thread.Sleep(80);
+        store.Record(new ClickAllocationBreakdown(ContextBytes: 5000, AcquireBytes: 0, RankBytes: 0, ExecuteBytes: 0, PostBytes: 0, OtherBytes: 0));
+
+        ClickAllocationStats stats = store.GetStats();
+        // The second 5000-byte sample over a real ~80ms period = ~62KB/s peak; keep the bound loose.
+        stats.Context.MaxAllocPerSecond.Should().BeGreaterThan(20_000);
+        stats.Rank.MaxAllocPerSecond.Should().Be(0, "stages without a second sample have no peak rate");
+    }
 }

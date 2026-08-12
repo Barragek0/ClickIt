@@ -10,7 +10,7 @@ internal static class PluginCoroutineNames
     internal const string ClickLogic = "Click";
     internal const string ManualUiHover = "Manual UI Hover";
     internal const string DelveFlare = "Flare";
-    internal const string DeepMemoryDump = "Memory Dump";
+    internal const string GameStateDump = "Game State Dump";
 
     // Overlay refresh coroutines are stopped by the OverlayRenderHost, so they don't participate in
     // the named shutdown scan. Each keeps a unique name — ExileCore's runner keys coroutine
@@ -18,5 +18,5 @@ internal static class PluginCoroutineNames
     internal static string OverlayRefresh(string overlayName) => $"{overlayName} Overlay";
 
     internal static bool IsTrackedName(string? name)
-        => name is AltarScan or BlockedUiRefresh or ClickLogic or ManualUiHover or DelveFlare or DeepMemoryDump;
+        => name is AltarScan or BlockedUiRefresh or ClickLogic or ManualUiHover or DelveFlare or GameStateDump;
 }

@@ -1,9 +1,13 @@
+using System.Linq.Expressions;
+
 namespace ClickIt.UI.Debug.Introspection
 {
     internal sealed class RuntimeObjectTraversalEngine
     {
         private readonly Stack<RuntimeObjectTraversalPendingNode> _stack = new();
-        private readonly HashSet<object> _visited = new(ReferenceEqualityComparer.Instance);
+        private readonly HashSet<object> _visited = new(VisitKeyComparer.Instance);
+        private readonly HashSet<string>? _skipMembers;
+        private readonly Func<object, IReadOnlyList<(string Name, object? Value)>?>? _extraChildrenProvider;
         private readonly Stopwatch _elapsedStopwatch = Stopwatch.StartNew();
 
         public RuntimeObjectTraversalOptions Options { get; }
@@ -15,6 +19,10 @@ namespace ClickIt.UI.Debug.Introspection
         {
             Options = options;
             EnforceElapsedBudget = enforceElapsedBudget;
+            _skipMembers = options.SkipMemberNames is { Count: > 0 } names
+                ? new HashSet<string>(names, StringComparer.OrdinalIgnoreCase)
+                : null;
+            _extraChildrenProvider = options.ExtraChildrenProvider;
             _stack.Push(new RuntimeObjectTraversalPendingNode("Root", root, 0));
         }
 
@@ -61,10 +69,14 @@ namespace ClickIt.UI.Debug.Introspection
                     return events;
                 }
 
-                if (!type.IsValueType && !_visited.Add(value))
+                if (!type.IsValueType)
                 {
-                    events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.NodeCycle, pending.Path, RuntimeType: type));
-                    return events;
+                    object visitKey = GetVisitKey(value);
+                    if (!_visited.Add(visitKey))
+                    {
+                        events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.NodeCycle, pending.Path, RuntimeType: type));
+                        return events;
+                    }
                 }
 
                 if (value is IEnumerable enumerable and not string)
@@ -121,6 +133,12 @@ namespace ClickIt.UI.Debug.Introspection
                     MemberInfo member = members[i];
                     string memberPath = $"{pending.Path}.{member.Name}";
 
+                    if (_skipMembers != null && _skipMembers.Contains(member.Name))
+                    {
+                        events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.MemberSkipped, memberPath));
+                        continue;
+                    }
+
                     if (!RuntimeObjectTraversalSupport.TryGetMemberValue(value, member, out object? memberValue))
                     {
                         events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.MemberUnavailable, memberPath));
@@ -148,6 +166,23 @@ namespace ClickIt.UI.Debug.Introspection
                     stagedMembers.Add(new RuntimeObjectTraversalPendingNode(memberPath, memberValue, pending.Depth + 1));
                 }
 
+                if (_extraChildrenProvider != null)
+                {
+                    IReadOnlyList<(string Name, object? Value)>? extras = null;
+                    try
+                    {
+                        extras = _extraChildrenProvider(value);
+                    }
+                    catch
+                    {
+                    }
+                    if (extras != null)
+                    {
+                        for (int i = extras.Count - 1; i >= 0; i--)
+                            _stack.Push(new RuntimeObjectTraversalPendingNode($"{pending.Path}.{extras[i].Name}", extras[i].Value, pending.Depth + 1));
+                    }
+                }
+
                 for (int i = stagedMembers.Count - 1; i >= 0; i--)
                     _stack.Push(stagedMembers[i]);
             }
@@ -159,13 +194,34 @@ namespace ClickIt.UI.Debug.Introspection
             return events;
         }
 
-        private sealed class ReferenceEqualityComparer : IEqualityComparer<object>
+        // RemoteMemoryObject wrappers are re-created per memory read, so key cycles by the underlying
+        // memory address (value equality on the boxed long) instead of reference identity.
+        private static object GetVisitKey(object value)
         {
-            public static readonly ReferenceEqualityComparer Instance = new();
+            if (value is RemoteMemoryObject remote)
+            {
+                try
+                {
+                    long address = remote.Address;
+                    if (address != 0)
+                        return address;
+                }
+                catch
+                {
+                }
+            }
+            return value;
+        }
 
-            public new bool Equals(object? x, object? y) => ReferenceEquals(x, y);
+        private sealed class VisitKeyComparer : IEqualityComparer<object>
+        {
+            public static readonly VisitKeyComparer Instance = new();
 
-            public int GetHashCode(object obj) => RuntimeHelpers.GetHashCode(obj);
+            public new bool Equals(object? x, object? y)
+                => x is long lx && y is long ly ? lx == ly : ReferenceEquals(x, y);
+
+            public int GetHashCode(object obj)
+                => obj is long l ? l.GetHashCode() : RuntimeHelpers.GetHashCode(obj);
         }
     }
 
@@ -180,7 +236,10 @@ namespace ClickIt.UI.Debug.Introspection
         bool IncludeNonPublicMembers,
         int MaxValueChars,
         int MaxTotalNodes,
-        int MaxElapsedMs);
+        int MaxElapsedMs,
+        int ProgressNodeTotal,
+        IReadOnlyList<string> SkipMemberNames,
+        Func<object, IReadOnlyList<(string Name, object? Value)>?>? ExtraChildrenProvider);
 
     internal static class RuntimeObjectTraversalSupport
     {
@@ -255,31 +314,86 @@ namespace ClickIt.UI.Debug.Introspection
             return sortedMembers;
         }
 
+        private static readonly Dictionary<(MemberInfo Member, Type SourceType), Func<object, object?>> AccessorCache = [];
+        private static readonly Lock AccessorCacheLock = new();
+
         public static bool TryGetMemberValue(object source, MemberInfo member, out object? value)
         {
             value = null;
             if (source == null || member == null)
                 return false;
 
+            Func<object, object?> accessor = GetAccessor(member, source.GetType());
             try
             {
-                switch (member)
-                {
-                    case PropertyInfo property:
-                        value = property.GetValue(source);
-                        return true;
-                    case FieldInfo field:
-                        value = field.GetValue(source);
-                        return true;
-                    default:
-                        return false;
-                }
+                value = accessor(source);
+                return true;
             }
             catch
             {
                 return false;
             }
         }
+
+        private static Func<object, object?> GetAccessor(MemberInfo member, Type sourceType)
+        {
+            (MemberInfo Member, Type SourceType) key = (member, sourceType);
+            lock (AccessorCacheLock)
+            {
+                if (AccessorCache.TryGetValue(key, out Func<object, object?>? cached))
+                    return cached;
+            }
+
+            Func<object, object?> accessor = TryCompileAccessor(member, sourceType);
+            lock (AccessorCacheLock)
+            {
+                AccessorCache[key] = accessor;
+            }
+            return accessor;
+        }
+
+        // Compiled getter delegates are far faster than reflection GetValue per member; any member
+        // that cannot be compiled (non-public, indexer, exotic shape) falls back to reflection.
+        private static Func<object, object?> TryCompileAccessor(MemberInfo member, Type sourceType)
+        {
+            try
+            {
+                if (member is PropertyInfo property)
+                {
+                    if (property.GetGetMethod(nonPublic: true) is not { IsPublic: true } || property.GetIndexParameters().Length > 0)
+                        return GetValueAccessor(member);
+                }
+                else if (member is not FieldInfo)
+                {
+                    return GetValueAccessor(member);
+                }
+
+                ParameterExpression instance = Expression.Parameter(typeof(object), "instance");
+                Expression cast = Expression.Convert(instance, sourceType);
+                Expression body = member switch
+                {
+                    PropertyInfo p => Expression.Convert(Expression.Property(cast, p.Name), typeof(object)),
+                    FieldInfo field => Expression.Convert(Expression.Field(cast, field.Name), typeof(object)),
+                    _ => Expression.Constant(null, typeof(object)),
+                };
+                return Expression.Lambda<Func<object, object?>>(body, instance).Compile();
+            }
+            catch
+            {
+                return GetValueAccessor(member);
+            }
+        }
+
+        private static Func<object, object?> GetValueAccessor(MemberInfo member)
+            => source => InvokeGetValue(member, source);
+
+        private static object? InvokeGetValue(MemberInfo member, object source)
+            => member switch
+            {
+                PropertyInfo property => property.GetValue(source),
+                FieldInfo field => field.GetValue(source),
+                _ => null,
+            };
 
         public static bool IsSimpleType(Type type)
         {

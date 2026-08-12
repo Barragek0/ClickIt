@@ -4,6 +4,8 @@ public sealed class BlightService
 {
     private readonly ClickItSettings _settings;
     private readonly Func<Vector2, bool> _isPointInClickableArea;
+    private readonly BreakdownRecorder? _recordBreakdown;
+    private readonly Action<long, double>? _recordExecutorStage;
     private GameController? _gameController;
 
     private readonly BlightEntityCache _cache;
@@ -11,21 +13,46 @@ public sealed class BlightService
 
     internal IReadOnlyList<Entity> PathwayEntities => _cache.PathwayEntities;
     internal IReadOnlyList<(Entity Entity, string TowerId)> TowerEntities => _cache.TowerEntities;
+    internal IReadOnlyList<BlightPathwayIcon> IconPathwaySnapshot => _cache.IconPathwaySnapshot;
     internal Entity? PumpEntity => _cache.PumpEntity;
     internal NumVector2? PumpGridPosition => _cache.PumpGridPosition;
+
+    internal string DumpPumpStateMachine()
+        => PumpEntity is { } pump ? BlightEncounter.DumpPumpStateMachine(pump) : "Pump: (none)";
     internal System.Numerics.Vector3? PumpWorldPosition => _cache.PumpWorldPosition;
     internal bool IsEncounterActive => _encounter.IsActive;
     internal IReadOnlyList<BlightCachedTower> KnownTowers => _cache.KnownTowers;
     internal IReadOnlyDictionary<NumVector2, System.Numerics.Vector3> PathwayWorldPositions => _cache.PathwayWorldPositions;
 
-    internal BlightService(ClickItSettings settings, Func<Vector2, bool>? isPointInClickableArea = null)
+    internal BlightService(
+        ClickItSettings settings,
+        Func<Vector2, bool>? isPointInClickableArea = null,
+        BreakdownRecorder? recordBreakdown = null,
+        Action<long, double>? recordExecutorStage = null,
+        Action<long, double>? recordEventStage = null)
     {
         _settings = settings;
         _isPointInClickableArea = isPointInClickableArea ?? (static _ => true);
-        _cache = new BlightEntityCache(settings, _debugEvents, _encounter);
+        _recordBreakdown = recordBreakdown;
+        _recordExecutorStage = recordExecutorStage;
+        _cache = new BlightEntityCache(settings, _debugEvents, _encounter, recordEventStage);
         _cache.ClearRequested += Clear;
         _cache.DataChanged += HandleCacheDataChanged;
     }
+
+    // Refresh sub-stage breakdown (entities / foundations / coverage), forwarded from the overlay.
+    internal void RecordBreakdown(ReadOnlySpan<long> stageBytes, ReadOnlySpan<double> stageMs)
+        => _recordBreakdown?.Invoke(stageBytes, stageMs);
+
+    // Plugin disable/reload teardown: unhooks the live GameController entity-event subscriptions so
+    // the disposed cache's handler (a per-entity path read) stops running on every EntityAdded.
+    internal void DisposeForShutdown()
+        => _cache.DisposeForShutdown();
+
+    // Executor stage (the click-pipeline building work): recorded separately from the refresh stages
+    // because it runs on the click thread at a different cadence.
+    internal void RecordExecutorStage(long bytes, double ms)
+        => _recordExecutorStage?.Invoke(bytes, ms);
 
     internal bool IsPointInClickableArea(Vector2 point) => _isPointInClickableArea(point);
 
@@ -35,23 +62,8 @@ public sealed class BlightService
     internal (NumVector2[] Pathways, LaneCoverageResult[] Coverage)? TryGetRenderBundle() => _cache.TryGetRenderBundle();
     internal LaneCoverageResult[] ComputeLaneCoverage() => _cache.ComputeLaneCoverage();
 
-    internal (List<NumVector2> Positions, List<(PumpBranch Branch, List<int> Segments)> Branches) GetBranchDebug()
-    {
-        LaneCoverageResult[]? coverage = _cache.TryGetCachedCoverage();
-        if (coverage is not { Length: > 0 })
-            return (new List<NumVector2>(), new List<(PumpBranch, List<int>)>());
-
-        List<NumVector2>? positions = _cache.GetAlignedPathways(coverage);
-
-        NumVector2? pump = _cache.PumpGridPosition;
-
-        List<PumpBranch> branches = BlightBranches.FindPumpBranches(
-            coverage, pump, positions, _cache.CachedBranchAnchors);
-        List<(PumpBranch, List<int>)> result = [];
-        for (int b = 0; b < branches.Count; b++)
-            result.Add((branches[b], BlightBranches.BranchSegments(coverage, branches[b])));
-        return (positions ?? [], result);
-    }
+    internal (List<NumVector2> Positions, List<(PumpBranch Branch, List<int> Segments)> Branches, List<int> UnassignedSegments, List<List<int>>? Children, List<List<BlightLaneNode>>? Forests) GetBranchDebug()
+        => _cache.GetBranchDebugCached();
 
     internal void RefreshEntities(GameController? gameController)
     {
@@ -109,6 +121,8 @@ public sealed class BlightService
         return sb.ToString();
     }
 
+    internal string DumpPathwayIconDebug() => _cache.DumpPathwayIconDebug();
+
     internal string DumpBranchRootDebug()
     {
         LaneCoverageResult[]? coverage = _cache.TryGetCachedCoverage();
@@ -142,10 +156,7 @@ public sealed class BlightService
         return sb.ToString();
     }
 
-    // The game's authoritative lane list lives on the server data (ServerDataOffsets.BlightLanes, a
-    // NativePtrArray).  ExileCore exposes no wrapper for the per-lane element layout, so this dumps
-    // the array header and the raw bytes of the first elements so the struct (positions/ids/direction)
-    // can be reverse-engineered from an in-encounter capture.
+    // Dumps the server's authoritative lane list header + raw element bytes for reverse-engineering.
     internal string DumpBlightServerLanes()
     {
         if (_gameController?.Game?.IngameState?.ServerData is not { } serverData)
@@ -204,10 +215,7 @@ public sealed class BlightService
 
     internal const int DefaultTowerRadius = 35;
 
-    // Spec §2.2: every tower's radius is reduced by a fixed safety margin of 5 before ANY coverage
-    // decision — a range that only barely grazes a lane may not trigger in-game. The REAL radius is
-    // still used for the on-screen range circles and the executor; only coverage/planning uses the
-    // reduced radius, and the SAME reduced value everywhere so coverage and planning always agree.
+    // Spec §2.2: every tower's radius is reduced by a fixed safety margin of 5 before ANY coverage decision (real radius still used for rendering).
     internal const int CoverageRadiusMargin = 5;
 
     internal static int GetCoverageRadiusForLevel(BlightTowerType type, int level)
@@ -218,9 +226,7 @@ public sealed class BlightService
 
     internal static int GetRadiusForLevel(BlightTowerType type, int level)
     {
-        // Real per-tier radii from the game's BlightTowerDat: constant across ranks for
-        // Chilling/Seismic/Summoning, grows with rank for Fireball/ShockNova/Empowering. Built
-        // towers use the live dat radius; this is the fallback for unbuilt/streamed-out towers.
+        // Real per-tier radii from BlightTowerDat; built towers use the live dat radius, this is the fallback for unbuilt ones.
         return BlightTowerData.RadiusForLevel(type, level);
     }
 
@@ -241,13 +247,19 @@ public sealed class BlightService
     private readonly BlightDebugEvents _debugEvents = new();
     internal IReadOnlyList<string> DebugStages => _debugEvents.Stages;
 
-    // Throttle debug stages to ~10/sec — the executor was allocating a formatted string + dedup
-    // scan under a lock every tick; the overlay only needs a readable recent trail.
+    // Un-throttled executor event trail (menu snapshots, phase transitions, click decisions) so the
+    // detailed "what did the executor actually see/click" trail is never dropped by the 10/sec
+    // Recent Stages throttle. Bounded + deduped like the stages buffer.
+    private readonly BlightDebugEvents _executorEvents = new();
+    internal IReadOnlyList<string> ExecutorEvents => _executorEvents.Stages;
+
+    internal void AddExecutorEvent(string message) => _executorEvents.Add(message);
+
+    // Throttle debug stages to ~10/sec; the overlay only needs a readable recent trail.
     private long _lastDebugStageTimestampMs;
     private const long DebugStageThrottleMs = 100;
 
-    // Lets hot-path callers skip FORMATTING a debug message when the throttle would drop it —
-    // the executor's per-tick VERIFY loop was allocating an interpolated string every tick.
+    // Lets hot-path callers skip FORMATTING a debug message when the throttle would drop it.
     internal bool IsDebugStageDue
     {
         get
@@ -290,9 +302,18 @@ public sealed class BlightService
 
     internal Entity? GetBestEntityAtPosition(NumVector2 pos) => _cache.GetBestEntityAtPosition(pos);
 
+    // The tower's dat id at a position (e.g. "MeteorTower"/"FlamethrowerTower" for a specialized
+    // Fireball) — read from the cached component data. Unlike the entity path (which is the base
+    // type + rank, e.g. "BlightTowerFlameRank4"), the dat id reveals the actual specialization, so
+    // the executor can verify a spec click landed on the intended tower.
+    internal string? GetTowerDatIdAt(NumVector2 pos) => _cache.GetTowerDatIdAt(pos);
+
+    internal Entity? GetTowerEntityAt(NumVector2 pos) => _cache.GetTowerEntityAt(pos);
+
     // Cached entity-path read (entity-id validated) for the executor's per-tick rank/verify loops —
     // avoids re-reading entity.Path (a process-memory read + string allocation) every tick.
     internal string? GetEntityPathCached(Entity entity) => _cache.GetEntityPathCached(entity);
+    internal static string? GetEntityPath(Entity entity) => BlightEntityCache.GetEntityPathFresh(entity);
 
     internal bool IsEntityFullyOnScreen(Entity? entity)
     {
@@ -313,7 +334,13 @@ public sealed class BlightService
         if (!_settings.ClickBlightTowers.Value || !IsEncounterActive)
             return new BlightBuildAction(BlightBuildActionKind.None, DebugMessage: "Inactive");
 
-        return _executor.Tick(_gameController, allLabels, this);
+        long executorStart = Stopwatch.GetTimestamp();
+        long executorAllocStart = GC.GetAllocatedBytesForCurrentThread();
+        BlightBuildAction action = _executor.Tick(_gameController, allLabels, this);
+        _recordExecutorStage?.Invoke(
+            GC.GetAllocatedBytesForCurrentThread() - executorAllocStart,
+            (Stopwatch.GetTimestamp() - executorStart) * 1000.0 / Stopwatch.Frequency);
+        return action;
     }
 
     internal void UpdateKnownTowerLevel(NumVector2 position, BlightTowerType type, int upgradeLevel)
@@ -393,15 +420,11 @@ public sealed class BlightService
             ? $"cursor preserved at {_executor.CurrentCursor}"
             : $"cursor reset {prevCursor}->{_executor.CurrentCursor}";
         AddDebugStage($"{plan.DebugSummary} | {chains} chains {orphans} orphans segs={segCovered}+{segUncovered} {cursorMsg}");
-        if (!string.IsNullOrEmpty(plan.Details))
-            AddDebugStage($"Plan details: {plan.Details}");
     }
 
     private bool ShouldRebuildPlan()
     {
-        // Rebuild when pathway, tower, built-count, or built-tower LEVEL data has changed.  The level
-        // signature catches manual upgrades by the player — a rank change alters coverage but not any
-        // count, so without it the stale plan would keep executing against the old geometry.
+        // Rebuild when pathway, tower, built-count, or built-tower LEVEL data has changed.
         return _lastPlannedPathwayCount != _cache.PathwayCount
             || _lastPlannedTowerCount != _cache.KnownTowerCount
             || _lastPlannedBuiltCount != _cache.BuiltTowerCount
@@ -432,7 +455,10 @@ public sealed class BlightService
         IReadOnlyList<TowerBuildRule> rules = CurrentStrategy.Rules;
         for (int r = 0; r < rules.Count; r++)
             if (rules[r].TowerType == type) return rules[r].Specialization;
-        return 0;
+        // Fail closed: no rule for this type means "no specialization", never a real spec index (0
+        // would treat a stale lvl4 step as a spec step and click the first spec button — e.g. Meteor
+        // on a type whose strategy caps at 3).
+        return (int)TowerSpecialization.None;
     }
 
     // Plan UI display: a spec-tier upgrade (Fireball lvl4) shows the specialization tower the

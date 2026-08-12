@@ -41,7 +41,7 @@ namespace ClickIt.UI.Settings.Panels
             if (!ImGui.TreeNodeEx("Pathfinding##ControlsPathfinding", ImGuiTreeNodeFlags.DefaultOpen))
                 return;
 
-            SettingsUiRenderHelpers.DrawToggleNodeControl("Walk toward Offscreen Labels##ControlsPathfindingWalkTowardOffscreen", _settings.WalkTowardOffscreenLabels, "When enabled and no clickable labels are on screen, attempt to walk toward the nearest offscreen interactable target using terrain pathfinding data.\n\nI would be careful enabling this feature as its somewhat likely GGG could flag you as a bot.\n\nWhile that hasn't happen to me while testing the feature, I wouldn't be surprised if it did happen during prolonged use.");
+            SettingsUiRenderHelpers.DrawToggleNodeControl("Walk toward Offscreen Labels##ControlsPathfindingWalkTowardOffscreen", _settings.WalkTowardOffscreenLabels, "When enabled and no clickable labels are on screen, attempt to walk toward the nearest priority offscreen interactable target using terrain pathfinding data.\n\nI would be careful enabling this feature as its somewhat likely GGG could flag you as a bot.\n\nWhile that hasn't happen to me while testing the feature, I wouldn't be surprised if it did happen during prolonged use.");
             SettingsUiRenderHelpers.DrawToggleNodeControl("Prioritize On-Screen Clickable Mechanics##ControlsPathfindingPrioritizeOnscreen", _settings.PrioritizeOnscreenClickableMechanicsOverPathfinding, "When enabled, offscreen pathfinding is skipped whenever there is at least one clickable on-screen mechanic candidate (for example: altars, shrines, settlers ore, or lost shipment).");
 
             DrawSliderWidthSection(_settings.PathfindingSliderWidthStart, _settings.PathfindingSliderWidthEnd, () =>

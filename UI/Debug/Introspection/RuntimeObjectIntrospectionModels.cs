@@ -16,7 +16,10 @@ namespace ClickIt.UI.Debug.Introspection
         bool IncludeNonPublicMembers = false,
         int MaxValueChars = 120,
         int MaxTotalNodes = 25000,
-        int MaxElapsedMs = 12000)
+        int MaxElapsedMs = 12000,
+        int ProgressNodeTotal = 0,
+        IReadOnlyList<string>? SkipMemberNames = null,
+        Func<object, IReadOnlyList<(string Name, object? Value)>?>? ExtraChildrenProvider = null)
     {
         public static RuntimeObjectIntrospectionOptions Default => new(
             Title: "Runtime Object Introspection",

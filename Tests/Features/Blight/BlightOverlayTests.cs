@@ -256,21 +256,6 @@ public class BlightOverlayTests
             .Should().BeFalse("a finished tower is no longer part of the plan");
     }
 
-    [TestMethod]
-    public void LaneColorFor_PhantomBridge_AlwaysWhiteRegardlessOfCoverage()
-    {
-        LaneCoverageResult phantom = new(0, true, new NumVector2(5, 5),
-            HasChilling: true, HasSeismic: true, IsPhantom: true);
-        LaneCoverageResult real = new(0, true, new NumVector2(5, 5),
-            HasChilling: true, HasSeismic: true);
-
-        BlightOverlay.LaneColorFor(phantom, new TestStrategy())
-            .Should().Be(BlightOverlay.PhantomLaneColor,
-                "the bridge stays the white phantom colour, never the coverage colour");
-        BlightOverlay.LaneColorFor(real, new TestStrategy())
-            .Should().Be(Color.White, "real lane edges use the strategy's coverage colour");
-    }
-
     // ── Lane label world-midpoint projection ──
 
     private static readonly NumVector2 LanePointA = new(100, 100);

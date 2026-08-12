@@ -306,13 +306,7 @@ namespace ClickIt.Features.Click.Runtime
                 ? _dependencies.LostShipmentTargets.ResolveNextLostShipmentCandidate()
                 : _dependencies.LostShipmentTargets.ResolveNextLostShipmentCandidate(labelsOverride);
 
-        /**
-        Keep this thin runtime wrapper so normal click success still reads from
-        the real Entity owner at runtime. The internal overload preserves a
-        bounded seam for aftermath tests without fabricating brittle ExileCore
-        Entity state just to prove telemetry, sticky-target cleanup, or path
-        clearing behavior.
-         */
+        // Thin runtime wrapper so the internal overload stays testable without ExileCore entity state.
         public void HandleSuccessfulMechanicEntityClick(Entity? entity)
         {
             TryHandleSuccessfulMechanicAftermath(entity, invalidateShrineCache: false);

@@ -27,17 +27,32 @@ internal readonly record struct HarvestPlotEstimate(
 
 public sealed class HarvestService
 {
+    // The visible label reference is stable while the label addresses are unchanged, but the
+    // on-screen label bounds move with the player — so the scan must re-run while harvest labels are
+    // present (every frame) or the frames/prices freeze at their first position. When no harvest
+    // labels are on screen, a slower idle cadence still picks up newly-appearing plots.
+    private const long HarvestRescanFrameIntervalMs = 0;
+    private const long HarvestRescanIdleIntervalMs = 250;
+
     private readonly ClickItSettings _settings;
+    private readonly Func<long> _getTimestampMs;
     private IReadOnlyList<LabelOnGround>? _lastProcessedList;
     private int _lastProcessedCount;
+    private long _lastScanAtMs;
+    private bool _lastScanFoundHarvest;
+
+    // Seed rows keyed by label element address so the every-frame bounds refresh never re-walks the
+    // element tree; bounded by the scanner's cache cap.
+    private readonly Dictionary<long, List<HarvestSeedRow>> _seedRowCache = [];
 
     internal IReadOnlyList<HarvestPlotEstimate> CurrentEstimates { get; private set; } = [];
 
     internal HarvestDecision CurrentDecision { get; private set; }
 
-    internal HarvestService(ClickItSettings settings)
+    internal HarvestService(ClickItSettings settings, Func<long>? getTimestampMs = null)
     {
         _settings = settings;
+        _getTimestampMs = getTimestampMs ?? (static () => Environment.TickCount64);
     }
 
     internal void ProcessHarvestPlots(IReadOnlyList<LabelOnGround>? allLabels, GameController? gameController)
@@ -50,14 +65,21 @@ public sealed class HarvestService
             return;
         }
 
-        // Re-scan only when the 50ms label-list reference changes.
-        if (ReferenceEquals(_lastProcessedList, allLabels) && _lastProcessedCount == (allLabels?.Count ?? 0))
+        // Re-scan when the visible label set changes OR on a cadence, so the on-screen label bounds
+        // (which move with the player) stay current even though the label reference is stable.
+        // Every frame while harvest labels are present; slower when none are on screen.
+        long now = _getTimestampMs();
+        long intervalMs = _lastScanFoundHarvest ? HarvestRescanFrameIntervalMs : HarvestRescanIdleIntervalMs;
+        if (ShouldSkipRescan(ReferenceEquals(_lastProcessedList, allLabels)
+                && _lastProcessedCount == (allLabels?.Count ?? 0), now, _lastScanAtMs, intervalMs))
             return;
 
         _lastProcessedList = allLabels;
         _lastProcessedCount = allLabels?.Count ?? 0;
+        _lastScanAtMs = now;
 
-        List<(LabelOnGround Label, List<HarvestSeedRow> Rows)> plots = HarvestLabelScanner.ScanHarvestPlots(allLabels);
+        List<(LabelOnGround Label, List<HarvestSeedRow> Rows)> plots = HarvestLabelScanner.ScanHarvestPlots(allLabels, _seedRowCache);
+        _lastScanFoundHarvest = plots.Count > 0;
 
         if (plots.Count == 0)
         {
@@ -157,6 +179,11 @@ public sealed class HarvestService
 
     internal LabelOnGround? GetChosenLabel()
         => CurrentDecision.ChosenLabel;
+
+    // A scan can be skipped only when the label set is unchanged AND the cadence window has not
+    // elapsed — a stable reference alone must never freeze position-dependent bounds.
+    internal static bool ShouldSkipRescan(bool sameLabelSet, long now, long lastScanAtMs, long rescanIntervalMs)
+        => sameLabelSet && (now - lastScanAtMs) < rescanIntervalMs;
 
     private static bool IsLabelOnScreen(RectangleF bounds, Size2F windowSize)
     {

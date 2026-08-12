@@ -3,6 +3,7 @@ namespace ClickIt.Shared.Input
     internal sealed class InputHotkeyStateService(ClickItSettings settings)
     {
         private readonly ClickItSettings _settings = settings;
+        private readonly Lock _lock = new();
         private bool _lazyModeDisableToggled;
         private bool _lazyModeDisableKeyWasDown;
         private bool _clickHotkeyToggled;
@@ -14,21 +15,25 @@ namespace ClickIt.Shared.Input
             if (clickHotkey == Keys.None)
                 return false;
 
-
-            bool toggleMode = _settings.IsClickHotkeyToggleModeEnabled();
-            bool keyDown = keyStateProvider(clickHotkey);
-            return ResolveClickHotkeyActive(toggleMode, keyDown, ref _clickHotkeyToggled, ref _clickHotkeyWasDown);
+            lock (_lock)
+            {
+                bool toggleMode = _settings.IsClickHotkeyToggleModeEnabled();
+                bool keyDown = keyStateProvider(clickHotkey);
+                return ResolveClickHotkeyActive(toggleMode, keyDown, ref _clickHotkeyToggled, ref _clickHotkeyWasDown);
+            }
         }
 
         internal bool IsLazyModeDisableActive(Func<Keys, bool> keyStateProvider)
         {
-            if (!_settings.LazyMode.Value)
-                _lazyModeDisableToggled = false;
+            lock (_lock)
+            {
+                if (!_settings.LazyMode.Value)
+                    _lazyModeDisableToggled = false;
 
-
-            bool toggleMode = _settings.IsLazyModeDisableHotkeyToggleModeEnabled();
-            bool keyDown = keyStateProvider(_settings.LazyModeDisableKeyBinding);
-            return ResolveLazyModeDisableActive(toggleMode, keyDown, ref _lazyModeDisableToggled, ref _lazyModeDisableKeyWasDown);
+                bool toggleMode = _settings.IsLazyModeDisableHotkeyToggleModeEnabled();
+                bool keyDown = keyStateProvider(_settings.LazyModeDisableKeyBinding);
+                return ResolveLazyModeDisableActive(toggleMode, keyDown, ref _lazyModeDisableToggled, ref _lazyModeDisableKeyWasDown);
+            }
         }
 
         internal static bool ResolveLazyModeDisableActive(bool toggleModeEnabled, bool disableKeyPressed, ref bool toggledState, ref bool wasPressedLastFrame)

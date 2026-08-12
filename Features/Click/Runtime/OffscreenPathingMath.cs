@@ -57,6 +57,18 @@ namespace ClickIt.Features.Click.Runtime
         internal static bool ShouldBlockOffscreenTraversalAfterPathBuildFailure(string? failureReason)
             => string.Equals(failureReason, PathfindingService.AStarNoRouteFailureReason, StringComparison.Ordinal);
 
+        // After an A* no-route block, the same target cannot become reachable for a while, so the
+        // coordinator skips re-running the doomed full-budget search during the backoff window.
+        internal static bool ShouldApplyNoRouteBackoff(
+            long targetAddress,
+            long blockedTargetAddress,
+            long now,
+            long blockedAtMs,
+            int backoffMs)
+            => blockedTargetAddress != 0
+                && targetAddress == blockedTargetAddress
+                && (now - blockedAtMs) < backoffMs;
+
         internal static bool IsBackedByGroundLabel(long entityAddress, IReadOnlySet<long>? labelEntityAddresses)
         {
             return entityAddress != 0
@@ -84,8 +96,15 @@ namespace ClickIt.Features.Click.Runtime
         internal static bool IsEldritchAltarPath(string path)
             => !string.IsNullOrWhiteSpace(GetEldritchAltarMechanicIdForPath(true, true, path));
 
-        internal static bool ShouldContinuePathfindingWhenLabelActionable(bool labelInWindow, bool labelClickable, bool clickPointResolvable)
-            => !(labelInWindow && labelClickable && clickPointResolvable);
+        // Continue pathfinding toward a label when it is outside the click-distance range (it cannot
+        // be clicked in place) or when it is not actionable on screen at all.
+        internal static bool ShouldContinuePathfindingWhenLabelActionable(
+            bool labelInWindow,
+            bool labelClickable,
+            bool clickPointResolvable,
+            float distance,
+            int clickDistance)
+            => distance > clickDistance || !(labelInWindow && labelClickable && clickPointResolvable);
 
         internal static bool ShouldPathfindToEntityAfterClickPointResolveFailure(
             bool walkTowardOffscreenLabelsEnabled,
@@ -312,11 +331,7 @@ namespace ClickIt.Features.Click.Runtime
             if (lenSq < 1f)
                 return false;
 
-            // Search from the target back toward the screen center (t = 1.05 .. 0.35). The clamped
-            // target is the primary fallback — it keeps the walk click as close to the target as the
-            // window allows. Only when that too is unusable (target under the buff bar / minimap
-            // strip) do we fall back to a point just off-center, which is still in the play area and
-            // walks the same direction.
+            // Search from the target back toward the screen center, with the clamped target as the primary fallback.
             for (int i = 0; i <= 7; i++)
             {
                 float t = 1.05f - (i * 0.1f);

@@ -1,29 +1,27 @@
 namespace ClickIt.Features.Observability.Performance
 {
-    // Time-window sample buffer: every sample carries a timestamp and expires 10 seconds after it
-    // was recorded (a sliding window — each result is removed individually, oldest first, so a
-    // section that stops recording drains to zero instead of showing a stale all-time value).
-    // Last/Average/Max are computed over the live (non-expired) samples only. The count cap is a
-    // safety bound against pathological recording rates. Locked because the label-scan boundary can
-    // be recorded from any coroutine.
+    // Time-window sample buffer: samples expire individually after a fixed window so a section that stops recording drains to zero. The average covers only the most recent samples (so the table reacts quickly); max keeps the full live window.
     internal sealed class ExpiringSampleBuffer
     {
         internal const int DefaultMaxSamples = 1000;
         internal const long DefaultExpiryMs = 10_000;
+        internal const int DefaultAverageSamples = 50;
 
         private readonly Queue<(long TimestampMs, double Value)> _samples = new(DefaultMaxSamples);
         private readonly object _lock = new();
         private readonly Func<long> _now;
         private readonly long _expiryMs;
         private readonly int _maxSamples;
+        private readonly int _averageSamples;
 
         private double _last;
 
-        internal ExpiringSampleBuffer(long expiryMs = DefaultExpiryMs, int maxSamples = DefaultMaxSamples, Func<long>? nowProvider = null)
+        internal ExpiringSampleBuffer(long expiryMs = DefaultExpiryMs, int maxSamples = DefaultMaxSamples, Func<long>? nowProvider = null, int averageSamples = DefaultAverageSamples)
         {
             _expiryMs = expiryMs;
             _maxSamples = maxSamples;
             _now = nowProvider ?? (static () => Environment.TickCount64);
+            _averageSamples = averageSamples;
         }
 
         internal void Record(double value)
@@ -49,15 +47,19 @@ namespace ClickIt.Features.Observability.Performance
                     Expire(now);
                     if (_samples.Count == 0)
                         return (0, 0, 0, 0);
+                    long take = SystemMath.Min(_samples.Count, _averageSamples);
                     double sum = 0;
                     double max = double.MinValue;
+                    long index = 0;
                     foreach ((_, double value) in _samples)
                     {
-                        sum += value;
                         if (value > max)
                             max = value;
+                        if (index >= _samples.Count - take)
+                            sum += value;
+                        index++;
                     }
-                    return (_last, sum / _samples.Count, max, _samples.Count);
+                    return (_last, take > 0 ? sum / take : 0, max, _samples.Count);
                 }
             }
         }

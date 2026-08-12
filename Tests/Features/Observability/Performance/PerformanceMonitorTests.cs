@@ -174,6 +174,47 @@ namespace ClickIt.Tests.Features.Observability.Performance
         }
 
         [TestMethod]
+        public void RenderSectionFrame_CombinesEnqueueAndFlushIntoOneSample()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            monitor.AccumulateRenderSectionTiming(RenderSection.BlightOverlay, 10.0);
+            monitor.AccumulateRenderSectionFlush(RenderSection.BlightOverlay, 5.0);
+            monitor.AccumulateRenderSectionTiming(RenderSection.AltarOverlay, 2.0);
+            monitor.CompleteRenderSectionFrame();
+
+            (double lastMs, double avgMs, double _, long sampleCount) = monitor.GetRenderSectionStats(RenderSection.BlightOverlay);
+            lastMs.Should().Be(15.0, "the flush cost is added to the same frame's enqueue sample");
+            avgMs.Should().Be(15.0);
+            sampleCount.Should().Be(1, "one combined sample per section per frame, not two diluted samples");
+            monitor.GetRenderSectionStats(RenderSection.AltarOverlay).LastMs.Should().Be(2.0);
+        }
+
+        [TestMethod]
+        public void RenderSectionFrame_FlushOnlySection_RecordsItsOwnSample()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            monitor.AccumulateRenderSectionFlush(RenderSection.HarvestOverlay, 3.0);
+            monitor.CompleteRenderSectionFrame();
+
+            monitor.GetRenderSectionStats(RenderSection.HarvestOverlay).LastMs.Should().Be(3.0);
+            monitor.GetRenderSectionStats(RenderSection.HarvestOverlay).SampleCount.Should().Be(1);
+        }
+
+        [TestMethod]
+        public void RenderSectionFrame_ClearsAccumulators_ForNextFrame()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            monitor.AccumulateRenderSectionTiming(RenderSection.BlightOverlay, 10.0);
+            monitor.CompleteRenderSectionFrame();
+            monitor.CompleteRenderSectionFrame();
+
+            monitor.GetRenderSectionStats(RenderSection.BlightOverlay).SampleCount.Should().Be(1, "a second complete without new accumulation records nothing");
+        }
+
+        [TestMethod]
         public void ProcessingTiming_FlowsThroughStoreAndSnapshot()
         {
             var monitor = new PerformanceMonitor(new ClickItSettings());
@@ -315,6 +356,42 @@ namespace ClickIt.Tests.Features.Observability.Performance
         }
 
         [TestMethod]
+        public void Breakdown_FlowsThroughStoreAndSnapshot_ForRegisteredSection()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            Span<long> bytes = stackalloc long[3];
+            Span<double> ms = stackalloc double[3];
+            bytes[0] = 1024 * 1024; bytes[1] = 4096; bytes[2] = 32768;
+            ms[0] = 10.0; ms[1] = 1.0; ms[2] = 2.0;
+            monitor.RecordBreakdown(ProcessingSection.Pathfinding, bytes, ms);
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+            snapshot.Breakdowns.Should().ContainKey(ProcessingSection.Pathfinding);
+            BreakdownStats stats = snapshot.Breakdowns![ProcessingSection.Pathfinding];
+            stats.SampleCount.Should().Be(1);
+            stats.Stages.Should().HaveCount(4, "the registered pathfinding stages are Terrain/Goal/AStar/Projection");
+            stats.Stages[0].Name.Should().Be("Terrain");
+            stats.Stages[0].Allocation.AvgBytesPerRun.Should().Be(1024 * 1024);
+            stats.Stages[0].Time.AvgMs.Should().Be(10.0);
+        }
+
+        [TestMethod]
+        public void Breakdown_UnregisteredSection_IsIgnored()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            Span<long> bytes = stackalloc long[2];
+            Span<double> ms = stackalloc double[2];
+            bytes[0] = 1024; bytes[1] = 2048;
+            ms[0] = 1; ms[1] = 2;
+            monitor.RecordBreakdown(ProcessingSection.Ultimatum, bytes, ms);
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+            snapshot.Breakdowns.Should().NotContainKey(ProcessingSection.Ultimatum);
+        }
+
+        [TestMethod]
         public void MemorySnapshot_ReportsHeapAndProcessMetrics()
         {
             var monitor = new PerformanceMonitor(new ClickItSettings());
@@ -327,6 +404,137 @@ namespace ClickIt.Tests.Features.Observability.Performance
             snapshot.Memory.Gen2Mb.Should().BeGreaterThanOrEqualTo(0);
             snapshot.Memory.FragmentedMb.Should().BeGreaterThanOrEqualTo(0);
             snapshot.Memory.MemoryLoadPercent.Should().BeInRange(0, 100);
+            snapshot.Memory.GcPauseMaxMs.Should().BeGreaterThanOrEqualTo(0);
+            snapshot.Memory.GcPauseTimePercent.Should().BeInRange(0, 100);
+            snapshot.Memory.DlrReadsLastPerSec.Should().BeGreaterThanOrEqualTo(0);
+            snapshot.Memory.DlrReadsAvgPerSec.Should().BeGreaterThanOrEqualTo(0);
+            snapshot.Memory.DlrReadsMaxPerSec.Should().BeGreaterThanOrEqualTo(0);
+            snapshot.Memory.DlrFailPercent.Should().BeInRange(0, 100);
+            snapshot.Memory.DlrReadsMsLastPerSec.Should().BeGreaterThanOrEqualTo(0);
+            snapshot.Memory.DlrReadsMsAvgPerSec.Should().BeGreaterThanOrEqualTo(0);
+            snapshot.Memory.DlrReadsMsMaxPerSec.Should().BeGreaterThanOrEqualTo(0);
+        }
+
+        [TestMethod]
+        public void SampleDlrReadRate_ComputesReadsPerSecondAndFailPercent()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+            DynamicAccess.ResetStats();
+
+            // Baseline 1000ms window with no reads -> idle sample of 0.
+            monitor.SampleDlrReadRate(nowMs: 1000);
+
+            for (int index = 0; index < 10; index++)
+                DynamicAccess.TryGetDynamicValue(123, static o => o, out _);
+            for (int index = 0; index < 4; index++)
+                DynamicAccess.TryGetDynamicValue(null, static o => o, out _);
+
+            // Second 1000ms window: 14 reads total, 4 null-source failures.
+            monitor.SampleDlrReadRate(nowMs: 2000);
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+            snapshot.Memory.DlrReadsLastPerSec.Should().BeApproximately(14, 0.01);
+            snapshot.Memory.DlrReadsMaxPerSec.Should().BeApproximately(14, 0.01);
+            // Live-window samples are [0, 14], averaged over the last 10.
+            snapshot.Memory.DlrReadsAvgPerSec.Should().BeApproximately(7, 0.01);
+            snapshot.Memory.DlrFailPercent.Should().BeApproximately(4 * 100.0 / 14, 0.01);
+            // The 14 reads actually executed, so their accumulated wall time is positive.
+            snapshot.Memory.DlrReadsMsLastPerSec.Should().BeGreaterThan(0);
+            snapshot.Memory.DlrReadsMsMaxPerSec.Should().BeGreaterThan(0);
+        }
+
+        [TestMethod]
+        public void SampleDlrReadRate_AttributesReadsToActiveSection()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+            DynamicAccess.ResetStats();
+
+            // Baseline 1000ms window with no reads -> idle sample of 0.
+            monitor.SampleDlrReadRate(nowMs: 1000);
+
+            // Reads issued inside a DlrReadScope must be charged to that feature's section.
+            using (new DlrReadScope(ProcessingSection.Blight))
+            {
+                for (int index = 0; index < 8; index++)
+                    DynamicAccess.TryGetDynamicValue(123, static o => o, out _);
+            }
+
+            // Second 1000ms window: 8 reads all attributed to the Blight section.
+            monitor.SampleDlrReadRate(nowMs: 2000);
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+            DlrSectionSnapshot blight = snapshot.Memory.DlrSections![(int)ProcessingSection.Blight];
+            blight.ReadsLastPerSec.Should().BeApproximately(8, 0.01);
+            blight.ReadsMaxPerSec.Should().BeApproximately(8, 0.01);
+            blight.MsAvgPerSec.Should().BeGreaterThan(0);
+            // Sections that never had an active scope stay at zero.
+            snapshot.Memory.DlrSections[(int)ProcessingSection.Altar].ReadsLastPerSec.Should().Be(0);
+            snapshot.Memory.DlrSections[(int)ProcessingSection.Click].ReadsLastPerSec.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void SampleGcAllocationRates_AttributesBytesToSections()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+            monitor.RecordAllocation(ProcessingSection.Blight, 1024 * 1024);
+
+            // Baseline 1000ms window closes the first sample; the second window carries the 2MB burst.
+            monitor.SampleGcAllocationRates(nowMs: 1000);
+            monitor.RecordAllocation(ProcessingSection.Blight, 2 * 1024 * 1024);
+            monitor.SampleGcAllocationRates(nowMs: 2000);
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+            GcSectionSnapshot blight = snapshot.Memory.GcSections![(int)ProcessingSection.Blight];
+            // 2 MB allocated in the 1000ms window -> 2 MB/s last, avg/max at least as high.
+            blight.BytesLastPerSec.Should().BeApproximately(2 * 1024 * 1024, 1);
+            blight.BytesAvgPerSec.Should().BeGreaterThan(0);
+            blight.BytesMaxPerSec.Should().BeGreaterThanOrEqualTo(2 * 1024 * 1024 - 1);
+            // Sections that never recorded an allocation stay at zero.
+            snapshot.Memory.GcSections[(int)ProcessingSection.Altar].BytesLastPerSec.Should().Be(0);
+            snapshot.Memory.GcSections[(int)ProcessingSection.Click].BytesLastPerSec.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void GameStateDump_SectionFlowsThroughProcessingAndAllocations()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            monitor.RecordProcessingTiming(ProcessingSection.GameStateDump, 3.0);
+            monitor.RecordProcessingTiming(ProcessingSection.GameStateDump, 5.0);
+            monitor.RecordAllocation(ProcessingSection.GameStateDump, 1024 * 1024);
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+            snapshot.GetProcessingSection(ProcessingSection.GameStateDump).SampleCount.Should().Be(2);
+            snapshot.GetProcessingSection(ProcessingSection.GameStateDump).AverageMs.Should().BeApproximately(4.0, 0.01);
+            snapshot.GetAllocationSection(ProcessingSection.GameStateDump).SampleCount.Should().Be(1);
+            snapshot.GetAllocationSection(ProcessingSection.GameStateDump).AvgBytesPerRun.Should().Be(1024 * 1024);
+        }
+
+        [TestMethod]
+        public void BlightExecutorStage_RecordsOnlyExecutorStage_ThroughMonitor()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            Span<long> bytes = stackalloc long[3];
+            Span<double> ms = stackalloc double[3];
+            bytes[0] = 100; bytes[1] = 200; bytes[2] = 300;
+            ms[0] = 1.0; ms[1] = 2.0; ms[2] = 3.0;
+            monitor.RecordBreakdown(ProcessingSection.Blight, bytes, ms);
+            monitor.RecordBreakdownStage(ProcessingSection.Blight, PerformanceMonitor.BlightExecutorStageIndex, 4096, 7.5);
+            monitor.RecordBreakdownStage(ProcessingSection.Blight, PerformanceMonitor.BlightEventsStageIndex, 512, 0.9);
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+            BreakdownStats stats = snapshot.Breakdowns![ProcessingSection.Blight];
+            stats.Stages.Should().HaveCount(5);
+            stats.Stages[3].Name.Should().Be("Executor");
+            stats.Stages[3].Allocation.AvgBytesPerRun.Should().Be(4096);
+            stats.Stages[3].Time.AvgMs.Should().Be(7.5);
+            stats.Stages[4].Name.Should().Be("Events");
+            stats.Stages[4].Allocation.AvgBytesPerRun.Should().Be(512);
+            stats.Stages[4].Time.AvgMs.Should().Be(0.9);
+            stats.Stages[0].Allocation.AvgBytesPerRun.Should().Be(100);
+            stats.Stages[1].Allocation.AvgBytesPerRun.Should().Be(200);
+            stats.Stages[2].Allocation.AvgBytesPerRun.Should().Be(300);
         }
 
         [TestMethod]
@@ -499,9 +707,9 @@ namespace ClickIt.Tests.Features.Observability.Performance
             stats.SampleCount.Should().Be(1000);
             stats.LastMs.Should().Be(2.0);
             stats.MaxMs.Should().Be(2.0);
-            // The 1000-sample cap drops the first sample, so the average covers 999×1.0 + 1×2.0
-            // (the time window keeps every live sample, not just the most recent 100).
-            stats.AverageMs.Should().BeApproximately(1.001, 0.0001);
+            // The 1000-sample cap drops the first sample and the average covers only the most recent
+            // 50 samples (49×1.0 + 1×2.0) so the table reacts quickly instead of averaging everything.
+            stats.AverageMs.Should().BeApproximately(1.02, 0.0001);
         }
 
         [TestMethod]

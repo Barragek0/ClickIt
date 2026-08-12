@@ -58,9 +58,7 @@ namespace ClickIt.Features.Click.Selection
             return selectedLabel != null && !string.IsNullOrWhiteSpace(selectedMechanicId);
         }
 
-        /**
-        Keeps the repo-owned manual-cursor ranking rules testable without fabricating brittle ExileCore label geometry, item, and camera graphs just to reach the score and tie-break logic.
-        */
+        // Keeps ranking rules testable without fabricating ExileCore label geometry.
         internal static bool TryResolveEvaluatedCandidates(
             IReadOnlyList<ManualCursorEvaluatedCandidate>? candidates,
             [NotNullWhen(true)] out LabelOnGround? selectedLabel,

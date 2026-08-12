@@ -65,18 +65,6 @@ internal sealed class BlightSettingsPanelRenderer(ClickItSettings settings)
     private void DrawVisualizationToggles()
     {
         DrawVisualizeToggleWithChildren(
-            "Visualize Blight Lanes##BlightVisualizePaths",
-            _settings.BlightVisualizePaths,
-            "When enabled, the blight lane pathways are rendered over the lanes and on the world map.\n\n" +
-            "The Map and Game sub-options below control which view the lanes appear in.",
-            "Map##BlightVisualizePathsMap",
-            _settings.BlightVisualizePathsMap,
-            "Render the lane pathways on the world map.",
-            "Game##BlightVisualizePathsGame",
-            _settings.BlightVisualizePathsGame,
-            "Render the lane pathways in the game world, including the lane labels on each lane.");
-
-        DrawVisualizeToggleWithChildren(
             "Visualize Tower Dots##BlightVisualizeTowers",
             _settings.BlightVisualizeTowers,
             "When enabled, the foundations the current plan still targets are shown as dots both in the game world and on the world map.\n\n" +
@@ -88,7 +76,8 @@ internal sealed class BlightSettingsPanelRenderer(ClickItSettings settings)
             "Render the tower dots on the world map.",
             "Game##BlightVisualizeTowersGame",
             _settings.BlightVisualizeTowersGame,
-            "Render the tower dots in the game world.");
+            "Render the tower dots in the game world.\n\n" +
+            "Also shows the plan's pending execution order as numbers stacked above each dot.");
 
         DrawVisualizeToggleWithChildren(
             "Visualize Tower Ranges##BlightVisualizeTowerRanges",
@@ -101,13 +90,6 @@ internal sealed class BlightSettingsPanelRenderer(ClickItSettings settings)
             "Game##BlightVisualizeTowerRangesGame",
             _settings.BlightVisualizeTowerRangesGame,
             "Render each built tower's range in the game world.");
-
-        // Upgrade order numbers are in-game only, so this stays a plain toggle.
-        SettingsUiRenderHelpers.DrawToggleNodeControl(
-            "Visualize Upgrade Order##BlightVisualizeUpgrades",
-            _settings.BlightVisualizeUpgrades,
-            "When enabled, each targeted tower dot shows the plan's pending execution order as numbers stacked above the dot in the game world." +
-            "\n\nAs the plan runs, completed steps disappear.");
     }
 
     private static void DrawVisualizeToggleWithChildren(

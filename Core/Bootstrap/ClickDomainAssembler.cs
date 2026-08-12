@@ -2,13 +2,7 @@ namespace ClickIt.Core.Bootstrap
 {
     internal static class ClickDomainAssembler
     {
-        /**
-        Keep this thin runtime entry wrapper so production composition still reads
-        from the real owner and GameController path. The injected internal overload
-        remains available for direct bootstrap tests without hidden runtime
-        traversal, so do not remove this wrapper unless the same seam is preserved
-        another way.
-         */
+        // Thin runtime entry wrapper so the injected internal overload stays testable without runtime traversal.
         public static ClickAutomationPort Assemble(ClickIt owner, ClickItSettings settings, GameController gameController, CoreDomainServices core, AltarChoiceEvaluator altarChoiceEvaluator)
             => Assemble(
                 settings,

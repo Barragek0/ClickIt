@@ -1,10 +1,15 @@
 namespace ClickIt.Features.Altars
 {
-    public class AltarService(ClickIt clickIt, ClickItSettings settings, TimeCache<List<LabelOnGround>>? cachedLabels)
+    public class AltarService(
+        ClickIt clickIt,
+        ClickItSettings settings,
+        TimeCache<List<LabelOnGround>>? cachedLabels,
+        BreakdownRecorder? recordBreakdown = null)
     {
         private readonly ClickIt _clickIt = clickIt;
         private readonly ClickItSettings _settings = settings;
         private readonly TimeCache<List<LabelOnGround>>? _cachedLabels = cachedLabels;
+        private readonly BreakdownRecorder? _recordBreakdown = recordBreakdown;
         private readonly AltarComponentStore _altarStore = new();
         public AltarServiceDebugInfo DebugInfo { get; private set; } = new();
         private readonly AltarMatcher _altarMatcher = new();
@@ -17,7 +22,7 @@ namespace ClickIt.Features.Altars
                 RecordUnmatchedMod);
 
         private AltarScanPipeline ScanPipeline
-            => field ??= new AltarScanPipeline(_altarStore, DebugInfo, ComponentFactory);
+            => field ??= new AltarScanPipeline(_altarStore, DebugInfo, ComponentFactory, _recordBreakdown);
 
         public List<PrimaryAltarComponent> GetAltarComponents() => _altarStore.GetComponents();
         public IReadOnlyList<PrimaryAltarComponent> GetAltarComponentsReadOnly() => _altarStore.GetComponentsReadOnly();

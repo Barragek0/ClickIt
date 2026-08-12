@@ -74,6 +74,115 @@ internal static class BlightMenuInteractions
         catch { return null; }
     }
 
+    // Full readable dump of a tower label's menu element state (label, build icon, upgrade/spec menu
+    // and every child with index, address, visibility, rect and best-effort dat id) — the diagnostic
+    // for "which button did the executor actually click" (e.g. Fireball 3->4 landing on Flamethrower).
+    internal static string BuildMenuSnapshot(Element labelElement)
+    {
+        try
+        {
+            System.Text.StringBuilder sb = new(256);
+            sb.Append("label=0x").Append(FormatAddress(labelElement));
+            sb.Append(" children=").Append(labelElement.ChildCount);
+            Element? child0 = labelElement.ChildCount > 0 ? labelElement.GetChildAtIndex(0) : null;
+            if (child0 == null)
+                return sb.ToString();
+            sb.Append(" | child0=0x").Append(FormatAddress(child0)).Append(" children=").Append(child0.ChildCount);
+            AppendSlot(sb, child0, 2, "buildIcon");
+            AppendSlot(sb, child0, 3, "upgradeIcon");
+            AppendMenuChildren(sb, child0, 3);
+            return sb.ToString();
+        }
+        catch (Exception e)
+        {
+            return $"menu snapshot error: {e.GetType().Name}: {e.Message}";
+        }
+    }
+
+    private static string FormatAddress(Element element)
+    {
+        try { return element.Address.ToString("X"); }
+        catch { return "?"; }
+    }
+
+    private static void AppendSlot(System.Text.StringBuilder sb, Element child0, int index, string name)
+    {
+        try
+        {
+            if (index >= child0.ChildCount) { sb.Append(" | ").Append(name).Append("=none"); return; }
+            Element? slot = child0.GetChildAtIndex(index);
+            if (slot == null) { sb.Append(" | ").Append(name).Append("=null"); return; }
+            sb.Append(" | ").Append(name).Append("=0x").Append(FormatAddress(slot))
+                .Append(" vis=").Append(FormatBool(slot))
+                .Append(' ').Append(RectText(slot));
+        }
+        catch { sb.Append(" | ").Append(name).Append("=err"); }
+    }
+
+    private static void AppendMenuChildren(System.Text.StringBuilder sb, Element child0, int menuIndex)
+    {
+        try
+        {
+            if (menuIndex >= child0.ChildCount) { sb.Append(" | menu=none"); return; }
+            Element? menu = child0.GetChildAtIndex(menuIndex);
+            if (menu == null) { sb.Append(" | menu=null"); return; }
+            sb.Append(" | menu=0x").Append(FormatAddress(menu)).Append(" children=").Append(menu.ChildCount);
+            int count = (int)Math.Min(menu.ChildCount, 12L);
+            for (int i = 0; i < count; i++)
+            {
+                try
+                {
+                    Element? child = menu.GetChildAtIndex(i);
+                    if (child == null) { sb.Append(" [").Append(i).Append("]null"); continue; }
+                    string? id = ReadUpgradeResultTowerId(child);
+                    sb.Append(" [").Append(i).Append("]0x").Append(FormatAddress(child))
+                        .Append(" vis=").Append(FormatBool(child))
+                        .Append(' ').Append(RectText(child))
+                        .Append(" id=").Append(id ?? "?");
+                }
+                catch { sb.Append(" [").Append(i).Append("]err"); }
+            }
+        }
+        catch { sb.Append(" | menu=err"); }
+    }
+
+    private static string FormatBool(Element element)
+    {
+        try { return element.IsVisible ? "1" : "0"; }
+        catch { return "?"; }
+    }
+
+    private static string RectText(Element element)
+    {
+        try
+        {
+            RectangleF r = element.GetClientRect();
+            return $"rect=({r.X:F0},{r.Y:F0},{r.Width:F0}x{r.Height:F0})";
+        }
+        catch { return "rect=?"; }
+    }
+
+    // The upgrade menu's visible child count: a plain tier upgrade shows ONE button (the next
+    // tier), while a tower at max plain shows the specialization buttons (two+). This tells a
+    // maxed tower apart from a tier upgrade even when the rank read lags behind reality.
+    internal static int CountVisibleUpgradeButtons(Element labelElement)
+    {
+        try
+        {
+            Element? menu = GetMenuChildElement(labelElement, 3);
+            if (menu == null) return 0;
+            int count = 0;
+            for (int i = 0; i < menu.ChildCount; i++)
+            {
+                Element? child = menu.GetChildAtIndex(i);
+                if (child != null && child.IsVisible)
+                    count++;
+            }
+            return count;
+        }
+        catch { return 0; }
+    }
+
     internal static (NumVector2 Position, string? UpgradeId)? GetFirstVisibleUpgradeButton(Element labelElement)
     {
         try

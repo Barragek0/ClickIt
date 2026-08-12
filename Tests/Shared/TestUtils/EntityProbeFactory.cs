@@ -76,5 +76,15 @@ namespace ClickIt.Tests.Shared.TestUtils
             => Components.TryGetValue(typeof(T), out Component? component)
                 ? (T)component
                 : null!;
+
+        public new bool HasComponent<T>() where T : Component
+            => Components.ContainsKey(typeof(T));
+    }
+
+    // Chest-derived probe so DynamicAccess.GetComponent<Chest>() resolves it; the `new` IsLocked
+    // hides the base memory-read getter (read through DynamicAccess, like the classifier).
+    public sealed class LockedChestProbe : Chest
+    {
+        public new bool IsLocked { get; set; }
     }
 }

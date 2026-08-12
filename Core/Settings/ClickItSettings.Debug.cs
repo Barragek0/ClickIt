@@ -24,21 +24,6 @@ namespace ClickIt
         [IgnoreMenu]
         public ButtonNode CopyAdditionalDebugInfoButton { get; set; } = new ButtonNode();
 
-        [JsonIgnore]
-        public bool MemoryDumpInProgress { get => TransientState.MemoryDumpInProgress; set => TransientState.MemoryDumpInProgress = value; }
-
-        [JsonIgnore]
-        public int MemoryDumpProgressPercent { get => TransientState.MemoryDumpProgressPercent; set => TransientState.MemoryDumpProgressPercent = value; }
-
-        [JsonIgnore]
-        public bool MemoryDumpLastRunSucceeded { get => TransientState.MemoryDumpLastRunSucceeded; set => TransientState.MemoryDumpLastRunSucceeded = value; }
-
-        [JsonIgnore]
-        public string MemoryDumpStatusText { get => TransientState.MemoryDumpStatusText; set => TransientState.MemoryDumpStatusText = value; }
-
-        [JsonIgnore]
-        public string MemoryDumpOutputPath { get => TransientState.MemoryDumpOutputPath; set => TransientState.MemoryDumpOutputPath = value; }
-
         [IgnoreMenu]
         public ToggleNode DebugShowClick { get; set; } = new ToggleNode(true);
 

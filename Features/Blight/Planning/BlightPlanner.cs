@@ -13,7 +13,7 @@ internal static class BlightPlanner
         NumVector2? pumpPosition = null,
         NumVector2? playerPosition = null,
         IReadOnlyList<NumVector2>? pathwayPositions = null,
-        List<NumVector2>? cachedBranchAnchors = null,
+        ConcurrentDictionary<NumVector2, byte>? cachedBranchAnchors = null,
         bool groupStepsByProximity = true)
     {
         if (rules.Count == 0 || knownTowers.Count == 0)
@@ -23,16 +23,16 @@ internal static class BlightPlanner
 
         if (cachedBranchAnchors != null)
         {
-            for (int b = 0; b < pumpBranches.Count; b++)
+            foreach (PumpBranch branch in pumpBranches)
             {
                 bool present = false;
-                for (int c = 0; c < cachedBranchAnchors.Count; c++)
+                foreach (NumVector2 anchor in cachedBranchAnchors.Keys)
                 {
-                    if (SqDist(cachedBranchAnchors[c], pumpBranches[b].Anchor) <= BranchMergeRadiusSq)
+                    if (SqDist(anchor, branch.Anchor) <= BranchMergeRadiusSq)
                     { present = true; break; }
                 }
                 if (!present)
-                    cachedBranchAnchors.Add(pumpBranches[b].Anchor);
+                    cachedBranchAnchors.TryAdd(branch.Anchor, 0);
             }
         }
 
@@ -76,11 +76,10 @@ internal static class BlightPlanner
                 TowerBuildRule? rule = BlightFillPlanner.FindRule(rules, knownTowers[i].TowerType);
                 if (rule is TowerBuildRule covRule && covRule.IsCoverageTower)
                 {
-                    // Coverage is measured against segments, not branch anchors, so a built tower is
-                    // upgraded as far as the farthest branch-subtree segment its max radius reaches.
+                    // Coverage is measured against segments, not branch anchors; a built tower upgrades to the farthest segment its max radius reaches.
                     int branchIdx = FindNearestBranch(knownTowers[i], pumpBranches);
                     float reqRadiusSq = branchIdx >= 0
-                        ? MaxCoveredBranchSegmentDistSq(knownTowers[i], knownTowers[i].TowerType, coverage,
+                        ? MaxCoveredBranchSegmentDistSq(knownTowers[i], coverage,
                             pumpBranches, Sq(BlightService.GetCoverageRadiusForLevel(knownTowers[i].TowerType, covRule.MaxUpgradeLevel)))
                         : 0f;
                     if (branchIdx >= 0)
@@ -197,12 +196,12 @@ internal static class BlightPlanner
         }
 
         // Debug summaries — one pass over branches, one over towers, producing all formats.
-        System.Text.StringBuilder branchDbg = new(), anchorDbg = new(), branchSegDbg = new();
+        System.Text.StringBuilder branchDbg = new(), anchorDbg = new();
         for (int b = 0; b < branchCount; b++)
         {
             PumpBranch pb = pumpBranches[b];
             char letter = (char)('A' + b);
-            if (b > 0) { branchDbg.Append(' '); anchorDbg.Append(' '); branchSegDbg.Append(' '); }
+            if (b > 0) { branchDbg.Append(' '); anchorDbg.Append(' '); }
             branchDbg.Append(letter).Append('(');
             for (int t = 0; t < coverageTypes.Count; t++)
             {
@@ -212,31 +211,16 @@ internal static class BlightPlanner
             }
             branchDbg.Append(')');
             anchorDbg.Append('(').Append(pb.Anchor.X.ToString("F0")).Append(',').Append(pb.Anchor.Y.ToString("F0")).Append(')');
-            branchSegDbg.Append(letter).Append("(seg=").Append(pb.CoverageSegment);
-            if (pb.CoverageSegment >= 0)
-                branchSegDbg.Append(" mid=(").Append(coverage[pb.CoverageSegment].Midpoint.X.ToString("F0"))
-                    .Append(',').Append(coverage[pb.CoverageSegment].Midpoint.Y.ToString("F0"))
-                    .Append(") c=").Append(coverage[pb.CoverageSegment].HasChilling ? '1' : '0')
-                    .Append(" s=").Append(coverage[pb.CoverageSegment].HasSeismic ? '1' : '0');
-            branchSegDbg.Append(')');
         }
 
-        System.Text.StringBuilder towerRadiusDbg = new(), assignDbg = new(), foundDbg = new();
+        System.Text.StringBuilder assignDbg = new();
         for (int i = 0; i < knownTowers.Count; i++)
         {
             BlightCachedTower t = knownTowers[i];
-            if (i > 0) { assignDbg.Append(' '); foundDbg.Append(' '); }
-            if (t.UpgradeLevel > 0)
-            {
-                if (towerRadiusDbg.Length > 0) towerRadiusDbg.Append(' ');
-                int estimate = BlightService.GetRadiusForLevel(t.TowerType, t.UpgradeLevel);
-                towerRadiusDbg.Append(t.TowerType.ToString()[..3]).Append('@').Append(t.UpgradeLevel)
-                    .Append(" r=").Append(t.Radius > 0 ? t.Radius.ToString() : "?").Append("(est").Append(estimate).Append(')');
-            }
+            if (i > 0) assignDbg.Append(' ');
             bool isAssigned = assignments.ContainsKey(t.WorldPosition);
             assignDbg.Append(isAssigned ? '+' : '-').Append(t.UpgradeLevel)
                 .Append(isAssigned ? assignments[t.WorldPosition].Type.ToString()[..3] : "---");
-            foundDbg.Append('(').Append(t.WorldPosition.X.ToString("F0")).Append(',').Append(t.WorldPosition.Y.ToString("F0")).Append(')');
         }
 
         List<BlightPlanStep> steps = BlightFillPlanner.BuildOrderedSteps(
@@ -244,8 +228,7 @@ internal static class BlightPlanner
 
         if (groupStepsByProximity)
         {
-            // A step is a coverage step when its foundation is a coverage placement (rules can have
-            // both coverage and fill rules for the same tower type, so type alone is ambiguous).
+            // A step is a coverage step when its foundation is a coverage placement (type alone is ambiguous).
             HashSet<NumVector2> coveragePositions = [];
             for (int i = 0; i < coveragePlacements.Count; i++)
                 coveragePositions.Add(knownTowers[coveragePlacements[i].KnownTowerIndex].WorldPosition);
@@ -258,18 +241,8 @@ internal static class BlightPlanner
             + $" preB={preAssignedBuilt}"
             + $" {covStat}"
             + $" |{assignDbg}";
-        string details = $"[{branchDbg}]"
-            + $" anchors={anchorDbg}"
-            + $" branchSeg={branchSegDbg}"
-            + $" towers={towerRadiusDbg}"
-            + $" pump={(pumpPosition.HasValue ? $"({pumpPosition.Value.X:F0},{pumpPosition.Value.Y:F0})" : "none")}"
-            + $" found={foundDbg}"
-            + $" preBuilt={preAssignedBuilt}"
-            + $" tierCov={covStat}"
-            + $" assigned={assignments.Count}"
-            + $" | {assignDbg}";
 
-        return new BlightPlan(steps, version, summary, details);
+        return new BlightPlan(steps, version, summary);
     }
 
     internal static List<BlightPlanStep> ReorderStepsByProximity(
@@ -481,11 +454,7 @@ internal static class BlightPlanner
                 isBranchSegment[s] = true;
         }
 
-        // Working covered state: everything the built towers cover today (the coverage array, which
-        // already includes AND/OR propagation) plus what in-progress (below-max) towers will cover once
-        // upgraded.  New towers extend this state through the SAME propagation rules, so a tower on one
-        // fork arm that completes the fork correctly covers the trunk (Rule 2), and a trunk tower covers
-        // both arms (Rule 3) — the greedy below is propagation-aware, not per-midpoint.
+        // Working covered state: current coverage plus what in-progress towers will cover once upgraded, propagated like new towers.
         bool[] covered = ComputePlannedCoveredState(coverage, type, knownTowers, rule.MaxUpgradeLevel);
 
         while (maxBuild <= 0 || placed < maxBuild)
@@ -674,12 +643,9 @@ internal static class BlightPlanner
         return (bestIdx, bestDistSq);
     }
 
-    // The farthest branch-subtree segment midpoint a built tower's max radius reaches.  Drives the
-    // upgrade level of a built coverage tower so it covers the segments it serves (segments, not the
-    // branch anchor — a fork-arm tower serves its arm even when it cannot reach the anchor).
+    // The farthest branch-subtree segment midpoint a built tower's max radius reaches.
     private static float MaxCoveredBranchSegmentDistSq(
         BlightCachedTower tower,
-        BlightTowerType type,
         LaneCoverageResult[] coverage,
         List<PumpBranch> branches,
         float maxRadiusSq)

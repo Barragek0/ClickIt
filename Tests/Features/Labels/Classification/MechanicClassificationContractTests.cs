@@ -72,6 +72,9 @@ namespace ClickIt.Tests.Features.Labels.Classification
         [DataRow("Metadata/Chests/Blight/BlightChestObject", "Blight Cyst", MechanicIds.BlightCyst)]
         [DataRow("Metadata/Chests/Breach/BreachBoxChest02", "Grasping Coffers", MechanicIds.BreachGraspingCoffers)]
         [DataRow("Metadata/Chests/SynthesisChests/SynthesisChest", "Synthesised Stash", MechanicIds.SynthesisSynthesisedStash)]
+        [DataRow("Metadata/LeagueDeepwater/CursedTreasure/Chest", "Cursed Treasure", MechanicIds.AllflameCursedTreasure)]
+        [DataRow("Metadata/LeagueDeepwater/BrinerotStores/Chest", "Brinerot Plunder", MechanicIds.AllflameBrinerotPlunder)]
+        [DataRow("Metadata/LeagueDeepwater/GiantCoralChest", "Coral Nest", MechanicIds.AllflameCoralNest)]
         [DataRow("Metadata/Heist/Objects/Level/Hazards/Strength_SmashMarker", "Strength Smash Marker", MechanicIds.HeistHazards)]
         [DataRow("Metadata/Chests/LeagueHeist/MilitaryChests/HeistChestPathMilitary", "Secure Repository", MechanicIds.HeistSecureRepository)]
         [DataRow("Metadata/Chests/LeagueHeist/AgilityChests/HeistChestPathAgility", "Secure Locker", MechanicIds.HeistSecureLocker)]
@@ -87,7 +90,10 @@ namespace ClickIt.Tests.Features.Labels.Classification
                 MechanicIds.HeistHazards,
                 MechanicIds.BlightCyst,
                 MechanicIds.BreachGraspingCoffers,
-                MechanicIds.SynthesisSynthesisedStash
+                MechanicIds.SynthesisSynthesisedStash,
+                MechanicIds.AllflameCursedTreasure,
+                MechanicIds.AllflameBrinerotPlunder,
+                MechanicIds.AllflameCoralNest
             ];
 
             EntityType type = string.Equals(expectedMechanicId, MechanicIds.HeistHazards, StringComparison.OrdinalIgnoreCase)

@@ -8,6 +8,7 @@ namespace ClickIt.UI.Debug.Layout
             if (string.IsNullOrWhiteSpace(text))
                 return lines;
 
+            int safeWrap = SystemMath.Max(1, maxLength);
             string normalized = text.Replace("\r\n", "\n");
             string[] baseLines = normalized.Split('\n');
             for (int i = 0; i < baseLines.Length; i++)
@@ -20,13 +21,13 @@ namespace ClickIt.UI.Debug.Layout
                 while (start < segment.Length)
                 {
                     int remaining = segment.Length - start;
-                    if (remaining <= maxLength)
+                    if (remaining <= safeWrap)
                     {
                         lines.Add(segment[start..]);
                         break;
                     }
 
-                    int wrapAt = FindWrapIndex(segment, start, maxLength);
+                    int wrapAt = FindWrapIndex(segment, start, safeWrap);
                     int length = SystemMath.Max(1, wrapAt - start);
                     string chunk = segment.Substring(start, length).TrimEnd();
                     if (chunk.Length > 0)

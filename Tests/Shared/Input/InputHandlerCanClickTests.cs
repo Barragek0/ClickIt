@@ -223,6 +223,8 @@ namespace ClickIt.Tests.Shared.Input
             var settings = new ClickItSettings();
             settings.LazyMode.Value = true;
             settings.LazyModeDisableKeyToggleMode.Value = true;
+            settings.DisableLazyModeLeftClickHeld.Value = false;
+            settings.DisableLazyModeRightClickHeld.Value = false;
 
             var handler = new InputHandler(settings);
             SeedHotkeyState(handler, lazyModeDisableToggled: true);
@@ -241,6 +243,8 @@ namespace ClickIt.Tests.Shared.Input
             settings.LazyMode.Value = true;
             settings.ClickHotkeyToggleMode.Value = true;
             settings.LazyModeDisableKeyToggleMode.Value = true;
+            settings.DisableLazyModeLeftClickHeld.Value = false;
+            settings.DisableLazyModeRightClickHeld.Value = false;
 
             var handler = new InputHandler(settings);
             SeedHotkeyState(handler, clickHotkeyToggled: true, lazyModeDisableToggled: true);
@@ -255,7 +259,10 @@ namespace ClickIt.Tests.Shared.Input
         [TestMethod]
         public void IsClickKeyStateActive_ReturnsFalse_WhenLazyModeDisabled_AndHotkeyInactive()
         {
-            var handler = new InputHandler(new ClickItSettings());
+            var settings = new ClickItSettings();
+            settings.DisableLazyModeLeftClickHeld.Value = false;
+            settings.DisableLazyModeRightClickHeld.Value = false;
+            var handler = new InputHandler(settings);
 
             bool active = InvokeIsClickKeyStateActive(handler, hasLazyModeRestrictedItemsOnScreen: false);
 
@@ -267,6 +274,8 @@ namespace ClickIt.Tests.Shared.Input
         {
             var settings = new ClickItSettings();
             settings.LazyMode.Value = true;
+            settings.DisableLazyModeLeftClickHeld.Value = false;
+            settings.DisableLazyModeRightClickHeld.Value = false;
             var handler = new InputHandler(settings);
 
             bool active = InvokeIsClickKeyStateActive(handler, hasLazyModeRestrictedItemsOnScreen: false);
@@ -280,6 +289,8 @@ namespace ClickIt.Tests.Shared.Input
             var settings = new ClickItSettings();
             settings.LazyMode.Value = true;
             settings.LazyModeDisableKeyToggleMode.Value = true;
+            settings.DisableLazyModeLeftClickHeld.Value = false;
+            settings.DisableLazyModeRightClickHeld.Value = false;
             var handler = new InputHandler(settings);
             SeedHotkeyState(handler, lazyModeDisableToggled: true);
 
@@ -294,12 +305,42 @@ namespace ClickIt.Tests.Shared.Input
             var settings = new ClickItSettings();
             settings.LazyMode.Value = true;
             settings.ClickHotkeyToggleMode.Value = true;
+            settings.DisableLazyModeLeftClickHeld.Value = false;
+            settings.DisableLazyModeRightClickHeld.Value = false;
             var handler = new InputHandler(settings);
             SeedHotkeyState(handler, clickHotkeyToggled: true);
 
             bool active = InvokeIsClickKeyStateActive(handler, hasLazyModeRestrictedItemsOnScreen: true);
 
             active.Should().BeTrue();
+        }
+
+        [DataTestMethod]
+        [DataRow(false, false, false, false, false, false)]
+        [DataRow(true, false, false, false, false, true)]
+        [DataRow(true, false, false, true, false, false)]
+        [DataRow(true, false, false, true, true, true)]
+        [DataRow(true, true, false, false, false, false)]
+        [DataRow(true, false, true, false, false, false)]
+        [DataRow(false, false, false, true, false, false)]
+        public void ResolveClickKeyStateActive_TruthTable(
+            bool lazyModeEnabled, bool hasRestricted, bool disableKeyActive, bool mouseButtonBlocked, bool clickHotkeyHeld, bool expected)
+        {
+            InputHandler.ResolveClickKeyStateActive(lazyModeEnabled, hasRestricted, disableKeyActive, mouseButtonBlocked, clickHotkeyHeld)
+                .Should().Be(expected);
+        }
+
+        [TestMethod]
+        public void ResolveLazyClickInputActive_ReturnsFalse_WhenMouseButtonBlocked()
+        {
+            InputHandler.ResolveLazyClickInputActive(hasRestrictedItems: false, disableKeyActive: false, mouseButtonBlocked: true)
+                .Should().BeFalse("a held left/right click with the disable setting on pauses lazy-mode input");
+            InputHandler.ResolveLazyClickInputActive(hasRestrictedItems: true, disableKeyActive: false, mouseButtonBlocked: false)
+                .Should().BeFalse();
+            InputHandler.ResolveLazyClickInputActive(hasRestrictedItems: false, disableKeyActive: true, mouseButtonBlocked: false)
+                .Should().BeFalse();
+            InputHandler.ResolveLazyClickInputActive(hasRestrictedItems: false, disableKeyActive: false, mouseButtonBlocked: false)
+                .Should().BeTrue();
         }
 
         [TestMethod]

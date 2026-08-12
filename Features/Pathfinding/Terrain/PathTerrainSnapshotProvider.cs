@@ -4,13 +4,14 @@ namespace ClickIt.Features.Pathfinding.Terrain
     {
         internal Vector2i AreaDims;
         internal long AreaHash;
+        // The RAW pathfinding grid's dimensions — the authoritative, stable cache key. AreaDimensions
+        // is unreliable as a key (it reads differently for the same area), and the walkable grid is
+        // built from RawPathfindingData, so its real shape must drive the cache comparison.
+        internal int GridWidth;
+        internal int GridHeight;
         internal bool[][]? Walkable;
         internal object? DataOwner;
-        // IngameData.Address is the per-area game-memory identity. ExileCore's CachedValue<IngameData>
-        // recreates the wrapper every ~25ms, and the underlying pointer can also churn transiently
-        // in-map (zone sub-loads), so neither reference nor address identity alone is a reliable
-        // per-area signal. The address is stable within an area and changes on area change, so it is
-        // the authoritative cache key; the confirmation window below absorbs transient in-map churn.
+        // IngameData.Address is the authoritative per-area cache key (the wrapper churns every ~25ms and can flap in-map).
         internal long DataOwnerAddress;
         // Candidate owner observed after a key change; the rebuild waits TerrainRebuildConfirmMs to
         // confirm the address really moved (real area change) rather than flapped back.
@@ -37,16 +38,17 @@ namespace ClickIt.Features.Pathfinding.Terrain
             if (data == null)
                 return false;
 
-            Vector2i areaDims = data.AreaDimensions;
+            object? rawPathData = data.RawPathfindingData;
+            if (!TryGetRawGridDims(rawPathData, out int gridWidth, out int gridHeight) || gridHeight == 0)
+                return false;
+
             if (cache.Walkable != null
-                && cache.AreaDims.X == areaDims.X
-                && cache.AreaDims.Y == areaDims.Y)
+                && cache.GridWidth == gridWidth
+                && cache.GridHeight == gridHeight)
             {
                 if (ReferenceEquals(data, cache.DataOwner) || data.Address == cache.DataOwnerAddress)
                 {
-                    dims = new PathfindingService.GridPoint(
-                        areaDims.X > 0 ? areaDims.X : cache.Walkable[0].Length,
-                        areaDims.Y > 0 ? areaDims.Y : cache.Walkable.Length);
+                    dims = new PathfindingService.GridPoint(gridWidth, gridHeight);
                     walkable = cache.Walkable;
                     fromCache = true;
                     return true;
@@ -59,9 +61,7 @@ namespace ClickIt.Features.Pathfinding.Terrain
                 {
                     if (now - cache.PendingAtMs < TerrainRebuildConfirmMs)
                     {
-                        dims = new PathfindingService.GridPoint(
-                            areaDims.X > 0 ? areaDims.X : cache.Walkable[0].Length,
-                            areaDims.Y > 0 ? areaDims.Y : cache.Walkable.Length);
+                        dims = new PathfindingService.GridPoint(gridWidth, gridHeight);
                         walkable = cache.Walkable;
                         fromCache = true;
                         return true;
@@ -71,16 +71,14 @@ namespace ClickIt.Features.Pathfinding.Terrain
                 {
                     cache.PendingOwnerAddress = data.Address;
                     cache.PendingAtMs = now;
-                    dims = new PathfindingService.GridPoint(
-                        areaDims.X > 0 ? areaDims.X : cache.Walkable[0].Length,
-                        areaDims.Y > 0 ? areaDims.Y : cache.Walkable.Length);
+                    dims = new PathfindingService.GridPoint(gridWidth, gridHeight);
                     walkable = cache.Walkable;
                     fromCache = true;
                     return true;
                 }
             }
 
-            if (!TryBuildWalkableGrid(data.RawPathfindingData, cache.Walkable, out bool[][] converted, out int gridWidth, out int gridHeight) || gridHeight == 0)
+            if (!TryBuildWalkableGrid(rawPathData, cache.Walkable, out bool[][] converted, out _, out _) || converted.Length == 0)
                 return false;
 
             if (cache.DataOwner != null
@@ -90,10 +88,9 @@ namespace ClickIt.Features.Pathfinding.Terrain
                 cache.ChurnRebuildCount++;
             }
 
-            dims = new PathfindingService.GridPoint(
-                areaDims.X > 0 ? areaDims.X : gridWidth,
-                areaDims.Y > 0 ? areaDims.Y : gridHeight);
-            cache.AreaDims = areaDims;
+            dims = new PathfindingService.GridPoint(gridWidth, gridHeight);
+            cache.GridWidth = gridWidth;
+            cache.GridHeight = gridHeight;
             cache.DataOwner = data;
             cache.DataOwnerAddress = data.Address;
             cache.PendingOwnerAddress = 0;
@@ -101,6 +98,33 @@ namespace ClickIt.Features.Pathfinding.Terrain
             cache.Walkable = converted;
             walkable = converted;
             return true;
+        }
+
+        // Cheap shape read of the raw pathfinding array (no per-cell conversion) so the cache key
+        // never pays the rebuild cost just to decide whether to rebuild.
+        internal static bool TryGetRawGridDims(object? rawPathData, out int width, out int height)
+        {
+            width = 0;
+            height = 0;
+            if (rawPathData is int[][] direct && direct.Length > 0)
+            {
+                height = direct.Length;
+                width = direct[0]?.Length ?? 0;
+                return width > 0;
+            }
+
+            if (rawPathData is Array rows && rows.Length > 0)
+            {
+                height = rows.Length;
+                object? firstRow = rows.GetValue(0);
+                if (firstRow is int[] intRow)
+                    width = intRow.Length;
+                else if (firstRow is Array arrayRow)
+                    width = arrayRow.Length;
+                return width > 0;
+            }
+
+            return false;
         }
 
         // Pure cache-key decision so the same-dims-different-area guard is unit-testable.

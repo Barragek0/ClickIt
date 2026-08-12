@@ -54,7 +54,7 @@ namespace ClickIt.Core.Bootstrap
             CoreDomainServices core = CoreDomainAssembler.Assemble(owner, settings, gameController);
             RenderingDomainServices rendering = RenderingDomainAssembler.Assemble(owner, settings, core);
             ClickAutomationPort clickAutomationPort = ClickDomainAssembler.Assemble(owner, settings, gameController, core, rendering.AltarChoiceEvaluator);
-            UltimatumOverlay ultimatumOverlay = RenderingDomainAssembler.CreateUltimatumOverlay(settings, clickAutomationPort);
+            UltimatumOverlay ultimatumOverlay = RenderingDomainAssembler.CreateUltimatumOverlay(clickAutomationPort);
             rendering.OverlayRenderHost.Register(ultimatumOverlay);
             SettingsDomainServices settingsDomain = SettingsDomainAssembler.Assemble(owner);
             return new CompositionRootParts(core, rendering, clickAutomationPort, settingsDomain);
@@ -85,6 +85,9 @@ namespace ClickIt.Core.Bootstrap
                 context.Runtime.LastTickTimer,
                 context.Runtime.Timer,
                 context.Runtime.SecondTimer));
+            // Unhook the live GameController entity events so the disposed blight cache's handler
+            // (a per-entity path read) stops running on every EntityAdded after a reload.
+            context.ServiceRegistry.Register(() => context.Services.BlightService?.DisposeForShutdown());
         }
 
         private static void ApplyPorts(
@@ -98,7 +101,7 @@ namespace ClickIt.Core.Bootstrap
 
             PublishCoreServices(services, core);
             PublishClickServices(services, clickAutomationPort, alertService, core.WeightCalculator);
-            PublishRenderingState(context.Rendering, services, core, rendering);
+            PublishRenderingState(context.Rendering, core, rendering);
         }
 
         private static void PublishCoreServices(PluginServices services, CoreDomainServices core)
@@ -146,14 +149,7 @@ namespace ClickIt.Core.Bootstrap
                         BlightBuildAction action = services.BlightService.TryProgressBlightBuilding(
                             services.CachedLabels?.Value);
 
-                        // If the state machine wants to click at a position that is
-                        // not in a clickable area (e.g. behind the minimap or off-screen),
-                        // skip the click without resetting progress — resetting to Idle would
-                        // restart the whole walk->stop cycle every time a transient position
-                        // (e.g. the player's feet while moving) lands under a UI element.  A blight
-                        // MENU click must additionally still be over a blight tower label/icon — if
-                        // the camera moved or the menu closed since the position was resolved, the
-                        // click is skipped (fail-closed) so it can never land on a different slot.
+                        // Skip non-clickable positions without resetting progress; blight menu clicks fail-closed on a stale resolved position.
                         if (action is { Kind: BlightBuildActionKind.ClickPosition } blightClick
                             && (blightClick.IsMenuClick
                                 ? !clickAutomationPort.IsBlightTowerUiAt(blightClick.ClickPosition)
@@ -177,7 +173,6 @@ namespace ClickIt.Core.Bootstrap
 
         private static void PublishRenderingState(
             PluginRenderingState renderingState,
-            PluginServices services,
             CoreDomainServices core,
             RenderingDomainServices rendering)
         {

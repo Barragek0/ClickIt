@@ -6,10 +6,8 @@ namespace ClickIt.Features.Observability.Performance
     // can run on any coroutine that touches CachedLabels.Value.
     internal sealed class GcAllocationMetricsStore
     {
-        private const int MaxWindow = 1000;
-
         private readonly Lock _lock = new();
-        private readonly Dictionary<ProcessingSection, SectionSamples> _samples = [];
+        private readonly Dictionary<ProcessingSection, AllocationSampleWindow> _samples = [];
 
         internal void Record(ProcessingSection section, long bytes)
         {
@@ -18,9 +16,9 @@ namespace ClickIt.Features.Observability.Performance
 
             lock (_lock)
             {
-                if (!_samples.TryGetValue(section, out SectionSamples? samples))
+                if (!_samples.TryGetValue(section, out AllocationSampleWindow? samples))
                 {
-                    samples = new SectionSamples();
+                    samples = new AllocationSampleWindow();
                     _samples[section] = samples;
                 }
                 samples.Record(bytes);
@@ -31,72 +29,12 @@ namespace ClickIt.Features.Observability.Performance
         {
             lock (_lock)
             {
-                return _samples.TryGetValue(section, out SectionSamples? samples)
-                    ? samples.Stats
-                    : default;
-            }
-        }
-
-        private sealed class SectionSamples
-        {
-            private const long ExpiryMs = 10_000;
-
-            private readonly Queue<(long TimestampMs, long Bytes)> _samples = new(MaxWindow);
-            private readonly Func<long> _now = static () => Environment.TickCount64;
-
-            public void Record(long bytes)
-            {
-                long now = _now();
-                Expire(now);
-                _samples.Enqueue((now, bytes));
-                if (_samples.Count > MaxWindow)
-                    _samples.Dequeue();
-            }
-
-            public GcAllocationSnapshot Stats
-            {
-                get
-                {
-                    long now = _now();
-                    Expire(now);
-                    if (_samples.Count == 0)
-                        return default;
-
-                    long total = 0;
-                    long max = 0;
-                    long last = 0;
-                    double maxRate = 0;
-                    long periodTotal = 0;
-                    int periodCount = 0;
-                    long? previousTimestamp = null;
-                    foreach ((long timestampMs, long bytes) in _samples)
-                    {
-                        total += bytes;
-                        if (bytes > max)
-                            max = bytes;
-                        last = bytes;
-                        if (previousTimestamp is long previous)
-                        {
-                            long period = SystemMath.Max(1, timestampMs - previous);
-                            double rate = bytes * 1000.0 / period;
-                            if (rate > maxRate)
-                                maxRate = rate;
-                            periodTotal += period;
-                            periodCount++;
-                        }
-                        previousTimestamp = timestampMs;
-                    }
-                    double avgBytes = total / (double)_samples.Count;
-                    double avgPeriodMs = periodCount > 0 ? periodTotal / (double)periodCount : 0;
-                    double allocPerSecond = avgPeriodMs > 0 ? avgBytes * 1000.0 / avgPeriodMs : 0;
-                    return new GcAllocationSnapshot(allocPerSecond, avgBytes, max, _samples.Count, last, avgPeriodMs, maxRate);
-                }
-            }
-
-            private void Expire(long now)
-            {
-                while (_samples.Count > 0 && now - _samples.Peek().TimestampMs > ExpiryMs)
-                    _samples.Dequeue();
+                if (!_samples.TryGetValue(section, out AllocationSampleWindow? samples))
+                    return default;
+                AllocationSampleStats s = samples.Stats;
+                return new GcAllocationSnapshot(
+                    s.AllocPerSecond, s.AvgBytesPerRun, s.MaxBytesPerRun,
+                    s.SampleCount, s.LastBytesPerRun, s.AvgPeriodMs, s.MaxAllocPerSecond);
             }
         }
     }

@@ -26,22 +26,19 @@ namespace ClickIt.Features.Click.State
                 if (labels == null || labelCount == 0)
                 {
                     _cachedGroundLabelEntityAddresses.Clear();
-                    _cachedGroundLabelEntityAddressesCache.SetValue(0, Environment.TickCount64, _cachedGroundLabelEntityAddresses);
+                    _cachedGroundLabelEntityAddressesCache.SetValue(0, Environment.TickCount64, new HashSet<long>());
                     return _cachedGroundLabelEntityAddresses;
                 }
 
                 long now = Environment.TickCount64;
                 if (_cachedGroundLabelEntityAddressesCache.TryGetValue(labelCount, now, out IReadOnlySet<long> cachedAddresses))
                 {
-                    if (!ReferenceEquals(cachedAddresses, _cachedGroundLabelEntityAddresses))
-                    {
-                        _cachedGroundLabelEntityAddresses.Clear();
-                        _cachedGroundLabelEntityAddresses.UnionWith(cachedAddresses);
-                    }
-
+                    // The cache stores a COPY per count, so a hit for this count can never be the
+                    // count-7 set served for a count-5 query within the same window.
+                    _cachedGroundLabelEntityAddresses.Clear();
+                    _cachedGroundLabelEntityAddresses.UnionWith(cachedAddresses);
                     return _cachedGroundLabelEntityAddresses;
                 }
-
 
                 _cachedGroundLabelEntityAddresses.Clear();
                 _cachedGroundLabelEntityAddresses.EnsureCapacity(labelCount);
@@ -53,7 +50,7 @@ namespace ClickIt.Features.Click.State
                         _cachedGroundLabelEntityAddresses.Add(address);
                 }
 
-                _cachedGroundLabelEntityAddressesCache.SetValue(labelCount, now, _cachedGroundLabelEntityAddresses);
+                _cachedGroundLabelEntityAddressesCache.SetValue(labelCount, now, new HashSet<long>(_cachedGroundLabelEntityAddresses));
             }
             catch
             {

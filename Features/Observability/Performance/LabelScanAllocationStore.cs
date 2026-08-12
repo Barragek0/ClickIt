@@ -5,13 +5,11 @@ namespace ClickIt.Features.Observability.Performance;
 // any coroutine that touches CachedLabels.Value, so reads are locked.
 internal sealed class LabelScanAllocationStore
 {
-    private const int MaxWindow = 1000;
-
     private readonly Lock _lock = new();
-    private readonly StageSamples _listRead = new();
-    private readonly StageSamples _listAlloc = new();
-    private readonly StageSamples _validity = new();
-    private readonly StageSamples _sort = new();
+    private readonly AllocationSampleWindow _listRead = new();
+    private readonly AllocationSampleWindow _listAlloc = new();
+    private readonly AllocationSampleWindow _validity = new();
+    private readonly AllocationSampleWindow _sort = new();
     private long _sampleCount;
 
     internal void Record(LabelScanAllocationBreakdown breakdown)
@@ -31,45 +29,14 @@ internal sealed class LabelScanAllocationStore
         lock (_lock)
         {
             return new LabelScanAllocationStats(
-                _listRead.Stats,
-                _listAlloc.Stats,
-                _validity.Stats,
-                _sort.Stats,
+                ToStage(_listRead.Stats),
+                ToStage(_listAlloc.Stats),
+                ToStage(_validity.Stats),
+                ToStage(_sort.Stats),
                 _sampleCount);
         }
     }
 
-    private sealed class StageSamples
-    {
-        private readonly Queue<long> _bytes = new(MaxWindow);
-        private long _last;
-
-        public void Record(long bytes)
-        {
-            if (bytes < 0)
-                bytes = 0;
-            _last = bytes;
-            _bytes.Enqueue(bytes);
-            if (_bytes.Count > MaxWindow)
-                _bytes.Dequeue();
-        }
-
-        public AllocationStageSnapshot Stats
-        {
-            get
-            {
-                if (_bytes.Count == 0)
-                    return default;
-                long total = 0;
-                long max = 0;
-                foreach (long b in _bytes)
-                {
-                    total += b;
-                    if (b > max)
-                        max = b;
-                }
-                return new AllocationStageSnapshot(_last, total / (double)_bytes.Count, max);
-            }
-        }
-    }
+    private static AllocationStageSnapshot ToStage(AllocationSampleStats s)
+        => new(s.LastBytesPerRun, s.AvgBytesPerRun, s.MaxBytesPerRun, s.MaxAllocPerSecond);
 }

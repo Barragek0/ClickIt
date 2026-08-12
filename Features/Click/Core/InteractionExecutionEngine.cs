@@ -12,16 +12,16 @@ namespace ClickIt.Features.Click.Core
         public ExecutionResult Execute(ClickTickContext context, ClickCandidates candidates, DecisionResult decision)
         {
             // Ordered decision chain (mechanics → harvest → blight → label → walk).
-            if (TryHandleBlightBlocking(context))
+            if (TryHandleBlightBlocking())
                 return StopExecution(didActionableWork: true);
 
             if (TryExecuteMechanicSelections(context, candidates, decision, hiddenFallback: !decision.GroundItemsVisible))
                 return StopExecution(didActionableWork: true);
 
-            if (decision.GroundItemsVisible && TryClickChosenHarvestLabel(context, candidates))
+            if (decision.GroundItemsVisible && TryClickChosenHarvestLabel(context))
                 return StopExecution(didActionableWork: true);
 
-            if (TryProgressBlightBuilding(context))
+            if (TryProgressBlightBuilding())
                 return StopExecution(didActionableWork: true);
 
             return decision.GroundItemsVisible
@@ -29,14 +29,14 @@ namespace ClickIt.Features.Click.Core
                 : ExecuteHiddenRemainder(context, candidates);
         }
 
-        private bool TryHandleBlightBlocking(ClickTickContext context)
+        private bool TryHandleBlightBlocking()
         {
             if (!_dependencies.Settings.BlightBlockOtherInteractions.Value
                 || _dependencies.TryProgressBlightBuilding == null
                 || (_dependencies.IsBlightEncounterActive?.Invoke() != true))
                 return false;
 
-            if (!TryProgressBlightBuilding(context))
+            if (!TryProgressBlightBuilding())
             {
                 Entity? blightTarget = _dependencies.GetBlightPathfindTarget?.Invoke();
                 if (blightTarget != null)
@@ -226,7 +226,7 @@ namespace ClickIt.Features.Click.Core
             return HandleVisibleLabel(context, candidates);
         }
 
-        private bool TryClickChosenHarvestLabel(ClickTickContext context, ClickCandidates candidates)
+        private bool TryClickChosenHarvestLabel(ClickTickContext context)
         {
             if (_dependencies.GetHarvestLabelToClick == null)
                 return false;
@@ -251,7 +251,7 @@ namespace ClickIt.Features.Click.Core
                 clickPos, chosen, MechanicIds.Harvest);
         }
 
-        private bool TryProgressBlightBuilding(ClickTickContext context)
+        private bool TryProgressBlightBuilding()
         {
             if (_dependencies.TryProgressBlightBuilding == null)
                 return false;
@@ -287,7 +287,7 @@ namespace ClickIt.Features.Click.Core
                         else
                         {
                             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
-                                "BlightBuildWalk", "walkTarget=null — GetPathfindingTargetEntity returned null (entity on screen or no target)", MechanicIds.Blight);
+                                "BlightBuildWalk", "walkTarget=null - GetPathfindingTargetEntity returned null (entity on screen or no target)", MechanicIds.Blight);
                         }
                         // The walk was already performed; report handled so the caller's fallback
                         // does not issue a second redundant walk click on the same target.
@@ -359,6 +359,16 @@ namespace ClickIt.Features.Click.Core
         {
             LabelOnGround nextLabel = candidates.NextLabel!;
             Entity? nextLabelItem = TryGetLabelItemOnGround(nextLabel);
+
+            // A locked strongbox (the strongbox overlay's red frame) cannot be opened, so it is
+            // never clicked even if a stale selection cache ranked it; fall through to the
+            // no-visible-label path so the plugin still walks toward other targets.
+            if (nextLabelItem != null && MechanicClassifier.IsLockedStrongbox(nextLabelItem))
+            {
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("LockedChestSkipped",
+                    "Strongbox is locked - not clickable", candidates.NextLabelMechanicId);
+                return HandleNoVisibleLabel(context);
+            }
 
             if (IsBlockedByPostChestLootSettlement(context, candidates.NextLabelMechanicId, nextLabelItem))
             {

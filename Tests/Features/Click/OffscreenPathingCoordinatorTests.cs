@@ -145,7 +145,7 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void TryHandleStickyOffscreenTarget_ReturnsTrue_WhenStickyTargetResolvesButDirectClickFails()
+        public void TryHandleStickyOffscreenTarget_ReturnsTrue_AndClearsStickyTarget_WhenDirectClickFails()
         {
             var runtimeState = new ClickRuntimeState
             {
@@ -160,7 +160,7 @@ namespace ClickIt.Tests.Features.Click
             bool handled = coordinator.TryHandleStickyOffscreenTarget(new Vector2(100f, 200f), allLabels: null);
 
             handled.Should().BeTrue();
-            runtimeState.StickyOffscreenTargetAddress.Should().Be(42);
+            runtimeState.StickyOffscreenTargetAddress.Should().Be(0);
         }
 
         [TestMethod]

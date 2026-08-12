@@ -132,7 +132,7 @@ namespace ClickIt.Tests.Core.Lifecycle
             var clickLabelCoroutine = CoroutineTestHarness.CreateCoroutine("Click", isDone: false);
             var manualUiHoverCoroutine = CoroutineTestHarness.CreateCoroutine("Manual UI Hover", isDone: false);
             var delveFlareCoroutine = CoroutineTestHarness.CreateCoroutine("Flare", isDone: false);
-            var deepMemoryDumpCoroutine = CoroutineTestHarness.CreateCoroutine("Memory Dump", isDone: false);
+            var gameStateDumpCoroutine = CoroutineTestHarness.CreateCoroutine("Game State Dump", isDone: false);
             var namedClickItCoroutine = CoroutineTestHarness.CreateCoroutine("Blocked UI", isDone: false);
             var namedForeignCoroutine = CoroutineTestHarness.CreateCoroutine("Other.Coroutine", isDone: false);
 
@@ -140,7 +140,7 @@ namespace ClickIt.Tests.Core.Lifecycle
             plugin.State.Runtime.ClickLabelCoroutine = clickLabelCoroutine;
             plugin.State.Runtime.ManualUiHoverCoroutine = manualUiHoverCoroutine;
             plugin.State.Runtime.DelveFlareCoroutine = delveFlareCoroutine;
-            plugin.State.Runtime.DeepMemoryDumpCoroutine = deepMemoryDumpCoroutine;
+            plugin.State.Runtime.GameStateDumpCoroutine = gameStateDumpCoroutine;
 
             using var scope = CoroutineTestHarness.ReplaceParallelRunnerCoroutines(
             [
@@ -154,7 +154,7 @@ namespace ClickIt.Tests.Core.Lifecycle
             clickLabelCoroutine.IsDone.Should().BeTrue();
             manualUiHoverCoroutine.IsDone.Should().BeTrue();
             delveFlareCoroutine.IsDone.Should().BeTrue();
-            deepMemoryDumpCoroutine.IsDone.Should().BeTrue();
+            gameStateDumpCoroutine.IsDone.Should().BeTrue();
             namedClickItCoroutine.IsDone.Should().BeTrue();
             namedForeignCoroutine.IsDone.Should().BeFalse();
 
@@ -162,7 +162,7 @@ namespace ClickIt.Tests.Core.Lifecycle
             plugin.State.Runtime.ClickLabelCoroutine.Should().BeNull();
             plugin.State.Runtime.ManualUiHoverCoroutine.Should().BeNull();
             plugin.State.Runtime.DelveFlareCoroutine.Should().BeNull();
-            plugin.State.Runtime.DeepMemoryDumpCoroutine.Should().BeNull();
+            plugin.State.Runtime.GameStateDumpCoroutine.Should().BeNull();
         }
 
         [TestMethod]

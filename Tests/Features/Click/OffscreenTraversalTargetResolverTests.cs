@@ -76,6 +76,52 @@ namespace ClickIt.Tests.Features.Click
                 PathfindingLabelSuppression: pathfindingLabelSuppression));
         }
 
+        [TestMethod]
+        public void IsOffscreenWalkableStructure_True_ForEldritchAltarPaths()
+        {
+            OffscreenTraversalTargetResolver.IsOffscreenWalkableStructure(EntityProbeFactory.Create(path: "Metadata/Terrain/CleansingFireAltar"))
+                .Should().BeTrue();
+            OffscreenTraversalTargetResolver.IsOffscreenWalkableStructure(EntityProbeFactory.Create(path: "Metadata/Terrain/TangleAltar"))
+                .Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void IsOffscreenWalkableStructure_True_ForAreaTransitionPathsAndType()
+        {
+            OffscreenTraversalTargetResolver.IsOffscreenWalkableStructure(EntityProbeFactory.Create(path: "Metadata/AreaTransition/Zone"))
+                .Should().BeTrue();
+            OffscreenTraversalTargetResolver.IsOffscreenWalkableStructure(EntityProbeFactory.Create(path: "Metadata/LabyrinthTrial/Portal"))
+                .Should().BeTrue();
+            OffscreenTraversalTargetResolver.IsOffscreenWalkableStructure(EntityProbeFactory.Create(path: "Metadata/TrialPortal", type: EntityType.AreaTransition))
+                .Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void IsOffscreenWalkableStructure_True_ForShrinePaths()
+        {
+            OffscreenTraversalTargetResolver.IsOffscreenWalkableStructure(EntityProbeFactory.Create(path: "Metadata/DarkShrine/Shrine"))
+                .Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void IsOffscreenWalkableStructure_True_ForComponentShrineWithoutDarkShrinePath()
+        {
+            Entity shrine = EntityProbeFactory.Create(path: "Metadata/MiscellaneousObjects/ShroudedShrine");
+            EntityProbeFactory.WithComponent<Shrine>(shrine, (Shrine)RuntimeHelpers.GetUninitializedObject(typeof(Shrine)));
+            OffscreenTraversalTargetResolver.IsOffscreenWalkableStructure(shrine).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void IsOffscreenWalkableStructure_False_ForUnrelatedEntities()
+        {
+            OffscreenTraversalTargetResolver.IsOffscreenWalkableStructure(EntityProbeFactory.Create(path: "Metadata/Monsters/LeagueBlight/BlightTowerFlameRank3@83"))
+                .Should().BeFalse();
+            OffscreenTraversalTargetResolver.IsOffscreenWalkableStructure(EntityProbeFactory.Create(path: ""))
+                .Should().BeFalse();
+            OffscreenTraversalTargetResolver.IsOffscreenWalkableStructure(EntityProbeFactory.Create(path: "Metadata/Monsters/Test", type: EntityType.Monster))
+                .Should().BeFalse();
+        }
+
         private sealed class CountingMechanicPrioritySnapshotProvider : IMechanicPrioritySnapshotProvider
         {
             public int RefreshCalls { get; private set; }

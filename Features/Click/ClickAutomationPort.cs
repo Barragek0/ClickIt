@@ -3,9 +3,7 @@ namespace ClickIt.Features.Click
 {
     public sealed partial class ClickAutomationPort
     {
-        /**
-        `ClickAutomationPort` is the click-domain entry surface, so keep the constructor eager only for the small set of always-on host dependencies and let the heavier mechanic/runtime owners stay lazy. The lazy members below are intentionally grouped in roughly the same order the runtime reaches them: interaction execution and tick context first, then label/manual-cursor selection, then mechanic/offscreen traversal, and finally Ultimatum handling.
-         */
+        // Keep the constructor eager only for the small set of always-on host dependencies; heavier mechanic/runtime owners stay lazy.
         internal static void ClearThreadLocalStorageForCurrentThread()
         {
             MovementSkillMath.ClearThreadSkillBarEntriesBuffer();
@@ -146,11 +144,7 @@ namespace ClickIt.Features.Click
         private IReadOnlyList<LabelOnGround>? GetLabelsForRegularSelection()
             => VisibleLabelSnapshots.GetCachedLabels();
 
-        // Pathfinding safety: every blight tower's build icon (Child[2]) and upgrade icon (Child[3])
-        // is an UNCLICKABLE BOX — pathfinding walk-clicks must never land in one (or near one), or
-        // they would accidentally build/upgrade a tower.  Pure geometry: each icon rect is padded
-        // and the padded rect is tested.  No UIHover — the hover element is unreliable for a
-        // freshly-moved cursor, so it let walk-clicks slip through (and added a per-click hover cost).
+        // Pathfinding safety: blight build/upgrade icons are padded UNCLICKABLE BOXES (pure geometry, no UIHover).
         private bool IsBlightBuildOrUpgradeIconAt(Vector2 screenPos, float paddingPx = BlightIconBoxPadding)
         {
             IReadOnlyList<LabelOnGround>? labels = GetLabelsForRegularSelection();
@@ -188,12 +182,7 @@ namespace ClickIt.Features.Click
             return PointInRect(padded, screenPos);
         }
 
-        // Fail-closed pre-click check for blight MENU clicks (build icon, upgrade icon, tower-type
-        // slot, or spec button): the click point must still be over part of the tower's menu UI —
-        // otherwise the menu moved or closed since the position was resolved and the click is
-        // skipped.  The tower-type slots and spec buttons are children of the upgrade icon (Child[3])
-        // that extend beyond its own rect, so they are checked too.  Rect-based only (no UIHover —
-        // it was unreliable and rejected valid clicks while the hover was still updating).
+        // Fail-closed pre-click check for blight MENU clicks: the click point must still be over the tower's menu UI (rect-based, no UIHover).
         internal bool IsBlightTowerUiAt(Vector2 screenPos)
         {
             IReadOnlyList<LabelOnGround>? labels = GetLabelsForRegularSelection();

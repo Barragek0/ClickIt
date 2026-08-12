@@ -137,8 +137,7 @@ internal static class ElementTreeDumper
         NodeBudget budget,
         List<ElementNodeSnapshot> subNodes)
     {
-        if (!DynamicAccess.TryGetDynamicValue(entity, static current => current.CacheComp, out object? rawCache)
-            || rawCache is not IReadOnlyDictionary<string, long> cache || cache.Count == 0)
+        if (!TryGetEntityComponents(entity, out IReadOnlyDictionary<string, long> cache) || cache.Count == 0)
             return;
 
         List<ElementNodeSnapshot> items = [];
@@ -174,7 +173,22 @@ internal static class ElementTreeDumper
             items));
     }
 
-    private static RemoteMemoryObject? CreateComponent(string typeName, long address)
+    // Reads an entity's component map (component type name -> memory address) through dynamic access
+    // — CacheComp is a private obfuscated member, so it is never bound statically.
+    internal static bool TryGetEntityComponents(Entity entity, out IReadOnlyDictionary<string, long> cache)
+    {
+        if (entity == null ||
+            !DynamicAccess.TryGetDynamicValue(entity, static current => current.CacheComp, out object? rawCache) ||
+            rawCache is not IReadOnlyDictionary<string, long> dict)
+        {
+            cache = new Dictionary<string, long>();
+            return false;
+        }
+        cache = dict;
+        return true;
+    }
+
+    internal static RemoteMemoryObject? CreateComponent(string typeName, long address)
     {
         Func<long, RemoteMemoryObject?> factory = ComponentFactories.GetOrAdd(typeName, CreateComponentFactory);
         try

@@ -25,12 +25,7 @@ namespace ClickIt.Core.Bootstrap
 
     internal static class CoreDomainAssembler
     {
-        /**
-        Keep this thin runtime entry wrapper so plugin startup continues to use the
-        normal owner-facing API. The injected internal overload remains available
-        for direct bootstrap tests and composition-only validation, and this wrapper
-        should stay unless an equally testable boundary replaces it.
-         */
+        // Thin runtime entry wrapper so the injected internal overload stays testable without runtime traversal.
         public static CoreDomainServices Assemble(ClickIt owner, ClickItSettings settings, GameController gameController)
             => Assemble(
                 owner,
@@ -56,20 +51,21 @@ namespace ClickIt.Core.Bootstrap
 
             LabelReadModelService labelReadModelService = new(
                 gameController,
-                point => areaService.PointIsInClickableArea(gameController, point),
                 ms => performanceMonitor.RecordProcessingTiming(ProcessingSection.Label, ms),
                 bytes => performanceMonitor.RecordAllocation(ProcessingSection.Label, bytes),
                 breakdown => performanceMonitor.RecordLabelScanAllocation(breakdown));
             TimeCache<List<LabelOnGround>> cachedLabels = labelReadModelService.CachedLabels;
 
-            AltarService altarService = new(owner, settings, cachedLabels);
+            AltarService altarService = new(owner, settings, cachedLabels,
+                (ReadOnlySpan<long> bytes, ReadOnlySpan<double> ms) => performanceMonitor.RecordBreakdown(ProcessingSection.Altar, bytes, ms));
             LabelFilterPort labelFilterPort = new(settings, new EssenceService(settings), errorHandler, gameController);
             ShrineService shrineService = new(gameController, camera);
             InputHandler inputHandler = new(settings);
             PathfindingService pathfindingService = new(
                 errorHandler,
                 ms => performanceMonitor.RecordProcessingTiming(ProcessingSection.Pathfinding, ms),
-                bytes => performanceMonitor.RecordAllocation(ProcessingSection.Pathfinding, bytes));
+                bytes => performanceMonitor.RecordAllocation(ProcessingSection.Pathfinding, bytes),
+                (ReadOnlySpan<long> bytes, ReadOnlySpan<double> ms) => performanceMonitor.RecordBreakdown(ProcessingSection.Pathfinding, bytes, ms));
             WeightCalculator weightCalculator = new(settings);
             HarvestService harvestService = new(settings);
 
@@ -77,7 +73,12 @@ namespace ClickIt.Core.Bootstrap
             DeferredFrameQueue deferredFrameQueue = new();
             DeferredDrawQueue deferredDrawQueue = new();
 
-            BlightService blightService = new(settings, point => areaService.PointIsInClickableArea(gameController, point));
+            BlightService blightService = new(
+                settings,
+                point => areaService.PointIsInClickableArea(gameController, point),
+                (ReadOnlySpan<long> bytes, ReadOnlySpan<double> ms) => performanceMonitor.RecordBreakdown(ProcessingSection.Blight, bytes, ms),
+                (bytes, ms) => performanceMonitor.RecordBreakdownStage(ProcessingSection.Blight, PerformanceMonitor.BlightExecutorStageIndex, bytes, ms),
+                (bytes, ms) => performanceMonitor.RecordBreakdownStage(ProcessingSection.Blight, PerformanceMonitor.BlightEventsStageIndex, bytes, ms));
 
             return new CoreDomainServices(
                 performanceMonitor,

@@ -35,6 +35,10 @@ internal sealed class BlightChestTransitionSuppression
             ? address
             : 0;
 
+        // Fail open when the address cannot be read: key 0 is shared by every unreadable chest, so
+        // suppressing on it would cross-suppress all unreadable chests for SuppressionDurationMs.
+        if (key == 0)
+            return false;
 
         if (isTransitioned && _everTransitioned.Add(key))
         {

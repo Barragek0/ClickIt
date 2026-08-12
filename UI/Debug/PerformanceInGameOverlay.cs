@@ -11,10 +11,9 @@ namespace ClickIt.UI.Debug
         private static readonly Color HeaderColor = Color.Orange;
         private static readonly Color LabelColor = Color.White;
 
-        // All three-value tables (render, CR ms/f, processing, GC) share the GC table's column
-        // positions so every Last/Avg/Max value lines up vertically.
+        // All three-value tables (render, CR ms/f, processing) share the column positions so every
+        // Last/Avg/Max value lines up vertically. The GC and DLR tables use the same columns.
         private static readonly float[] FourCol = [140f, 225f, 310f];
-        private static readonly float[] GcCol = [140f, 225f, 310f];
         private static readonly float[] TwoCol = [110f];
 
         private readonly Func<PerformanceMetricsSnapshot> _getSnapshot = getSnapshot ?? throw new ArgumentNullException(nameof(getSnapshot));
@@ -47,44 +46,92 @@ namespace ClickIt.UI.Debug
             const float lineHeight = 15f;
             const float originX = 5f;
             const float originY = 100f;
-            const float rightColX = 400f;
+            const float colWidth = 400f;
             TextBlock left = new(ctx.TextQueue, originX, originY, lineHeight);
-            TextBlock right = new(ctx.TextQueue, originX + rightColX, originY, lineHeight);
+            TextBlock center = new(ctx.TextQueue, originX + colWidth, originY, lineHeight);
 
-            // Left column: render + coroutine ms/f + GC.
+            // Column 1: render + coroutine + DLR + click target + memory.
             left.ColumnHeader(FourCol, "Last", "Avg", "Max");
             TimingMetricsSnapshot renderTotal = perf.RenderTableTotal;
-            left.TitleRow(FourCol, "Render ms/f", FrameColor(renderTotal.AverageMs), $"{renderTotal.LastMs:F1}", $"{renderTotal.AverageMs:F2}", $"{renderTotal.MaxMs:F1}");
+            left.TitleRow3(FourCol, "Render ms/f",
+                FrameColor(renderTotal.LastMs), FrameColor(renderTotal.AverageMs), FrameColor(renderTotal.MaxMs),
+                $"{renderTotal.LastMs:F1}", $"{renderTotal.AverageMs:F2}", $"{renderTotal.MaxMs:F1}");
             RenderRenderTable(left, perf);
 
             left.Blank();
             left.ColumnHeader(FourCol, "Last", "Avg", "Max");
             TimingMetricsSnapshot frameTotal = perf.CoroutinesTotalPerFrameSnapshot;
-            left.TitleRow(FourCol, "Coroutine ms/f", FrameColor(frameTotal.AverageMs), $"{frameTotal.LastMs:F2}", $"{frameTotal.AverageMs:F2}", $"{frameTotal.MaxMs:F2}");
+            left.TitleRow3(FourCol, "Coroutine ms/f",
+                FrameColor(frameTotal.LastMs), FrameColor(frameTotal.AverageMs), FrameColor(frameTotal.MaxMs),
+                $"{frameTotal.LastMs:F2}", $"{frameTotal.AverageMs:F2}", $"{frameTotal.MaxMs:F2}");
             RenderFrameTable(left, perf);
 
             left.Blank();
-            left.ColumnHeader(GcCol, "KB/f", "KB/s", "KB/s");
-            (double gcLastKf, double gcTotalRate, _) = perf.GcTableTotalBytesPerFrame;
-            left.TitleRow(GcCol, "GC", GcTotalColor(gcTotalRate), FormatBytes(gcLastKf), FormatAllocRate(gcTotalRate), FormatAllocRate(perf.GcTableTotalMaxBytesPerSecond));
-            RenderGcTable(left, perf);
-
-            // Right column: processing + memory + click frequency target.
-            right.ColumnHeader(FourCol, "Last", "Avg", "Max");
-            TimingMetricsSnapshot procFrameTotal = perf.ProcessingTotalPerFrameSnapshot;
-            right.TitleRow(FourCol, "Process ms/f", FrameColor(procFrameTotal.AverageMs), $"{procFrameTotal.LastMs:F2}", $"{procFrameTotal.AverageMs:F2}", $"{procFrameTotal.MaxMs:F2}");
-            RenderProcessingTable(right, perf);
-
-            right.Blank();
-            right.Header("Memory");
-            RenderMemoryTable(right, perf);
+            RenderDlrTable(left, perf);
 
             if (perf.ClickTargetIntervalMs > 0)
             {
-                right.Blank();
-                right.Header("Click Frequency Target");
-                RenderClickFrequencyTarget(right, perf);
+                left.Blank();
+                left.Header("Click Frequency Target");
+                RenderClickFrequencyTarget(left, perf);
             }
+
+            left.Blank();
+            left.Header("Memory");
+            RenderMemoryTable(left, perf);
+
+            // Column 2: processing + GC.
+            center.ColumnHeader(FourCol, "Last", "Avg", "Max");
+            TimingMetricsSnapshot procFrameTotal = perf.ProcessingTotalPerFrameSnapshot;
+            center.TitleRow3(FourCol, "Process ms/f",
+                FrameColor(procFrameTotal.LastMs), FrameColor(procFrameTotal.AverageMs), FrameColor(procFrameTotal.MaxMs),
+                $"{procFrameTotal.LastMs:F2}", $"{procFrameTotal.AverageMs:F2}", $"{procFrameTotal.MaxMs:F2}");
+            RenderProcessingTable(center, perf);
+
+            center.Blank();
+            RenderGcTable(center, perf);
+        }
+
+        // Per-feature DLR ms/f table; row order mirrors the GC table.
+        private static void RenderDlrTable(TextBlock b, PerformanceMetricsSnapshot perf)
+        {
+            double fps = perf.Fps.Current;
+            MemoryMetricsSnapshot m = perf.Memory;
+            if (fps <= 0 || m.DlrSections == null)
+                return;
+
+            b.ColumnHeader(FourCol, "Last", "Avg", "Max");
+            b.TitleRow3(FourCol, "DLR ms/f",
+                FrameColor(m.DlrReadsMsLastPerSec / fps), FrameColor(m.DlrReadsMsAvgPerSec / fps), FrameColor(m.DlrReadsMsMaxPerSec / fps),
+                $"{m.DlrReadsMsLastPerSec / fps:F2}",
+                $"{m.DlrReadsMsAvgPerSec / fps:F2}",
+                $"{m.DlrReadsMsMaxPerSec / fps:F2}");
+            DlrRow(b, "Altar", m.DlrSections[(int)ProcessingSection.Altar], fps);
+            DlrRow(b, "Area.Blocked", m.DlrSections[(int)ProcessingSection.AreaBlockedUi], fps);
+            DlrRow(b, "Blight", m.DlrSections[(int)ProcessingSection.Blight], fps);
+            DlrRow(b, "Click", m.DlrSections[(int)ProcessingSection.Click], fps);
+            DlrRow(b, "Dump", m.DlrSections[(int)ProcessingSection.GameStateDump], fps);
+            DlrRow(b, "Flare", m.DlrSections[(int)ProcessingSection.Flare], fps);
+            DlrRow(b, "Harvest", m.DlrSections[(int)ProcessingSection.Harvest], fps);
+            DlrRow(b, "Label Scan", m.DlrSections[(int)ProcessingSection.Label], fps);
+            DlrRow(b, "Manual Hover", m.DlrSections[(int)ProcessingSection.ManualUiHover], fps);
+            DlrRow(b, "Pathfinding", m.DlrSections[(int)ProcessingSection.Pathfinding], fps);
+            DlrRow(b, "Strongbox", m.DlrSections[(int)ProcessingSection.Strongbox], fps);
+            DlrRow(b, "Ultimatum", m.DlrSections[(int)ProcessingSection.Ultimatum], fps);
+        }
+
+        private static void DlrRow(TextBlock b, string label, DlrSectionSnapshot s, double fps)
+        {
+            if (s.ReadsMaxPerSec <= 0 && s.ReadsAvgPerSec <= 0)
+            {
+                b.Row(FourCol, Color.LightGreen, label, "-", "-", "-");
+                return;
+            }
+            b.Row3(FourCol, label,
+                FrameColor(s.MsLastPerSec / fps), FrameColor(s.MsAvgPerSec / fps), FrameColor(s.MsMaxPerSec / fps),
+                $"{s.MsLastPerSec / fps:F2}",
+                $"{s.MsAvgPerSec / fps:F2}",
+                $"{s.MsMaxPerSec / fps:F2}");
         }
 
         private static void RenderRenderTable(TextBlock b, PerformanceMetricsSnapshot perf)
@@ -107,7 +154,9 @@ namespace ClickIt.UI.Debug
 
         private static void TimingRow(TextBlock b, string label, TimingMetricsSnapshot s)
         {
-            b.Row(FourCol, FrameColor(s.AverageMs), label, $"{s.LastMs:F2}", $"{s.AverageMs:F2}", $"{s.MaxMs:F2}");
+            b.Row3(FourCol, label,
+                FrameColor(s.LastMs), FrameColor(s.AverageMs), FrameColor(s.MaxMs),
+                $"{s.LastMs:F2}", $"{s.AverageMs:F2}", $"{s.MaxMs:F2}");
         }
 
         private static void RenderFrameTable(TextBlock b, PerformanceMetricsSnapshot perf)
@@ -124,7 +173,10 @@ namespace ClickIt.UI.Debug
         private static void FrameRow(TextBlock b, string label, TimingMetricsSnapshot s, double fps)
         {
             double scale = s.PerFrameScale(fps);
-            b.Row(FourCol, FrameColor(s.AverageMs * scale), label,
+            b.Row3(FourCol, label,
+                scale > 0 ? FrameColor(s.LastMs * scale) : Color.LightGreen,
+                scale > 0 ? FrameColor(s.AverageMs * scale) : Color.LightGreen,
+                scale > 0 ? FrameColor(s.MaxMs * scale) : Color.LightGreen,
                 scale > 0 ? $"{s.LastMs * scale:F2}" : "-",
                 scale > 0 ? $"{s.AverageMs * scale:F2}" : "-",
                 scale > 0 ? $"{s.MaxMs * scale:F2}" : "-");
@@ -134,34 +186,107 @@ namespace ClickIt.UI.Debug
         {
             double fps = perf.Fps.Current;
             FrameRow(b, "Altar", perf.GetProcessingSection(ProcessingSection.Altar), fps);
+            RenderBreakdownTiming(b, perf, ProcessingSection.Altar);
             FrameRow(b, "Area.Blocked", perf.GetProcessingSection(ProcessingSection.AreaBlockedUi), fps);
             FrameRow(b, "Blight", perf.GetProcessingSection(ProcessingSection.Blight), fps);
+            RenderBreakdownTiming(b, perf, ProcessingSection.Blight);
             FrameRow(b, "Click", perf.GetProcessingSection(ProcessingSection.Click), fps);
+            RenderClickBreakdownTiming(b, perf);
+            FrameRow(b, "Dump", perf.GetProcessingSection(ProcessingSection.GameStateDump), fps);
             FrameRow(b, "Flare", perf.GetProcessingSection(ProcessingSection.Flare), fps);
+            RenderBreakdownTiming(b, perf, ProcessingSection.Flare);
             FrameRow(b, "Harvest", perf.GetProcessingSection(ProcessingSection.Harvest), fps);
             FrameRow(b, "Label Scan", perf.GetProcessingSection(ProcessingSection.Label), fps);
             FrameRow(b, "Manual Hover", perf.GetProcessingSection(ProcessingSection.ManualUiHover), fps);
             FrameRow(b, "Pathfinding", perf.GetProcessingSection(ProcessingSection.Pathfinding), fps);
+            RenderBreakdownTiming(b, perf, ProcessingSection.Pathfinding);
             FrameRow(b, "Strongbox", perf.GetProcessingSection(ProcessingSection.Strongbox), fps);
+            RenderBreakdownTiming(b, perf, ProcessingSection.Strongbox);
             FrameRow(b, "Ultimatum", perf.GetProcessingSection(ProcessingSection.Ultimatum), fps);
+        }
+
+        private static void RenderBreakdownTiming(TextBlock b, PerformanceMetricsSnapshot perf, ProcessingSection section)
+        {
+            if (perf.Breakdowns == null || !perf.Breakdowns.TryGetValue(section, out BreakdownStats stats) || stats.SampleCount == 0)
+                return;
+            double fps = perf.Fps.Current;
+            double periodMs = perf.GetAllocationSection(section).AvgPeriodMs;
+            foreach (BreakdownStageSnapshot stage in stats.Stages)
+                StageTimingRow(b, stage.Name, stage.Time, periodMs, fps);
+        }
+
+        private static void RenderClickBreakdownTiming(TextBlock b, PerformanceMetricsSnapshot perf)
+        {
+            ClickAllocationStats s = perf.ClickAllocation;
+            if (s.SampleCount == 0)
+                return;
+            double fps = perf.Fps.Current;
+            double periodMs = perf.GetAllocationSection(ProcessingSection.Click).AvgPeriodMs;
+            StageTimingRow(b, "Context", s.ContextTime, periodMs, fps);
+            StageTimingRow(b, "Acquire", s.AcquireTime, periodMs, fps);
+            StageTimingRow(b, "Rank", s.RankTime, periodMs, fps);
+            StageTimingRow(b, "Execute", s.ExecuteTime, periodMs, fps);
+            StageTimingRow(b, "Post", s.PostTime, periodMs, fps);
+        }
+
+        private static void StageTimingRow(TextBlock b, string label, TimingStageSnapshot s, double periodMs, double fps)
+        {
+            double scale = periodMs > 0 && fps > 0 ? 1000.0 / periodMs / fps : 0;
+            b.SubRow3(FourCol, label,
+                scale > 0 ? FrameColor(s.LastMs * scale) : Color.LightGreen,
+                scale > 0 ? FrameColor(s.AvgMs * scale) : Color.LightGreen,
+                scale > 0 ? FrameColor(s.MaxMs * scale) : Color.LightGreen,
+                scale > 0 ? $"{s.LastMs * scale:F2}" : "-",
+                scale > 0 ? $"{s.AvgMs * scale:F2}" : "-",
+                scale > 0 ? $"{s.MaxMs * scale:F2}" : "-");
         }
 
         private static void RenderGcTable(TextBlock b, PerformanceMetricsSnapshot perf)
         {
-            double fps = perf.Fps.Current;
-            GcRow(b, "Altar", perf.GetAllocationSection(ProcessingSection.Altar), fps);
-            GcRow(b, "Area.Blocked", perf.GetAllocationSection(ProcessingSection.AreaBlockedUi), fps);
-            GcRow(b, "Blight", perf.GetAllocationSection(ProcessingSection.Blight), fps);
-            GcRow(b, "Click", perf.GetAllocationSection(ProcessingSection.Click), fps);
+            MemoryMetricsSnapshot m = perf.Memory;
+            if (m.GcSections == null)
+                return;
+
+            double totalLast = 0, totalAvg = 0, totalMax = 0;
+            for (int s = 1; s < m.GcSections.Count; s++)
+            {
+                totalLast += m.GcSections[s].BytesLastPerSec;
+                totalAvg += m.GcSections[s].BytesAvgPerSec;
+                totalMax += m.GcSections[s].BytesMaxPerSec;
+            }
+
+            b.ColumnHeader(FourCol, "Last", "Avg", "Max");
+            b.TitleRow3(FourCol, "GC byte/s",
+                GcTotalColor(totalLast), GcTotalColor(totalAvg), GcTotalColor(totalMax),
+                FormatBytes(totalLast), FormatBytes(totalAvg), FormatBytes(totalMax));
+            GcRow(b, "Altar", m.GcSections[(int)ProcessingSection.Altar]);
+            RenderBreakdown(b, perf, ProcessingSection.Altar);
+            GcRow(b, "Area.Blocked", m.GcSections[(int)ProcessingSection.AreaBlockedUi]);
+            GcRow(b, "Blight", m.GcSections[(int)ProcessingSection.Blight]);
+            RenderBreakdown(b, perf, ProcessingSection.Blight);
+            GcRow(b, "Click", m.GcSections[(int)ProcessingSection.Click]);
             RenderClickBreakdown(b, perf);
-            GcRow(b, "Flare", perf.GetAllocationSection(ProcessingSection.Flare), fps);
-            GcRow(b, "Harvest", perf.GetAllocationSection(ProcessingSection.Harvest), fps);
-            GcRow(b, "Label Scan", perf.GetAllocationSection(ProcessingSection.Label), fps);
+            GcRow(b, "Dump", m.GcSections[(int)ProcessingSection.GameStateDump]);
+            GcRow(b, "Flare", m.GcSections[(int)ProcessingSection.Flare]);
+            RenderBreakdown(b, perf, ProcessingSection.Flare);
+            GcRow(b, "Harvest", m.GcSections[(int)ProcessingSection.Harvest]);
+            GcRow(b, "Label Scan", m.GcSections[(int)ProcessingSection.Label]);
             RenderLabelScanBreakdown(b, perf);
-            GcRow(b, "Manual Hover", perf.GetAllocationSection(ProcessingSection.ManualUiHover), fps);
-            GcRow(b, "Pathfinding", perf.GetAllocationSection(ProcessingSection.Pathfinding), fps);
-            GcRow(b, "Strongbox", perf.GetAllocationSection(ProcessingSection.Strongbox), fps);
-            GcRow(b, "Ultimatum", perf.GetAllocationSection(ProcessingSection.Ultimatum), fps);
+            GcRow(b, "Manual Hover", m.GcSections[(int)ProcessingSection.ManualUiHover]);
+            GcRow(b, "Pathfinding", m.GcSections[(int)ProcessingSection.Pathfinding]);
+            RenderBreakdown(b, perf, ProcessingSection.Pathfinding);
+            GcRow(b, "Strongbox", m.GcSections[(int)ProcessingSection.Strongbox]);
+            RenderBreakdown(b, perf, ProcessingSection.Strongbox);
+            GcRow(b, "Ultimatum", m.GcSections[(int)ProcessingSection.Ultimatum]);
+        }
+
+        private static void RenderBreakdown(TextBlock b, PerformanceMetricsSnapshot perf, ProcessingSection section)
+        {
+            if (perf.Breakdowns == null || !perf.Breakdowns.TryGetValue(section, out BreakdownStats stats) || stats.SampleCount == 0)
+                return;
+            double periodMs = perf.GetAllocationSection(section).AvgPeriodMs;
+            foreach (BreakdownStageSnapshot stage in stats.Stages)
+                StageRow(b, stage.Name, stage.Allocation, periodMs);
         }
 
         private static void RenderLabelScanBreakdown(TextBlock b, PerformanceMetricsSnapshot perf)
@@ -169,10 +294,11 @@ namespace ClickIt.UI.Debug
             LabelScanAllocationStats s = perf.LabelScanAllocation;
             if (s.SampleCount == 0)
                 return;
-            double fps = perf.Fps.Current;
             double periodMs = perf.GetAllocationSection(ProcessingSection.Label).AvgPeriodMs;
-            StageRow(b, "Validity", s.Validity, fps, periodMs);
-            StageRow(b, "Sort", s.Sort, fps, periodMs);
+            StageRow(b, "ListRead", s.ListRead, periodMs);
+            StageRow(b, "ListAlloc", s.ListAlloc, periodMs);
+            StageRow(b, "Validity", s.Validity, periodMs);
+            StageRow(b, "Sort", s.Sort, periodMs);
         }
 
         private static void RenderClickBreakdown(TextBlock b, PerformanceMetricsSnapshot perf)
@@ -180,38 +306,43 @@ namespace ClickIt.UI.Debug
             ClickAllocationStats s = perf.ClickAllocation;
             if (s.SampleCount == 0)
                 return;
-            double fps = perf.Fps.Current;
             double periodMs = perf.GetAllocationSection(ProcessingSection.Click).AvgPeriodMs;
-            StageRow(b, "Context", s.Context, fps, periodMs);
-            StageRow(b, "Acquire", s.Acquire, fps, periodMs);
-            StageRow(b, "Rank", s.Rank, fps, periodMs);
-            StageRow(b, "Execute", s.Execute, fps, periodMs);
-            StageRow(b, "Post", s.Post, fps, periodMs);
-            StageRow(b, "Other", s.Other, fps, periodMs);
+            StageRow(b, "Context", s.Context, periodMs);
+            StageRow(b, "Acquire", s.Acquire, periodMs);
+            StageRow(b, "Rank", s.Rank, periodMs);
+            StageRow(b, "Execute", s.Execute, periodMs);
+            StageRow(b, "Post", s.Post, periodMs);
+            StageRow(b, "Other", s.Other, periodMs);
         }
 
-        private static void StageRow(TextBlock b, string label, AllocationStageSnapshot s, double fps, double periodMs)
+        // One breakdown stage as byte/s Last/Avg/Max (per-run bytes normalized by the parent period,
+        // max from the live-window peak). Stages that never allocated any bytes are skipped.
+        private static void StageRow(TextBlock b, string label, AllocationStageSnapshot s, double periodMs)
         {
-            if (s.AvgBytesPerRun <= 0 && s.MaxBytesPerRun <= 0)
+            double lastPerSecond = periodMs > 0 ? s.LastBytesPerRun * 1000.0 / periodMs : 0;
+            double avgPerSecond = periodMs > 0 ? s.AvgBytesPerRun * 1000.0 / periodMs : 0;
+            double maxPerSecond = s.MaxAllocPerSecond;
+            if (s.MaxBytesPerRun <= 0)
                 return;
-            double allocPerSecond = periodMs > 0 ? s.AvgBytesPerRun * 1000.0 / periodMs : 0;
-            double maxPerSecond = periodMs > 0 ? s.MaxBytesPerRun * 1000.0 / periodMs : 0;
-            Color rateColor = GcColor(allocPerSecond);
-            Color maxColor = GcColor(maxPerSecond);
-            b.SubRow3(GcCol, label, rateColor, rateColor, maxColor,
-                fps > 0 ? FormatBytes(allocPerSecond / fps) : "-",
-                FormatAllocRate(allocPerSecond),
-                FormatAllocRate(maxPerSecond));
+            b.SubRow3(FourCol, label,
+                GcColor(lastPerSecond), GcColor(avgPerSecond), GcColor(maxPerSecond),
+                FormatBytes(lastPerSecond),
+                FormatBytes(avgPerSecond),
+                FormatBytes(maxPerSecond));
         }
 
-        private static void GcRow(TextBlock b, string label, GcAllocationSnapshot s, double fps)
+        private static void GcRow(TextBlock b, string label, GcSectionSnapshot s)
         {
-            Color rateColor = GcColor(s.AllocPerSecond);
-            Color maxColor = GcColor(s.MaxAllocPerSecond);
-            b.Row3(GcCol, label, rateColor, rateColor, maxColor,
-                s.SampleCount > 0 && fps > 0 ? FormatBytes(s.AllocPerSecond / fps) : "-",
-                s.SampleCount > 0 ? FormatAllocRate(s.AllocPerSecond) : "-",
-                s.SampleCount > 0 ? FormatAllocRate(s.MaxAllocPerSecond) : "-");
+            if (s.BytesMaxPerSec <= 0 && s.BytesAvgPerSec <= 0)
+            {
+                b.Row(FourCol, Color.LightGreen, label, "-", "-", "-");
+                return;
+            }
+            b.Row3(FourCol, label,
+                GcColor(s.BytesLastPerSec), GcColor(s.BytesAvgPerSec), GcColor(s.BytesMaxPerSec),
+                FormatBytes(s.BytesLastPerSec),
+                FormatBytes(s.BytesAvgPerSec),
+                FormatBytes(s.BytesMaxPerSec));
         }
 
         private static void RenderMemoryTable(TextBlock b, PerformanceMetricsSnapshot perf)
@@ -220,6 +351,9 @@ namespace ClickIt.UI.Debug
             b.Row(TwoCol, SizeColor(m.ProcessWorkingSetMb), "Process", FormatMemoryMb(m.ProcessWorkingSetMb));
             b.Row(TwoCol, SizeColor(m.ManagedHeapMb), "Managed", FormatMemoryMb(m.ManagedHeapMb));
             b.Row(TwoCol, FragmentationColor(m.FragmentedMb), "Frag", FormatMemoryMb(m.FragmentedMb));
+            b.Row(TwoCol, GcPauseColor(m.GcPauseMaxMs),
+                "GC Pause",
+                $"{m.GcPauseLastMs:F0}/{m.GcPauseAvgMs:F0}/{m.GcPauseMaxMs:F0} ms");
         }
 
         private static void RenderClickFrequencyTarget(TextBlock b, PerformanceMetricsSnapshot perf)
@@ -239,34 +373,32 @@ namespace ClickIt.UI.Debug
                 ? (observedTotalMs - targetMs) / targetMs
                 : 0;
 
-            string targetStatus = deviation <= 0.10
-                ? (observedMs > 0 ? "meeting target" : "estimating")
-                : "not meeting target";
-
             b.Row(TwoCol, Color.Yellow, "Target", $"{targetMs:F0} ms");
             b.Row(TwoCol, processingMs > targetMs ? Color.Red : processingMs >= targetMs * 0.75 ? Color.Yellow : Color.LightGreen, "Processing", $"{processingMs:F0} ms");
             b.Row(TwoCol, sleepMs > 0 ? Color.Yellow : Color.LightGreen, "Sleep", $"{sleepMs:F0} ms");
             b.Row(TwoCol, deviation <= 0.05 ? Color.LightGreen : deviation <= 0.10 ? Color.Yellow : Color.Red, "Total (model)", $"{modeledTotalMs:F0} ms");
             b.Row(TwoCol, SystemMath.Abs(schedulerDeltaMs) <= 5 ? Color.LightGreen : SystemMath.Abs(schedulerDeltaMs) <= 20 ? Color.Yellow : Color.OrangeRed, "Scheduler", $"{schedulerDeltaMs:+0;-0;0} ms");
-            b.Row(TwoCol, deviation <= 0.05 ? Color.LightGreen : deviation <= 0.10 ? Color.Yellow : Color.Red, "Observed", $"{observedTotalMs:F0} ms ({targetStatus})");
+            b.Row(TwoCol, deviation <= 0.05 ? Color.LightGreen : deviation <= 0.10 ? Color.Yellow : Color.Red, "Observed", $"{observedTotalMs:F0} ms");
         }
 
-        private static Color FrameColor(double avgMs)
-            => avgMs <= 6.94 ? Color.LightGreen : avgMs <= 16.67 ? Color.Yellow : Color.Red;
+        // Per-value ms/f coloring: each Last/Avg/Max column is colored by its OWN value so a single
+        // bad spike shows red even when the average looks healthy. <=3ms green, <=6ms yellow, >6ms red.
+        private static Color FrameColor(double ms)
+            => ms <= 3.0 ? Color.LightGreen : ms <= 6.0 ? Color.Yellow : Color.Red;
 
-        // Per-feature allocation rate: a single feature consuming the whole acceptable plugin budget
-        // (~50MB/s total) is the red line; elevated but tolerable below that.
+        // Per-feature allocation rate: <=10MB/s is healthy, <=25MB/s elevated but tolerable, above
+        // that one feature is eating the whole plugin's allocation budget (~50MB/s total across all).
         private static Color GcColor(double allocPerSecond)
         {
             double mb = 1024.0 * 1024.0;
-            return allocPerSecond >= 50 * mb ? Color.Red : allocPerSecond >= 20 * mb ? Color.Yellow : Color.LightGreen;
+            return allocPerSecond > 25 * mb ? Color.Red : allocPerSecond > 10 * mb ? Color.Yellow : Color.LightGreen;
         }
 
-        // Whole-plugin allocation rate: ~50MB/s across everything is acceptable in practice.
+        // Whole-plugin allocation rate: <=25MB/s healthy, <=50MB/s tolerable, above that too much.
         private static Color GcTotalColor(double allocPerSecond)
         {
             double mb = 1024.0 * 1024.0;
-            return allocPerSecond >= 100 * mb ? Color.Red : allocPerSecond >= 50 * mb ? Color.Yellow : Color.LightGreen;
+            return allocPerSecond > 50 * mb ? Color.Red : allocPerSecond > 25 * mb ? Color.Yellow : Color.LightGreen;
         }
 
         private static Color SizeColor(double mb)
@@ -275,17 +407,18 @@ namespace ClickIt.UI.Debug
         private static Color FragmentationColor(double mb)
             => mb > 400 ? Color.Red : mb > 100 ? Color.Yellow : Color.LightGreen;
 
+        // Blocking GC pause coloring: >100ms pauses hitch all threads; above ~16ms (a frame) is a warning.
+        private static Color GcPauseColor(double maxPauseMs)
+            => maxPauseMs > 100 ? Color.Red : maxPauseMs > 16 ? Color.Yellow : Color.LightGreen;
+
         private static string FormatBytes(double bytes)
         {
             if (bytes >= 1024.0 * 1024.0)
-                return $"{bytes / (1024.0 * 1024.0):F1} MB";
+                return $"{bytes / (1024.0 * 1024.0):F0} MB";
             if (bytes >= 1024.0)
                 return $"{bytes / 1024.0:F0} KB";
             return $"{bytes:F0} B";
         }
-
-        private static string FormatAllocRate(double bytesPerSecond)
-            => $"{FormatBytes(bytesPerSecond)}/s";
 
         private static string FormatMemoryMb(double mb)
             => mb >= 1024.0 ? $"{mb / 1024.0:F1} GB" : $"{mb:F0} MB";
@@ -324,6 +457,17 @@ namespace ClickIt.UI.Debug
                 _y += _lineHeight;
             }
 
+            // Table title with a distinct color per value column, so the Last/Avg/Max cells of the
+            // ms/f and GC tables are each colored by their own value.
+            public void TitleRow3(float[] colX, string title, Color c1, Color c2, Color c3, string v1, string v2, string v3)
+            {
+                _queue.Enqueue(title, new Vector2(_baseX, _y), HeaderColor, 14, shadow: true);
+                _queue.Enqueue(v1, new Vector2(_baseX + colX[0], _y), c1, 14, shadow: true);
+                _queue.Enqueue(v2, new Vector2(_baseX + colX[1], _y), c2, 14, shadow: true);
+                _queue.Enqueue(v3, new Vector2(_baseX + colX[2], _y), c3, 14, shadow: true);
+                _y += _lineHeight;
+            }
+
             public void Blank()
                 => _y += _lineHeight * 0.5f;
 
@@ -335,8 +479,8 @@ namespace ClickIt.UI.Debug
                 _y += _lineHeight;
             }
 
-            // Three-value row with a distinct color per value (GC table: rate color for last/avg,
-            // single-run spike color for max). Avoids a per-row color array allocation.
+            // Aligned row with a distinct color per value column (ms/f and GC tables color each of
+            // the Last/Avg/Max columns by its own value).
             public void Row3(float[] colX, string label, Color c1, Color c2, Color c3, string v1, string v2, string v3)
             {
                 _queue.Enqueue(label, new Vector2(_baseX, _y), LabelColor, 14, shadow: true);

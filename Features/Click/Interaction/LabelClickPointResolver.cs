@@ -3,7 +3,6 @@ namespace ClickIt.Features.Click.Interaction
     internal sealed class LabelClickPointResolver(ClickItSettings settings)
     {
         private readonly ClickItSettings _settings = settings;
-        private readonly Random _random = new();
 
         // Same label's metadata (ItemOnGround/Type/Path/RenderName — 4 DLR reads) is resolved for
         // overlap checks and click-position resolution 2-3x per tick; keyed on the label ADDRESS
@@ -18,14 +17,15 @@ namespace ClickIt.Features.Click.Interaction
         private long _rectCacheWindowStartMs;
         private const long RectCacheWindowMs = 250;
 
+        // The click coroutine and the manual-hover coroutine share this resolver and, with
+        // CoroutineMultiThreading enabled, can run on different threads. Both caches are plain
+        // dictionaries mutated from those paths, so they are guarded by a lock (the same corruption
+        // class previously fixed in LabelReadModelService).
+        private readonly Lock _cacheLock = new();
+
         private readonly record struct ResolvedLabelMetadata(EntityType ItemType, string? ItemPath, string? RenderName);
 
-        /**
-        Keep this runtime wrapper so live overlap resolution still reads the real
-        LabelOnGround geometry and Entity metadata. The internal overload keeps a
-        bounded owner-level seam for click-point tests without fabricating
-        brittle ExileCore label, element, and item graphs.
-         */
+        // Runtime wrapper over the resolved-value overload so production reads real label geometry.
         internal bool IsLabelFullyOverlapped(LabelOnGround label, IReadOnlyList<LabelOnGround>? allLabels)
         {
             if (!ShouldAvoidOverlaps())
@@ -58,12 +58,7 @@ namespace ClickIt.Features.Click.Interaction
             return !LabelClickPointSearch.TryResolveVisibleClickPoint(rect, preferredPoint, blockedAreas, out _);
         }
 
-        /**
-        Keep this runtime wrapper so live click-position resolution still derives
-        geometry and overlap blockers from the real label. The internal overload
-        preserves direct proof over the resolver's preferred-point, overlap, and
-        jitter handling using already-resolved values.
-         */
+        // Runtime wrapper over the resolved-value overload so production reads real label geometry.
         internal Vector2 CalculateClickPosition(LabelOnGround label, Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels = null)
         {
             if (!TryResolveLabelRect(label, out RectangleF rect))
@@ -106,12 +101,7 @@ namespace ClickIt.Features.Click.Interaction
             return jitteredPoint + windowTopLeft;
         }
 
-        /**
-        Keep this runtime wrapper so production still resolves label geometry and
-        clickable overlap blockers from the real UI tree. The internal overload
-        isolates the repo-owned visible-point search and jitter fallback logic
-        from third-party label construction requirements.
-         */
+        // Runtime wrapper over the resolved-value overload so production reads real label geometry.
         internal bool TryCalculateClickPosition(
             LabelOnGround label,
             Vector2 windowTopLeft,
@@ -172,8 +162,8 @@ namespace ClickIt.Features.Click.Interaction
         private Vector2 ApplyJitterWithinRect(Vector2 resolvedPoint, RectangleF rect)
         {
             float jitterRange = 2f;
-            float jitterX = (float)((_random.NextDouble() * (jitterRange * 2)) - jitterRange);
-            float jitterY = (float)((_random.NextDouble() * (jitterRange * 2)) - jitterRange);
+            float jitterX = (float)((Random.Shared.NextDouble() * (jitterRange * 2)) - jitterRange);
+            float jitterY = (float)((Random.Shared.NextDouble() * (jitterRange * 2)) - jitterRange);
             Vector2 jitteredPoint = resolvedPoint + new Vector2(jitterX, jitterY);
 
             if (!LabelClickPointSearch.IsPointInsideRect(jitteredPoint, rect))
@@ -218,19 +208,22 @@ namespace ClickIt.Features.Click.Interaction
         {
             long address = label.Address;
             long now = Environment.TickCount64;
-            if (now - _rectCacheWindowStartMs >= RectCacheWindowMs)
+            lock (_cacheLock)
             {
-                _rectCache.Clear();
-                _rectCacheWindowStartMs = now;
+                if (now - _rectCacheWindowStartMs >= RectCacheWindowMs)
+                {
+                    _rectCache.Clear();
+                    _rectCacheWindowStartMs = now;
+                }
+
+                if (_rectCache.TryGetValue(address, out (RectangleF Rect, bool HasRect) cached))
+                    return cached;
+
+                bool hasRect = LabelGeometry.TryGetLabelRect(label, out RectangleF rect);
+                (RectangleF Rect, bool HasRect) result = (rect, hasRect);
+                _rectCache[address] = result;
+                return result;
             }
-
-            if (_rectCache.TryGetValue(address, out (RectangleF Rect, bool HasRect) cached))
-                return cached;
-
-            bool hasRect = LabelGeometry.TryGetLabelRect(label, out RectangleF rect);
-            (RectangleF Rect, bool HasRect) result = (rect, hasRect);
-            _rectCache[address] = result;
-            return result;
         }
 
         private void ResolveLabelMetadataCached(LabelOnGround? label, out EntityType itemType, out string? itemPath, out string? renderName)
@@ -245,21 +238,24 @@ namespace ClickIt.Features.Click.Interaction
 
             long address = label.Address;
             long now = Environment.TickCount64;
-            if (now - _metadataCacheWindowStartMs >= MetadataCacheWindowMs)
+            lock (_cacheLock)
             {
-                _metadataCache.Clear();
-                _metadataCacheWindowStartMs = now;
-            }
-            if (_metadataCache.TryGetValue(address, out ResolvedLabelMetadata cached))
-            {
-                itemType = cached.ItemType;
-                itemPath = cached.ItemPath;
-                renderName = cached.RenderName;
-                return;
-            }
+                if (now - _metadataCacheWindowStartMs >= MetadataCacheWindowMs)
+                {
+                    _metadataCache.Clear();
+                    _metadataCacheWindowStartMs = now;
+                }
+                if (_metadataCache.TryGetValue(address, out ResolvedLabelMetadata cached))
+                {
+                    itemType = cached.ItemType;
+                    itemPath = cached.ItemPath;
+                    renderName = cached.RenderName;
+                    return;
+                }
 
-            ResolveLabelMetadata(label, out itemType, out itemPath, out renderName);
-            _metadataCache[address] = new ResolvedLabelMetadata(itemType, itemPath, renderName);
+                ResolveLabelMetadata(label, out itemType, out itemPath, out renderName);
+                _metadataCache[address] = new ResolvedLabelMetadata(itemType, itemPath, renderName);
+            }
         }
 
         private static void ResolveLabelMetadata(LabelOnGround? label, out EntityType itemType, out string? itemPath, out string? renderName)

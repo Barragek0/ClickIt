@@ -39,10 +39,7 @@ namespace ClickIt.Features.Click.Interaction
                 return false;
             }
 
-            // Only treat the interaction as executed when the executor actually sent the click — internal
-            // rejections (lazy limiter, hotkey inactive, UIHover mismatch, invalid point) must not run
-            // the success aftermath (path/sticky clearing, pending-chest arming, lever cooldowns) or
-            // record a click interval for a click that never happened.
+            // Only treat the interaction as executed when the executor actually sent the click — internal rejections must not run the success aftermath.
             bool clicked = request.UseHoldClick
                 ? _dependencies.PerformLockedHoldClick(
                     request.ClickPosition,

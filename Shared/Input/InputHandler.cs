@@ -59,28 +59,27 @@ namespace ClickIt.Shared.Input
         }
 
         private bool IsClickKeyStateActive(bool hasLazyModeRestrictedItemsOnScreen)
-        {
-            bool lazyModeActive = _settings?.LazyMode != null
-                && _settings.LazyMode.Value
-                && !hasLazyModeRestrictedItemsOnScreen
-                && !IsLazyModeDisableActiveForCurrentInputState();
+            => ResolveClickKeyStateActive(
+                _settings?.LazyMode?.Value == true,
+                hasLazyModeRestrictedItemsOnScreen,
+                IsLazyModeDisableActiveForCurrentInputState(),
+                IsLazyModeMouseButtonBlockActive(),
+                IsClickHotkeyHeld());
 
-            return lazyModeActive || IsClickHotkeyHeld();
-        }
+        internal static bool ResolveClickKeyStateActive(
+            bool lazyModeEnabled,
+            bool hasRestrictedItemsOnScreen,
+            bool disableKeyActive,
+            bool mouseButtonBlocked,
+            bool clickHotkeyHeld)
+            => (lazyModeEnabled && !hasRestrictedItemsOnScreen && !disableKeyActive && !mouseButtonBlocked)
+                || clickHotkeyHeld;
 
         private bool IsClickHotkeyHeld()
             => IsClickHotkeyActiveForCurrentInputState();
 
         public bool IsClickHotkeyActiveForCurrentInputState()
             => _hotkeyStateService.IsClickHotkeyActive(Keyboard.IsKeyDown);
-
-        private bool IsBlockedByUiOrEscapeState(GameController gameController)
-        {
-            if (gameController.Game.IsEscapeState)
-                return true;
-
-            return GetUiBlockingReason(gameController) != null;
-        }
 
         private string? GetUiBlockingReason(GameController? gameController)
             => ResolveUiBlockingReason(
@@ -273,11 +272,22 @@ namespace ClickIt.Shared.Input
                 return true;
             }
 
-            return !hasRestricted && !disableKeyHeld;
+            return ResolveLazyClickInputActive(hasRestricted, disableKeyHeld, IsLazyModeMouseButtonBlockActive());
         }
+
+        // Lazy-mode input is active only when no restriction, no disable-key, and no held mouse
+        // button blocks it (the mouse-held disable lets the player attack/use skills freely).
+        internal static bool ResolveLazyClickInputActive(bool hasRestrictedItems, bool disableKeyActive, bool mouseButtonBlocked)
+            => !hasRestrictedItems && !disableKeyActive && !mouseButtonBlocked;
 
         public bool IsLazyModeDisableActiveForCurrentInputState()
             => _hotkeyStateService.IsLazyModeDisableActive(Keyboard.IsKeyDown);
+
+        // The mouse-held disable settings (left/right click held) pause lazy-mode clicking so the
+        // plugin never fights the player's own held attack/skill buttons; the click hotkey still
+        // overrides, so holding the hotkey restores clicking.
+        private bool IsLazyModeMouseButtonBlockActive()
+            => GetMouseButtonBlockingState(_settings, Keyboard.IsKeyDown).mouseButtonBlocks;
 
         public static bool ResolveLazyModeDisableActive(bool toggleModeEnabled, bool disableKeyPressed, ref bool toggledState, ref bool wasPressedLastFrame)
             => InputHotkeyStateService.ResolveLazyModeDisableActive(toggleModeEnabled, disableKeyPressed, ref toggledState, ref wasPressedLastFrame);
@@ -310,7 +320,7 @@ namespace ClickIt.Shared.Input
             if (ui == null)
                 return false;
 
-            return HasOpenSidePanels(ui.OpenLeftPanel.Address, ui.OpenRightPanel.Address);
+            return HasOpenSidePanels(ui.OpenLeftPanel?.Address ?? 0, ui.OpenRightPanel?.Address ?? 0);
         }
 
         private static bool IsInTownOrHideout(GameController gameController)

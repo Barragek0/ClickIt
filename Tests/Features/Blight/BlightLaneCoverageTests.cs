@@ -11,7 +11,8 @@ public class BlightLaneCoverageTests
         var positions = CreateBranchPositions(5, spacing: 10);
 
         LaneCoverageResult[] coverage = ComputeCoverage(positions,
-            midpoint => midpoint.Y < 25 ? (true, false, false) : (false, false, false));
+            midpoint => midpoint.Y < 25 ? (true, false, false) : (false, false, false),
+            ChainParents(positions.Count));
 
         for (int i = 1; i <= 4; i++)
             coverage[i].HasChilling.Should().BeTrue($"segment {i} should have Chilling");
@@ -23,7 +24,8 @@ public class BlightLaneCoverageTests
         var positions = CreateBranchPositions(5, spacing: 10);
 
         LaneCoverageResult[] coverage = ComputeCoverage(positions,
-            _ => (true, true, false));
+            _ => (true, true, false),
+            ChainParents(positions.Count));
 
         for (int i = 1; i <= 4; i++)
         {
@@ -35,64 +37,19 @@ public class BlightLaneCoverageTests
     [TestMethod]
     public void Divergence_BothChildrenBothTypes_ParentGreen()
     {
+        // Trunk 0(root) -> 1 -> 2 -> 3, then a fork at 3: left arm 4 -> 5, right arm 6 -> 7.
         var positions = CreateDivergingPositions(trunkLen: 3, leftLen: 2, rightLen: 2, spacing: 10, branchGap: 40);
+        int[] parents = [-1, 0, 1, 2, 3, 4, 3, 6];
 
         LaneCoverageResult[] coverage = ComputeCoverage(positions,
-            _ => (true, true, false));
+            _ => (true, true, false),
+            parents);
 
         for (int i = 1; i <= 7; i++)
         {
             coverage[i].HasChilling.Should().BeTrue($"seg {i} Chilling");
             coverage[i].HasSeismic.Should().BeTrue($"seg {i} Seismic");
         }
-    }
-
-    [TestMethod]
-    public void DistanceConnection_PreSpawnedEntities_Distance35Connects()
-    {
-        var positions = new List<NumVector2>
-        {
-            new(100, 100),
-            new(100, 130),
-            new(100, 165),
-        };
-
-        LaneCoverageResult[] coverage = ComputeCoverage(positions,
-            _ => (true, false, false), segmentConnectDistance: 35f);
-
-        coverage[1].ParentIndex.Should().Be(0, "dist 30 within 35");
-        coverage[2].ParentIndex.Should().Be(1, "dist 35 on boundary");
-    }
-
-    [TestMethod]
-    public void DistanceConnection_Distance36_Disconnected()
-    {
-        var positions = new List<NumVector2>
-        {
-            new(100, 100),
-            new(100, 136),
-        };
-
-        LaneCoverageResult[] coverage = ComputeCoverage(positions,
-            _ => (true, false, false), segmentConnectDistance: 35f, phantomConnectDistance: 35f);
-
-        coverage[1].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel,
-            "dist 36 exceeds both the connect and phantom distances");
-    }
-
-    [TestMethod]
-    public void CoalescingEpsilon_SamePosition_Connected()
-    {
-        var positions = new List<NumVector2>
-        {
-            new(50, 50),
-            new(50, 50),
-        };
-
-        LaneCoverageResult[] coverage = ComputeCoverage(positions,
-            _ => (true, false, false));
-
-        coverage[1].ParentIndex.Should().Be(0, "same pos should connect");
     }
 
     [TestMethod]
@@ -104,175 +61,11 @@ public class BlightLaneCoverageTests
         };
 
         LaneCoverageResult[] coverage = ComputeCoverage(positions,
-            midpoint => (midpoint.X == 25f && midpoint.Y == 25f) ? (true, false, false) : (false, false, false));
+            midpoint => (midpoint.X == 25f && midpoint.Y == 25f) ? (true, false, false) : (false, false, false),
+            ChainParents(positions.Count));
 
         for (int i = 1; i <= 4; i++)
             coverage[i].HasChilling.Should().BeTrue($"seg {i} HasChilling={coverage[i].HasChilling}");
-    }
-
-    [TestMethod]
-    public void Fork_SeismicOnOneBranchOnly_TrunkAndNewBranchUncoveredForSeismic()
-    {
-        var positions = new List<NumVector2>
-        {
-            new(0, 0),   // 0 root (pump)
-            new(10, 10), // 1
-            new(20, 20), // 2
-            new(30, 30), // 3 fork
-            new(40, 30), // 4 main branch
-            new(50, 30), // 5 main branch
-            new(30, 40), // 6 new branch
-            new(30, 50), // 7 new branch
-        };
-
-        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            positions,
-            midpoint => (
-                chilling: midpoint.Y < 30f,                       // Chilling tower on the trunk
-                seismic: midpoint.Y == 30f && midpoint.X >= 35f,  // Seismic tower on the main branch only
-                fireball: false),
-            pumpGridPosition: new NumVector2(0, 0));
-
-
-        for (int i = 1; i <= 3; i++)
-        {
-            coverage[i].HasChilling.Should().BeTrue($"trunk seg {i} Chilling");
-            coverage[i].HasSeismic.Should().BeFalse($"trunk seg {i} must not inherit Seismic from a single fork branch");
-        }
-        coverage[4].HasChilling.Should().BeTrue();
-        coverage[4].HasSeismic.Should().BeTrue();
-        coverage[5].HasChilling.Should().BeTrue();
-        coverage[5].HasSeismic.Should().BeTrue();
-        coverage[6].HasChilling.Should().BeTrue();
-        coverage[6].HasSeismic.Should().BeFalse();
-        coverage[7].HasChilling.Should().BeTrue();
-        coverage[7].HasSeismic.Should().BeFalse();
-    }
-
-    [TestMethod]
-    public void WindingLane_HairpinLocalMinimum_StaysOneChain()
-    {
-
-        var positions = new List<NumVector2>
-        {
-            new(10, 10), // 0 root
-            new(20, 10), // 1
-            new(30, 10), // 2
-            new(30, 20), // 3 — local minimum of pump distance
-            new(30, 30), // 4
-            new(20, 30), // 5
-            new(10, 30), // 6
-        };
-
-        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            positions, _ => (false, false, false), pumpGridPosition: new NumVector2(0, 0));
-
-        for (int i = 1; i <= 6; i++)
-            coverage[i].ParentIndex.Should().BeGreaterThanOrEqualTo(0,
-                $"point {i} must stay attached to the single lane chain");
-        coverage[3].ParentIndex.Should().Be(2,
-            "the local-minimum point attaches to the point before it on the lane");
-
-
-        LaneCoverageResult[] covered = BlightLaneTopology.ComputeCoverage(
-            positions,
-            midpoint => (midpoint.X == 30f && midpoint.Y == 15f) ? (true, false, false) : (false, false, false),
-            pumpGridPosition: new NumVector2(0, 0));
-        for (int i = 1; i <= 6; i++)
-            covered[i].HasChilling.Should().BeTrue($"segment {i} inherits coverage through the single chain");
-    }
-
-    [TestMethod]
-    public void PhantomLane_GapWithinPhantomDistance_BridgesDisconnectedChain()
-    {
-        var positions = new List<NumVector2>
-        {
-            new(0, 0),     // 0 main root (pump)
-            new(10, 10),   // 1
-            new(20, 20),   // 2
-            new(30, 30),   // 3 main end
-            new(80, 80),   // 4 orphan chain start — 70.7 from (30,30): beyond 35, within 100
-            new(90, 90),   // 5
-            new(100, 100), // 6
-        };
-
-        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            positions,
-            midpoint => midpoint.X < 50f ? (true, false, false) : (false, false, false),
-            segmentConnectDistance: 35f,
-            pumpGridPosition: new NumVector2(0, 0));
-
-        coverage[5].ParentIndex.Should().Be(4, "chain points link internally");
-        coverage[6].ParentIndex.Should().Be(5, "chain points link internally");
-        coverage[5].IsPhantom.Should().BeFalse("internal chain edges are real lanes");
-        coverage[6].IsPhantom.Should().BeFalse("internal chain edges are real lanes");
-
-        coverage[4].ParentIndex.Should().Be(3, "the chain is bridged to the nearest connected point");
-        coverage[4].IsPhantom.Should().BeTrue("the bridge across the gap is a phantom edge");
-
-
-        for (int i = 1; i <= 6; i++)
-            coverage[i].HasChilling.Should().BeTrue($"segment {i} covered through the phantom lane");
-    }
-
-    [TestMethod]
-    public void PhantomLane_GapBeyondPhantomDistance_ChainStaysOrphaned()
-    {
-        var positions = new List<NumVector2>
-        {
-            new(0, 0),     // 0 main root
-            new(10, 10),   // 1
-            new(200, 200), // 2 — 268 from (10,10): beyond the phantom distance
-            new(210, 210), // 3
-        };
-
-        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            positions,
-            _ => (true, false, false),
-            segmentConnectDistance: 35f,
-            pumpGridPosition: new NumVector2(0, 0));
-
-        coverage[2].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel,
-            "beyond the phantom distance — not bridged");
-        coverage[2].IsPhantom.Should().BeFalse();
-        coverage[3].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel,
-            "the whole chain stays orphaned when it cannot be bridged");
-    }
-
-    [TestMethod]
-    public void PhantomLane_ForkedSubLane_InheritsCoverageThroughBridge()
-    {
-        var positions = new List<NumVector2>
-        {
-            new(0, 0),      // 0 root (pump)
-            new(10, 0),     // 1  branch A
-            new(20, 0),     // 2  branch A
-            new(30, 0),     // 3  branch A end (bridgeK)
-            new(90, 0),     // 4  phantom bridge (bridgeJ) — gap 60: within 100
-            new(100, 0),    // 5  sub-lane
-            new(110, 0),    // 6  sub-lane fork
-            new(120, 0),    // 7  sub-branch X
-            new(120, 10),   // 8  sub-branch Y
-        };
-
-        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            positions,
-            midpoint => (
-                chilling: midpoint.X < 40f,  // towers cover the main chain only
-                seismic: midpoint.X < 40f,
-                fireball: false),
-            pumpGridPosition: new NumVector2(0, 0));
-
-        coverage[4].ParentIndex.Should().Be(3, "the bridge attaches to the main chain's end");
-        coverage[4].IsPhantom.Should().BeTrue();
-        for (int i = 5; i <= 8; i++)
-            coverage[i].IsPhantom.Should().BeFalse("internal sub-lane edges are real lanes");
-
-        for (int i = 1; i <= 8; i++)
-        {
-            coverage[i].HasChilling.Should().BeTrue($"segment {i} inherits Chilling through the phantom lane");
-            coverage[i].HasSeismic.Should().BeTrue($"segment {i} inherits Seismic through the phantom lane");
-        }
     }
 
     [TestMethod]
@@ -347,10 +140,12 @@ public class BlightLaneCoverageTests
             new(40, 3),  // 6 stacked row
         };
 
+        // Fork at 2 with stacked parallel rows 3-4 (main) and 5-6 (stacked duplicate).
+        int[] parents = [-1, 0, 1, 2, 3, 2, 5];
         LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
             positions,
             midpoint => (chilling: midpoint.Y < 1f && midpoint.X >= 30f, seismic: false, fireball: false),
-            pumpGridPosition: new NumVector2(0, 0));
+            parents);
 
         coverage[3].HasChilling.Should().BeTrue();
         coverage[4].HasChilling.Should().BeTrue();
@@ -375,10 +170,12 @@ public class BlightLaneCoverageTests
             new(40, 3),  // 6 stacked row
         };
 
+        // Fork at 2 with stacked parallel rows 3-4 (main) and 5-6 (stacked duplicate).
+        int[] parents = [-1, 0, 1, 2, 3, 2, 5];
         LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
             positions,
             midpoint => (chilling: false, seismic: midpoint.Y < 1f && midpoint.X >= 30f, fireball: false),
-            pumpGridPosition: new NumVector2(0, 0));
+            parents);
 
         coverage[5].HasSeismic.Should().BeTrue();
         coverage[6].HasSeismic.Should().BeTrue();
@@ -587,7 +384,7 @@ public class BlightLaneCoverageTests
         LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
             positions,
             _ => (true, false, false),
-            pumpGridPosition: new NumVector2(0, 0),
+            ChainParents(positions.Count),
             getSupportCoverage: _ => (true, true, true));
 
         for (int i = 1; i <= 4; i++)
@@ -605,7 +402,7 @@ public class BlightLaneCoverageTests
         var positions = CreateBranchPositions(2, spacing: 10);
 
         LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            positions, _ => (true, false, false), pumpGridPosition: new NumVector2(0, 0));
+            positions, _ => (true, false, false), ChainParents(positions.Count));
 
         coverage[1].HasEmpowering.Should().BeFalse();
         coverage[1].HasShockNova.Should().BeFalse();
@@ -648,103 +445,6 @@ public class BlightLaneCoverageTests
 
         var uncovered = new LaneCoverageResult(0, false, NumVector2.Zero);
         BlightCoverageFlags.Compact(uncovered, chillingSeismic).Should().BeEmpty();
-    }
-
-    [TestMethod]
-    public void ComputeCoverage_PumpStubSpur_IsMarkedNotALane()
-    {
-        var positions = new List<NumVector2>
-        {
-            new(0, 0),     // 0 root (pump)
-            new(30, 0),    // 1 real lane start (at the radius edge, but its subtree extends far)
-            new(70, 0),    // 2 real lane continues well beyond the stub radius
-            new(110, 0),   // 3 real lane
-            new(150, 0),   // 4 real lane extends well beyond the pump-connector radius
-            new(-8, 8),    // 5 spur start
-            new(-16, 16),  // 6 spur leaf
-        };
-
-        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            positions, _ => (true, false, false), pumpGridPosition: new NumVector2(0, 0));
-
-        coverage[5].IsPumpStub.Should().BeTrue("the pump-object spur is not a monster lane");
-        coverage[6].IsPumpStub.Should().BeTrue();
-        coverage[1].IsPumpStub.Should().BeFalse("the real lane's run extends beyond the connector radius");
-        coverage[4].IsPumpStub.Should().BeFalse();
-    }
-
-    [TestMethod]
-    public void ComputeCoverage_NoPump_NoSegmentsMarkedStub()
-    {
-        var positions = CreateBranchPositions(3, spacing: 10);
-
-        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            positions, _ => (true, false, false));
-
-        for (int i = 0; i < coverage.Length; i++)
-            coverage[i].IsPumpStub.Should().BeFalse();
-    }
-
-    [TestMethod]
-    public void ComputeCoverage_PumpConnectorIdRun_IsMarkedNotALane_RealLaneUnaffected()
-    {
-        // The pump spawns 2-3 underground connector segments (their own consecutive id run) linking
-        // the pump to the tree.  Real monster lanes are long id-runs extending past the connector
-        // radius, so only the short pump-rooted run is marked as a stub.
-        var positions = new List<NumVector2>
-        {
-            new(0, 0),      // 0 pump point
-            new(20, 0),     // 1 real lane start (pump-near branch root)
-            new(50, 0),     // 2 real lane
-            new(80, 0),     // 3 real lane
-            new(110, 0),    // 4 real lane
-            new(140, 0),    // 5 real lane extends well beyond the connector radius
-            new(25, -5),    // 6 connector start (pump-near, folded into the branch root)
-            new(55, -15),   // 7 connector
-            new(85, -25),   // 8 connector far end (beyond the old 30u stub radius)
-        };
-        var ids = new List<long> { 0, 10, 11, 12, 13, 14, 20, 21, 22 };
-
-        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            positions, _ => (true, false, false), pumpGridPosition: new NumVector2(0, 0), ids: ids);
-
-        coverage[6].IsPumpStub.Should().BeTrue("the pump-connector id-run is not a monster lane");
-        coverage[7].IsPumpStub.Should().BeTrue();
-        coverage[8].IsPumpStub.Should().BeTrue();
-        coverage[2].IsPumpStub.Should().BeFalse("the real lane's run extends beyond the connector radius");
-        coverage[5].IsPumpStub.Should().BeFalse();
-    }
-
-    [TestMethod]
-    public void ComputeCoverage_PumpConnectorSharesIdRun_ShortChainMarked_RealLaneUnaffected()
-    {
-        // The pump cluster is ONE consecutive id-run (the game numbers the branch root, the
-        // connector and the lane start together).  The connector is the short fork-free chain from
-        // the pump root; the real lane is the long chain — so the connector is caught by CHAIN
-        // length, not id-run length.
-        var positions = new List<NumVector2>
-        {
-            new(0, 0),      // 0 pump point
-            new(3, 0),      // 1 branch root (orphan)
-            new(0, 5),      // 2 connector 1 (pump-near)
-            new(-5, 10),    // 3 connector 2
-            new(-10, 15),   // 4 connector 3 (far end)
-            new(10, 0),     // 5 real lane 1 (pump-near)
-            new(20, 0),     // 6 real lane 2
-            new(30, 0),     // 7 real lane 3
-            new(40, 0),     // 8 real lane 4
-            new(50, 0),     // 9 real lane 5
-        };
-        var ids = new List<long> { 0, 100, 101, 102, 103, 99, 98, 97, 96, 95 };
-
-        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            positions, _ => (true, false, false), pumpGridPosition: new NumVector2(0, 0), ids: ids);
-
-        coverage[2].IsPumpStub.Should().BeTrue("the short pump-rooted chain is the underground connector");
-        coverage[3].IsPumpStub.Should().BeTrue();
-        coverage[4].IsPumpStub.Should().BeTrue();
-        coverage[5].IsPumpStub.Should().BeFalse("the long pump-rooted chain is a real monster lane");
-        coverage[9].IsPumpStub.Should().BeFalse();
     }
 
     [TestMethod]
@@ -796,144 +496,89 @@ public class BlightLaneCoverageTests
     }
 
     [TestMethod]
-    public void ComputeCoverage_PumpNearLanes_NonAdjacentIds_SplitIntoSeparateBranchRoots()
+    public void ComputeCoverage_PrecomputedParents_UsesBeamChainTree_NoStubsNoPhantoms()
     {
-        // Two lanes radiate from the pump within the connect distance (the greedy tree would merge
-        // them into one branch root). The game's lane ids are per-lane runs — adjacent ids = same
-        // lane — so non-adjacent pump-near ids must split into separate orphan roots (branch starts).
-        var positions = new List<NumVector2>
-        {
-            new(5, 0),    // 0 lane A start (pump-near)
-            new(15, 0),   // 1 lane A
-            new(25, 0),   // 2 lane A
-            new(5, 20),   // 3 lane B start (pump-near)
-            new(15, 20),  // 4 lane B
-            new(25, 20),  // 5 lane B
-        };
-        long[] ids = [100, 99, 98, 50, 49, 48];
+        // Icon-lane mode: the parent tree comes straight from the game's beam chains (pump-ward
+        // neighbour). Segment 2 is the pump-ward root; 0 and 1 chain toward it. No id-run
+        // re-splitting, no phantom bridging, no pump-stub removal.
+        var positions = new List<NumVector2> { new(30, 0), new(20, 0), new(10, 0) };
+        int[] parents = [1, 2, -1];
 
         LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            positions, _ => (true, false, false), pumpGridPosition: new NumVector2(0, 0), ids: ids);
+            positions, _ => (true, false, false), parents);
 
-        coverage[0].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel, "lane A's pump-near segment is its own branch root");
-        coverage[3].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel, "lane B's pump-near segment is its own branch root (non-adjacent id)");
-        coverage[1].ParentIndex.Should().Be(0, "lane A continues along its run");
-        coverage[4].ParentIndex.Should().Be(3, "lane B continues along its run");
+        coverage[0].ParentIndex.Should().Be(1, "segment 0 chains one step toward the pump");
+        coverage[1].ParentIndex.Should().Be(2, "segment 1 chains one step toward the pump");
+        coverage[2].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel, "the pump-ward head is the branch root");
+        coverage[0].IsPhantom.Should().BeFalse("icon mode never phantom-bridges");
+        coverage[0].IsPumpStub.Should().BeFalse("icon mode never hides pump-ward segments as stubs");
     }
 
     [TestMethod]
-    public void ComputeCoverage_SinglePumpLane_AdjacentIds_StaysOneBranchRoot()
+    public void ComputeCoverage_PrecomputedParents_SharedStubPosition_TwoSeparateRoots()
     {
-        // A single lane whose pump-near segments carry adjacent ids must NOT be split into spurious
-        // branches (the greedy chain is the one lane).
+        // Two lanes (485 and 563 from the plaza dump) whose pump-ward heads sit at the SAME grid
+        // position must stay two separate branch roots — the beam chains are per-lane.
         var positions = new List<NumVector2>
         {
-            new(5, 0),    // 0 start
-            new(15, 0),   // 1
-            new(25, 0),   // 2
+            new(484, 140), // 0 lane A segment
+            new(485, 120), // 1 lane A head
+            new(562, 142), // 2 lane B segment
+            new(563, 120), // 3 lane B head — same position as 485
         };
-        long[] ids = [100, 99, 98];
+        int[] parents = [1, -1, 3, -1];
 
         LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            positions, _ => (true, false, false), pumpGridPosition: new NumVector2(0, 0), ids: ids);
+            positions, _ => (true, false, false), parents);
 
-        coverage[0].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel, "the single lane's start is the one branch root");
-        coverage[1].ParentIndex.Should().Be(0, "adjacent id — same lane, no split");
-        coverage[2].ParentIndex.Should().Be(1);
+        coverage[0].ParentIndex.Should().Be(1, "lane A chains to its own head");
+        coverage[1].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel, "lane A head is a branch root");
+        coverage[2].ParentIndex.Should().Be(3, "lane B chains to its own head");
+        coverage[3].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel, "lane B head is its own branch root");
+        int roots = coverage.Count(r => r.ParentIndex == BlightLaneTopology.OrphanSentinel);
+        roots.Should().Be(2, "shared-position pump heads stay separate lanes");
     }
 
     [TestMethod]
-    public void ComputeCoverage_PumpNearLanes_WithoutIds_KeepsLanesSeparate()
+    public void ComputeCoverage_ConvergenceJunction_ProbesEveryIncomingBeam()
     {
-        // ids == null: the connectivity graph keeps two parallel pump-near lanes SEPARATE (each is
-        // its own branch) instead of the old greedy tree falsely merging them — a tower never
-        // covers the other lane just because the lanes run near each other.
+        // The reported bug: B.19 (0) and C.11 (1) both end at B.20's start (2) — a convergence
+        // junction. The tree keeps only the primary parent (0), but BOTH incoming beams are real
+        // walkable segments: a tower on the C.11 -> B.20 beam must count as covering the junction
+        // even though C.11 is not the tree parent. allParents feeds the web into coverage.
         var positions = new List<NumVector2>
         {
-            new(5, 0), new(15, 0), new(25, 0), new(5, 20), new(15, 20), new(25, 20),
+            new(0, 0),    // 0 B.19 start
+            new(0, 10),   // 1 C.11 start
+            new(5, 5),    // 2 B.20 start (junction) — midpoints: (2.5,2.5) to 0, (2.5,7.5) to 1
         };
+        int[] parents = [-1, -1, 0];
+        int[][] allParents = [[], [], [0, 1]];
 
         LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            positions, _ => (true, false, false), pumpGridPosition: new NumVector2(0, 0));
+            positions,
+            midpoint => (midpoint.Y > 5f ? (true, false, false) : (false, false, false)),
+            parents,
+            null,
+            allParents);
 
-        coverage[0].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel);
-        coverage[3].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel,
-            "two parallel lanes stay separate branches; no false cross-lane merge");
+        coverage[2].HasChilling.Should().BeTrue("a tower on the C.11->B.20 beam covers the junction");
+        coverage[2].ParentIndex.Should().Be(0, "the tree parent stays the primary for propagation");
     }
 
-    [TestMethod]
-    public void ComputeCoverage_FourLaneHub_RealCourthouseGeometry_SplitsIntoFourBranchRoots()
-    {
-        // Replicates the Courthouse 83 capture: four id-runs all starting at the shared hub (625,502)
-        // and fanning around the pump (607,522). The old greedy tree merged all four into one branch;
-        // the id-lane structure must root each lane at its own pump-closest segment.
-        var positions = new List<NumVector2>
-        {
-            new(625, 502), // 0 lane A hub (id 1141)
-            new(617, 510), // 1
-            new(609, 517), // 2 lane A root — 5.4 from pump
-            new(596, 509), // 3
-            new(588, 503), // 4
-            new(575, 494), // 5
-            new(625, 502), // 6 lane B hub (id 1044)
-            new(627, 517), // 7 lane B root — 20.6 from pump
-            new(629, 527), // 8
-            new(632, 540), // 9
-            new(627, 553), // 10
-            new(627, 562), // 11
-            new(625, 502), // 12 lane C hub (id 935)
-            new(621, 517), // 13 lane C root — 14.9 from pump
-            new(627, 530), // 14
-            new(627, 539), // 15
-            new(621, 552), // 16
-            new(625, 502), // 17 lane D hub (id 802)
-            new(617, 498), // 18 lane D root — 26.0 from pump
-            new(609, 494), // 19
-            new(615, 481), // 20
-        };
-        long[] ids =
-        [
-            1141, 1140, 1139, 1138, 1137, 1136,
-            1044, 1043, 1042, 1041, 1040, 1039,
-            935, 934, 933, 932, 931,
-            802, 801, 800, 799,
-        ];
-
-        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            positions, _ => (true, false, false), pumpGridPosition: new NumVector2(607, 522), ids: ids);
-
-        coverage[2].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel, "lane A roots at its pump-closest segment (609,517)");
-        coverage[13].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel, "merged lane BC roots at (621,517)");
-        coverage[18].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel, "lane D roots at (617,498)");
-
-        // Lanes B and C run alongside each other (parallel rows of one game lane) — they merge into
-        // one branch, so B's pump-closest segment (627,517) is NOT a separate branch root.
-        coverage[7].ParentIndex.Should().NotBe(BlightLaneTopology.OrphanSentinel, "lane B merges into lane C");
-
-        int orphans = coverage.Count(r => r.ParentIndex == BlightLaneTopology.OrphanSentinel);
-        orphans.Should().Be(3, "three real lanes at the pump → three branch roots (A, merged BC, D)");
-
-        // Each lane chains along its own id run and never cross-merges into a neighbour lane.
-        coverage[1].ParentIndex.Should().Be(2, "lane A continues toward its root");
-        coverage[3].ParentIndex.Should().Be(2, "lane A's other side chains back to the root");
-        coverage[8].ParentIndex.Should().Be(7, "lane B chains to its own pump-closest segment");
-        coverage[14].ParentIndex.Should().Be(13, "lane C chains to its own root, not lane B's");
-        coverage[19].ParentIndex.Should().Be(18, "lane D chains to its own root");
-    }
-
-    // ── Bridge coverage propagation (a bridged dead-end is one lane with its target arm) ──
-
-    // Fork at node 1 (pump-rooted): arm A = 1→2 (dead-end 2), arm B = 1→3→4 (dead-end 4, leaving
-    // the junction exactly straight so the connectivity graph keeps the fork); dead-end 2 bridges
-    // to dead-end 4.
     private static LaneCoverageResult[] ComputeCoverage(
         List<NumVector2> positions,
         Func<NumVector2, (bool chilling, bool seismic, bool fireball)> getCoverage,
-        float segmentConnectDistance = 35f,
-        float phantomConnectDistance = BlightLaneTopology.PhantomConnectDistance)
+        IReadOnlyList<int> parents)
+        => BlightLaneTopology.ComputeCoverage(positions, getCoverage, parents);
+
+    private static int[] ChainParents(int count)
     {
-        return BlightLaneTopology.ComputeCoverage(positions, getCoverage, segmentConnectDistance,
-            phantomConnectDistance: phantomConnectDistance);
+        int[] parents = new int[count];
+        for (int i = 1; i < count; i++)
+            parents[i] = i - 1;
+        parents[0] = -1;
+        return parents;
     }
 
     private static List<NumVector2> CreateBranchPositions(int segmentCount, int spacing)

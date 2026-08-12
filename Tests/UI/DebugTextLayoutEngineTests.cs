@@ -21,5 +21,15 @@ namespace ClickIt.Tests.UI
             lines.Should().HaveCountGreaterThan(1);
             lines.Should().OnlyContain(x => x.StartsWith("  "));
         }
+
+        [TestMethod]
+        public void WrapOverlayText_DoesNotThrow_WhenMaxLengthIsZeroOrNegative()
+        {
+            var lines = DebugTextLayoutEngine.WrapOverlayText("this text must not crash", 0);
+            lines.Should().NotBeEmpty("a zero max length is clamped so wrapping never throws");
+
+            var negative = DebugTextLayoutEngine.WrapOverlayText("this text must not crash", -5);
+            negative.Should().NotBeEmpty();
+        }
     }
 }

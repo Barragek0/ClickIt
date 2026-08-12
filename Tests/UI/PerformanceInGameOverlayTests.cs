@@ -47,13 +47,11 @@ public class PerformanceInGameOverlayTests
         overlay.Draw(CreateContext(textQueue));
 
         string[] lines = textQueue.GetPendingTextSnapshot();
-        // The render, CR ms/f and processing tables keep "Last/Avg/Max"; the GC table header shows
-        // the per-frame/per-second units instead (KB/f | KB/s | KB/s).
-        lines.Count(l => l == "Last").Should().Be(3);
-        lines.Count(l => l == "Avg").Should().Be(3);
-        lines.Count(l => l == "Max").Should().Be(3);
-        lines.Count(l => l == "KB/f").Should().Be(1);
-        lines.Count(l => l == "KB/s").Should().Be(2);
+        // The render, CR ms/f, processing, DLR and GC tables keep "Last/Avg/Max" columns, matching
+        // the timing tables (the GC table shows byte/s in those same columns).
+        lines.Count(l => l == "Last").Should().Be(5);
+        lines.Count(l => l == "Avg").Should().Be(5);
+        lines.Count(l => l == "Max").Should().Be(5);
     }
 
     [TestMethod]
@@ -72,10 +70,10 @@ public class PerformanceInGameOverlayTests
         overlay.Draw(CreateContext(textQueue));
 
         string[] lines = textQueue.GetPendingTextSnapshot();
+        lines.Should().Contain("ListRead");
+        lines.Should().Contain("ListAlloc");
         lines.Should().Contain("Validity");
         lines.Should().Contain("Sort");
-        lines.Should().NotContain("List read");
-        lines.Should().NotContain("List alloc");
     }
 
     [TestMethod]
@@ -100,6 +98,37 @@ public class PerformanceInGameOverlayTests
         lines.Should().Contain("Context");
         lines.Should().Contain("Post");
         lines.Should().Contain("Other");
+    }
+
+    [TestMethod]
+    public void Draw_EnqueuesGcTable_AndSkipsZeroByteBreakdownStages()
+    {
+        var settings = new ClickItSettings();
+        var monitor = new PerformanceMonitor(settings);
+        monitor.RecordFpsSample(120);
+
+        // Blight breakdown stages: Entities/Foundations/Coverage/Events allocate, Executor (index 3)
+        // never allocates and must not appear in the GC table.
+        Span<long> bytes = stackalloc long[5];
+        Span<double> ms = stackalloc double[5];
+        bytes[0] = 4096; bytes[1] = 2048; bytes[2] = 1024; bytes[3] = 0; bytes[4] = 512;
+        ms[0] = 1; ms[1] = 2; ms[2] = 3; ms[3] = 4; ms[4] = 5;
+        monitor.RecordBreakdown(ProcessingSection.Blight, bytes, ms);
+
+        var overlay = new PerformanceInGameOverlay(() => monitor.GetDebugSnapshot());
+        var textQueue = new DeferredTextQueue();
+
+        overlay.Draw(CreateContext(textQueue));
+
+        string[] lines = textQueue.GetPendingTextSnapshot();
+        lines.Should().Contain("GC byte/s");
+        lines.Should().Contain("Entities");
+        lines.Should().Contain("Foundations");
+        lines.Should().Contain("Coverage");
+        lines.Should().Contain("Events");
+        // The process table keeps the Executor TIME row; the GC table must skip the 0-byte stage,
+        // so "Executor" appears exactly once instead of once per table.
+        lines.Count(l => l == "Executor").Should().Be(1);
     }
 
     [TestMethod]

@@ -1,8 +1,7 @@
 namespace ClickIt.Core.Lifecycle
 {
-    internal sealed class PluginLifecycleButtonBindings(ClickIt owner, DebugClipboardService debugClipboardService)
+    internal sealed class PluginLifecycleButtonBindings(DebugClipboardService debugClipboardService)
     {
-        private readonly ClickIt _owner = owner;
         private readonly DebugClipboardService _debugClipboardService = debugClipboardService;
 
         public void Subscribe(ClickItSettings settings)
@@ -30,8 +29,6 @@ namespace ClickIt.Core.Lifecycle
         private void CopyAdditionalDebugInfoButtonPressed()
         {
             _debugClipboardService.RequestAdditionalDebugInfoCopy();
-            if (_owner.GameController != null)
-                _debugClipboardService.QueueDeepMemoryDumpCoroutine();
         }
     }
 }

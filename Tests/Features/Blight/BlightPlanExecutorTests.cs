@@ -119,27 +119,28 @@ public class BlightPlanExecutorTests
         // Fireball plain upgrades are NOT specialization steps — this is the
         // bug: the executor used to search for 'MeteorTower' on these menus
         // where no specialization exists, failing and skipping the step.
-        BlightPlanExecutor.IsSpecializationStep(meteor, targetLevel: 2, currentTowerLevel: 1)
+        BlightPlanExecutor.IsSpecializationStep(meteor, targetLevel: 2)
             .Should().BeFalse("Fireball 1→2 is a plain upgrade");
-        BlightPlanExecutor.IsSpecializationStep(meteor, targetLevel: 3, currentTowerLevel: 2)
+        BlightPlanExecutor.IsSpecializationStep(meteor, targetLevel: 3)
             .Should().BeFalse("Fireball 2→3 is a plain upgrade");
 
         // Only the 3→4 specialization tier with a chosen spec is a spec step.
-        BlightPlanExecutor.IsSpecializationStep(meteor, targetLevel: 4, currentTowerLevel: 3)
+        BlightPlanExecutor.IsSpecializationStep(meteor, targetLevel: 4)
             .Should().BeTrue("Fireball 3→4 is the specialization step");
     }
 
     [TestMethod]
-    public void IsSpecializationStep_RequiresTowerAtLevel3()
+    public void IsSpecializationStep_TargetsSpecTier_RegardlessOfCachedLevel()
     {
         const int meteor = 0;
 
-        // A step targeting level 4 is still NOT a specialization step when the
-        // tower isn't actually at level 3 yet.
-        BlightPlanExecutor.IsSpecializationStep(meteor, targetLevel: 4, currentTowerLevel: 2)
-            .Should().BeFalse("the tower must be at level 3 before specializing");
-        BlightPlanExecutor.IsSpecializationStep(meteor, targetLevel: 4, currentTowerLevel: 1)
-            .Should().BeFalse();
+        // A step targeting level 4 with a chosen spec is ALWAYS a spec step — the tower's cached
+        // level is deliberately excluded from the gate. A cached level that lags reality (says 2
+        // while the tower is really at 3) used to degrade a Fireball 3->4 step to the plain-upgrade
+        // path, which clicks the first visible button — a SPECIALIZATION button on a maxed tower,
+        // producing Flamethrower instead of Meteor.
+        BlightPlanExecutor.IsSpecializationStep(meteor, targetLevel: 4)
+            .Should().BeTrue("Fireball 3->4 is the specialization step");
     }
 
     [TestMethod]
@@ -149,7 +150,7 @@ public class BlightPlanExecutorTests
 
         // A rule without a specialization (e.g. Chilling/Seismic, or a Fireball
         // rule that never called SetSpecialization) never takes the spec path.
-        BlightPlanExecutor.IsSpecializationStep(noSpecialization, targetLevel: 4, currentTowerLevel: 3)
+        BlightPlanExecutor.IsSpecializationStep(noSpecialization, targetLevel: 4)
             .Should().BeFalse("no chosen specialization means a plain upgrade");
     }
 
@@ -169,8 +170,9 @@ public class BlightPlanExecutorTests
     public void ShouldSkipPlainUpgradeClick_False_ForPlainTierButtonsOrUnreadableId()
     {
         // A genuine next-tier plain button (StunningTower3, FlameTower2) is a legitimate click; an
-        // unreadable/null button id must NOT trigger the skip (the executor proceeds with the click
-        // as before when the id can't be read).
+        // unreadable/null button id does NOT trigger this skip. The executor guards the null case
+        // separately: it reads the tower's LIVE rank and advances without clicking when the tower is
+        // already at max plain, so a null id never leads to clicking a specialization button.
         BlightPlanExecutor.ShouldSkipPlainUpgradeClick("StunningTower3")
             .Should().BeFalse();
         BlightPlanExecutor.ShouldSkipPlainUpgradeClick("FlameTower2")
@@ -416,6 +418,38 @@ public class BlightPlanExecutorTests
         BlightPlanExecutor.PathShowsOtherSpecialization(
                 string.Empty, BlightTowerType.Fireball, TowerSpecialization.Meteor)
             .Should().BeFalse("an unreadable path is fail-open — never a false trip");
+    }
+
+    [TestMethod]
+    public void DatIdShowsOtherSpecialization_Flamethrower_WhenTargetingMeteor_ReturnsTrue()
+    {
+        // The live entity path for a specialized tower is base-type + rank (e.g.
+        // "BlightTowerFlameRank4"), which never contains the dat id — so the wrong-spec guard MUST
+        // check the component dat id instead. A Flamethrower dat id must never pass a Meteor step.
+        BlightPlanExecutor.DatIdShowsOtherSpecialization("FlamethrowerTower", BlightTowerType.Fireball, TowerSpecialization.Meteor)
+            .Should().BeTrue("a Flamethrower dat id must never pass a Meteor spec step");
+        BlightPlanExecutor.DatIdShowsOtherSpecialization("TemporalTower", BlightTowerType.Seismic, TowerSpecialization.StoneGaze)
+            .Should().BeTrue("Temporal is the other Seismic spec — never pass a Stone Gaze step");
+    }
+
+    [TestMethod]
+    public void DatIdShowsOtherSpecialization_ChosenSpec_ReturnsFalse()
+    {
+        BlightPlanExecutor.DatIdShowsOtherSpecialization("MeteorTower", BlightTowerType.Fireball, TowerSpecialization.Meteor)
+            .Should().BeFalse("the chosen Meteor dat id is the correct result");
+        BlightPlanExecutor.DatIdShowsOtherSpecialization("PetrificationTower", BlightTowerType.Seismic, TowerSpecialization.StoneGaze)
+            .Should().BeFalse("the chosen Stone Gaze dat id is the correct result");
+    }
+
+    [TestMethod]
+    public void DatIdShowsOtherSpecialization_UnrelatedOrEmpty_ReturnsFalse()
+    {
+        BlightPlanExecutor.DatIdShowsOtherSpecialization("FlameTower3", BlightTowerType.Fireball, TowerSpecialization.Meteor)
+            .Should().BeFalse("a plain Mk dat id (pre-verify) must not trip the guard");
+        BlightPlanExecutor.DatIdShowsOtherSpecialization(string.Empty, BlightTowerType.Fireball, TowerSpecialization.Meteor)
+            .Should().BeFalse("an unreadable dat id is fail-open — never a false trip");
+        BlightPlanExecutor.DatIdShowsOtherSpecialization("MeteorTower", BlightTowerType.Seismic, TowerSpecialization.StoneGaze)
+            .Should().BeFalse("a Fireball dat id is unrelated to a Seismic step");
     }
 
     // ── Build sub-menu toggle-race guard ──

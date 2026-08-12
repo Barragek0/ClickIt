@@ -4,9 +4,13 @@ namespace ClickIt.Shared.Diagnostics
     {
         private const int MaxBufferedItems = 8192;
         private readonly Lock _queueLock = new();
-        private List<(string Text, Vector2 Position, Color Color, int Size, FontAlign Align, bool Shadow)> _items = [];
-        private List<(string Text, Vector2 Position, Color Color, int Size, FontAlign Align, bool Shadow)> _spare = [];
+        private List<(string Text, Vector2 Position, Color Color, int Size, FontAlign Align, bool Shadow, RenderSection Section)> _items = [];
+        private List<(string Text, Vector2 Position, Color Color, int Size, FontAlign Align, bool Shadow, RenderSection Section)> _spare = [];
         private int _pendingCount;
+
+        // Ambient render section set by the overlay host around each overlay's Draw, so flushed
+        // text can be attributed back to the feature that enqueued it. Render-thread only.
+        internal RenderSection CurrentSection { get; set; } = RenderSection.Unknown;
 
         public void Enqueue(string text, Vector2 pos, Color color, int size, FontAlign align = FontAlign.Left, bool shadow = false)
         {
@@ -25,7 +29,7 @@ namespace ClickIt.Shared.Diagnostics
                         _items.RemoveRange(0, removeCount);
                     }
 
-                    _items.Add((text, pos, color, size, align, shadow));
+                    _items.Add((text, pos, color, size, align, shadow, CurrentSection));
                     _pendingCount = _items.Count;
                 }
             }
@@ -34,7 +38,7 @@ namespace ClickIt.Shared.Diagnostics
             }
         }
 
-        public void Flush(Graphics graphics)
+        public void Flush(Graphics graphics, Action<RenderSection, double>? recordSectionFlush = null)
         {
             if (graphics == null) return;
 
@@ -48,9 +52,12 @@ namespace ClickIt.Shared.Diagnostics
                 _pendingCount = 0;
             }
 
+            double[]? sectionMs = recordSectionFlush != null ? new double[15] : null;
+
             for (int i = 0; i < _spare.Count; i++)
             {
-                (string Text, Vector2 Position, Color Color, int Size, FontAlign Align, bool Shadow) entry = _spare[i];
+                (string Text, Vector2 Position, Color Color, int Size, FontAlign Align, bool Shadow, RenderSection Section) entry = _spare[i];
+                long start = Stopwatch.GetTimestamp();
                 try
                 {
                     if (entry.Shadow)
@@ -61,10 +68,29 @@ namespace ClickIt.Shared.Diagnostics
                 {
                     // Intentionally empty - logging here causes recursive issues
                 }
+
+                if (sectionMs != null)
+                {
+                    int sectionIndex = (int)entry.Section;
+                    if (sectionIndex >= 0 && sectionIndex < sectionMs.Length)
+                        sectionMs[sectionIndex] += GetElapsedMs(start);
+                }
+            }
+
+            if (sectionMs != null)
+            {
+                for (int s = 0; s < sectionMs.Length; s++)
+                {
+                    if (sectionMs[s] > 0)
+                        recordSectionFlush!((RenderSection)s, sectionMs[s]);
+                }
             }
 
             _spare.Clear();
         }
+
+        private static double GetElapsedMs(long startTimestamp)
+            => (Stopwatch.GetTimestamp() - startTimestamp) * 1000.0 / Stopwatch.Frequency;
 
         public int GetPendingCount()
         {

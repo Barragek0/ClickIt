@@ -3,32 +3,28 @@ namespace ClickIt.Features.Labels.Selection
     public sealed class LabelReadModelService
     {
         private readonly GameController _gameController;
-        private readonly Func<Vector2, bool> _pointIsInClickableArea;
         private readonly Action<double>? _recordProcessingMs;
         private readonly Action<long>? _recordAllocationBytes;
         private readonly Action<LabelScanAllocationBreakdown>? _recordAllocationBreakdown;
 
         public TimeCache<List<LabelOnGround>> CachedLabels { get; }
 
-        // Per-label scan data keyed on the label ADDRESS (stable across snapshots): the basic
-        // validity check is ~6 DLR reads and the sort re-reads DistancePlayer per label, so a
-        // 50ms cadence would re-run those reads every scan. Within the window the scan reuses the
-        // cached result; the game's own visible-list rebuild (removed labels vanish from the list)
-        // bounds staleness, and downstream consumers re-validate before acting.
+        // Per-label scan data keyed on the label ADDRESS so validity/sort reads only re-run on a long window.
         private readonly record struct CachedLabelData(bool Valid, float Distance, long AtMs);
         private readonly Dictionary<long, CachedLabelData> _labelDataCache = [];
         private long _labelDataCacheWindowStartMs;
-        private const long LabelDataCacheWindowMs = 250;
+        private const long LabelDataCacheWindowMs = 1000;
 
-        // TimeCache.Value runs the scan on whichever thread first accesses it after expiry (overlay
-        // refresh, click coroutine, altar scan, render path), so the shared cache must be serialized
-        // or concurrent scans corrupt the dictionary (InvalidOperationException in UpdateLabelComponent).
+        // TimeCache.Value runs the scan on whichever thread first accesses it after expiry, so the shared cache must be serialized.
         private readonly Lock _scanLock = new();
 
-        public LabelReadModelService(GameController gameController, Func<Vector2, bool> pointIsInClickableArea, Action<double>? recordProcessingMs = null, Action<long>? recordAllocationBytes = null, Action<LabelScanAllocationBreakdown>? recordAllocationBreakdown = null)
+        // Same-instance label set while the visible label addresses are unchanged (activates downstream ReferenceEquals-gated caches).
+        private readonly StableLabelSetCache _stableSet = new();
+        private readonly List<LabelOnGround> _emptyLabels = [];
+
+        public LabelReadModelService(GameController gameController, Action<double>? recordProcessingMs = null, Action<long>? recordAllocationBytes = null, Action<LabelScanAllocationBreakdown>? recordAllocationBreakdown = null)
         {
             _gameController = gameController;
-            _pointIsInClickableArea = pointIsInClickableArea;
             _recordProcessingMs = recordProcessingMs;
             _recordAllocationBytes = recordAllocationBytes;
             _recordAllocationBreakdown = recordAllocationBreakdown;
@@ -43,7 +39,10 @@ namespace ClickIt.Features.Labels.Selection
         public List<LabelOnGround> UpdateLabelComponent()
         {
             lock (_scanLock)
-                return UpdateLabelComponentCore();
+            {
+                using (new DlrReadScope(ProcessingSection.Label))
+                    return UpdateLabelComponentCore();
+            }
         }
 
         private List<LabelOnGround> UpdateLabelComponentCore()
@@ -60,7 +59,8 @@ namespace ClickIt.Features.Labels.Selection
                 if (groundLabels == null || groundLabels.Count == 0)
                 {
                     breakdown = new LabelScanAllocationBreakdown(readBytes, 0, 0, 0, readBytes);
-                    return [];
+                    _stableSet.Reset();
+                    return _emptyLabels;
                 }
 
                 long listAllocStart = GC.GetAllocatedBytesForCurrentThread();
@@ -103,7 +103,9 @@ namespace ClickIt.Features.Labels.Selection
                 long totalBytes = readBytes + listAllocBytes + validityBytes + sortBytes;
                 breakdown = new LabelScanAllocationBreakdown(readBytes, listAllocBytes, validityBytes, sortBytes, totalBytes);
 
-                return validLabels;
+                // Same instance while the visible label set is unchanged so downstream caches that
+                // key on the list reference only re-run on real label-set changes.
+                return _stableSet.Resolve(validLabels);
             }
             finally
             {

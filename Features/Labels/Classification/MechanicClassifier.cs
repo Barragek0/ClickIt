@@ -489,6 +489,7 @@ namespace ClickIt.Features.Labels.Classification
             if (string.IsNullOrEmpty(path) || !TryGetLabelItem(label, out object? item) || item == null)
                 return false;
 
+            // A locked strongbox cannot be opened, so it is never accepted regardless of mode.
             if (!TryGetChestLocked(item, out bool isLocked) || isLocked)
                 return false;
 
@@ -553,6 +554,18 @@ namespace ClickIt.Features.Labels.Classification
 
             return DynamicAccess.TryReadBool(rawChest, DynamicAccessProfiles.IsLocked, out isLocked);
         }
+
+        // A chest that reports IsLocked (the strongbox overlay's red-frame condition) cannot be
+        // opened, so it is excluded from every click path regardless of its mechanic resolution.
+        internal static bool IsLockedChest(object item)
+            => TryGetChestLocked(item, out bool isLocked) && isLocked;
+
+        // Locked strongboxes (the overlay's red frame) are excluded from the clickable scope in
+        // non-lazy mode; lazy mode has its own strongbox restrictions.
+        internal static bool IsLockedStrongbox(object item)
+            => IsLockedChest(item)
+                && DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string path)
+                && path.Contains("strongbox", StringComparison.OrdinalIgnoreCase);
 
         private static bool ContainsStrongboxUniqueIdentifier(IReadOnlyList<string> metadataIdentifiers)
         {

@@ -47,6 +47,26 @@
         }
 
         [TestMethod]
+        public void TryGetRawGridDims_ReadsShapeWithoutConverting()
+        {
+            bool intOk = PathTerrainSnapshotProvider.TryGetRawGridDims(
+                new[] { new[] { 1, 0, 1 }, new[] { 0, 1, 0 } }, out int intWidth, out int intHeight);
+            intOk.Should().BeTrue();
+            intWidth.Should().Be(3);
+            intHeight.Should().Be(2);
+
+            bool objOk = PathTerrainSnapshotProvider.TryGetRawGridDims(
+                new object[] { new object[] { 1, 0 }, new object[] { 0, 1 } }, out int objWidth, out int objHeight);
+            objOk.Should().BeTrue();
+            objWidth.Should().Be(2);
+            objHeight.Should().Be(2);
+
+            PathTerrainSnapshotProvider.TryGetRawGridDims(null, out _, out _).Should().BeFalse();
+            PathTerrainSnapshotProvider.TryGetRawGridDims(new object[0], out _, out _).Should().BeFalse();
+            PathTerrainSnapshotProvider.TryGetRawGridDims(new object[] { new object[0] }, out _, out _).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void ShouldUseTerrainCache_ReturnsTrue_WhenDimsAndAreaHashMatch()
         {
             PathfindingTerrainCache cache = new()

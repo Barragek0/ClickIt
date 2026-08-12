@@ -42,7 +42,7 @@ namespace ClickIt.Tests.Core.Runtime
         }
 
         [TestMethod]
-        public void Render_LeavesPendingDebugCopy_WhenDebugRenderingIsDisabled()
+        public void Render_ConsumesPendingDebugCopy_EvenWhenDebugRenderingIsDisabled()
         {
             var plugin = new ClickIt();
             var state = plugin.State;
@@ -60,7 +60,9 @@ namespace ClickIt.Tests.Core.Runtime
                 graphics: null,
                 debugClipboardService);
 
-            debugClipboardService.HasPendingAdditionalDebugInfoCopyRequest.Should().BeTrue();
+            // The copy button must be consumed regardless of the debug-render gate — leaving it
+            // latched would flush a stale backlog whenever debug rendering is later enabled.
+            debugClipboardService.HasPendingAdditionalDebugInfoCopyRequest.Should().BeFalse();
         }
 
         private static DebugClipboardService CreateOpaqueDebugClipboardService()

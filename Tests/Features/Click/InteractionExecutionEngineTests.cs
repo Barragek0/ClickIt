@@ -100,6 +100,39 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
+        public void Execute_VisibleLabelWithLockedChest_IsNotClicked()
+        {
+            // A locked chest selected by a stale/cached ranking must still be skipped at click
+            // time (the strongbox overlay's red frame is the same Chest.IsLocked read).
+            Entity item = EntityProbeFactory.Create(path: "Metadata/Chests/StrongBoxes/Arcanist");
+            EntityProbeFactory.WithComponent<Chest>(item, new LockedChestProbe { IsLocked = true });
+            LabelOnGround label = new LabelProbe { ItemOnGround = item };
+
+            bool interactionExecuted = false;
+            InteractionExecutionEngine engine = CreateEngine(
+                labelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(
+                    labelInteractionPort: ClickTestServiceFactory.CreateNoOpLabelInteractionPort(),
+                    tryResolveClickPosition: static (_, _, _, _) => (true, new Vector2(10f, 10f)),
+                    executeInteraction: _ =>
+                    {
+                        interactionExecuted = true;
+                        return true;
+                    },
+                    isClickableInEitherSpace: static (_, _) => true,
+                    isInsideWindowInEitherSpace: static _ => true,
+                    groundItemsVisible: static () => true));
+
+            ExecutionResult result = engine.Execute(
+                CreateContext(groundItemsVisible: true),
+                new ClickCandidates(null, null, label, null),
+                CreateDecision(trySettlers: false, tryLostShipment: false, tryShrine: false, groundItemsVisible: true));
+
+            interactionExecuted.Should().BeFalse("a locked chest must never be clicked");
+            result.ShouldRunPostActions.Should().BeFalse();
+            result.DidActionableWork.Should().BeFalse();
+        }
+
+        [TestMethod]
         public void Execute_HiddenFallsBackToLostShipment_WhenSettlersClickFails()
         {
             List<string> calls = [];

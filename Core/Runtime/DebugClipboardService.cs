@@ -8,7 +8,7 @@ namespace ClickIt.Core.Runtime
 
     internal sealed class DebugClipboardService(DebugClipboardServiceDependencies dependencies)
     {
-        private readonly DeepMemoryDumpCoordinator _deepMemoryDumpCoordinator = new(dependencies);
+        internal GameStateDumpCoordinator GameStateDump { get; } = new(dependencies);
 
         public bool HasPendingAdditionalDebugInfoCopyRequest { get; private set; }
 
@@ -17,82 +17,44 @@ namespace ClickIt.Core.Runtime
             HasPendingAdditionalDebugInfoCopyRequest = true;
         }
 
-        public void CompleteAdditionalDebugInfoCopy(string[] debugLines)
+        // Render-thread call: clears the request immediately (so a second hotkey press during the
+        // copy re-arms properly), then builds the payload + writes the clipboard off-thread because
+        // a large pending text queue can block rendering for hundreds of ms. recordCost reports the
+        // background work's (bytes, ms) so the debug tables can show the copy under the Dump row.
+        public void CompleteAdditionalDebugInfoCopy(string[] debugLines, Action<long, double>? recordCost = null)
         {
-            try
+            HasPendingAdditionalDebugInfoCopyRequest = false;
+            if (debugLines == null || debugLines.Length == 0)
+                return;
+
+            string[] lines = debugLines;
+            _ = System.Threading.Tasks.Task.Run(() =>
             {
-                TryCopyAdditionalDebugInfo(debugLines);
-            }
-            finally
-            {
-                HasPendingAdditionalDebugInfoCopyRequest = false;
-            }
+                long start = Stopwatch.GetTimestamp();
+                long allocStart = GC.GetAllocatedBytesForCurrentThread();
+                try
+                {
+                    TryCopyAdditionalDebugInfo(lines);
+                }
+                finally
+                {
+                    recordCost?.Invoke(
+                        GC.GetAllocatedBytesForCurrentThread() - allocStart,
+                        (Stopwatch.GetTimestamp() - start) * 1000.0 / Stopwatch.Frequency);
+                }
+            });
         }
 
-        public void QueueDeepMemoryDumpCoroutine()
-        {
-            _deepMemoryDumpCoordinator.QueueDeepMemoryDumpCoroutine();
-        }
-
-        private void TryCopyAdditionalDebugInfo(string[] debugLines)
+        private static void TryCopyAdditionalDebugInfo(string[] debugLines)
         {
             if (debugLines == null || debugLines.Length == 0)
                 return;
 
             string payload = DebugClipboardPayloadBuilder.BuildDebugClipboardPayload(debugLines);
-
-            QueueDeepMemoryDumpCoroutine();
-
-            string status = _deepMemoryDumpCoordinator.GetDeepMemoryDumpStatusMessage();
-            if (!string.IsNullOrWhiteSpace(status))
-                payload = payload + Environment.NewLine + Environment.NewLine + status;
-
             if (string.IsNullOrWhiteSpace(payload))
                 return;
 
-            _ = TrySetClipboardText(payload);
-        }
-
-        private static bool TrySetClipboardText(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                return false;
-
-            try
-            {
-                if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA)
-                {
-                    Clipboard.SetText(text);
-                    return true;
-                }
-
-                using Process process = new();
-                process.StartInfo = new ProcessStartInfo
-                {
-                    FileName = "clip.exe",
-                    UseShellExecute = false,
-                    RedirectStandardInput = true,
-                    CreateNoWindow = true
-                };
-
-                if (!process.Start())
-                    return false;
-
-                process.StandardInput.Write(text);
-                process.StandardInput.Close();
-
-                if (!process.WaitForExit(500))
-                {
-                    try { process.Kill(); } catch { }
-                    return false;
-                }
-
-                return process.ExitCode == 0;
-            }
-            catch
-            {
-                return false;
-            }
+            _ = ClipboardText.TryCopy(payload);
         }
     }
 }

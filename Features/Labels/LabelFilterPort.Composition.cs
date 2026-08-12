@@ -2,9 +2,7 @@ namespace ClickIt.Features.Labels
 {
     public sealed partial class LabelFilterPort
     {
-        /**
-        Keep `LabelFilterPort` merge-first and lazy: settings and root collaborators arrive eagerly in the constructor, then the composition layer fans out in a stable order from click settings and inventory policy into classification, candidate building, selection, debug, and lazy-mode blocking. This ordering matters for followability because the later owners intentionally reuse the earlier ones instead of each recreating their own view of metadata, mechanics, or inventory rules.
-         */
+        // Keep LabelFilterPort merge-first and lazy: eager constructor collaborators, then the composition layer fans out in a stable order.
         private LabelClickSettingsService ClickSettingsService
             => field ??= new LabelClickSettingsService(
                 _settings,

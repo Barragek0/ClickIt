@@ -12,6 +12,8 @@ namespace ClickIt.UI.Settings
             SettingsPanelSafeRenderer safePanelRenderer = new(settings);
             DebugTestingPanelRenderer debugTestingPanelRenderer = new(settings);
             ControlsPanelRenderer controlsPanelRenderer = new(settings);
+            PerformanceSettingsPanelRenderer performancePanelRenderer = new(settings);
+            PerformanceSettingsPanelRenderer.SetCurrent(() => performancePanelRenderer);
             ItemTypeFiltersPanelRenderer itemTypeFiltersPanelRenderer = new(settings);
             EssenceCorruptionPanelRenderer essenceCorruptionPanelRenderer = new(settings);
             StrongboxFilterPanelRenderer strongboxFilterPanelRenderer = new(settings);
@@ -27,6 +29,7 @@ namespace ClickIt.UI.Settings
             return ClickItSettingsScreen.Compose(new ClickItSettingsScreenBindings(
                 debugTestingPanelRenderer.Draw,
                 controlsPanelRenderer.Draw,
+                performancePanelRenderer.Draw,
                 lazyModeNearbyMonsterRulesPanelRenderer.Draw,
                 () => altarSettingsPanelRenderer.DrawAltarsPanel(),
                 altarSettingsPanelRenderer.DrawAltarModWeights,

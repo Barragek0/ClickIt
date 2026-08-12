@@ -63,14 +63,12 @@ namespace ClickIt.Tests.Core.Bootstrap
             var settings = new ClickItSettings();
             GameController gameController = ExileCoreOpaqueFactory.CreateOpaqueGameController();
             CoreDomainServices core = CreateCoreDomainServices(settings);
-            Graphics graphics = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));
             var frozenTelemetrySnapshots = new List<(string Reason, int HoldDurationMs)>();
 
             RenderingDomainServices rendering = RenderingDomainAssembler.Assemble(
                 owner,
                 settings,
                 core,
-                graphics,
                 owner.LogMessage);
             ClickAutomationPort clickAutomationPort = ClickDomainAssembler.Assemble(
                 settings,
@@ -81,7 +79,7 @@ namespace ClickIt.Tests.Core.Bootstrap
                 static (_, _) => true,
                 ClickTestServiceFactory.CreateNoOpLabelSelectionService(),
                 (reason, holdDurationMs) => frozenTelemetrySnapshots.Add((reason, holdDurationMs)));
-            UltimatumOverlay ultimatumOverlay = RenderingDomainAssembler.CreateUltimatumOverlay(settings, clickAutomationPort);
+            UltimatumOverlay ultimatumOverlay = RenderingDomainAssembler.CreateUltimatumOverlay(clickAutomationPort);
             AlertService alertService = CreateOpaque<AlertService>();
             SettingsDomainServices settingsDomain = SettingsDomainAssembler.Assemble(alertService, settings);
 

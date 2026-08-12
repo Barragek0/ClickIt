@@ -29,6 +29,10 @@ namespace ClickIt.Core.Runtime
         private long _flareCacheAtMs;
         private const long FlareCacheWindowMs = 200;
 
+        // Flare sub-stage breakdown buffers (reused, since an iterator cannot stackalloc spans).
+        private readonly long[] _flareStageBytes = new long[3];
+        private readonly double[] _flareStageMs = new double[3];
+
         private static double GetElapsedMs(long startTimestamp)
             => (Stopwatch.GetTimestamp() - startTimestamp) * 1000.0 / Stopwatch.Frequency;
 
@@ -111,16 +115,25 @@ namespace ClickIt.Core.Runtime
                     _state.Services.CachedLabels?.Value,
                     _gameController.Window.GetWindowRectangleTimeCache,
                     _settings),
-                () => _settings.Enable && !_state.Runtime.IsShuttingDown,
+                () => !_state.Runtime.IsShuttingDown,
                 _state.Services.PerformanceMonitor,
                 message => _errorHandler.LogError(message));
         }
 
         private IEnumerator MainScanForAltarsLogic()
         {
-            while (_settings.Enable && !_state.Runtime.IsShuttingDown)
+            // Idle-yield while the Enable master switch is off instead of terminating: a finished
+            // coroutine can never be resumed, so terminating here would leave the plugin dead after
+            // the user toggles Enable back on (until a full reload).
+            while (!_state.Runtime.IsShuttingDown)
+            {
+                if (!_settings.Enable)
+                {
+                    yield return new WaitTime(250);
+                    continue;
+                }
                 yield return Guarded(ScanForAltarsLogic, "AltarScan");
-
+            }
         }
 
         // Catches exceptions escaping a plugin coroutine step and logs them through
@@ -153,15 +166,21 @@ namespace ClickIt.Core.Runtime
 
         private IEnumerator MainAreaBlockedUiRefreshCoroutine()
         {
-            while (_settings.Enable && !_state.Runtime.IsShuttingDown)
+            while (!_state.Runtime.IsShuttingDown)
             {
+                if (!_settings.Enable)
+                {
+                    yield return new WaitTime(250);
+                    continue;
+                }
                 try
                 {
                     // Let the scheduler honor BlockedUiRefreshIntervalMs; forcing here would bypass
                     // the documented refresh interval and rebuild blocked rects redundantly.
                     long start = Stopwatch.GetTimestamp();
                     long allocStart = GC.GetAllocatedBytesForCurrentThread();
-                    _state.Services.AreaService?.UpdateScreenAreas(_gameController);
+                    using (new DlrReadScope(ProcessingSection.AreaBlockedUi))
+                        _state.Services.AreaService?.UpdateScreenAreas(_gameController);
                     RecordProcessing(ProcessingSection.AreaBlockedUi, start, allocStart);
                 }
                 catch (Exception ex)
@@ -181,7 +200,8 @@ namespace ClickIt.Core.Runtime
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Altar);
             long start = Stopwatch.GetTimestamp();
             long allocStart = GC.GetAllocatedBytesForCurrentThread();
-            _state.Services.AltarService?.ProcessAltarScanningLogic();
+            using (new DlrReadScope(ProcessingSection.Altar))
+                _state.Services.AltarService?.ProcessAltarScanningLogic();
             RecordProcessing(ProcessingSection.Altar, start, allocStart);
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Altar);
 
@@ -190,8 +210,13 @@ namespace ClickIt.Core.Runtime
 
         private IEnumerator MainClickLabelCoroutine()
         {
-            while (_settings.Enable && !_state.Runtime.IsShuttingDown)
+            while (!_state.Runtime.IsShuttingDown)
             {
+                if (!_settings.Enable)
+                {
+                    yield return new WaitTime(250);
+                    continue;
+                }
                 yield return Guarded(ClickLabel, "ClickLabel");
                 if (!_lastClickTickDidWork)
                     yield return new WaitTime(_clickIdleWaitMs);
@@ -270,7 +295,8 @@ namespace ClickIt.Core.Runtime
             long clickStart = Stopwatch.GetTimestamp();
             long clickAllocStart = GC.GetAllocatedBytesForCurrentThread();
             ClickPipelineTiming.ResetSleepTime();
-            yield return clickPort.ProcessRegularClick();
+            using (new DlrReadScope(ProcessingSection.Click))
+                yield return clickPort.ProcessRegularClick();
             double clickSleepMs = ClickPipelineTiming.ConsumeSleepTimeMs();
             _state.Services.PerformanceMonitor.RecordClickSleepTiming(clickSleepMs);
             RecordProcessing(ProcessingSection.Click, clickStart, clickAllocStart, clickSleepMs);
@@ -285,8 +311,13 @@ namespace ClickIt.Core.Runtime
 
         private IEnumerator MainManualUiHoverClickCoroutine()
         {
-            while (_settings.Enable && !_state.Runtime.IsShuttingDown)
+            while (!_state.Runtime.IsShuttingDown)
             {
+                if (!_settings.Enable)
+                {
+                    yield return new WaitTime(250);
+                    continue;
+                }
                 yield return Guarded(ProcessManualUiHoverClick, "ManualUiHoverClick");
                 yield return new WaitTime(10);
             }
@@ -324,7 +355,11 @@ namespace ClickIt.Core.Runtime
             long hoverStart = Stopwatch.GetTimestamp();
             long hoverAllocStart = GC.GetAllocatedBytesForCurrentThread();
             ClickPipelineTiming.ResetSleepTime();
-            bool clicked = clickPort.TryClickManualUiHoverLabel(labels);
+            bool clicked;
+            using (new DlrReadScope(ProcessingSection.ManualUiHover))
+            {
+                clicked = clickPort.TryClickManualUiHoverLabel(labels);
+            }
             double hoverSleepMs = ClickPipelineTiming.ConsumeSleepTimeMs();
             _state.Services.PerformanceMonitor.RecordClickSleepTiming(hoverSleepMs);
             RecordProcessing(ProcessingSection.ManualUiHover, hoverStart, hoverAllocStart, hoverSleepMs);
@@ -337,74 +372,111 @@ namespace ClickIt.Core.Runtime
         {
             if (_state.Runtime.IsShuttingDown || _state.Services.PerformanceMonitor == null) yield break;
 
-            while (_settings.Enable && !_state.Runtime.IsShuttingDown)
+            while (!_state.Runtime.IsShuttingDown)
             {
-                try
+                if (!_settings.Enable)
                 {
-                    _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Flare);
+                    yield return new WaitTime(250);
+                    continue;
                 }
-                catch (Exception ex)
-                {
-                    _errorHandler.LogError($"[FlareCoroutine] {ex}");
-                }
-
-                long flareStart = Stopwatch.GetTimestamp();
-                long flareAllocStart = GC.GetAllocatedBytesForCurrentThread();
                 yield return Guarded(ProcessFlare, "Flare");
-                RecordProcessing(ProcessingSection.Flare, flareStart, flareAllocStart);
-
-                try
-                {
-                    _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Flare);
-                }
-                catch (Exception ex)
-                {
-                    _errorHandler.LogError($"[FlareCoroutine] {ex}");
-                }
-
                 yield return new WaitTime(100);
             }
         }
 
+        // The whole body runs synchronously (the only yield is the post-use cooldown), so timing is
+        // recorded here around the actual work — measuring around `yield return Guarded(...)` in the
+        // caller instead would span the coroutine scheduler's frame gap and report ~16ms of noise.
         private IEnumerator ProcessFlare()
         {
             if (!_settings.ClickDelveFlares)
                 yield break;
 
+            PerformanceMonitor? perf = _state.Services.PerformanceMonitor;
+            if (perf == null)
+                yield break;
+
+            perf.StartCoroutineTiming(TimingChannel.Flare);
+            long start = Stopwatch.GetTimestamp();
+            long allocStart = GC.GetAllocatedBytesForCurrentThread();
             long now = Environment.TickCount64;
             Entity? player = _gameController?.Player;
-            if (player == null)
-                yield break;
+            bool usedFlare = false;
 
-            // Player.Buffs materializes every buff wrapper and FindDarknessDebuffCharges reads each
-            // buff's Name/Charges over the obfuscated game types — the dominant flare cost at its
-            // 100ms cadence. Cache the decision inputs per player address with a short window; the
-            // darkness-debuff decision tolerates 200ms staleness.
-            if (now - _flareCacheAtMs >= FlareCacheWindowMs || player.Address != _flarePlayerOwnerAddress)
+            using (new DlrReadScope(ProcessingSection.Flare))
             {
-                _flarePlayerOwnerAddress = player.Address;
-                _flareCacheAtMs = now;
-                _cachedFlareCharges = PluginDelveFlarePolicy.FindDarknessDebuffCharges(player.Buffs);
-                _cachedFlareHealth = GetPlayerHealthPercent();
-                _cachedFlareEnergyShield = GetPlayerEnergyShieldPercent();
+                if (player != null)
+                {
+                    // Player.Buffs materializes every buff wrapper and FindDarknessDebuffCharges reads each
+                    // buff's Name/Charges over the obfuscated game types. Cache the decision inputs per
+                    // player address with a short window; the darkness-debuff decision tolerates 200ms staleness.
+                    long buffsStart = Stopwatch.GetTimestamp();
+                    long buffsAllocStart = GC.GetAllocatedBytesForCurrentThread();
+                    if (now - _flareCacheAtMs >= FlareCacheWindowMs || player.Address != _flarePlayerOwnerAddress)
+                    {
+                        _flarePlayerOwnerAddress = player.Address;
+                        _flareCacheAtMs = now;
+                        _cachedFlareCharges = PluginDelveFlarePolicy.FindDarknessDebuffCharges(player.Buffs);
+                        _cachedFlareHealth = GetPlayerHealthPercent();
+                        _cachedFlareEnergyShield = GetPlayerEnergyShieldPercent();
+                    }
+                    _flareStageMs[0] = GetElapsedMs(buffsStart);
+                    _flareStageBytes[0] = GC.GetAllocatedBytesForCurrentThread() - buffsAllocStart;
+
+                    long decisionStart = Stopwatch.GetTimestamp();
+                    long decisionAllocStart = GC.GetAllocatedBytesForCurrentThread();
+                    bool useFlare = PluginDelveFlarePolicy.ShouldUseFlare(
+                        _cachedFlareCharges,
+                        _settings.DarknessDebuffStacks.Value,
+                        _cachedFlareHealth,
+                        _settings.DelveFlareHealthThreshold.Value,
+                        _cachedFlareEnergyShield,
+                        _settings.DelveFlareEnergyShieldThreshold.Value);
+                    bool canClick = false;
+                    if (useFlare)
+                    {
+                        PluginClickRuntimeStateSnapshot runtimeState = ResolveRitualAwareRuntimeState();
+                        canClick = _state.Services.InputHandler?.CanClick(_gameController, false, runtimeState.IsRitualActive) == true;
+                    }
+                    _flareStageMs[1] = GetElapsedMs(decisionStart);
+                    _flareStageBytes[1] = GC.GetAllocatedBytesForCurrentThread() - decisionAllocStart;
+
+                    if (useFlare && canClick)
+                    {
+                        long inputStart = Stopwatch.GetTimestamp();
+                        long inputAllocStart = GC.GetAllocatedBytesForCurrentThread();
+                        Keyboard.KeyPress(_settings.DelveFlareHotkeyBinding, 50);
+                        _errorHandler.LogMessage($"Used delve flare (buff charges: {_cachedFlareCharges}, health: {_cachedFlareHealth:F1}%, es: {_cachedFlareEnergyShield:F1}%)", 5);
+                        _flareStageMs[2] = GetElapsedMs(inputStart);
+                        _flareStageBytes[2] = GC.GetAllocatedBytesForCurrentThread() - inputAllocStart;
+                        usedFlare = true;
+                    }
+                }
+                else
+                {
+                    _flareStageMs[0] = 0;
+                    _flareStageMs[1] = 0;
+                    _flareStageBytes[0] = 0;
+                    _flareStageBytes[1] = 0;
+                }
             }
 
-            if (!PluginDelveFlarePolicy.ShouldUseFlare(
-                _cachedFlareCharges,
-                _settings.DarknessDebuffStacks.Value,
-                _cachedFlareHealth,
-                _settings.DelveFlareHealthThreshold.Value,
-                _cachedFlareEnergyShield,
-                _settings.DelveFlareEnergyShieldThreshold.Value))
-                yield break;
+            RecordFlareBreakdown(perf, includeInput: usedFlare);
+            RecordProcessing(ProcessingSection.Flare, start, allocStart);
+            perf.StopCoroutineTiming(TimingChannel.Flare);
 
-            PluginClickRuntimeStateSnapshot runtimeState = ResolveRitualAwareRuntimeState();
-            if (_state.Services.InputHandler?.CanClick(_gameController, false, runtimeState.IsRitualActive) != true)
-                yield break;
+            if (usedFlare)
+                yield return new WaitTime(1000);
+        }
 
-            Keyboard.KeyPress(_settings.DelveFlareHotkeyBinding, 50);
-            _errorHandler.LogMessage($"Used delve flare (buff charges: {_cachedFlareCharges}, health: {_cachedFlareHealth:F1}%, es: {_cachedFlareEnergyShield:F1}%)", 5);
-            yield return new WaitTime(1000);
+        private void RecordFlareBreakdown(PerformanceMonitor perf, bool includeInput)
+        {
+            if (!includeInput)
+            {
+                _flareStageBytes[2] = 0;
+                _flareStageMs[2] = 0;
+            }
+            perf.RecordBreakdown(ProcessingSection.Flare, _flareStageBytes, _flareStageMs);
         }
 
         internal float GetPlayerHealthPercent()

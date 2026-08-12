@@ -16,6 +16,7 @@ namespace ClickIt.Core.Runtime
 
         internal void Clear()
         {
+            ImGuiDebugOverlay = null;
             UiRegionRectangleOverlay = null;
             OverlayRenderHost = null;
             DeferredTextQueue = null;

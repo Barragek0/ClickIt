@@ -6,13 +6,7 @@ namespace ClickIt.Core.Bootstrap
 
     internal static class SettingsDomainAssembler
     {
-        /**
-        Keep this thin runtime entry wrapper so the normal lifecycle path still
-        assembles settings services from the owner. The injected internal overload
-        remains available for direct bootstrap tests and composition-only
-        validation, so do not fold this back into one method unless the seam is
-        preserved.
-         */
+        // Thin runtime entry wrapper so the injected internal overload stays testable without runtime traversal.
         public static SettingsDomainServices Assemble(ClickIt owner)
         {
             ArgumentNullException.ThrowIfNull(owner);

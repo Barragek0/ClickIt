@@ -153,7 +153,7 @@ its specialization (e.g. Fireball → Meteor).
 | `Fireball` | 4 | `Flamethrower` (0), `Meteor` (1) |
 | `ShockNova` | 4 | `LightningStorm` (0), `ArcTower` (1) |
 | `Empowering` | 4 | `BuffPlayers` (0), `Weaken` (1) |
-| `Summoning` | 4 | `TankMinion` (0), `ScoutMinion` (1) |
+| `Summoning` | 4 | `ScoutMinion` (0), `TankMinion` (1) |
 
 The numbers are the **in-game menu child indexes** the executor clicks, not
 the `TowerSpecialization` enum values — for most types they differ (Fireball's

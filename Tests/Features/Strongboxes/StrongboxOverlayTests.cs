@@ -226,15 +226,15 @@ namespace ClickIt.Tests.Features.Strongboxes
         }
 
         [TestMethod]
-        public void Draw_ProjectsBoxFromChild0_WhenPresent()
+        public void Draw_GreenUnopenedBox_HugsChild0Frame()
         {
+            // Unopened (green) boxes hug the label's Child[0] text frame — the base label element is
+            // bigger before the strongbox opens, so the box must be drawn around the child.
             var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
             var queue = new DeferredFrameQueue();
             var overlay = new StrongboxOverlay();
             RectangleF window = new(100f, 100f, 1280f, 720f);
 
-            // The label rect (50,60,100,40) is larger than the child frame (55,65,30,20) — the box
-            // must be drawn around the child, not the parent label rect.
             StrongboxProbeElement label = new(new RectangleF(50f, 60f, 100f, 40f))
             {
                 Child0 = new StrongboxProbeElement(new RectangleF(55f, 65f, 30f, 20f)),
@@ -247,7 +247,155 @@ namespace ClickIt.Tests.Features.Strongboxes
             var frames = queue.GetPendingFrameSnapshot();
             frames.Should().ContainSingle();
             frames[0].Rectangle.X.Should().Be(55f);
+            frames[0].Rectangle.Y.Should().Be(65f);
             frames[0].Rectangle.Width.Should().Be(30f);
+        }
+
+        [TestMethod]
+        public void Draw_GreenUnopenedBox_FallsBackToLabelRect_WhenNoChild()
+        {
+            // Unopened (green) with no readable child frame falls back to the label element rect.
+            var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
+            var queue = new DeferredFrameQueue();
+            var overlay = new StrongboxOverlay();
+            RectangleF window = new(100f, 100f, 1280f, 720f);
+
+            LabelOnGround sb = CreateStrongboxLabel("Metadata/Chests/StrongBoxes/Arcanist", new RectangleF(50f, 60f, 100f, 40f));
+
+            overlay.Refresh(CreateRefreshContext(settings, [sb], window));
+            overlay.Draw(CreateDrawContext(settings, window, queue));
+
+            var frames = queue.GetPendingFrameSnapshot();
+            frames.Should().ContainSingle();
+            frames[0].Rectangle.X.Should().Be(50f);
+            frames[0].Rectangle.Y.Should().Be(60f);
+            frames[0].Rectangle.Width.Should().Be(100f);
+        }
+
+        [TestMethod]
+        public void Draw_RedOpenedBox_UsesLabelElementRect()
+        {
+            // Regression: opened (red) boxes must use the label element rect — the same geometry the
+            // click pipeline uses — not the Child[0] frame, which is rebuilt and sits at a wrong
+            // offset once the strongbox opens (caused red boxes in incorrect places).
+            var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
+            var queue = new DeferredFrameQueue();
+            var overlay = new StrongboxOverlay();
+            RectangleF window = new(100f, 100f, 1280f, 720f);
+
+            StrongboxProbeElement label = new(new RectangleF(50f, 60f, 100f, 40f))
+            {
+                Child0 = new StrongboxProbeElement(new RectangleF(55f, 65f, 30f, 20f)),
+            };
+            Chest chest = (StrongboxChestProbe)RuntimeHelpers.GetUninitializedObject(typeof(StrongboxChestProbe));
+            ((StrongboxChestProbe)chest).IsLocked = true;
+            LabelOnGround sb = CreateStrongboxLabel("Metadata/Chests/StrongBoxes/Arcanist", label.GetClientRect(), labelElement: label, chest: chest);
+
+            overlay.Refresh(CreateRefreshContext(settings, [sb], window));
+            overlay.Draw(CreateDrawContext(settings, window, queue));
+
+            var frames = queue.GetPendingFrameSnapshot();
+            frames.Should().ContainSingle();
+            frames[0].Rectangle.X.Should().Be(50f);
+            frames[0].Rectangle.Y.Should().Be(60f);
+            frames[0].Rectangle.Width.Should().Be(100f);
+        }
+
+        [TestMethod]
+        public void Draw_RendersStrongbox_ThatWasOffScreenAtScanTime()
+        {
+            // Regression: the scan must cache strongboxes by label identity, not on-screen state.
+            // A strongbox that was off-screen when the snapshot was built renders the moment any part
+            // of its label is on screen at draw time — no rescan required.
+            var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
+            var queue = new DeferredFrameQueue();
+            var overlay = new StrongboxOverlay();
+            RectangleF window = new(100f, 100f, 1280f, 720f);
+
+            // Off-screen at refresh time (label rect far outside the window)…
+            StrongboxProbeLabel probe = (StrongboxProbeLabel)CreateStrongboxLabel("Metadata/Chests/StrongBoxes/Arcanist", new RectangleF(9000f, 9000f, 100f, 40f));
+            IReadOnlyList<LabelOnGround> labels = [probe];
+            overlay.Refresh(CreateRefreshContext(settings, labels, window));
+
+            // …but the label element is now on screen at draw time: the frame must render without
+            // another refresh (the cached entry projects the live label rect per frame).
+            probe.Label = new StrongboxProbeElement(new RectangleF(50f, 60f, 100f, 40f));
+            overlay.Draw(CreateDrawContext(settings, window, queue));
+
+            var frames = queue.GetPendingFrameSnapshot();
+            frames.Should().ContainSingle();
+            frames[0].Rectangle.X.Should().Be(50f);
+            frames[0].Rectangle.Y.Should().Be(60f);
+            frames[0].Rectangle.Width.Should().Be(100f);
+        }
+
+        [TestMethod]
+        public void Draw_GreenBox_FallsBackToLabelRect_WhenChildIsNearOrigin()
+        {
+            // Regression: a label entering/leaving the screen edge reports its Child[0] local rect
+            // near the window's top-left corner while the parent label is elsewhere. The box must
+            // not flash at the corner; it falls back to the positioned parent label rect.
+            var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
+            var queue = new DeferredFrameQueue();
+            var overlay = new StrongboxOverlay();
+            RectangleF window = new(100f, 100f, 1280f, 720f);
+
+            StrongboxProbeElement label = new(new RectangleF(50f, 60f, 100f, 40f))
+            {
+                Child0 = new StrongboxProbeElement(new RectangleF(5f, 5f, 30f, 20f)),
+            };
+            LabelOnGround sb = CreateStrongboxLabel("Metadata/Chests/StrongBoxes/Arcanist", label.GetClientRect(), labelElement: label);
+
+            overlay.Refresh(CreateRefreshContext(settings, [sb], window));
+            overlay.Draw(CreateDrawContext(settings, window, queue));
+
+            var frames = queue.GetPendingFrameSnapshot();
+            frames.Should().ContainSingle();
+            frames[0].Rectangle.X.Should().Be(50f);
+            frames[0].Rectangle.Y.Should().Be(60f);
+        }
+
+        [TestMethod]
+        public void Draw_GreenBox_FallsBackToLabelRect_WhenChildIsOutsideLabel()
+        {
+            // Regression: a mid-layout child can report a rect far from its parent label (not near
+            // the origin). The box must not render at the wrong position; it falls back to the label.
+            var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
+            var queue = new DeferredFrameQueue();
+            var overlay = new StrongboxOverlay();
+            RectangleF window = new(100f, 100f, 1280f, 720f);
+
+            StrongboxProbeElement label = new(new RectangleF(50f, 60f, 100f, 40f))
+            {
+                Child0 = new StrongboxProbeElement(new RectangleF(400f, 300f, 30f, 20f)),
+            };
+            LabelOnGround sb = CreateStrongboxLabel("Metadata/Chests/StrongBoxes/Arcanist", label.GetClientRect(), labelElement: label);
+
+            overlay.Refresh(CreateRefreshContext(settings, [sb], window));
+            overlay.Draw(CreateDrawContext(settings, window, queue));
+
+            var frames = queue.GetPendingFrameSnapshot();
+            frames.Should().ContainSingle();
+            frames[0].Rectangle.X.Should().Be(50f);
+            frames[0].Rectangle.Y.Should().Be(60f);
+        }
+
+        [TestMethod]
+        public void Draw_SkipsStrongbox_WhenLabelRectIsAtOrigin()
+        {
+            // A rebuilt label element (strongbox opening) briefly reports an origin rect; no frame is
+            // drawn rather than flashing at the window's top-left.
+            var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
+            var queue = new DeferredFrameQueue();
+            var overlay = new StrongboxOverlay();
+            RectangleF window = new(100f, 100f, 1280f, 720f);
+
+            LabelOnGround sb = CreateStrongboxLabel("Metadata/Chests/StrongBoxes/Arcanist", new RectangleF(0f, 0f, 100f, 40f));
+
+            overlay.Refresh(CreateRefreshContext(settings, [sb], window));
+            overlay.Draw(CreateDrawContext(settings, window, queue));
+
+            queue.GetPendingFrameSnapshot().Should().BeEmpty();
         }
 
         [TestMethod]
@@ -271,9 +419,11 @@ namespace ClickIt.Tests.Features.Strongboxes
         private static OverlayRenderContext CreateDrawContext(ClickItSettings settings, RectangleF window, DeferredFrameQueue queue)
             => new(settings, GameController: null, Graphics: null, WindowArea: window, Labels: null, new DeferredTextQueue(), queue, new DeferredDrawQueue());
 
-        private static LabelOnGround CreateStrongboxLabel(string path, RectangleF rect, string renderName = "Strongbox", StrongboxProbeElement? labelElement = null)
+        private static LabelOnGround CreateStrongboxLabel(string path, RectangleF rect, string renderName = "Strongbox", StrongboxProbeElement? labelElement = null, Chest? chest = null)
         {
             Entity item = EntityProbeFactory.Create(path: path, renderName: renderName);
+            if (chest != null)
+                EntityProbeFactory.WithComponent<Chest>(item, chest);
             StrongboxProbeLabel label = (StrongboxProbeLabel)RuntimeHelpers.GetUninitializedObject(typeof(StrongboxProbeLabel));
             label.ItemOnGround = item;
             label.Label = labelElement ?? new StrongboxProbeElement(rect);
@@ -296,6 +446,13 @@ namespace ClickIt.Tests.Features.Strongboxes
             public override RectangleF GetClientRect() => clientRect;
 
             public new object? GetChildAtIndex(int index) => index == 0 ? Child0 : null;
+        }
+
+        // Chest-derived probe so DynamicAccess.GetComponent<Chest>() resolves it; the `new` IsLocked
+        // hides the base memory-read getter (read through DynamicAccess, like the classifier).
+        public sealed class StrongboxChestProbe : Chest
+        {
+            public new bool IsLocked { get; set; }
         }
 
         private static bool InvokeHasMatchingSnapshot(HashSet<string>? currentIds, HashSet<string>? snapshot)

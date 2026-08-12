@@ -11,7 +11,25 @@ namespace ClickIt.Shared.Game
         long BoolConversionFailures,
         long FloatConversionFailures,
         long IntConversionFailures,
-        long EmptyStringFailures);
+        long EmptyStringFailures,
+        long TryGetTicks = 0);
+
+    // Per-feature DLR read + time totals, indexed by ProcessingSection value.
+    internal readonly record struct DlrSectionStats(long Calls, long Ticks);
+
+    // Ambient DLR-read attribution scope: while active, DynamicAccess charges each read (and its
+    // time) to the given processing section so the DLR breakdown table shows which feature commits
+    // the most dynamic-read pressure. Nested scopes restore the previous section on dispose.
+    internal readonly struct DlrReadScope : IDisposable
+    {
+        private readonly int _previous;
+        internal DlrReadScope(ProcessingSection section)
+        {
+            _previous = DynamicAccess.CurrentDlrSection;
+            DynamicAccess.CurrentDlrSection = (int)section;
+        }
+        public void Dispose() => DynamicAccess.CurrentDlrSection = _previous;
+    }
 
     internal static class DynamicAccess
     {
@@ -24,6 +42,29 @@ namespace ClickIt.Shared.Game
         private static long _floatConversionFailures;
         private static long _intConversionFailures;
         private static long _emptyStringFailures;
+        // Accumulated high-resolution ticks spent inside TryGetDynamicValue, so the DLR Reads metric
+        // can report the actual TIME cost of dynamic reads (not just the count) — the freeze-relevant
+        // question is ms per second, not reads per second.
+        private static long _tryGetTicks;
+
+        // Per-feature attribution: DlrReadScope sets the ambient section on the current thread so each
+        // read is charged to the feature doing the work. Array index = ProcessingSection value; 0
+        // (Unknown) is the un-attributed "Other" bucket.
+        internal const int DlrSectionCount = 13;
+        [field: ThreadStatic]
+        internal static int CurrentDlrSection { get; set; }
+        private static readonly long[] _sectionDlrCalls = new long[DlrSectionCount];
+        private static readonly long[] _sectionDlrTicks = new long[DlrSectionCount];
+
+        internal static DlrSectionStats[] GetSectionStats()
+        {
+            DlrSectionStats[] result = new DlrSectionStats[DlrSectionCount];
+            for (int i = 0; i < DlrSectionCount; i++)
+                result[i] = new DlrSectionStats(
+                    Interlocked.Read(ref _sectionDlrCalls[i]),
+                    Interlocked.Read(ref _sectionDlrTicks[i]));
+            return result;
+        }
 
         internal static DynamicAccessStats GetStats()
         {
@@ -36,7 +77,8 @@ namespace ClickIt.Shared.Game
                 Interlocked.Read(ref _boolConversionFailures),
                 Interlocked.Read(ref _floatConversionFailures),
                 Interlocked.Read(ref _intConversionFailures),
-                Interlocked.Read(ref _emptyStringFailures));
+                Interlocked.Read(ref _emptyStringFailures),
+                Interlocked.Read(ref _tryGetTicks));
         }
 
         internal static void ResetStats()
@@ -50,63 +92,97 @@ namespace ClickIt.Shared.Game
             _ = Interlocked.Exchange(ref _floatConversionFailures, 0);
             _ = Interlocked.Exchange(ref _intConversionFailures, 0);
             _ = Interlocked.Exchange(ref _emptyStringFailures, 0);
+            _ = Interlocked.Exchange(ref _tryGetTicks, 0);
+            for (int i = 0; i < DlrSectionCount; i++)
+            {
+                _ = Interlocked.Exchange(ref _sectionDlrCalls[i], 0);
+                _ = Interlocked.Exchange(ref _sectionDlrTicks[i], 0);
+            }
         }
 
         public static bool TryGetDynamicValue(object? source, Func<dynamic, object?> accessor, out object? value)
         {
             value = null;
-            Interlocked.Increment(ref _tryGetCalls);
-
-            if (source == null)
-            {
-                Interlocked.Increment(ref _nullSourceFailures);
-                return false;
-            }
-
+            long start = Stopwatch.GetTimestamp();
+            int section = CurrentDlrSection;
             try
             {
-                value = accessor((dynamic)source);
-                Interlocked.Increment(ref _tryGetSuccesses);
-                return true;
+                Interlocked.Increment(ref _tryGetCalls);
+                if (section != 0)
+                    _ = Interlocked.Increment(ref _sectionDlrCalls[section]);
+
+                if (source == null)
+                {
+                    Interlocked.Increment(ref _nullSourceFailures);
+                    return false;
+                }
+
+                try
+                {
+                    value = accessor((dynamic)source);
+                    Interlocked.Increment(ref _tryGetSuccesses);
+                    return true;
+                }
+                catch (RuntimeBinderException)
+                {
+                    Interlocked.Increment(ref _runtimeBinderFailures);
+                    return false;
+                }
+                catch
+                {
+                    Interlocked.Increment(ref _otherFailures);
+                    return false;
+                }
             }
-            catch (RuntimeBinderException)
+            finally
             {
-                Interlocked.Increment(ref _runtimeBinderFailures);
-                return false;
-            }
-            catch
-            {
-                Interlocked.Increment(ref _otherFailures);
-                return false;
+                long elapsed = Stopwatch.GetTimestamp() - start;
+                _ = Interlocked.Add(ref _tryGetTicks, elapsed);
+                if (section != 0)
+                    _ = Interlocked.Add(ref _sectionDlrTicks[section], elapsed);
             }
         }
 
         public static bool TryGetDynamicValue(object? source, IDynamicMemberReaderProfile profile, out object? value)
         {
             value = null;
-            Interlocked.Increment(ref _tryGetCalls);
-
-            if (source == null)
-            {
-                Interlocked.Increment(ref _nullSourceFailures);
-                return false;
-            }
-
+            long start = Stopwatch.GetTimestamp();
+            int section = CurrentDlrSection;
             try
             {
-                value = profile.Read((dynamic)source);
-                Interlocked.Increment(ref _tryGetSuccesses);
-                return true;
+                Interlocked.Increment(ref _tryGetCalls);
+                if (section != 0)
+                    _ = Interlocked.Increment(ref _sectionDlrCalls[section]);
+
+                if (source == null)
+                {
+                    Interlocked.Increment(ref _nullSourceFailures);
+                    return false;
+                }
+
+                try
+                {
+                    value = profile.Read((dynamic)source);
+                    Interlocked.Increment(ref _tryGetSuccesses);
+                    return true;
+                }
+                catch (RuntimeBinderException)
+                {
+                    Interlocked.Increment(ref _runtimeBinderFailures);
+                    return false;
+                }
+                catch
+                {
+                    Interlocked.Increment(ref _otherFailures);
+                    return false;
+                }
             }
-            catch (RuntimeBinderException)
+            finally
             {
-                Interlocked.Increment(ref _runtimeBinderFailures);
-                return false;
-            }
-            catch
-            {
-                Interlocked.Increment(ref _otherFailures);
-                return false;
+                long elapsed = Stopwatch.GetTimestamp() - start;
+                _ = Interlocked.Add(ref _tryGetTicks, elapsed);
+                if (section != 0)
+                    _ = Interlocked.Add(ref _sectionDlrTicks[section], elapsed);
             }
         }
 

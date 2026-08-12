@@ -1,9 +1,17 @@
 namespace ClickIt.Features.Shrines
 {
-    public class ShrineService(GameController gameController, Camera camera)
+    public class ShrineService
     {
-        private readonly GameController _gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
-        private readonly Camera _camera = camera ?? throw new ArgumentNullException(nameof(camera));
+        private readonly Camera _camera;
+        private readonly GameController _gameController;
+
+        public ShrineService(GameController gameController, Camera camera)
+        {
+            ArgumentNullException.ThrowIfNull(gameController);
+            ArgumentNullException.ThrowIfNull(camera);
+            _camera = camera;
+            _gameController = gameController;
+        }
 
         private const int SHRINE_CACHE_DURATION_MS = 200; // 200ms cache for shrines
         private const int ShrineCacheKey = 0;
@@ -84,21 +92,13 @@ namespace ClickIt.Features.Shrines
             List<Entity> shrines = GetThreadLocalShrineList();
             shrines.Clear();
 
-            Dictionary<EntityType, List<Entity>>? validEntities = _gameController.EntityListWrapper?.ValidEntitiesByType;
-            if (validEntities == null)
-                return shrines;
-
-            foreach (KeyValuePair<EntityType, List<Entity>> entityType in validEntities)
+            EntityEventHub.Instance.EnsureSubscribed(_gameController);
+            List<Entity> trackedShrines = EntityEventHub.Instance.Shrines.Snapshot();
+            for (int i = 0; i < trackedShrines.Count; i++)
             {
-                List<Entity> entities = entityType.Value;
-                if (entities == null)
-                    continue;
-
-                foreach (Entity? entity in entities)
-                {
-                    if (IsClickableShrineCandidate(entity))
-                        shrines.Add(entity);
-                }
+                Entity? entity = trackedShrines[i];
+                if (IsClickableShrineCandidate(entity))
+                    shrines.Add(entity);
             }
 
             return shrines;

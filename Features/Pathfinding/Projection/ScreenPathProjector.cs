@@ -51,7 +51,7 @@ namespace ClickIt.Features.Pathfinding.Projection
             if (entity == null)
                 return false;
 
-            object? rawCamera = null;
+            object? rawCamera;
             if (!DynamicAccess.TryGetDynamicValue(gameController, DynamicAccessProfiles.IngameState, out object? rawIngameState)
                 || !DynamicAccess.TryGetDynamicValue(rawIngameState, DynamicAccessProfiles.Camera, out rawCamera))
             {

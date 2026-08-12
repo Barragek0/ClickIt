@@ -175,7 +175,7 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void TryClickStickyTargetIfPossible_ReturnsFalse_WhenVisibleLabelCannotBeResolved()
+        public void TryClickStickyTargetIfPossible_ReturnsFalse_AndClearsStickyTarget_WhenVisibleLabelCannotBeResolved()
         {
             var runtimeState = new ClickRuntimeState
             {
@@ -191,7 +191,7 @@ namespace ClickIt.Tests.Features.Click
             bool clicked = handler.TryClickStickyTargetIfPossible(stickyTarget, new Vector2(100f, 200f), allLabels: null);
 
             clicked.Should().BeFalse();
-            runtimeState.StickyOffscreenTargetAddress.Should().Be(42);
+            runtimeState.StickyOffscreenTargetAddress.Should().Be(0);
         }
 
         [TestMethod]
@@ -216,7 +216,7 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void TryClickStickyTargetIfPossible_ReturnsFalse_AndKeepsStickyTarget_WhenLabelClickPositionCannotBeResolved()
+        public void TryClickStickyTargetIfPossible_ReturnsFalse_AndClearsStickyTarget_WhenLabelClickPositionCannotBeResolved()
         {
             var runtimeState = new ClickRuntimeState
             {
@@ -234,11 +234,11 @@ namespace ClickIt.Tests.Features.Click
             bool clicked = handler.TryClickStickyTargetIfPossible(stickyTarget, new Vector2(100f, 200f), [label]);
 
             clicked.Should().BeFalse();
-            runtimeState.StickyOffscreenTargetAddress.Should().Be(42);
+            runtimeState.StickyOffscreenTargetAddress.Should().Be(0);
         }
 
         [TestMethod]
-        public void TryClickStickyTargetIfPossible_ReturnsFalse_AndKeepsStickyTarget_WhenResolvedLabelInteractionIsRejected()
+        public void TryClickStickyTargetIfPossible_ReturnsFalse_AndClearsStickyTarget_WhenResolvedLabelInteractionIsRejected()
         {
             var runtimeState = new ClickRuntimeState
             {
@@ -257,7 +257,7 @@ namespace ClickIt.Tests.Features.Click
             bool clicked = handler.TryClickStickyTargetIfPossible(stickyTarget, new Vector2(100f, 200f), [label]);
 
             clicked.Should().BeFalse();
-            runtimeState.StickyOffscreenTargetAddress.Should().Be(42);
+            runtimeState.StickyOffscreenTargetAddress.Should().Be(0);
         }
 
         [TestMethod]

@@ -36,10 +36,16 @@ namespace ClickIt.Shared.Rendering
             {
                 IOverlay overlay = _overlays[i];
                 long start = Stopwatch.GetTimestamp();
+                context.DrawQueue.CurrentSection = overlay.Section;
+                context.TextQueue.CurrentSection = overlay.Section;
+                context.FrameQueue.CurrentSection = overlay.Section;
                 if (overlay.IsEnabled(context.Settings))
                     overlay.Draw(context);
+                context.DrawQueue.CurrentSection = RenderSection.Unknown;
+                context.TextQueue.CurrentSection = RenderSection.Unknown;
+                context.FrameQueue.CurrentSection = RenderSection.Unknown;
 
-                performanceMonitor?.RecordRenderSectionTiming(overlay.Section, GetElapsedMs(start));
+                performanceMonitor?.AccumulateRenderSectionTiming(overlay.Section, GetElapsedMs(start));
             }
         }
 

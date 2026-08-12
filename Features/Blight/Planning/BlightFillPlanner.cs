@@ -4,11 +4,7 @@ namespace ClickIt.Features.Blight.Planning;
 
 internal static class BlightFillPlanner
 {
-    // Hard cap on the steps a single plan carries. Blight maps can have 100+ foundations, so the
-    // fill tier alone would otherwise emit hundreds of steps and the executor would try to walk to
-    // every one; 30 steps (≈7 fully-upgraded towers) is more than enough per batch — finishing a
-    // batch triggers a rebuild that plans the next. Coverage steps come first, so the cap never
-    // starves coverage.
+    // Hard cap on the steps a single plan carries (coverage steps come first, so the cap never starves coverage).
     internal const int MaxPlanSteps = 30;
 
     internal static TowerBuildRule? FindRule(IReadOnlyList<TowerBuildRule> rules, BlightTowerType type)
@@ -105,7 +101,13 @@ internal static class BlightFillPlanner
             if (ruleIdx < 0)
                 break;
             if (tierRules[ruleIdx].Placement == BlightPlacementPreference.NearestUncoveredLane)
-                break;
+            {
+                // All NearestUncoveredLane rules are fully placed by the earlier loop; reaching one
+                // here means its foundations are exhausted. Mark it done so the OTHER rules in the
+                // tier keep placing instead of breaking the whole assignment loop.
+                ruleDone[ruleIdx] = true;
+                continue;
+            }
 
             TowerBuildRule rule = tierRules[ruleIdx];
 

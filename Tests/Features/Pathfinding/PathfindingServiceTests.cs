@@ -489,6 +489,31 @@ namespace ClickIt.Tests.Features.Pathfinding
             service.GetLatestOffscreenMovementDebugTrail().Should().ContainSingle();
         }
 
+        [TestMethod]
+        public void OffscreenMovementTrail_DedupsRepeatedStageAndTargetPath()
+        {
+            var service = new PathfindingService();
+            var evt = new OffscreenMovementDebugEvent(
+                Stage: "Traverse",
+                TargetPath: "Metadata/OffscreenTarget",
+                BuiltPath: true,
+                ResolvedFromPath: true,
+                ResolvedClickPoint: true,
+                WindowCenter: default,
+                TargetScreen: default,
+                ClickScreen: default,
+                PlayerGrid: default,
+                TargetGrid: default,
+                MovementSkillDebug: "ShieldCharge");
+
+            service.PublishOffscreenMovementDebugEvent(evt);
+            service.PublishOffscreenMovementDebugEvent(evt);
+
+            IReadOnlyList<string> trail = service.GetLatestOffscreenMovementDebugTrail();
+            trail.Should().ContainSingle("the offscreen movement trail dedups repeated Stage+TargetPath entries");
+            trail[0].Should().Contain("(x2)");
+        }
+
         private static bool[][] CreateGrid(int width, int height, bool defaultValue)
         {
             bool[][] grid = new bool[height][];

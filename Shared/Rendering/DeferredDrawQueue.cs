@@ -25,7 +25,8 @@ namespace ClickIt.Shared.Rendering
         int Segments,
         bool Filled,
         string Text,
-        FontAlign Align);
+        FontAlign Align,
+        RenderSection Section = RenderSection.Unknown);
 
     /// <summary>
     /// Unified deferred draw queue: frames, lines, circles, filled discs and text, including
@@ -44,6 +45,10 @@ namespace ClickIt.Shared.Rendering
         private readonly NumVector2[] _polyBuffer = new NumVector2[MaxPolySegments + 1];
         private int _pendingCount;
 
+        // Ambient render section set by the overlay host around each overlay's Draw, so flushed
+        // items can be attributed back to the feature that enqueued them. Render-thread only.
+        internal RenderSection CurrentSection { get; set; } = RenderSection.Unknown;
+
         private static bool IsValidRect(RectangleF rectangle)
         {
             return rectangle.Width > 0 && rectangle.Height > 0
@@ -61,6 +66,9 @@ namespace ClickIt.Shared.Rendering
 
         private void Add(DeferredDrawItem item)
         {
+            // Stamp the ambient section so the flush can attribute per-feature draw cost.
+            item = item with { Section = CurrentSection };
+
             // Silently ignore errors to prevent logging during render
             try
             {
@@ -122,7 +130,7 @@ namespace ClickIt.Shared.Rendering
             Add(new DeferredDrawItem(DeferredDrawKind.Text, default, default, default, new System.Numerics.Vector3(position.X, position.Y, 0f), 0, 0, color, 0, false, text, align));
         }
 
-        public void Flush(Graphics graphics)
+        public void Flush(Graphics graphics, Action<RenderSection, double>? recordSectionFlush = null)
         {
             if (graphics == null) return;
 
@@ -136,9 +144,14 @@ namespace ClickIt.Shared.Rendering
                 _pendingCount = 0;
             }
 
+            // Per-section flush accumulation. RenderSection values are small (0..14); a fixed
+            // bucket array avoids per-flush allocation on this hot path.
+            double[]? sectionMs = recordSectionFlush != null ? new double[15] : null;
+
             for (int i = 0; i < _spare.Count; i++)
             {
                 DeferredDrawItem item = _spare[i];
+                long start = Stopwatch.GetTimestamp();
                 try
                 {
                     switch (item.Kind)
@@ -176,6 +189,22 @@ namespace ClickIt.Shared.Rendering
                 {
                     // Intentionally empty - logging here causes recursive issues
                 }
+
+                if (sectionMs != null)
+                {
+                    int sectionIndex = (int)item.Section;
+                    if (sectionIndex >= 0 && sectionIndex < sectionMs.Length)
+                        sectionMs[sectionIndex] += GetElapsedMs(start);
+                }
+            }
+
+            if (sectionMs != null)
+            {
+                for (int s = 0; s < sectionMs.Length; s++)
+                {
+                    if (sectionMs[s] > 0)
+                        recordSectionFlush!((RenderSection)s, sectionMs[s]);
+                }
             }
 
             _spare.Clear();
@@ -197,6 +226,9 @@ namespace ClickIt.Shared.Rendering
             // spurious lines from the top-left of the screen to every disc.
             graphics.DrawConvexPolyFilled(buffer[..(count + 1)], color);
         }
+
+        private static double GetElapsedMs(long startTimestamp)
+            => (Stopwatch.GetTimestamp() - startTimestamp) * 1000.0 / Stopwatch.Frequency;
 
         public int GetPendingCount()
         {

@@ -9,7 +9,7 @@ namespace ClickIt.Tests.Core.Lifecycle
             var plugin = new ClickIt();
             var settings = new ClickItSettings();
             DebugClipboardService debugClipboardService = plugin.GetDebugClipboardService();
-            var bindings = new PluginLifecycleButtonBindings(plugin, debugClipboardService);
+            var bindings = new PluginLifecycleButtonBindings(debugClipboardService);
 
             bindings.Subscribe(settings);
 
@@ -25,7 +25,7 @@ namespace ClickIt.Tests.Core.Lifecycle
             var runtimeSettings = new ClickItSettings();
             var effectiveSettings = new ClickItSettings();
             DebugClipboardService debugClipboardService = plugin.GetDebugClipboardService();
-            var bindings = new PluginLifecycleButtonBindings(plugin, debugClipboardService);
+            var bindings = new PluginLifecycleButtonBindings(debugClipboardService);
 
             bindings.Subscribe(runtimeSettings);
             bindings.Subscribe(effectiveSettings);

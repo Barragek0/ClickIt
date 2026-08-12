@@ -238,5 +238,78 @@ namespace ClickIt.Tests.Features.Labels.Application
 
             scanCount.Should().Be(2, "a different query range must re-run the selection scan");
         }
+
+        [TestMethod]
+        public void GetNextLabelToClick_ReusesPerLabelBuild_AcrossRanges_ButRereadsLiveDistance()
+        {
+            LabelOnGround nearLabel = CreateOpaqueLabel(address: 0x1000);
+            LabelOnGround farLabel = CreateOpaqueLabel(address: 0x2000);
+            EntityProbe nearProbe = (EntityProbe)EntityProbeFactory.Create(distancePlayer: 100f);
+            EntityProbe farProbe = (EntityProbe)EntityProbeFactory.Create(distancePlayer: 50f);
+
+            int buildCount = 0;
+            var service = new LabelSelectionService(new LabelSelectionServiceDependencies(
+                GameController: null,
+                CreateClickSettings: static _ => TestClickSettings(),
+                ShouldCaptureLabelDebug: static () => false,
+                PublishLabelDebugStage: static _ => { },
+                TryBuildLabelCandidate: (LabelOnGround candidate, ClickSettings _, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
+                {
+                    buildCount++;
+                    item = ReferenceEquals(candidate, nearLabel) ? nearProbe : farProbe;
+                    mechanicId = MechanicIds.Items;
+                    rejectReason = LabelCandidateRejectReason.None;
+                    return true;
+                },
+                GetMechanicIdForLabelCore: static _ => null));
+
+            IReadOnlyList<LabelOnGround> labels = [nearLabel, farLabel];
+
+            // Both in range; farLabel is nearer (50 < 100) so it ranks first.
+            LabelOnGround? first = service.GetNextLabelToClick(labels, 0, 10);
+            first.Should().BeSameAs(farLabel);
+
+            // The player closes in on nearLabel. The expensive per-label build must NOT re-run (same
+            // addresses), but the live distance must be re-read so the ranking flips to nearLabel.
+            nearProbe.DistancePlayer = 10f;
+            farProbe.DistancePlayer = 200f;
+
+            LabelOnGround? second = service.GetNextLabelToClick(labels, 0, 5);
+            second.Should().BeSameAs(nearLabel, "the selection must re-read the live distance instead of reusing the cached build");
+            buildCount.Should().Be(2, "each label builds once; a different query range re-scans but the per-label build cache must be reused");
+        }
+
+        [TestMethod]
+        public void GetNextLabelToClick_ReevaluatesOutOfDistanceRejection_WhenPlayerClosesIn()
+        {
+            LabelOnGround label = CreateOpaqueLabel(address: 0x1000);
+            EntityProbe probe = (EntityProbe)EntityProbeFactory.Create(distancePlayer: 200f);
+
+            var service = new LabelSelectionService(new LabelSelectionServiceDependencies(
+                GameController: null,
+                CreateClickSettings: static _ => TestClickSettings() with { ClickDistance = 100 },
+                ShouldCaptureLabelDebug: static () => false,
+                PublishLabelDebugStage: static _ => { },
+                TryBuildLabelCandidate: (LabelOnGround candidate, ClickSettings _, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
+                {
+                    item = probe;
+                    mechanicId = MechanicIds.Items;
+                    rejectReason = probe.DistancePlayer > 100f
+                        ? LabelCandidateRejectReason.OutOfDistance
+                        : LabelCandidateRejectReason.None;
+                    return rejectReason == LabelCandidateRejectReason.None;
+                },
+                GetMechanicIdForLabelCore: static _ => null));
+
+            // Far away: rejected as out of range, so nothing is selected.
+            service.GetNextLabelToClick([label], 0, 10).Should().BeNull("the label is initially out of distance");
+
+            // The player walks closer; the cached OutOfDistance rejection must be re-evaluated, not
+            // held for the rest of the 1s cache window.
+            probe.DistancePlayer = 10f;
+
+            service.GetNextLabelToClick([label], 0, 10).Should().BeSameAs(label,
+                "an OutOfDistance rejection must be re-checked against the live distance when the player closes in");
+        }
     }
 }

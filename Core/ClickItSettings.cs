@@ -132,15 +132,6 @@ namespace ClickIt
         public RangeNode<int> BlightTowerStrategy { get; set; } = new RangeNode<int>(0, 0, 3);
 
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
-        public ToggleNode BlightVisualizePaths { get; set; } = new ToggleNode(true);
-
-        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
-        public ToggleNode BlightVisualizePathsMap { get; set; } = new ToggleNode(true);
-
-        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
-        public ToggleNode BlightVisualizePathsGame { get; set; } = new ToggleNode(true);
-
-        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode BlightVisualizeTowers { get; set; } = new ToggleNode(true);
 
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
@@ -157,9 +148,6 @@ namespace ClickIt
 
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode BlightVisualizeTowerRangesGame { get; set; } = new ToggleNode(true);
-
-        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
-        public ToggleNode BlightVisualizeUpgrades { get; set; } = new ToggleNode(true);
 
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode BlightPathfindToBuild { get; set; } = new ToggleNode(true);

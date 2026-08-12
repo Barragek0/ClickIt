@@ -6,7 +6,7 @@ public class BlightEntityCachePerformanceTests
     [TestMethod]
     public void ComputeCoverageDataSignature_IsDeterministic_ForIdenticalData()
     {
-        NumVector2[] pathways = [new(1, 1), new(2, 2), new(3, 3)];
+        BlightPathwayIcon[] pathways = [CreateIcon(1, 1, 0), CreateIcon(2, 2, 1), CreateIcon(3, 3, 2)];
         (Entity Entity, string TowerId)[] towers = [CreateTowerEntity(10, 20)];
         BlightCachedTower[] known = [CreateKnownTower(5, 5, BlightTowerType.Chilling, 2, radius: 35)];
 
@@ -19,7 +19,7 @@ public class BlightEntityCachePerformanceTests
     [TestMethod]
     public void ComputeCoverageDataSignature_Changes_WhenBuiltTowerLevelChanges()
     {
-        NumVector2[] pathways = [new(1, 1), new(2, 2)];
+        BlightPathwayIcon[] pathways = [CreateIcon(1, 1, 0), CreateIcon(2, 2, 1)];
         (Entity Entity, string TowerId)[] towers = [];
         BlightCachedTower[] levelOne = [CreateKnownTower(5, 5, BlightTowerType.Chilling, 1, radius: 35)];
         BlightCachedTower[] levelTwo = [CreateKnownTower(5, 5, BlightTowerType.Chilling, 2, radius: 35)];
@@ -33,7 +33,7 @@ public class BlightEntityCachePerformanceTests
     [TestMethod]
     public void ComputeCoverageDataSignature_Changes_WhenTowerCountChanges()
     {
-        NumVector2[] pathways = [new(1, 1), new(2, 2)];
+        BlightPathwayIcon[] pathways = [CreateIcon(1, 1, 0), CreateIcon(2, 2, 1)];
         (Entity Entity, string TowerId)[] towers = [CreateTowerEntity(10, 20)];
         BlightCachedTower[] known = [CreateKnownTower(5, 5, BlightTowerType.Chilling, 1, radius: 35)];
 
@@ -47,8 +47,8 @@ public class BlightEntityCachePerformanceTests
     [TestMethod]
     public void ComputeCoverageDataSignature_Changes_WhenPathwayCountChanges()
     {
-        NumVector2[] twoPathways = [new(1, 1), new(2, 2)];
-        NumVector2[] threePathways = [new(1, 1), new(2, 2), new(3, 3)];
+        BlightPathwayIcon[] twoPathways = [CreateIcon(1, 1, 0), CreateIcon(2, 2, 1)];
+        BlightPathwayIcon[] threePathways = [CreateIcon(1, 1, 0), CreateIcon(2, 2, 1), CreateIcon(3, 3, 2)];
         (Entity Entity, string TowerId)[] towers = [CreateTowerEntity(10, 20)];
         BlightCachedTower[] known = [CreateKnownTower(5, 5, BlightTowerType.Chilling, 1, radius: 35)];
 
@@ -57,6 +57,9 @@ public class BlightEntityCachePerformanceTests
 
         before.Should().NotBe(after, "a new pathway alters the lane geometry");
     }
+
+    private static BlightPathwayIcon CreateIcon(float x, float y, int id)
+        => new(id, new NumVector2(x, y), 0, default, default, []);
 
     private static (Entity Entity, string TowerId) CreateTowerEntity(float gridX, float gridY)
         => (EntityProbeFactory.Create(gridX: gridX, gridY: gridY, type: EntityType.Chest), "ChillingTower1");

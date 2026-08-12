@@ -24,6 +24,7 @@ namespace ClickIt.UI.Debug.Introspection
                 RuntimeObjectTraversalEventKind.MemberUnavailable => $"{evt.Path}: <unavailable>",
                 RuntimeObjectTraversalEventKind.MemberNull => $"{evt.Path}: null",
                 RuntimeObjectTraversalEventKind.MemberSimple => $"{evt.Path}: {RuntimeObjectIntrospection.FormatValue(evt.Value, maxValueChars)}",
+                RuntimeObjectTraversalEventKind.MemberSkipped => $"{evt.Path}: <skipped>",
                 RuntimeObjectTraversalEventKind.MemberOutputTruncated => $"{evt.Path}: member output truncated ({evt.Count} omitted)",
                 RuntimeObjectTraversalEventKind.NodeBudgetReachedWhileSchedulingMembers => $"{evt.Path}: node budget reached while scheduling members",
                 RuntimeObjectTraversalEventKind.TraversalStoppedTimeBudget => $"Traversal stopped: elapsed-time budget reached ({evt.Count}ms).",

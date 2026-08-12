@@ -29,8 +29,6 @@ internal sealed class BlightPlan
 
     internal string DebugSummary { get; }
 
-    internal string? Details { get; }
-
     internal bool IsComplete { get; }
 
     internal int CurrentStepIndex { get; }
@@ -39,7 +37,6 @@ internal sealed class BlightPlan
         IReadOnlyList<BlightPlanStep> steps,
         int version,
         string debugSummary,
-        string? details = null,
         bool isComplete = false,
         int currentStepIndex = 0)
     {
@@ -50,16 +47,16 @@ internal sealed class BlightPlan
         CurrentStepIndex = currentStepIndex;
     }
 
-    internal static BlightPlan Completed(int version, string reason, string? details = null)
-        => new([], version, reason, details, isComplete: true);
+    internal static BlightPlan Completed(int version, string reason)
+        => new([], version, reason, isComplete: true);
 
     internal BlightPlan WithAdvancedCursor()
-        => new(Steps, Version, DebugSummary, Details,
+        => new(Steps, Version, DebugSummary,
                isComplete: CurrentStepIndex + 1 >= Steps.Count,
                currentStepIndex: CurrentStepIndex + 1);
 
     internal BlightPlan WithCurrentStepIndex(int index)
-        => new(Steps, Version, DebugSummary, Details,
+        => new(Steps, Version, DebugSummary,
                isComplete: index >= Steps.Count,
                currentStepIndex: index);
 

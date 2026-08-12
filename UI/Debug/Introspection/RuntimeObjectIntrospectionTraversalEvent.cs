@@ -23,6 +23,7 @@ namespace ClickIt.UI.Debug.Introspection
         MemberNull,
         MemberSimple,
         MemberOutputTruncated,
+        MemberSkipped,
         NodeBudgetReachedWhileSchedulingMembers,
         TraversalStoppedTimeBudget,
         TraversalStoppedNodeBudget,

@@ -110,6 +110,41 @@ namespace ClickIt.Tests.Features.Click
             result.RemainingDelayMs.Should().Be(120);
         }
 
+        [TestMethod]
+        public void EvaluateOffscreenTraversalTargetConfirmation_KeepsAllowingSameTarget_WithoutReset()
+        {
+            var first = OffscreenPathingMath.EvaluateOffscreenTraversalTargetConfirmation(
+                targetAddress: 42,
+                targetPath: "Metadata/Chests/Chest9",
+                pendingAddress: 0,
+                pendingPath: string.Empty,
+                pendingFirstSeenTimestampMs: 0,
+                now: 1000,
+                confirmationWindowMs: 120);
+
+            var second = OffscreenPathingMath.EvaluateOffscreenTraversalTargetConfirmation(
+                targetAddress: 42,
+                targetPath: "Metadata/Chests/Chest9",
+                pendingAddress: first.NextAddress,
+                pendingPath: first.NextPath,
+                pendingFirstSeenTimestampMs: first.NextFirstSeenTimestampMs,
+                now: 1300,
+                confirmationWindowMs: 120);
+
+            var third = OffscreenPathingMath.EvaluateOffscreenTraversalTargetConfirmation(
+                targetAddress: 42,
+                targetPath: "Metadata/Chests/Chest9",
+                pendingAddress: second.NextAddress,
+                pendingPath: second.NextPath,
+                pendingFirstSeenTimestampMs: second.NextFirstSeenTimestampMs,
+                now: 1600,
+                confirmationWindowMs: 120);
+
+            first.ShouldDelay.Should().BeTrue();
+            second.ShouldDelay.Should().BeFalse();
+            third.ShouldDelay.Should().BeFalse();
+        }
+
         [DataTestMethod]
         [DataRow(42L, "Metadata/A", 42L, "Metadata/B", true)]
         [DataRow(0L, "metadata/chests/chest9", 0L, "Metadata/Chests/Chest9", true)]
@@ -209,17 +244,22 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [DataTestMethod]
-        [DataRow(true, true, true, false)]
-        [DataRow(true, true, false, true)]
-        [DataRow(true, false, true, true)]
-        [DataRow(false, true, true, true)]
+        [DataRow(true, true, true, 50, 100, false)]
+        [DataRow(true, true, true, 150, 100, true)]
+        [DataRow(true, true, false, 50, 100, true)]
+        [DataRow(true, false, true, 50, 100, true)]
+        [DataRow(false, true, true, 50, 100, true)]
+        [DataRow(false, true, true, 200, 100, true)]
         public void ShouldContinuePathfindingWhenLabelActionable_ReturnsExpected(
             bool labelInWindow,
             bool labelClickable,
             bool clickPointResolvable,
+            float distance,
+            int clickDistance,
             bool expected)
         {
-            OffscreenPathingMath.ShouldContinuePathfindingWhenLabelActionable(labelInWindow, labelClickable, clickPointResolvable)
+            OffscreenPathingMath.ShouldContinuePathfindingWhenLabelActionable(
+                    labelInWindow, labelClickable, clickPointResolvable, distance, clickDistance)
                 .Should()
                 .Be(expected);
         }
@@ -324,6 +364,38 @@ namespace ClickIt.Tests.Features.Click
                 .BeFalse();
 
             OffscreenPathingMath.ShouldBlockOffscreenTraversalAfterPathBuildFailure(string.Empty)
+                .Should()
+                .BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldApplyNoRouteBackoff_ReturnsTrue_ForSameTargetWithinWindow()
+        {
+            OffscreenPathingMath.ShouldApplyNoRouteBackoff(42, 42, now: 1000, blockedAtMs: 900, backoffMs: 2500)
+                .Should()
+                .BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldApplyNoRouteBackoff_ReturnsFalse_AfterWindowElapses()
+        {
+            OffscreenPathingMath.ShouldApplyNoRouteBackoff(42, 42, now: 4000, blockedAtMs: 900, backoffMs: 2500)
+                .Should()
+                .BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldApplyNoRouteBackoff_ReturnsFalse_ForDifferentTarget()
+        {
+            OffscreenPathingMath.ShouldApplyNoRouteBackoff(43, 42, now: 1000, blockedAtMs: 900, backoffMs: 2500)
+                .Should()
+                .BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldApplyNoRouteBackoff_ReturnsFalse_WhenNothingWasBlocked()
+        {
+            OffscreenPathingMath.ShouldApplyNoRouteBackoff(42, 0, now: 1000, blockedAtMs: 0, backoffMs: 2500)
                 .Should()
                 .BeFalse();
         }

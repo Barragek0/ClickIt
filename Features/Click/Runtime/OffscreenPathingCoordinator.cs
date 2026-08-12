@@ -25,6 +25,12 @@ namespace ClickIt.Features.Click.Runtime
 
         private const float BlightIconAvoidOffset = 90f;
 
+        // Last target that an A* no-route block rejected, so the coordinator can skip re-running the
+        // doomed full-budget search for the same target during the backoff window.
+        private long _blockedTargetAddress;
+        private long _blockedAtMs;
+        private const int NoRouteBackoffMs = 2500;
+
         // The traversal target's per-tick validation reads (Path/DistancePlayer/IsValid/IsHidden) are
         // DLR-bound dynamic reads (~9-14KB each). While walking, the same target persists across
         // ticks, so cache them keyed by the target's address for a short window.
@@ -73,7 +79,7 @@ namespace ClickIt.Features.Click.Runtime
             // must work even when the general setting is off.
             if (!_dependencies.Settings.WalkTowardOffscreenLabels.Value && preferredTarget == null)
             {
-                AddPathfindingStage("Walk: disabled — WalkTowardOffscreenLabels setting is off");
+                AddPathfindingStage("Walk: disabled - WalkTowardOffscreenLabels setting is off");
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("WalkTowardDisabled",
                     "WalkTowardOffscreenLabels setting is OFF and no preferredTarget", null);
                 return false;
@@ -116,7 +122,7 @@ namespace ClickIt.Features.Click.Runtime
 
             if (!string.IsNullOrWhiteSpace(movementSkillDebug))
             {
-                AddPathfindingStage($"Walk: movement skill not used — {movementSkillDebug}");
+                AddPathfindingStage($"Walk: movement skill not used - {movementSkillDebug}");
                 _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] Movement skill not used: {movementSkillDebug}");
             }
 
@@ -130,10 +136,7 @@ namespace ClickIt.Features.Click.Runtime
             return HandleTraversalClickResult(context, builtPath, resolvedFromPath, targetScreen, clickPos, movementSkillDebug, clicked);
         }
 
-        // Position-only walk fallback for blight foundations whose entity has streamed out: the plan
-        // knows the foundation's grid position but no entity is cached to pathfind toward, so project
-        // the position and issue a directional walk click in its direction. Once the player gets
-        // within scan range the entity reappears and normal entity walking resumes.
+        // Position-only walk fallback for blight foundations whose entity has streamed out.
         public bool TryWalkTowardGridPosition(NumVector2 gridPos)
         {
             // Mirror the entity-walk's safety gates so the fallback never walks when the entity walk
@@ -183,11 +186,7 @@ namespace ClickIt.Features.Click.Runtime
             }
         }
 
-        // Pathfinding clicks must never land on a blight tower's build/upgrade icon (that would
-        // accidentally build or upgrade a tower).  Build/upgrade icons are PADDED UNCLICKABLE BOXES:
-        // when the resolved click lands in (or near) one, walk the click back along the player→target
-        // line and keep stepping until the point is OUTSIDE every icon box AND clickable — so a
-        // repositioned click can never land on another icon either.  Pure geometry, no UIHover.
+        // Build/upgrade icons are PADDED UNCLICKABLE BOXES: walk the click back along the player->target line until it is outside every box and clickable.
         private Vector2 ResolveBlightIconSafeClickPosition(Vector2 walkClick, Vector2 targetScreen, string targetPath)
         {
             if (_dependencies.IsBlightBuildOrUpgradeIconAt == null || !_dependencies.IsBlightBuildOrUpgradeIconAt(walkClick))
@@ -216,7 +215,7 @@ namespace ClickIt.Features.Click.Runtime
             }
 
             AddPathfindingStage($"Walk: click offset from blight icon → ({offset.X:F0},{offset.Y:F0})");
-            _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] Click would hit a blight tower build/upgrade icon — offsetting to ({offset.X:F0},{offset.Y:F0})");
+            _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] Click would hit a blight tower build/upgrade icon - offsetting to ({offset.X:F0},{offset.Y:F0})");
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("BlightIconAvoided", "Pathfinding click offset away from a blight tower icon", null);
             return offset;
         }
@@ -273,7 +272,8 @@ namespace ClickIt.Features.Click.Runtime
             if (_dependencies.StickyTargetHandler.TryClickStickyTargetIfPossible(stickyTarget, windowTopLeft, allLabels))
                 return true;
 
-            _ = TryWalkTowardOffscreenTarget(stickyTarget);
+            // The label click failed, so fall to fresh resolution instead of re-walking a stale target.
+            _ = TryWalkTowardOffscreenTarget();
             return true;
         }
 
@@ -420,7 +420,7 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
             }
 
-            _traversalConfirmationGate.Reset();
+            // Keep the gate latched so a confirmed target does not re-enter the delay and wipe the path line every other tick.
             SetStickyOffscreenTarget(target);
             context = new OffscreenTraversalTargetContext(target, targetPath);
             return true;
@@ -428,6 +428,23 @@ namespace ClickIt.Features.Click.Runtime
 
         private bool TryBuildTraversalPath(OffscreenTraversalTargetContext context, out bool builtPath)
         {
+            // Same target that A* already ruled unreachable: stay blocked without re-running the
+            // doomed full-budget search during the backoff window (behavior is unchanged, only the
+            // wasted 10-20ms/tick A* is avoided).
+            if (OffscreenPathingMath.ShouldApplyNoRouteBackoff(
+                    context.Target.Address,
+                    _blockedTargetAddress,
+                    Environment.TickCount64,
+                    _blockedAtMs,
+                    NoRouteBackoffMs))
+            {
+                AddPathfindingStage($"Walk: A* no-route backoff active target={context.TargetPath}");
+                PublishOffscreenMovementDebug(context.Target, context.TargetPath, false, false, false, default, default, "BlockedNoRoute", PathfindingService.AStarNoRouteFailureReason);
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("OffscreenPathingBlockedNoRoute", $"target={context.TargetPath}");
+                builtPath = false;
+                return false;
+            }
+
             try
             {
                 builtPath = _dependencies.PathfindingService.TryBuildPathToTarget(
@@ -443,19 +460,24 @@ namespace ClickIt.Features.Click.Runtime
             }
 
             if (builtPath)
+            {
+                _blockedTargetAddress = 0;
                 return true;
+            }
 
             PathfindingDebugSnapshot pathfindingSnapshot = _dependencies.PathfindingService.GetDebugSnapshot();
             if (OffscreenPathingMath.ShouldBlockOffscreenTraversalAfterPathBuildFailure(pathfindingSnapshot.LastFailureReason))
             {
-                AddPathfindingStage($"Walk: BLOCKED — A* did not find a route target={context.TargetPath}");
+                _blockedTargetAddress = context.Target.Address;
+                _blockedAtMs = Environment.TickCount64;
+                AddPathfindingStage($"Walk: BLOCKED - A* did not find a route target={context.TargetPath}");
                 PublishOffscreenMovementDebug(context.Target, context.TargetPath, builtPath, false, false, default, default, "BlockedNoRoute", pathfindingSnapshot.LastFailureReason);
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("OffscreenPathingBlockedNoRoute", $"target={context.TargetPath}");
                 _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Skipping offscreen traversal because A* did not find a route.");
                 return false;
             }
 
-            AddPathfindingStage($"Walk: no A* route — directional fallback target={context.TargetPath}");
+            AddPathfindingStage($"Walk: no A* route - directional fallback target={context.TargetPath}");
             _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Pathfinding route not found; trying directional walk click.");
             return true;
         }

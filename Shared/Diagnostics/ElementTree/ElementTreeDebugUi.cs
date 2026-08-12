@@ -43,7 +43,7 @@ internal static class ElementTreeDebugUi
 
         ImGui.Separator();
         ElementInspectionCapture selected = history[selectedIndex];
-        ImGui.TextColored(CInfo, $"{selected.Timestamp:HH:mm:ss.fff} — {selected.Reason}");
+        ImGui.TextColored(CInfo, $"{selected.Timestamp:HH:mm:ss.fff} - {selected.Reason}");
         if (selected.Detail != null)
         {
             ImGui.SameLine();

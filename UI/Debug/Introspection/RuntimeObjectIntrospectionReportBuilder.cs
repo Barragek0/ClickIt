@@ -52,7 +52,10 @@ namespace ClickIt.UI.Debug.Introspection
                 IncludeNonPublicMembers: options.IncludeNonPublicMembers,
                 MaxValueChars: SystemMath.Max(1, options.MaxValueChars),
                 MaxTotalNodes: SystemMath.Max(1, options.MaxTotalNodes),
-                MaxElapsedMs: SystemMath.Max(500, options.MaxElapsedMs));
+                MaxElapsedMs: SystemMath.Max(500, options.MaxElapsedMs),
+                ProgressNodeTotal: options.ProgressNodeTotal > 0 ? options.ProgressNodeTotal : options.MaxTotalNodes,
+                SkipMemberNames: options.SkipMemberNames ?? [],
+                ExtraChildrenProvider: options.ExtraChildrenProvider);
         }
     }
 }

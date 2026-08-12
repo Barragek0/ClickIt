@@ -31,6 +31,7 @@ namespace ClickIt.Features.Labels.Selection
                 LabelCandidateRejectReason.OutOfDistance => this with { NullOrDistanceRejected = NullOrDistanceRejected + 1 },
                 LabelCandidateRejectReason.Untargetable => this with { UntargetableRejected = UntargetableRejected + 1 },
                 LabelCandidateRejectReason.NotVisible => this with { UntargetableRejected = UntargetableRejected + 1 },
+                LabelCandidateRejectReason.LockedChest => this with { UntargetableRejected = UntargetableRejected + 1 },
                 LabelCandidateRejectReason.NoMechanic => this with { NoMechanicRejected = NoMechanicRejected + 1 },
                 LabelCandidateRejectReason.None => this,
                 _ => this,
@@ -49,7 +50,8 @@ namespace ClickIt.Features.Labels.Selection
         Untargetable = 2,
         NoMechanic = 3,
         NotVisible = 4,
-        OutOfDistance = 5
+        OutOfDistance = 5,
+        LockedChest = 6
     }
 
     internal static class LabelSelectionEngine

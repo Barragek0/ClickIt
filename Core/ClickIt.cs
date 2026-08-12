@@ -7,22 +7,36 @@ namespace ClickIt
         private ClickItSettings EffectiveSettings => Settings ?? new ClickItSettings();
 
         private DebugClipboardService DebugClipboardService
-            => field ??= new DebugClipboardService(new DebugClipboardServiceDependencies(
+            => field ??= CreateDebugClipboardService();
+
+        private DebugClipboardService CreateDebugClipboardService()
+        {
+            DebugClipboardService service = new(new DebugClipboardServiceDependencies(
                 State,
                 this,
                 GetEffectiveSettingsForLifecycle,
                 () => GameController));
+            GameStateDumpCoordinator.SetSource(() => service.GameStateDump);
+            return service;
+        }
 
         internal PluginLifecycleButtonBindings LifecycleButtonBindings
-            => field ??= new PluginLifecycleButtonBindings(this, DebugClipboardService);
+            => field ??= new PluginLifecycleButtonBindings(DebugClipboardService);
 
         public override void OnLoad()
         {
             CanUseMultiThreading = true;
+            ExileCorePerformanceApplier.SetSuppressSetupUntilReload(false);
+            ExileCorePerformanceApplier.SetGameControllerProvider(() => GameController);
         }
 
         public override void OnClose()
         {
+            PerformanceSettingsPanelRenderer.SetCurrent(static () => null);
+            ExileCorePerformanceApplier.SetGameControllerProvider(static () => null);
+            GameStateDumpCoordinator.SetSource(static () => null);
+            EntityEventHub.Instance.Dispose();
+
             ClickItSettings runtimeSettings = EffectiveSettings;
             PluginLifecycleCoordinator.Shutdown(this, runtimeSettings);
 
@@ -62,6 +76,13 @@ namespace ClickIt
             if (ImGui.TreeNodeEx("Debug/Testing##ClickItDebugTesting", ImGuiTreeNodeFlags.DefaultOpen))
             {
                 settings.DebugTestingPanel.DrawDelegate?.Invoke();
+                ImGui.TreePop();
+            }
+
+            // First-run setup is a popup; after confirming, this section holds the performance guide.
+            if (ImGui.TreeNodeEx("Performance##ClickItPerformance"))
+            {
+                settings.PerformancePanel.DrawDelegate?.Invoke();
                 ImGui.TreePop();
             }
 

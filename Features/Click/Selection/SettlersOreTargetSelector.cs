@@ -12,6 +12,10 @@ namespace ClickIt.Features.Click.Selection
     internal sealed class SettlersOreTargetSelector(SettlersOreTargetSelectorDependencies dependencies)
     {
         private readonly SettlersOreTargetSelectorDependencies _dependencies = dependencies;
+        // Settlers-ore entities are retained by the shared EntityEventHub with ONE subscription and
+        // ONE path read per event — the 80ms resolution walks only these instead of every entity in
+        // the area. Falls back to the full valid walk when the set is empty (no settlers entities, or
+        // a test controller without a live entity cache).
 
         internal SettlersOreCandidate? ResolveNextSettlersOreCandidate()
         {
@@ -42,7 +46,7 @@ namespace ClickIt.Features.Click.Selection
                     diagnosticsStartMs = Environment.TickCount64;
                 }
 
-                EntityQueryService.VisitValidEntities(_dependencies.GameController, entity =>
+                void ProcessEntity(Entity entity)
                 {
                     if (collectDiagnostics)
                         scanned++;
@@ -56,7 +60,7 @@ namespace ClickIt.Features.Click.Selection
                     {
                         if (collectDiagnostics)
                             prefiltered++;
-                        return false;
+                        return;
                     }
 
                     if (!TryBuildSettlersCandidate(
@@ -73,8 +77,7 @@ namespace ClickIt.Features.Click.Selection
                             mechanicMatched++;
                         if (collectDiagnostics && attemptedProbe)
                             probeAttempts++;
-
-                        return false;
+                        return;
                     }
 
                     if (collectDiagnostics && matchedMechanic)
@@ -90,10 +93,23 @@ namespace ClickIt.Features.Click.Selection
                     if (MechanicCandidateResolver.TryPromoteSettlersCandidate(ref best, candidate, cursorAbsolute, windowTopLeft))
                         if (captureClickDebug)
                             PublishSettlersCandidateDebug("CandidateSelected", candidate, "Nearest settlers candidate selected");
+                }
 
-
-                    return false;
-                });
+                EntityEventHub.Instance.EnsureSubscribed(_dependencies.GameController);
+                List<Entity> tracked = EntityEventHub.Instance.SettlersOre.Snapshot();
+                if (tracked.Count > 0)
+                {
+                    for (int i = 0; i < tracked.Count; i++)
+                        ProcessEntity(tracked[i]);
+                }
+                else
+                {
+                    EntityQueryService.VisitValidEntities(_dependencies.GameController, entity =>
+                    {
+                        ProcessEntity(entity);
+                        return false;
+                    });
+                }
 
                 long entityScanMs = collectDiagnostics
                     ? SystemMath.Max(0, Environment.TickCount64 - diagnosticsStartMs)

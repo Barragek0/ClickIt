@@ -36,6 +36,14 @@ namespace ClickIt.Features.Labels.Selection
                 return false;
             }
 
+            // A locked strongbox (the strongbox overlay's red frame) cannot be opened, so it is
+            // never a click candidate even when a mechanic would otherwise match.
+            if (MechanicClassifier.IsLockedStrongbox(item))
+            {
+                rejectReason = LabelCandidateRejectReason.LockedChest;
+                return false;
+            }
+
             mechanicId = resolveMechanicId(label, item, clickSettings);
             if (string.IsNullOrWhiteSpace(mechanicId))
             {

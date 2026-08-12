@@ -319,5 +319,71 @@ namespace ClickIt.Tests.Shared.Diagnostics
             act.Should().NotThrow();
             queue.GetPendingCount().Should().Be(0);
         }
+
+        [TestMethod]
+        public void DeferredDrawQueue_Flush_AttributesElapsedPerSection()
+        {
+            var queue = new DeferredDrawQueue();
+            queue.CurrentSection = RenderSection.BlightOverlay;
+            queue.EnqueueLine(new NumVector2(1, 2), new NumVector2(3, 4), 2, Color.Red);
+            queue.EnqueueText("lane", new NumVector2(5, 6), Color.White, FontAlign.Left);
+            queue.CurrentSection = RenderSection.AltarOverlay;
+            queue.EnqueueLine(new NumVector2(7, 8), new NumVector2(9, 10), 2, Color.Blue);
+
+            var reported = new List<(RenderSection Section, double Ms)>();
+            var graphics = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));
+            queue.Flush(graphics, (section, ms) => reported.Add((section, ms)));
+
+            reported.Should().Contain(entry => entry.Section == RenderSection.BlightOverlay);
+            reported.Should().Contain(entry => entry.Section == RenderSection.AltarOverlay);
+            reported.Should().NotContain(entry => entry.Section == RenderSection.Unknown);
+        }
+
+        [TestMethod]
+        public void DeferredDrawQueue_Flush_WithoutSectionCallback_DoesNotAllocateSectionBuckets()
+        {
+            var queue = new DeferredDrawQueue();
+            queue.EnqueueLine(new NumVector2(1, 2), new NumVector2(3, 4), 2, Color.Red);
+
+            var graphics = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));
+            Action act = () => queue.Flush(graphics);
+
+            act.Should().NotThrow();
+            queue.GetPendingCount().Should().Be(0);
+        }
+
+        [TestMethod]
+        public void DeferredTextQueue_Flush_AttributesElapsedPerSection()
+        {
+            var queue = new DeferredTextQueue();
+            queue.CurrentSection = RenderSection.BlightOverlay;
+            queue.Enqueue("lane", new Vector2(1, 2), Color.White, 12);
+            queue.CurrentSection = RenderSection.HarvestOverlay;
+            queue.Enqueue("plot", new Vector2(3, 4), Color.White, 12);
+
+            var reported = new List<(RenderSection Section, double Ms)>();
+            var graphics = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));
+            queue.Flush(graphics, (section, ms) => reported.Add((section, ms)));
+
+            reported.Should().Contain(entry => entry.Section == RenderSection.BlightOverlay);
+            reported.Should().Contain(entry => entry.Section == RenderSection.HarvestOverlay);
+        }
+
+        [TestMethod]
+        public void DeferredFrameQueue_Flush_AttributesElapsedPerSection()
+        {
+            var queue = new DeferredFrameQueue();
+            queue.CurrentSection = RenderSection.AltarOverlay;
+            queue.Enqueue(new RectangleF(1, 2, 3, 4), Color.Blue, 1);
+            queue.CurrentSection = RenderSection.StrongboxOverlay;
+            queue.Enqueue(new RectangleF(5, 6, 7, 8), Color.Blue, 1);
+
+            var reported = new List<(RenderSection Section, double Ms)>();
+            var graphics = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));
+            queue.Flush(graphics, (section, ms) => reported.Add((section, ms)));
+
+            reported.Should().Contain(entry => entry.Section == RenderSection.AltarOverlay);
+            reported.Should().Contain(entry => entry.Section == RenderSection.StrongboxOverlay);
+        }
     }
 }

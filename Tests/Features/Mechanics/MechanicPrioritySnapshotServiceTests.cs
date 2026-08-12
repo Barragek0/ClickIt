@@ -15,6 +15,9 @@ namespace ClickIt.Tests.Features.Mechanics
 
             snapshot.PriorityIndexMap[MechanicIds.HeistHazards].Should().Be(snapshot.PriorityIndexMap[MechanicIds.LeagueChests]);
             snapshot.PriorityIndexMap[MechanicIds.BreachGraspingCoffers].Should().Be(snapshot.PriorityIndexMap[MechanicIds.LeagueChests]);
+            snapshot.PriorityIndexMap[MechanicIds.AllflameCursedTreasure].Should().Be(snapshot.PriorityIndexMap[MechanicIds.LeagueChests]);
+            snapshot.PriorityIndexMap[MechanicIds.AllflameBrinerotPlunder].Should().Be(snapshot.PriorityIndexMap[MechanicIds.LeagueChests]);
+            snapshot.PriorityIndexMap[MechanicIds.AllflameCoralNest].Should().Be(snapshot.PriorityIndexMap[MechanicIds.LeagueChests]);
             snapshot.PriorityIndexMap[MechanicIds.HeistDoors].Should().Be(snapshot.PriorityIndexMap[MechanicIds.Doors]);
             snapshot.PriorityIndexMap[MechanicIds.AlvaTempleDoors].Should().Be(snapshot.PriorityIndexMap[MechanicIds.Doors]);
         }
@@ -36,13 +39,55 @@ namespace ClickIt.Tests.Features.Mechanics
 
             snapshot.IgnoreDistanceSet.Should().Contain(MechanicIds.HeistHazards);
             snapshot.IgnoreDistanceSet.Should().Contain(MechanicIds.SynthesisSynthesisedStash);
+            snapshot.IgnoreDistanceSet.Should().Contain(MechanicIds.AllflameCursedTreasure);
+            snapshot.IgnoreDistanceSet.Should().Contain(MechanicIds.AllflameBrinerotPlunder);
+            snapshot.IgnoreDistanceSet.Should().Contain(MechanicIds.AllflameCoralNest);
             snapshot.IgnoreDistanceSet.Should().Contain(MechanicIds.HeistDoors);
             snapshot.IgnoreDistanceSet.Should().Contain(MechanicIds.AlvaTempleDoors);
 
             snapshot.IgnoreDistanceWithinByMechanicId[MechanicIds.HeistHazards].Should().Be(77);
             snapshot.IgnoreDistanceWithinByMechanicId[MechanicIds.MirageGoldenDjinnCache].Should().Be(77);
+            snapshot.IgnoreDistanceWithinByMechanicId[MechanicIds.AllflameCursedTreasure].Should().Be(77);
+            snapshot.IgnoreDistanceWithinByMechanicId[MechanicIds.AllflameBrinerotPlunder].Should().Be(77);
+            snapshot.IgnoreDistanceWithinByMechanicId[MechanicIds.AllflameCoralNest].Should().Be(77);
             snapshot.IgnoreDistanceWithinByMechanicId[MechanicIds.HeistDoors].Should().Be(33);
             snapshot.IgnoreDistanceWithinByMechanicId[MechanicIds.AlvaTempleDoors].Should().Be(33);
+        }
+
+        [TestMethod]
+        public void Refresh_CoversEverySpecificLeagueChestAndDoorId_WithGroupPriority()
+        {
+            var service = new MechanicPrioritySnapshotService();
+
+            MechanicPrioritySnapshot snapshot = service.Refresh(
+                MechanicPriorityCatalog.DefaultOrderIds,
+                [],
+                new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase));
+
+            int leagueChestsIndex = snapshot.PriorityIndexMap[MechanicIds.LeagueChests];
+            int doorsIndex = snapshot.PriorityIndexMap[MechanicIds.Doors];
+
+            string[] specificLeagueChestIds =
+            [
+                MechanicIds.MirageGoldenDjinnCache,
+                MechanicIds.MirageSilverDjinnCache,
+                MechanicIds.MirageBronzeDjinnCache,
+                MechanicIds.HeistSecureLocker,
+                MechanicIds.HeistSecureRepository,
+                MechanicIds.HeistHazards,
+                MechanicIds.BlightCyst,
+                MechanicIds.BreachGraspingCoffers,
+                MechanicIds.SynthesisSynthesisedStash,
+                MechanicIds.AllflameCursedTreasure,
+                MechanicIds.AllflameBrinerotPlunder,
+                MechanicIds.AllflameCoralNest
+            ];
+
+            foreach (string specificId in specificLeagueChestIds)
+                snapshot.PriorityIndexMap[specificId].Should().Be(leagueChestsIndex, $"{specificId} must inherit the League Chests priority");
+
+            snapshot.PriorityIndexMap[MechanicIds.HeistDoors].Should().Be(doorsIndex);
+            snapshot.PriorityIndexMap[MechanicIds.AlvaTempleDoors].Should().Be(doorsIndex);
         }
     }
 }

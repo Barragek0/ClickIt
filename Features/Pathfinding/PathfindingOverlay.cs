@@ -185,11 +185,7 @@ namespace ClickIt.Features.Pathfinding
             return mapCenter + projectedDelta;
         }
 
-        // RawTerrainHeightData is a multi-million-cell float[][] rebuilt from game memory on every
-        // access; cache it per IngameData ADDRESS (ExileCore's CachedValue recreates the wrapper every
-        // ~25ms, and the pointer can also flap transiently in-map) instead of re-reading it every
-        // frame the map path is drawn. A short confirmation window absorbs transient address churn
-        // so a flap never forces the ~21MB re-read.
+        // Cache height data per IngameData ADDRESS so the multi-million-cell read only happens on a confirmed area change.
         private float[][]? ResolveHeightData(GameController gameController)
         {
             object? data = gameController.IngameState?.Data;

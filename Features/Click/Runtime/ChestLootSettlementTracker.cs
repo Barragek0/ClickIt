@@ -81,7 +81,7 @@ namespace ClickIt.Features.Click.Runtime
             if (_shouldSuppressBlightChestClick(pendingChestLabel))
             {
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
-                    "PostChestReclickBlightSuppressed", "Pending chest is a transitioning blight cyst — skipping reclick", state.PendingOpenMechanicId);
+                    "PostChestReclickBlightSuppressed", "Pending chest is a transitioning blight cyst - skipping reclick", state.PendingOpenMechanicId);
                 return false;
             }
 
@@ -212,12 +212,7 @@ namespace ClickIt.Features.Click.Runtime
             state.KnownGroundItemAddresses.Clear();
         }
 
-        /**
-        Keep this thin runtime wrapper so production still resolves the nearby
-        bypass candidate from the real Entity grid state. The internal overload
-        preserves a narrow seam for distance-decision tests without fabricating
-        ExileCore Entity grid members.
-         */
+        // Thin runtime wrapper so the internal overload stays testable without ExileCore grid state.
         public bool ShouldAllowMechanicInteractionDuringPostChestLootSettlement(string? mechanicId, Entity? entity, out string decision)
         {
             bool hasCandidateGrid = ChestLootSettlementMath.TryGetEntityGridPosition(entity, out Vector2 entityGridPos);

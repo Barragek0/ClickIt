@@ -53,27 +53,67 @@ internal static class HarvestLabelScanner
         return rows;
     }
 
+    private const int MaxSeedRowCache = 64;
+    // Cap the uncached element-tree walks per pass so entering a large harvest garden spreads the
+    // per-plot first-scan cost across frames instead of one processing spike (the full-clear at the
+    // cap used to re-scan every plot in the same pass).
+    private const int MaxSeedRowScansPerPass = 2;
+
     internal static List<(LabelOnGround Label, List<HarvestSeedRow> Rows)> ScanHarvestPlots(
-        IReadOnlyList<LabelOnGround>? allLabels)
+        IReadOnlyList<LabelOnGround>? allLabels,
+        Dictionary<long, List<HarvestSeedRow>>? seedRowCache = null)
     {
         List<(LabelOnGround, List<HarvestSeedRow>)> results = [];
 
         if (allLabels == null)
             return results;
 
+        int scansThisPass = 0;
         for (int i = 0; i < allLabels.Count; i++)
         {
             LabelOnGround label = allLabels[i];
             if (!IsHarvestLabel(label))
                 continue;
 
-            List<HarvestSeedRow> rows = ScanSeedRows(label);
+            long address = seedRowCache != null ? LabelAddress(label) : 0;
+            List<HarvestSeedRow> rows;
+            if (seedRowCache != null && seedRowCache.TryGetValue(address, out List<HarvestSeedRow>? cached))
+            {
+                rows = cached;
+            }
+            else
+            {
+                if (seedRowCache != null && scansThisPass >= MaxSeedRowScansPerPass)
+                    continue;  // defer this new label to a later pass so the scan stays bounded
+                rows = ScanSeedRows(label);
+                if (seedRowCache != null && rows.Count > 0)
+                {
+                    seedRowCache[address] = rows;
+                    if (seedRowCache.Count > MaxSeedRowCache)
+                    {
+                        // Evict one entry (not a full clear) so an over-cap garden never re-scans
+                        // every plot in the same pass.
+                        foreach (long existingKey in seedRowCache.Keys)
+                        {
+                            seedRowCache.Remove(existingKey);
+                            break;
+                        }
+                    }
+                    scansThisPass++;
+                }
+            }
+
             if (rows.Count > 0)
                 results.Add((label, rows));
         }
 
         return results;
     }
+
+    private static long LabelAddress(LabelOnGround label)
+        => DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawElement)
+            ? (rawElement as Element)?.Address ?? 0
+            : 0;
 
     internal static bool IsHarvestLabel(LabelOnGround label)
     {

@@ -10,6 +10,7 @@ namespace ClickIt.Tests.UI
             var nodes = new ClickItSettingsScreenNodes(
                 DebugTestingPanel: new CustomNode(),
                 ControlsPanel: new CustomNode(),
+                PerformancePanel: new CustomNode(),
                 ControlsSliderWidthStart: new CustomNode(),
                 ControlsSliderWidthEnd: new CustomNode(),
                 PathfindingSliderWidthStart: new CustomNode(),
@@ -35,6 +36,7 @@ namespace ClickIt.Tests.UI
 
             settings.DebugTestingPanel.Should().BeSameAs(nodes.DebugTestingPanel);
             settings.ControlsPanel.Should().BeSameAs(nodes.ControlsPanel);
+            settings.PerformancePanel.Should().BeSameAs(nodes.PerformancePanel);
             settings.ControlsSliderWidthStart.Should().BeSameAs(nodes.ControlsSliderWidthStart);
             settings.ControlsSliderWidthEnd.Should().BeSameAs(nodes.ControlsSliderWidthEnd);
             settings.PathfindingSliderWidthStart.Should().BeSameAs(nodes.PathfindingSliderWidthStart);

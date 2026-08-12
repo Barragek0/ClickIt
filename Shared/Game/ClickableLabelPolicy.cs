@@ -39,15 +39,18 @@ namespace ClickIt.Shared.Game
 
         /// <summary>
         /// Lightweight label validity check used by the label cache factory.
-        /// Only verifies the label has a visible element and an associated
-        /// entity.  Does NOT check clickable-area, entity-type, or path
-        /// matching — those decisions belong to downstream consumers.
+        /// Verifies the label has a visible element, an associated entity, and a
+        /// valid item entity so stale removed ground items leave the shared list.
+        /// Does NOT check clickable-area, entity-type, or path matching - those
+        /// decisions belong to downstream consumers.
         /// </summary>
         public static bool IsBasicLabelValid(LabelOnGround label)
         {
             return label != null
                 && TryGetLabelItem(label, out object? item)
                 && item != null
+                && DynamicAccess.TryReadBool(item, DynamicAccessProfiles.IsValid, out bool itemIsValid)
+                && itemIsValid
                 && DynamicAccess.TryReadBool(label, DynamicAccessProfiles.IsVisible, out bool isVisible)
                 && isVisible
                 && IsLabelElementValid(label);

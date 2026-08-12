@@ -73,6 +73,25 @@ namespace ClickIt.Tests.UI
         }
 
         [TestMethod]
+        public void BuildReport_DeduplicatesRemoteMemoryObjects_ByUnderlyingAddress()
+        {
+            // Game memory wrappers are re-created per read, so the same underlying element appears as a
+            // distinct CLR instance each time; two wrappers with the same Address must count as a cycle.
+            LabelOnGround first = CreateOpaqueLabel(0x1234);
+            LabelOnGround sameAddress = CreateOpaqueLabel(0x1234);
+            LabelOnGround otherAddress = CreateOpaqueLabel(0x5678);
+
+            string report = RuntimeObjectIntrospection.BuildReport(
+                new { Root = first, Again = sameAddress, Other = otherAddress },
+                RuntimeObjectIntrospectionOptions.Default with { MaxDepth = 4, MaxTotalNodes = 1000 });
+
+            report.Should().Contain("Root");
+            report.Should().Contain("Root.Again");
+            report.Should().Contain("(cycle)");
+            report.Should().Contain("Root.Other");
+        }
+
+        [TestMethod]
         public void BuildReport_StopsAtMaxDepth_AndNodeBudget()
         {
             var deep = new DeepNode { Id = 1 };
@@ -243,8 +262,137 @@ namespace ClickIt.Tests.UI
             }
         }
 
+        [TestMethod]
+        public void BuildReport_SkipsConfiguredMembers()
+        {
+            var options = RuntimeObjectIntrospectionOptions.Default with
+            {
+                SkipMemberNames = ["Big"],
+            };
+            string report = RuntimeObjectIntrospection.BuildReport(new { Big = 1, Small = 2 }, options);
+
+            report.Should().Contain("Root.Big: <skipped>");
+            report.Should().Contain("Root.Small: 2");
+        }
+
+        [TestMethod]
+        public void WriteReportCoroutine_StreamsToWriter_AndReportsProgressAndTotalNodes()
+        {
+            using MemoryStream stream = new();
+            using StreamWriter writer = new(stream, new UTF8Encoding(false)) { AutoFlush = true };
+            var progress = new List<int>();
+            int totalNodes = 0;
+
+            IEnumerator routine = RuntimeObjectIntrospection.WriteReportCoroutine(
+                new { A = 1, Items = new[] { 1, 2, 3, 4, 5 } },
+                writer,
+                RuntimeObjectIntrospectionOptions.Default with { MaxCollectionItems = 2, MaxTotalNodes = 40 },
+                onProgress: p => progress.Add(p),
+                onTotalNodes: n => totalNodes = n,
+                nodeBudgetPerYield: 1);
+
+            while (routine.MoveNext())
+            {
+            }
+            writer.Flush();
+
+            string text = Encoding.UTF8.GetString(stream.ToArray());
+            text.Should().Contain("Root.A");
+            text.Should().Contain("Root.Items");
+            progress.Should().Contain(100);
+            totalNodes.Should().BeGreaterThan(0);
+        }
+
+        [TestMethod]
+        public void WriteReportCoroutine_WithMeasureProgressTotal_ReportsAgainstMeasuredTotal()
+        {
+            using MemoryStream stream = new();
+            using StreamWriter writer = new(stream, new UTF8Encoding(false)) { AutoFlush = true };
+            var progress = new List<int>();
+
+            // A small graph with a huge fixed projection: without measuring, the bar would sit near 0
+            // and jump to 100; with measurement the write phase climbs toward 100 against the real count.
+            IEnumerator routine = RuntimeObjectIntrospection.WriteReportCoroutine(
+                new { A = 1, Items = new[] { 1, 2, 3, 4, 5, 6, 7, 8 } },
+                writer,
+                RuntimeObjectIntrospectionOptions.Default with
+                {
+                    MaxTotalNodes = 100000,
+                    MaxElapsedMs = 60000,
+                    ProgressNodeTotal = 100000,
+                    MaxCollectionItems = 100,
+                },
+                onProgress: p => progress.Add(p),
+                nodeBudgetPerYield: 1,
+                measureProgressTotal: true);
+
+            while (routine.MoveNext())
+            {
+            }
+            writer.Flush();
+
+            progress.Should().Contain(50, "the count phase ends at the midpoint marker");
+            progress.Should().Contain(100);
+            progress.Should().Contain(p => p > 50 && p < 100, "the write phase must climb against the measured total, not the fixed projection");
+        }
+
+        [TestMethod]
+        public void BuildReport_IncludesExtraChildrenFromProvider()
+        {
+            object root = new { A = 1 };
+            var options = RuntimeObjectIntrospectionOptions.Default with
+            {
+                ExtraChildrenProvider = value => value == root
+                    ? [("ExtraChild", new { Value = 7 })]
+                    : null,
+            };
+
+            string report = RuntimeObjectIntrospection.BuildReport(root, options);
+
+            report.Should().Contain("Root.ExtraChild.Value: 7");
+        }
+
+        [TestMethod]
+        public void WriteReportCoroutine_ProgressUsesProgressNodeTotal_NotUnlimitedNodeCap()
+        {
+            using MemoryStream stream = new();
+            using StreamWriter writer = new(stream, new UTF8Encoding(false)) { AutoFlush = true };
+            var progress = new List<int>();
+
+            IEnumerator routine = RuntimeObjectIntrospection.WriteReportCoroutine(
+                Enumerable.Range(0, 100).ToArray(),
+                writer,
+                RuntimeObjectIntrospectionOptions.Default with
+                {
+                    MaxTotalNodes = int.MaxValue,
+                    MaxElapsedMs = int.MaxValue,
+                    ProgressNodeTotal = 100,
+                    MaxCollectionItems = 100,
+                },
+                onProgress: p => progress.Add(p),
+                nodeBudgetPerYield: 5);
+
+            while (routine.MoveNext())
+            {
+            }
+            writer.Flush();
+
+            progress.Should().ContainInOrder(0, 25, 50, 75);
+            progress.Should().Contain(100);
+        }
+
         private static string GetTempFilePath()
             => Path.Combine(Path.GetTempPath(), "clickit-introspection-" + Guid.NewGuid().ToString("N") + ".txt");
+
+        private static LabelOnGround CreateOpaqueLabel(long address)
+        {
+            LabelOnGround label = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
+            System.Reflection.PropertyInfo addressProperty = typeof(RemoteMemoryObject).GetProperty(
+                nameof(RemoteMemoryObject.Address),
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)!;
+            addressProperty!.SetValue(label, address);
+            return label;
+        }
 
         private static void SafeDelete(string path)
         {

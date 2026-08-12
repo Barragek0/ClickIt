@@ -7,7 +7,7 @@ namespace ClickIt.Core.Runtime
         public Coroutine? ManualUiHoverCoroutine { get; set; }
         public Coroutine? AreaBlockedUiRefreshCoroutine { get; set; }
         public Coroutine? DelveFlareCoroutine { get; set; }
-        public Coroutine? DeepMemoryDumpCoroutine { get; set; }
+        public Coroutine? GameStateDumpCoroutine { get; set; }
         public Stopwatch LastRenderTimer { get; } = new();
         public Stopwatch LastTickTimer { get; } = new();
         public Stopwatch Timer { get; } = new();

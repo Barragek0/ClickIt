@@ -139,7 +139,7 @@ public class BlightPlannerTests
             .Build());
 
         LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            lane, _ => (true, true, false));
+            lane, _ => (true, true, false), ChainParents(lane.Count));
 
         BlightPlan plan = BlightPlanner.Build(
             foundations, coverage, rules, new HashSet<NumVector2>(), 1,
@@ -232,7 +232,7 @@ public class BlightPlannerTests
 
         BlightPlan plan = BlightPlanner.Build(
             foundations,
-            BlightLaneTopology.ComputeCoverage(lane, _ => (true, true, false)),
+            BlightLaneTopology.ComputeCoverage(lane, _ => (true, true, false), ChainParents(lane.Count)),
             rules, new HashSet<NumVector2>(), 1,
             new NumVector2(0, 0), new NumVector2(36, 5), lane);
 
@@ -299,7 +299,8 @@ public class BlightPlannerTests
 
         LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
             lane,
-            midpoint => midpoint.X <= 25f ? (true, true, false) : (false, false, false));
+            midpoint => midpoint.X <= 25f ? (true, true, false) : (false, false, false),
+            [-1, 0, 1, 2, -1, 4, 5]);
 
         BlightPlan plan = BlightPlanner.Build(
             foundations, coverage, rules, new HashSet<NumVector2>(), 1,
@@ -417,7 +418,7 @@ public class BlightPlannerTests
         };
 
         LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            lane, _ => (true, true, false));
+            lane, _ => (true, true, false), ChainParents(lane.Count));
 
         BlightPlan plan = BlightPlanner.Build(
             foundations, coverage, rules, new HashSet<NumVector2>(), 1,
@@ -466,7 +467,7 @@ public class BlightPlannerTests
             .Build());
 
         LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            lane, _ => (false, false, false));
+            lane, _ => (false, false, false), ChainParents(lane.Count));
 
         BlightPlan plan = BlightPlanner.Build(
             foundations, coverage, rules, new HashSet<NumVector2>(), 1,
@@ -621,7 +622,9 @@ public class BlightPlannerTests
             (40, 0),   // branch A only
             (-40, 0)); // branch B only
 
-        BlightPlan plan = BuildPlan(lane, foundations, CoverageRules(), pump: new NumVector2(0, 0));
+        // Branch A = positions 0-2, branch B = positions 3-5 (two separate root chains).
+        BlightPlan plan = BuildPlan(lane, foundations, CoverageRules(), pump: new NumVector2(0, 0),
+            parents: [-1, 0, 1, -1, 3, 4]);
 
         int chillBuilds = plan.Steps.Count(s =>
             s.Action == BlightPlanAction.Build && s.TowerType == BlightTowerType.Chilling);
@@ -648,7 +651,9 @@ public class BlightPlannerTests
             (-20, 20), // covers branch B
             (20, -20));// covers branch C
 
-        BlightPlan plan = BuildPlan(lane, foundations, CoverageRules(), pump: new NumVector2(0, 0));
+        // Branch A = positions 0-2, branch B = positions 3-5, branch C = positions 6-8.
+        BlightPlan plan = BuildPlan(lane, foundations, CoverageRules(), pump: new NumVector2(0, 0),
+            parents: [-1, 0, 1, -1, 3, 4, -1, 6, 7]);
 
         int chillBuilds = plan.Steps.Count(s =>
             s.Action == BlightPlanAction.Build && s.TowerType == BlightTowerType.Chilling);
@@ -674,7 +679,9 @@ public class BlightPlannerTests
         // outside Chilling's base radius (35 < 36), so (40,0)/(-40,0) cover each branch separately.
         var foundations = Foundations((0, 0), (0, -4), (40, 0), (-40, 0));
 
-        BlightPlan plan = BuildPlan(lane, foundations, CoverageRules(), pump: new NumVector2(0, 0));
+        // Branch A = positions 0-2, branch B = positions 3-5 (two separate root chains).
+        BlightPlan plan = BuildPlan(lane, foundations, CoverageRules(), pump: new NumVector2(0, 0),
+            parents: [-1, 0, 1, -1, 3, 4]);
 
         int chillBuilds = plan.Steps.Count(s =>
             s.Action == BlightPlanAction.Build && s.TowerType == BlightTowerType.Chilling);
@@ -702,7 +709,9 @@ public class BlightPlannerTests
             (15, 0),  // branch A Seismic
             (25, 0)); // unused
 
-        BlightPlan plan = BuildPlan(lane, foundations, CoverageRules(), pump: new NumVector2(0, 0));
+        // Branch A = positions 0-3, far chain B = positions 4-6 (separate root).
+        BlightPlan plan = BuildPlan(lane, foundations, CoverageRules(), pump: new NumVector2(0, 0),
+            parents: [-1, 0, 1, 2, -1, 4, 5]);
 
         int chillBuilds = plan.Steps.Count(s =>
             s.Action == BlightPlanAction.Build && s.TowerType == BlightTowerType.Chilling);
@@ -719,7 +728,7 @@ public class BlightPlannerTests
         var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
         var foundations = Foundations((5, 0), (15, 0), (25, 0));
 
-        var cache = new List<NumVector2>();
+        var cache = new ConcurrentDictionary<NumVector2, byte>();
 
         // Initial build near the pump detects the branch and persists its anchor.
         BlightPlan first = BuildPlan(lane, foundations, CoverageRules(),
@@ -752,7 +761,7 @@ public class BlightPlannerTests
 
         // Cached anchor far from branch A's chain — no connected segment is
         // within the merge radius, and no foundation can reach it either.
-        var cache = new List<NumVector2> { new(200, 200) };
+        var cache = new ConcurrentDictionary<NumVector2, byte> { [new(200, 200)] = 0 };
 
         BlightPlan plan = BuildPlan(lane, foundations, CoverageRules(),
             pump: new NumVector2(0, 0), cachedAnchors: cache);
@@ -792,11 +801,11 @@ public class BlightPlannerTests
             .Build());
 
         LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            lane, _ => (false, false, false));
+            lane, _ => (false, false, false), ChainParents(lane.Count));
 
         BlightPlan plan = BlightPlanner.Build(
             foundations, coverage, rules, new HashSet<NumVector2>(), 1,
-            new NumVector2(0, 0), null, lane, new List<NumVector2> { new(5, 0) });
+            new NumVector2(0, 0), null, lane, new ConcurrentDictionary<NumVector2, byte> { [new(5, 0)] = 0 });
 
         int fireballBuilds = plan.Steps.Count(s =>
             s.Action == BlightPlanAction.Build && s.TowerType == BlightTowerType.Fireball);
@@ -913,56 +922,6 @@ public class BlightPlannerTests
     }
 
     [TestMethod]
-    public void PhantomLane_UndergroundGap_ConnectsLaneAndOpensFill()
-    {
-        // User scenario: the game routed part of the lane underground, so the far chain is
-        // disconnected from the main pump branch by a gap beyond the normal connect distance.  The
-        // phantom edge bridges it, the whole lane reads as one fully-covered branch, and the fill
-        // tier opens — the plan no longer sits at 0 steps with foundations left unused.
-        var lane = new List<NumVector2>
-        {
-            new(0, 0),     // 0 root (pump)
-            new(10, 10),   // 1
-            new(20, 20),   // 2
-            new(30, 30),   // 3 main end
-            new(80, 80),   // 4 far chain start — 70.7 gap: beyond 35, within the phantom 100
-            new(90, 90),   // 5
-            new(100, 100), // 6
-        };
-
-        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            lane,
-            midpoint => (
-                chilling: midpoint.X < 50f,  // Chilling + Seismic towers cover the main chain
-                seismic: midpoint.X < 50f,
-                fireball: false),
-            pumpGridPosition: new NumVector2(0, 0));
-
-        var foundations = new List<BlightCachedTower>
-        {
-            new(new NumVector2(85, 85), BlightTowerType.Chilling), // unbuilt foundation on the far chain
-        };
-
-        List<TowerBuildRule> rules = CoverageRules();
-        rules.Add(TowerStrategyBuilder.CreateRule()
-            .SetTower(BlightTowerType.Fireball)
-            .SetPriority(TowerBuildPriority.High)
-            .SetMaxUpgradeLevel(4)
-            .Build());
-
-        BlightPlan plan = BlightPlanner.Build(
-            foundations, coverage, rules, new HashSet<NumVector2>(), 1,
-            new NumVector2(0, 0), null, lane);
-
-        // The far chain inherits coverage through the phantom edge, so coverage completes and the
-        // fill tier opens (Fireball steps exist) instead of the plan stalling at 0 steps.
-        plan.DebugSummary.Should().Contain("full coverage",
-            "the phantom edge connects the far chain so the lane reads as fully covered");
-        plan.Steps.Should().Contain(s => s.TowerType == BlightTowerType.Fireball,
-            "fill runs once coverage is complete across the phantom lane");
-    }
-
-    [TestMethod]
     public void Fork_NewBranchWithoutSeismic_PlansSeismicOnNewBranch()
     {
         // User scenario: Branch A (trunk) is fully covered by Chilling + Seismic; a new branch forks
@@ -981,13 +940,15 @@ public class BlightPlannerTests
             new(30, 50), // 7 new branch
         };
 
+        // Fork at 3: main branch 4 -> 5, new branch 6 -> 7.
+        int[] parents = [-1, 0, 1, 2, 3, 4, 3, 6];
         LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
             lane,
             midpoint => (
                 chilling: midpoint.Y < 30f,                       // Chilling tower on the trunk
                 seismic: midpoint.Y == 30f && midpoint.X >= 35f,  // Seismic tower on the main branch only
                 fireball: false),
-            pumpGridPosition: new NumVector2(0, 0));
+            parents);
 
         var foundations = new List<BlightCachedTower>
         {
@@ -1031,13 +992,15 @@ public class BlightPlannerTests
             new(30, 100), // 8 new branch
         };
 
+        // Fork at 3: main branch 4 -> 5, new branch 6 -> 7 -> 8.
+        int[] parents = [-1, 0, 1, 2, 3, 4, 3, 6, 7];
         LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
             lane,
             midpoint => (
                 chilling: midpoint.Y < 30f || MathF.Abs(midpoint.X - 30f) < 1f, // Chilling tower on the trunk covers the fork + new branch
                 seismic: midpoint.Y == 30f && midpoint.X >= 35f,                 // Seismic tower on the main branch only
                 fireball: false),
-            pumpGridPosition: new NumVector2(0, 0));
+            parents);
 
         var foundations = new List<BlightCachedTower>
         {
@@ -1089,7 +1052,7 @@ public class BlightPlannerTests
                 float dy = midpoint.Y - 10f;
                 return (chilling: (dx * dx) + (dy * dy) <= 35f * 35f, seismic: false, fireball: false);
             },
-            pumpGridPosition: new NumVector2(0, 0));
+            ChainParents(lane.Count));
 
         for (int i = 1; i <= 6; i++)
             coverage[i].HasChilling.Should().BeTrue($"segment {i} inherits coverage through the winding lane");
@@ -1143,8 +1106,10 @@ public class BlightPlannerTests
             new(5, -105),   // 10 arm B far
         };
 
+        // Fork at the pump-near root 0: arm A = 1 -> 2 -> 5 -> 6 -> 7, arm B = 3 -> 4 -> 8 -> 9 -> 10.
+        int[] parents = [-1, 0, 1, 0, 3, 2, 5, 6, 4, 8, 9];
         LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            lane, _ => (false, false, false), pumpGridPosition: new NumVector2(0, 0));
+            lane, _ => (false, false, false), parents);
 
         coverage[1].ParentIndex.Should().Be(0, "arm A starts at the root");
         coverage[3].ParentIndex.Should().Be(0, "arm B starts at the root");
@@ -1492,10 +1457,11 @@ public class BlightPlannerTests
         List<TowerBuildRule> rules,
         NumVector2? pump = null,
         NumVector2? player = null,
-        List<NumVector2>? cachedAnchors = null)
+        ConcurrentDictionary<NumVector2, byte>? cachedAnchors = null,
+        IReadOnlyList<int>? parents = null)
     {
         LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
-            lane, _ => (false, false, false));
+            lane, _ => (false, false, false), parents ?? ChainParents(lane.Count));
         return BlightPlanner.Build(
             foundations, coverage, rules, new HashSet<NumVector2>(), 1, pump, player, lane, cachedAnchors);
     }
@@ -1507,4 +1473,13 @@ public class BlightPlannerTests
 
     private static List<NumVector2> CreateChain(params (float X, float Y)[] points)
         => points.Select(p => new NumVector2(p.X, p.Y)).ToList();
+
+    private static int[] ChainParents(int count)
+    {
+        int[] parents = new int[count];
+        for (int i = 1; i < count; i++)
+            parents[i] = i - 1;
+        parents[0] = -1;
+        return parents;
+    }
 }

@@ -34,6 +34,26 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
+        public void GetModifierPriorityIndex_PrefersOwnExactMatch_WhenModifierEmbedsAnotherPriority()
+        {
+            int index = UltimatumModifierPriorityMatcher.GetModifierPriorityIndex(
+                "Stalking Ruin",
+                ["Impending Doom", "Ruin", "Stalking Ruin"]);
+
+            index.Should().Be(2, "Stalking Ruin must resolve to its own entry, not the shorter Ruin entry");
+        }
+
+        [TestMethod]
+        public void GetModifierPriorityIndex_PrefersOwnPrefixMatch_ForTieredModifierThatEmbedsAnotherPriority()
+        {
+            int index = UltimatumModifierPriorityMatcher.GetModifierPriorityIndex(
+                "Stalking Ruin II",
+                ["Impending Doom", "Ruin", "Stalking Ruin"]);
+
+            index.Should().Be(2, "the Stalking Ruin tier must resolve to the Stalking Ruin priority, not Ruin");
+        }
+
+        [TestMethod]
         public void GetModifierPriorityIndex_ReturnsMaxValue_WhenNoPriorityMatches()
         {
             int index = UltimatumModifierPriorityMatcher.GetModifierPriorityIndex(

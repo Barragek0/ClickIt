@@ -18,6 +18,7 @@ namespace ClickIt.Features.Observability.Performance
         private readonly PeriodTrackedBuffer _ultimatum = new();
         private readonly PeriodTrackedBuffer _areaBlockedUi = new();
         private readonly PeriodTrackedBuffer _manualUiHover = new();
+        private readonly PeriodTrackedBuffer _gameStateDump = new();
 
         internal void Record(ProcessingSection section, double ms)
         {
@@ -56,6 +57,9 @@ namespace ClickIt.Features.Observability.Performance
                 case ProcessingSection.ManualUiHover:
                     _manualUiHover.Record(ms);
                     break;
+                case ProcessingSection.GameStateDump:
+                    _gameStateDump.Record(ms);
+                    break;
                 case ProcessingSection.Unknown:
                 default:
                     break;
@@ -77,6 +81,7 @@ namespace ClickIt.Features.Observability.Performance
                 ProcessingSection.Ultimatum => _ultimatum.Stats,
                 ProcessingSection.AreaBlockedUi => _areaBlockedUi.Stats,
                 ProcessingSection.ManualUiHover => _manualUiHover.Stats,
+                ProcessingSection.GameStateDump => _gameStateDump.Stats,
                 ProcessingSection.Unknown => (0, 0, 0, 0, 0),
                 _ => (0, 0, 0, 0, 0)
             };
