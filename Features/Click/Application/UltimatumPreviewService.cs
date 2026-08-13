@@ -12,8 +12,7 @@ namespace ClickIt.Features.Click.Application
         private List<UltimatumPanelOptionPreview> _snapshotPreviews = [];
         private bool _snapshotFound;
 
-        // The panel walk and ground-label scan run on the background UltimatumPreviewRefresh
-        // coroutine (fixed cadence), never the render thread; the renderer only reads the snapshot.
+        // The panel walk and ground-label scan run on the background UltimatumPreviewRefresh coroutine (fixed cadence), never the render thread; the renderer only reads the snapshot.
         private IReadOnlyList<LabelOnGround>? _groundPreviewLabelsSource;
         private List<UltimatumPanelOptionPreview>? _cachedGroundPreviews;
         private bool _cachedGroundPreviewFound;
@@ -45,9 +44,7 @@ namespace ClickIt.Features.Click.Application
 
         private bool TryGetGroundLabelOptionPreviewCached(RectangleF windowArea, out List<UltimatumPanelOptionPreview> previews)
         {
-            // The 50ms label cache returns a fresh List reference when its window expires, so
-            // re-scanning only on a reference change keeps the ground-label scan from running on
-            // every refresh tick when the labels are unchanged.
+            // The 50ms label cache returns a fresh List reference when its window expires, so re-scanning only on a reference change keeps the ground-label scan from running on every refresh tick when the labels are unchanged.
             IReadOnlyList<LabelOnGround>? labels = _dependencies.Automation.CachedLabels?.Value;
             if (!ReferenceEquals(labels, _groundPreviewLabelsSource))
             {

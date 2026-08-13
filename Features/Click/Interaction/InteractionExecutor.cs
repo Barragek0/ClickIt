@@ -16,9 +16,7 @@ namespace ClickIt.Features.Click.Interaction
         internal long GetSuccessfulClickSequence()
             => Interlocked.Read(ref _successfulClickSequence);
 
-        // Returns true only when the click was actually sent to the OS. Internal rejections (lazy
-        // limiter, hotkey inactive, UIHover mismatch, invalid point) return false so callers do not
-        // run the success aftermath (path/sticky clearing, pending-chest arming, lever cooldowns).
+        // Returns true only when the click was actually sent to the OS. Internal rejections (lazy limiter, hotkey inactive, UIHover mismatch, invalid point) return false so callers do not run the success aftermath (path/sticky clearing, pending-chest arming, lever cooldowns).
         internal bool PerformClick(
             Vector2 position,
             Element? expectedElement = null,

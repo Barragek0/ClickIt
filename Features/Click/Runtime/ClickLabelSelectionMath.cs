@@ -39,8 +39,7 @@ namespace ClickIt.Features.Click.Runtime
         internal static int GetGroundLabelSearchLimit(int totalVisibleLabels)
             => SystemMath.Max(0, totalVisibleLabels);
 
-        // Debug-brief helpers used by the click-flow debug stages so a dumped stage names the exact
-        // label (address + entity path) and cursor position that produced it.
+        // Debug-brief helpers used by the click-flow debug stages so a dumped stage names the exact label (address + entity path) and cursor position that produced it.
         internal static string DescribeLabel(LabelOnGround label)
         {
             string entityPath = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
@@ -59,8 +58,7 @@ namespace ClickIt.Features.Click.Runtime
 
         internal static LabelOnGround? FindLabelByAddress(IReadOnlyList<LabelOnGround> labels, long address)
         {
-            // The element is read via DynamicAccess (not the typed label.Label memory read) so the
-            // hover lookup also works against test probes; production reads the same underlying element.
+            // The element is read via DynamicAccess (not the typed label.Label memory read) so the hover lookup also works against test probes; production reads the same underlying element.
             for (int i = 0; i < labels.Count; i++)
             {
                 LabelOnGround? label = labels[i];

@@ -50,8 +50,7 @@ namespace ClickIt.Features.Click
                         : ToSharpDxColor(UltimatumModifiersConstants.GetPriorityGradientColor(preview.PriorityIndex, totalPriorities));
                 int thickness = preview.IsSelected ? 4 : 2;
 
-                // Re-project the option element's client rect each frame (cached decision data only)
-                // so the frames follow the panel/window instead of lagging a refresh cadence behind.
+                // Re-project the option element's client rect each frame (cached decision data only) so the frames follow the panel/window instead of lagging a refresh cadence behind.
                 RectangleF rect = preview.Element.GetClientRect();
                 if (rect.Width <= 0 || rect.Height <= 0)
                     rect = preview.Rect;

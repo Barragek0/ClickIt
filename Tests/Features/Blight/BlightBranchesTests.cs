@@ -6,10 +6,7 @@ public class BlightBranchesTests
     [TestMethod]
     public void AttachUnassignedLanes_ReparentsOrphanChain_AndRebuildRestoresMidpointAndCoverage()
     {
-        // A lane (0->1->2) plus a chain head (3) whose beam link is broken (orphan): the attach pass
-        // re-parents it under the lane end (2). Re-running ComputeCoverage with the attached parents
-        // gives the segment a real midpoint instead of the orphan (0,0) default so the debug tree,
-        // lane labels, and coverage propagation all reflect the joined lane.
+        // A lane (0->1->2) plus a chain head (3) whose beam link is broken (orphan): the attach pass re-parents it under the lane end (2). Re-running ComputeCoverage with the attached parents gives the segment a real midpoint instead of the orphan (0,0) default so the debug tree, lane labels, and coverage propagation all reflect the joined lane.
         LaneCoverageResult[] coverage = Coverage(-2, 0, 1, -1);
         List<NumVector2> positions = Positions((0, 0), (10, 0), (20, 0), (30, 0));
         var branches = new List<PumpBranch> { new(0, new NumVector2(5, 5)) };
@@ -38,8 +35,7 @@ public class BlightBranchesTests
     [TestMethod]
     public void AttachUnassignedLanes_AttachesAlignedFragmentToBranchLaneEnd()
     {
-        // Branch A = chain 0->1->2 (root 0 at the pump, lane end 2). Fragment = chain 3->4->5 whose
-        // pump-ward head 3 sits right past A's lane end — the game split one lane into two chains.
+        // Branch A = chain 0->1->2 (root 0 at the pump, lane end 2). Fragment = chain 3->4->5 whose pump-ward head 3 sits right past A's lane end — the game split one lane into two chains.
         LaneCoverageResult[] coverage = Coverage(-2, 0, 1, -2, 3, 4);
         List<NumVector2> positions = Positions((0, 0), (10, 0), (20, 0), (30, 0), (40, 0), (50, 0));
         var branches = new List<PumpBranch> { new(1, new NumVector2(0, 0)) };
@@ -57,9 +53,7 @@ public class BlightBranchesTests
     [TestMethod]
     public void AttachUnassignedLanes_CloseGap_JoinsOnLooseAngle()
     {
-        // The real-world case from Infested Valley: the fragment head sits ~2 units past the lane
-        // end but at a visible angle (~54 deg, cos 0.45) — a close gap joins on the loose tier
-        // (cos >= 0.4) because a genuine continuation can leave the lane end at an angle.
+        // The real-world case from Infested Valley: the fragment head sits ~2 units past the lane end but at a visible angle (~54 deg, cos 0.45) — a close gap joins on the loose tier (cos >= 0.4) because a genuine continuation can leave the lane end at an angle.
         LaneCoverageResult[] coverage = Coverage(-2, 0, 1, -2, 3);
         List<NumVector2> positions = Positions((0, 0), (10, 0), (20, 0), (21, 2), (31, 2));
         var branches = new List<PumpBranch> { new(1, new NumVector2(0, 0)) };
@@ -73,10 +67,7 @@ public class BlightBranchesTests
     [TestMethod]
     public void AttachUnassignedLanes_HeadOutOfRange_AttachesDeeperSegment_AndRejoinsHeadSide()
     {
-        // The real junction is one segment before the fragment head: the head (3) pokes out of
-        // range at 50u, but its child (4) sits 10u past the branch lane end — the walk attaches 4
-        // and reconnects the head-side stub (3) onto it, because the whole chain is one physical
-        // lane and the stub would otherwise show as a gap in the branch.
+        // The real junction is one segment before the fragment head: the head (3) pokes out of range at 50u, but its child (4) sits 10u past the branch lane end — the walk attaches 4 and reconnects the head-side stub (3) onto it, because the whole chain is one physical lane and the stub would otherwise show as a gap in the branch.
         LaneCoverageResult[] coverage = Coverage(-2, 0, 1, -2, 3, 4);
         List<NumVector2> positions = Positions((0, 0), (10, 0), (20, 0), (70, 0), (30, 0), (40, 0));
         var branches = new List<PumpBranch> { new(1, new NumVector2(0, 0)) };
@@ -91,9 +82,7 @@ public class BlightBranchesTests
     [TestMethod]
     public void AttachUnassignedLanes_WalksTowardPortal_UntilASegmentIsInRange_AndRejoinsHeadSide()
     {
-        // Head (3) and its next segment (4) are both out of range; the walk keeps going toward the
-        // portal end until segment 5 (10u from the lane end) attaches, then the whole head-side
-        // (3, 4) reconnects onto it.
+        // Head (3) and its next segment (4) are both out of range; the walk keeps going toward the portal end until segment 5 (10u from the lane end) attaches, then the whole head-side (3, 4) reconnects onto it.
         LaneCoverageResult[] coverage = Coverage(-2, 0, 1, -2, 3, 4, 5);
         List<NumVector2> positions = Positions((0, 0), (10, 0), (20, 0), (70, 0), (60, 0), (30, 0), (40, 0));
         var branches = new List<PumpBranch> { new(1, new NumVector2(0, 0)) };
@@ -121,8 +110,7 @@ public class BlightBranchesTests
     [TestMethod]
     public void AttachUnassignedLanes_LeavesDistantMisalignedFragmentUnassigned()
     {
-        // Fragment runs perpendicular to the branch lane: near enough for distance but beyond the
-        // close-gap tier (30u), so the strict alignment gate rejects it.
+        // Fragment runs perpendicular to the branch lane: near enough for distance but beyond the close-gap tier (30u), so the strict alignment gate rejects it.
         LaneCoverageResult[] coverage = Coverage(-2, 0, 1, -2, 3, 4);
         List<NumVector2> positions = Positions((0, 0), (10, 0), (20, 0), (20, 30), (20, 40), (20, 50));
         var branches = new List<PumpBranch> { new(1, new NumVector2(0, 0)) };
@@ -164,8 +152,7 @@ public class BlightBranchesTests
     [TestMethod]
     public void AttachUnassignedLanes_WithOnlyCachedAnchor_AttachesNothing()
     {
-        // An anchor-only branch (CoverageSegment < 0) claims no segments, so there is no target
-        // to attach to and the coverage stays untouched.
+        // An anchor-only branch (CoverageSegment < 0) claims no segments, so there is no target to attach to and the coverage stays untouched.
         LaneCoverageResult[] coverage = Coverage(-2, 0, 1);
         List<NumVector2> positions = Positions((0, 0), (10, 0), (20, 0));
         var branches = new List<PumpBranch> { new(-1, new NumVector2(5, 5)) };
@@ -180,10 +167,7 @@ public class BlightBranchesTests
     [TestMethod]
     public void AttachParallelLanes_AttachesParallelRowToLane()
     {
-        // Branch A = lane 0->1->2 running east. A second row (3->4->5) travels parallel, offset
-        // only 3u north — the game laid the same lane twice. The lane-end pass cannot attach it
-        // (its head is beside the lane, not at a lane end), so the parallel pass re-parents the row
-        // onto the parallel lane segment.
+        // Branch A = lane 0->1->2 running east. A second row (3->4->5) travels parallel, offset only 3u north — the game laid the same lane twice. The lane-end pass cannot attach it (its head is beside the lane, not at a lane end), so the parallel pass re-parents the row onto the parallel lane segment.
         LaneCoverageResult[] coverage = Coverage(-2, 0, 1, -2, 3, 4);
         List<NumVector2> positions = Positions((0, 0), (10, 0), (20, 0), (10, 3), (20, 3), (30, 3));
         var branches = new List<PumpBranch> { new(1, new NumVector2(0, 0)) };
@@ -198,8 +182,7 @@ public class BlightBranchesTests
     [TestMethod]
     public void AttachParallelLanes_AttachesAntiParallelRowToLane()
     {
-        // The same stacked row laid in the REVERSE direction (monsters can walk either way): the
-        // parallel gate uses |cos|, so an anti-parallel row still merges into the lane.
+        // The same stacked row laid in the REVERSE direction (monsters can walk either way): the parallel gate uses |cos|, so an anti-parallel row still merges into the lane.
         LaneCoverageResult[] coverage = Coverage(-2, 0, 1, -2, 3, 4);
         List<NumVector2> positions = Positions((0, 0), (10, 0), (20, 0), (30, 3), (20, 3), (10, 3));
         var branches = new List<PumpBranch> { new(1, new NumVector2(0, 0)) };
@@ -214,8 +197,7 @@ public class BlightBranchesTests
     [TestMethod]
     public void AttachParallelLanes_LeavesPerpendicularRowUnassigned()
     {
-        // A nearby but PERPENDICULAR row is a crossing lane, not a stacked duplicate — the parallel
-        // gate rejects it and the chain stays unassigned.
+        // A nearby but PERPENDICULAR row is a crossing lane, not a stacked duplicate — the parallel gate rejects it and the chain stays unassigned.
         LaneCoverageResult[] coverage = Coverage(-2, 0, 1, -2, 3, 4);
         List<NumVector2> positions = Positions((0, 0), (10, 0), (20, 0), (10, 3), (10, 13), (10, 23));
         var branches = new List<PumpBranch> { new(1, new NumVector2(0, 0)) };

@@ -707,8 +707,7 @@ namespace ClickIt.Tests.Features.Observability.Performance
             stats.SampleCount.Should().Be(1000);
             stats.LastMs.Should().Be(2.0);
             stats.MaxMs.Should().Be(2.0);
-            // The 1000-sample cap drops the first sample and the average covers only the most recent
-            // 50 samples (49×1.0 + 1×2.0) so the table reacts quickly instead of averaging everything.
+            // The 1000-sample cap drops the first sample and the average covers only the most recent 50 samples (49×1.0 + 1×2.0) so the table reacts quickly instead of averaging everything.
             stats.AverageMs.Should().BeApproximately(1.02, 0.0001);
         }
 

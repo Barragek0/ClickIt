@@ -1,8 +1,6 @@
 namespace ClickIt.Shared.Diagnostics;
 
-// Deduplicating event buffer for debug "Recent Events"/"Recent Stages" lists. Repeated messages
-// collapse into a single entry with an (xN) suffix (timestamp ignored when matching), so hot
-// loops show as one accumulating entry instead of flooding the list.
+// Deduplicating event buffer for debug "Recent Events"/"Recent Stages" lists. Repeated messages collapse into a single entry with an (xN) suffix (timestamp ignored when matching), so hot loops show as one accumulating entry instead of flooding the list.
 internal sealed class DedupEventBuffer
 {
     private readonly List<string> _events = new(16);
@@ -15,10 +13,7 @@ internal sealed class DedupEventBuffer
 
     internal IReadOnlyList<string> Events
     {
-        // Snapshot under the same lock the writer holds: the debug overlay reads this from the
-        // render thread while the blight refresh / executor writes from the loop thread, and a
-        // shared live List would race (collection-modified corruption). The copy is only taken when
-        // the overlay actually renders, so the hot write path is unaffected.
+        // Snapshot under the same lock the writer holds: the debug overlay reads this from the render thread while the blight refresh / executor writes from the loop thread, and a shared live List would race (collection-modified corruption). The copy is only taken when the overlay actually renders, so the hot write path is unaffected.
         get
         {
             lock (_events)

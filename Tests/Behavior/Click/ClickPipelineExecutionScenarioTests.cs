@@ -1,8 +1,6 @@
 namespace ClickIt.Tests.Behavior.Click
 {
-    // End-to-end execution scenarios: the REAL InteractionExecutionEngine with the REAL
-    // LabelClickPointResolver and clickable-area predicate. Verifies the click-vs-walk decision for
-    // on-screen strongboxes and items, including partially/fully obscured labels and locked boxes.
+    // End-to-end execution scenarios: the REAL InteractionExecutionEngine with the REAL LabelClickPointResolver and clickable-area predicate. Verifies the click-vs-walk decision for on-screen strongboxes and items, including partially/fully obscured labels and locked boxes.
     [TestClass]
     public class ClickPipelineExecutionScenarioTests
     {
@@ -31,6 +29,9 @@ namespace ClickIt.Tests.Behavior.Click
 
         private static DecisionResult GroundItemsDecision()
             => new(TrySettlers: false, TryLostShipment: false, TryShrine: false, GroundItemsVisible: true);
+
+        private static DecisionResult HiddenGroundItemsDecision()
+            => new(TrySettlers: false, TryLostShipment: false, TryShrine: false, GroundItemsVisible: false);
 
         [TestMethod]
         public void UnobscuredStrongboxOnScreen_IsClickedInPlace()
@@ -118,8 +119,7 @@ namespace ClickIt.Tests.Behavior.Click
             var labels = new List<LabelOnGround> { locked, item };
             harness.CurrentLabels = labels;
 
-            // The engine is handed the open item as the next label (as the selection scan would
-            // after skipping the locked box) and must click it.
+            // The engine is handed the open item as the next label (as the selection scan would after skipping the locked box) and must click it.
             ExecutionResult result = harness.ExecutionEngine.Execute(
                 harness.CreateContext(groundItemsVisible: true, allLabels: labels),
                 harness.CreateCandidates(item, MechanicIds.Items),
@@ -342,12 +342,63 @@ namespace ClickIt.Tests.Behavior.Click
         }
 
         [TestMethod]
+        public void LabelBeyondClickDistance_IsWalkedTo_NotClicked()
+        {
+            // Spec 11: a label beyond ClickDistance is walked to even when its click point resolves. The scan normally filters far labels at eligibility, but a hover-preference or hidden path can surface one here - it must never be clicked in place.
+            var harness = new ClickPipelineScenarioFactory.ScenarioHarness(BaseConfig());
+            RectangleF rect = new(500f, 300f, 160f, 40f);
+            LabelOnGround box = Strongbox(150f, 0x01, locked: false, rect); // beyond ClickDistance 100
+            var labels = new List<LabelOnGround> { box };
+            harness.CurrentLabels = labels;
+
+            ExecutionResult result = harness.ExecutionEngine.Execute(
+                harness.CreateContext(groundItemsVisible: true, allLabels: labels),
+                harness.CreateCandidates(box, MechanicIds.Strongboxes),
+                GroundItemsDecision());
+
+            result.ShouldRunPostActions.Should().BeFalse("a label beyond ClickDistance is walked to, never clicked");
+            harness.InteractionsExecuted.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void HiddenPath_LabelPresent_NeverClickedBlind()
+        {
+            // Spec 6: hidden mode never clicks a label blind - it only walks toward the nearest target; the visible path handles clicks once labels are visible again.
+            var harness = new ClickPipelineScenarioFactory.ScenarioHarness(BaseConfig());
+            RectangleF rect = new(500f, 300f, 160f, 40f);
+            LabelOnGround box = Strongbox(30f, 0x01, locked: false, rect);
+            var labels = new List<LabelOnGround> { box };
+            harness.CurrentLabels = labels;
+
+            ExecutionResult result = harness.ExecutionEngine.Execute(
+                harness.CreateContext(groundItemsVisible: false, allLabels: labels),
+                harness.CreateCandidates(box, MechanicIds.Strongboxes),
+                HiddenGroundItemsDecision());
+
+            result.ShouldRunPostActions.Should().BeFalse("hidden mode never clicks - the visible path handles clicks");
+            harness.InteractionsExecuted.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void HiddenPath_NoLabel_NoClickNoWalkFallback()
+        {
+            var harness = new ClickPipelineScenarioFactory.ScenarioHarness(BaseConfig());
+            harness.CurrentLabels = [];
+
+            ExecutionResult result = harness.ExecutionEngine.Execute(
+                harness.CreateContext(groundItemsVisible: false, allLabels: []),
+                harness.CreateCandidates(null, null),
+                HiddenGroundItemsDecision());
+
+            result.ShouldRunPostActions.Should().BeFalse();
+            result.DidActionableWork.Should().BeFalse("with ground items hidden and no candidate the tick does nothing");
+            harness.InteractionsExecuted.Should().Be(0);
+        }
+
+        [TestMethod]
         public void EndToEnd_LockedStrongboxOnScreen_ClosestOpenStrongboxClicked_NotWalked()
         {
-            // The exact reported scenario: two strongboxes partially overlapping on screen, one
-            // locked, items spread around. With penalty 0 the closest clickable label must be
-            // clicked - the plugin must NOT walk to a farther strongbox while an open one is on
-            // screen in a clickable position.
+            // The exact reported scenario: two strongboxes partially overlapping on screen, one locked, items spread around. With penalty 0 the closest clickable label must be clicked - the plugin must NOT walk to a farther strongbox while an open one is on screen in a clickable position.
             var harness = new ClickPipelineScenarioFactory.ScenarioHarness(BaseConfig());
             RectangleF lockedRect = new(500f, 300f, 160f, 40f);
             RectangleF openRect = new(580f, 310f, 160f, 40f); // partially overlaps lockedRect
@@ -375,9 +426,7 @@ namespace ClickIt.Tests.Behavior.Click
         [TestMethod]
         public void EndToEnd_CursorOverLockedStrongbox_OpenStrongboxClicked_NotWalked()
         {
-            // The exact reported failure: two strongboxes partially overlapping on screen, cursor
-            // over the LOCKED one. The UI-hover strongbox preference must not re-target the locked
-            // box - the open strongbox must be clicked in place, never walked to.
+            // The exact reported failure: two strongboxes partially overlapping on screen, cursor over the LOCKED one. The UI-hover strongbox preference must not re-target the locked box - the open strongbox must be clicked in place, never walked to.
             var harness = new ClickPipelineScenarioFactory.ScenarioHarness(BaseConfig());
             RectangleF lockedRect = new(500f, 300f, 160f, 40f);
             RectangleF openRect = new(580f, 310f, 160f, 40f); // partially overlaps lockedRect
@@ -407,8 +456,7 @@ namespace ClickIt.Tests.Behavior.Click
         [TestMethod]
         public void EndToEnd_CursorOverOpenStrongbox_OpenStrongboxStillClicked()
         {
-            // Cursor over an OPEN strongbox that overlaps another open one: the UI-hover preference
-            // selects it and it is clicked - the stacked-label behavior is preserved end to end.
+            // Cursor over an OPEN strongbox that overlaps another open one: the UI-hover preference selects it and it is clicked - the stacked-label behavior is preserved end to end.
             var harness = new ClickPipelineScenarioFactory.ScenarioHarness(BaseConfig());
             RectangleF aRect = new(500f, 300f, 160f, 40f);
             RectangleF bRect = new(580f, 310f, 160f, 40f); // partially overlaps aRect
@@ -461,11 +509,7 @@ namespace ClickIt.Tests.Behavior.Click
         [TestMethod]
         public void EndToEnd_AfterStrongboxLocks_NextRunClicksNextClosest_InsteadOfWalkingToFarBox()
         {
-            // The reported sequence: strongbox A is open and closest -> selected and clicked. A
-            // opens and becomes locked, but the label-list reference is STABLE (the lock state does
-            // not change the label set), so the selection caches still hold A. The very next run
-            // must click the next closest clickable label (B) - it must NOT walk to the far box C
-            // (beyond click distance) while B is on screen and clickable.
+            // The reported sequence: strongbox A is open and closest -> selected and clicked. A opens and becomes locked, but the label-list reference is STABLE (the lock state does not change the label set), so the selection caches still hold A. The very next run must click the next closest clickable label (B) - it must NOT walk to the far box C (beyond click distance) while B is on screen and clickable.
             var harness = new ClickPipelineScenarioFactory.ScenarioHarness(BaseConfig());
             var boxA = (EntityProbe)ClickPipelineScenarioFactory.CreateStrongbox(
                 "Metadata/Chests/StrongBoxes/Arcanist", 10f, 0x01, locked: false);
@@ -484,8 +528,7 @@ namespace ClickIt.Tests.Behavior.Click
             // A opens and becomes locked; the label set (and its reference) is unchanged.
             EntityProbeFactory.WithComponent<Chest>(boxA, new LockedChestProbe { IsLocked = true });
 
-            // Next run: the scan must NOT return A, and must pick the next closest clickable (B),
-            // never leaving B behind to walk to the far box C.
+            // Next run: the scan must NOT return A, and must pick the next closest clickable (B), never leaving B behind to walk to the far box C.
             LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels);
             next.Should().BeSameAs(b, "after the closest strongbox locks, the next closest clickable must be selected");
             string? mechanic = harness.LabelInteractionPort.GetMechanicIdForLabel(next);

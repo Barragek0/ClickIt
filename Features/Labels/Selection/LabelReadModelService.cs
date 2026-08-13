@@ -103,8 +103,7 @@ namespace ClickIt.Features.Labels.Selection
                 long totalBytes = readBytes + listAllocBytes + validityBytes + sortBytes;
                 breakdown = new LabelScanAllocationBreakdown(readBytes, listAllocBytes, validityBytes, sortBytes, totalBytes);
 
-                // Same instance while the visible label set is unchanged so downstream caches that
-                // key on the list reference only re-run on real label-set changes.
+                // Same instance while the visible label set is unchanged so downstream caches that key on the list reference only re-run on real label-set changes.
                 return _stableSet.Resolve(validLabels);
             }
             finally
@@ -124,8 +123,7 @@ namespace ClickIt.Features.Labels.Selection
             return distance;
         }
 
-        // Every valid label was just cached by the scan loop above, so this is a dictionary hit per
-        // label; the fallback keeps the sort safe if a label was added by another path.
+        // Every valid label was just cached by the scan loop above, so this is a dictionary hit per label; the fallback keeps the sort safe if a label was added by another path.
         private float ResolveCachedLabelDistance(LabelOnGround label)
         {
             if (_labelDataCache.TryGetValue(label.Address, out CachedLabelData cached))

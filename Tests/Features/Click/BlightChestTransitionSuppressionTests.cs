@@ -94,8 +94,7 @@ public class BlightChestTransitionSuppressionTests
         suppression.ShouldSuppressBlightChestClick(label, now: 2_000).Should().BeTrue("the first false -> true transition arms the blacklist");
         suppression.ShouldSuppressBlightChestClick(label, now: 4_500).Should().BeFalse("the blacklist is released once the window elapses");
 
-        // The blacklist is never re-armed after the first transition, even while the flag stays set
-        // or toggles back to true — post-first-click transitions cannot be detected.
+        // The blacklist is never re-armed after the first transition, even while the flag stays set or toggles back to true — post-first-click transitions cannot be detected.
         suppression.ShouldSuppressBlightChestClick(label, now: 5_000).Should().BeFalse();
         item.IsTransitioned = false;
         suppression.ShouldSuppressBlightChestClick(label, now: 5_500).Should().BeFalse();

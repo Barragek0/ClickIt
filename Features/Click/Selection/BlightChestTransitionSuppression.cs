@@ -8,8 +8,7 @@ internal sealed class BlightChestTransitionSuppression
     // Entity address -> earliest time the chest may be clicked again (TickCount64).
     private readonly Dictionary<long, long> _noClickUntilMs = [];
 
-    // Entity addresses that already had their false -> true transition. The blacklist is armed once
-    // on that edge and never again, so these never re-arm.
+    // Entity addresses that already had their false -> true transition. The blacklist is armed once on that edge and never again, so these never re-arm.
     private readonly HashSet<long> _everTransitioned = [];
 
     internal bool ShouldSuppressBlightChestClick(LabelOnGround? label)
@@ -35,8 +34,7 @@ internal sealed class BlightChestTransitionSuppression
             ? address
             : 0;
 
-        // Fail open when the address cannot be read: key 0 is shared by every unreadable chest, so
-        // suppressing on it would cross-suppress all unreadable chests for SuppressionDurationMs.
+        // Fail open when the address cannot be read: key 0 is shared by every unreadable chest, so suppressing on it would cross-suppress all unreadable chests for SuppressionDurationMs.
         if (key == 0)
             return false;
 

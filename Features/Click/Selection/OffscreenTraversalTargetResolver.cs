@@ -17,22 +17,12 @@ namespace ClickIt.Features.Click.Selection
     {
         private readonly OffscreenTraversalTargetResolverDependencies _dependencies = dependencies;
 
-        // Offscreen-walkable structures (eldritch altars, area transitions, shrines) are retained by
-        // the shared EntityEventHub with ONE subscription and ONE path read per event. The
-        // resolution re-reads each retained entity's fresh dynamic state
-        // (distance/targetable/clickable) because that changes in place and does not fire events.
-        // The offscreen walk-target scan runs every click tick whenever no label is clickable and
-        // walks all enabled entity categories (altars/shrines/transitions) with per-entity DLR reads
-        // — the dominant click-processing cost in that state. Cache the resolution for a short window;
-        // entities stream in/out within 250ms and the sticky-target gate bounds walk decisions.
+        // Offscreen-walkable structures (eldritch altars, area transitions, shrines) are retained by the shared EntityEventHub with ONE subscription and ONE path read per event. The resolution re-reads each retained entity's fresh dynamic state (distance/targetable/clickable) because that changes in place and does not fire events. The offscreen walk-target scan runs every click tick whenever no label is clickable and walks all enabled entity categories (altars/shrines/transitions) with per-entity DLR reads — the dominant click-processing cost in that state. Cache the resolution for a short window; entities stream in/out within 250ms and the sticky-target gate bounds walk decisions.
         private Entity? _cachedWalkTarget;
         private long _cachedWalkTargetAtMs;
         private const long OffscreenTargetCacheWindowMs = 250;
 
-        // Retains any entity that could be an offscreen walk target: an eldritch altar (path marker),
-        // an area transition (type or path marker), or a shrine (path marker). One path read + type
-        // read per EntityAdded keeps the event handler cheap. The per-category resolution still
-        // applies its own targetable/clickable filters on top of this coarse retained set.
+        // Retains any entity that could be an offscreen walk target: an eldritch altar (path marker), an area transition (type or path marker), or a shrine (path marker). One path read + type read per EntityAdded keeps the event handler cheap. The per-category resolution still applies its own targetable/clickable filters on top of this coarse retained set.
         internal static bool IsOffscreenWalkableStructure(Entity entity)
         {
             if (entity == null)
@@ -156,7 +146,15 @@ namespace ClickIt.Features.Click.Selection
 
             _dependencies.DebugLog?.Invoke($"[TraversalResolver] ResolveNearestOffscreenLabelBackedTarget: scanning {labels.Count} cached labels");
 
-            RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
+            RectangleF windowArea;
+            try
+            {
+                windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
+            }
+            catch
+            {
+                windowArea = default;
+            }
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
 
             _dependencies.MechanicPriorityContextProvider.Refresh();
@@ -274,16 +272,13 @@ namespace ClickIt.Features.Click.Selection
             List<Entity> structures = EntityEventHub.Instance.OffscreenStructures.Snapshot();
             if (structures.Count > 0)
             {
-                // Event-maintained retained set: only the fixed offscreen structures, not every
-                // entity in the area. Far-away structures survive stream-out (the retained cache),
-                // so offscreen targets are found without the full valid-entity walk.
+                // Event-maintained retained set: only the fixed offscreen structures, not every entity in the area. Far-away structures survive stream-out (the retained cache), so offscreen targets are found without the full valid-entity walk.
                 for (int i = 0; i < structures.Count; i++)
                     Consider(structures[i]);
             }
             else
             {
-                // Discovery fallback (only when nothing is retained yet): a stale/unseeded retained
-                // cache or structures that appeared after the last reseed.
+                // Discovery fallback (only when nothing is retained yet): a stale/unseeded retained cache or structures that appeared after the last reseed.
                 EntityQueryService.VisitValidEntities(_dependencies.GameController, entity =>
                 {
                     Consider(entity);

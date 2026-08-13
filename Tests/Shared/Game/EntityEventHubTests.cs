@@ -1,7 +1,6 @@
 namespace ClickIt.Tests.Shared.Game
 {
-    // The shared EntityEventHub is a static singleton, so this class resets it and must not run in
-    // parallel with any other hub consumer.
+    // The shared EntityEventHub is a static singleton, so this class resets it and must not run in parallel with any other hub consumer.
     [TestClass]
     [DoNotParallelize]
     public class EntityEventHubTests
@@ -57,8 +56,7 @@ namespace ClickIt.Tests.Shared.Game
         [TestMethod]
         public void Reseed_ClassifiesShroudedShrine_IntoShrinesAndOffscreenStructures()
         {
-            // Current-league shrines (Shrouded Shrine) carry the Shrine component but their path has
-            // no "DarkShrine" marker; the hub must retain them as shrines and offscreen structures.
+            // Current-league shrines (Shrouded Shrine) carry the Shrine component but their path has no "DarkShrine" marker; the hub must retain them as shrines and offscreen structures.
             Entity shrine = EntityProbeFactory.Create(path: "Metadata/MiscellaneousObjects/ShroudedShrine");
             EntityProbeFactory.WithComponent<Shrine>(shrine, (Shrine)RuntimeHelpers.GetUninitializedObject(typeof(Shrine)));
             GameController gc = ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(shrine);
@@ -74,8 +72,7 @@ namespace ClickIt.Tests.Shared.Game
         [TestMethod]
         public void Reseed_ShrineHintedPath_WithoutShrineComponent_IsNotClassified()
         {
-            // A monster whose path merely mentions "Shrine" (e.g. Shrine Daemon) has no Shrine
-            // component and must not be retained as a shrine or offscreen structure.
+            // A monster whose path merely mentions "Shrine" (e.g. Shrine Daemon) has no Shrine component and must not be retained as a shrine or offscreen structure.
             Entity daemon = EntityProbeFactory.Create(path: "Metadata/Monsters/ShrineDaemon");
             GameController gc = ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(daemon);
 

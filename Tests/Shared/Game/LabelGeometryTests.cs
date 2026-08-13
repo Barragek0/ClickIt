@@ -89,8 +89,7 @@ namespace ClickIt.Tests.Shared.Game
         [TestMethod]
         public void SortLabelsByDistance_SortsByPrecomputedDistances()
         {
-            // Distances are read once up front (not per comparison), but the ordering contract is
-            // unchanged: nearest label first.
+            // Distances are read once up front (not per comparison), but the ordering contract is unchanged: nearest label first.
             LabelOnGround far = OffscreenStickyTargetGraphShaper.CreateVisibleLabel(EntityProbeFactory.Create("Metadata/A", address: 0x101, distancePlayer: 50f));
             LabelOnGround near = OffscreenStickyTargetGraphShaper.CreateVisibleLabel(EntityProbeFactory.Create("Metadata/B", address: 0x202, distancePlayer: 10f));
             LabelOnGround mid = OffscreenStickyTargetGraphShaper.CreateVisibleLabel(EntityProbeFactory.Create("Metadata/C", address: 0x303, distancePlayer: 30f));

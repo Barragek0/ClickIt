@@ -76,8 +76,7 @@ namespace ClickIt.Features.Strongboxes
                 return;
             }
 
-            // The refresh runs every frame; the expensive scan only re-runs when the label snapshot
-            // or the render state (settings) actually changed.
+            // The refresh runs every frame; the expensive scan only re-runs when the label snapshot or the render state (settings) actually changed.
             if (ReferenceEquals(_lastScannedLabels, ctx.Labels)
                 && _lastScannedCount == (ctx.Labels?.Count ?? 0)
                 && _lastScannedRenderState == renderState)
@@ -131,11 +130,7 @@ namespace ClickIt.Features.Strongboxes
 
         private static bool TryResolveStrongboxRect(CachedStrongbox sb, RectangleF windowArea, bool chestLocked, out RectangleF rect)
         {
-            // Unopened (green) boxes hug the label's Child[0] text frame, resolved fresh each frame
-            // so the box tracks the moving label with no scan latency; opened (red) boxes use the
-            // label element rect because the child frame is rebuilt when the strongbox opens. A child
-            // that is still being laid out (label entering/leaving the screen) reports its local rect
-            // instead of its on-screen position — reject it unless it sits within the label element.
+            // Unopened (green) boxes hug the label's Child[0] text frame, resolved fresh each frame so the box tracks the moving label with no scan latency; opened (red) boxes use the label element rect because the child frame is rebuilt when the strongbox opens. A child that is still being laid out (label entering/leaving the screen) reports its local rect instead of its on-screen position — reject it unless it sits within the label element.
             if (!chestLocked
                 && TryResolveFreshChildLabelRect(sb.Label, windowArea, out rect)
                 && IsPositionedRect(rect)
@@ -146,8 +141,7 @@ namespace ClickIt.Features.Strongboxes
                 return true;
             }
 
-            // A mid-layout label element briefly reports a rect in the window's top-left corner; skip
-            // it so the frame doesn't flash there before the layout settles.
+            // A mid-layout label element briefly reports a rect in the window's top-left corner; skip it so the frame doesn't flash there before the layout settles.
             return LabelGeometry.TryGetLabelRectOnScreen(sb.Label, windowArea, out rect)
                 && IsPositionedRect(rect);
         }
@@ -179,9 +173,7 @@ namespace ClickIt.Features.Strongboxes
             return expanded.Intersects(childRect);
         }
 
-        // The scan caches strongboxes by label identity (position-independent); the per-frame draw
-        // projects each cached label's rect and culls to the window, so any partially visible
-        // strongbox renders the moment its label is on screen — no rescan required.
+        // The scan caches strongboxes by label identity (position-independent); the per-frame draw projects each cached label's rect and culls to the window, so any partially visible strongbox renders the moment its label is on screen — no rescan required.
         private static List<CachedStrongbox> ScanStrongboxes(
             IReadOnlyList<LabelOnGround>? labels,
             StrongboxRenderState renderState)

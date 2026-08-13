@@ -2,10 +2,7 @@ namespace ClickIt.Shared.Game
 {
     internal readonly record struct RecommendedSettingChange(string Name, string CurrentText, string NewText);
 
-    // Opt-in helper that writes ClickIt's recommended ExileAPI performance settings into the LIVE
-    // CorePerformanceSettings nodes. Editing ExileAPI's settings.json directly does not work while
-    // running (the values are already loaded in memory and ExileAPI rewrites the file on shutdown),
-    // but the live nodes take effect immediately and are persisted by ExileAPI on exit.
+    // Opt-in helper that writes ClickIt's recommended ExileAPI performance settings into the LIVE CorePerformanceSettings nodes. Editing ExileAPI's settings.json directly does not work while running (the values are already loaded in memory and ExileAPI rewrites the file on shutdown), but the live nodes take effect immediately and are persisted by ExileAPI on exit.
     internal static class ExileCorePerformanceApplier
     {
         private const int RecommendedTargetFps = 70;
@@ -23,8 +20,7 @@ namespace ClickIt.Shared.Game
 
         internal static bool SuppressSetupUntilReload => s_suppressSetupUntilReload;
 
-        // Returns null when the current values cannot be read, an empty list when everything is
-        // already at the recommended values, or the list of changes that apply would make.
+        // Returns null when the current values cannot be read, an empty list when everything is already at the recommended values, or the list of changes that apply would make.
         internal static List<RecommendedSettingChange>? GetRecommendedChanges()
         {
             GameController? gameController = s_gameControllerProvider?.Invoke();

@@ -1,10 +1,6 @@
 namespace ClickIt.Features.Observability.Performance
 {
-    // Time-window sample buffer shared by the render and processing metric stores: every sample
-    // expires 10 seconds after it was recorded, so a section that stops recording drains to zero
-    // instead of reporting a stale all-time average/max. Last/Average/Max cover the live samples
-    // only. Locked because label-scan processing can be recorded from any coroutine that touches
-    // CachedLabels.Value, unlike render sections which are render-thread only.
+    // Time-window sample buffer shared by the render and processing metric stores: every sample expires 10 seconds after it was recorded, so a section that stops recording drains to zero instead of reporting a stale all-time average/max. Last/Average/Max cover the live samples only. Locked because label-scan processing can be recorded from any coroutine that touches CachedLabels.Value, unlike render sections which are render-thread only.
     internal sealed class RollingSampleBuffer
     {
         private readonly ExpiringSampleBuffer _samples;

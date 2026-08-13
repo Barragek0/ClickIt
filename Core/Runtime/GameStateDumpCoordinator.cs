@@ -1,7 +1,6 @@
 namespace ClickIt.Core.Runtime;
 
-// The debug-settings dump areas: one root object (or service group) per entry, resolved from the
-// GameController / plugin composition root when the dump runs.
+// The debug-settings dump areas: one root object (or service group) per entry, resolved from the GameController / plugin composition root when the dump runs.
 internal enum GameStateDumpTarget
 {
     Cache,
@@ -13,8 +12,7 @@ internal enum GameStateDumpTarget
     UiHover,
 }
 
-// Read-only snapshot of a dump run for the debug-settings panel: progress fraction, status text,
-// recent steps, and any per-area errors surfaced beneath the controls.
+// Read-only snapshot of a dump run for the debug-settings panel: progress fraction, status text, recent steps, and any per-area errors surfaced beneath the controls.
 internal readonly record struct GameStateDumpSnapshot(
     bool InProgress,
     int ProgressPercent,
@@ -22,11 +20,7 @@ internal readonly record struct GameStateDumpSnapshot(
     IReadOnlyList<string> Errors,
     IReadOnlyList<string> Steps);
 
-// Background game-state dumper, reachable from the debug settings panel: pick one area (or Dump
-// all) and each area's structure-first report is streamed into a dump file next to the plugin,
-// so the report is never held in memory in full and the clipboard's size limit cannot silently
-// truncate it. Progress, recent steps, and errors are published for the settings panel. The whole
-// surface (UI + trigger) is gated behind Enabled, so it can be switched off from one place.
+// Background game-state dumper, reachable from the debug settings panel: pick one area (or Dump all) and each area's structure-first report is streamed into a dump file next to the plugin, so the report is never held in memory in full and the clipboard's size limit cannot silently truncate it. Progress, recent steps, and errors are published for the settings panel. The whole surface (UI + trigger) is gated behind Enabled, so it can be switched off from one place.
 internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies dependencies)
 {
     // Code switch: the debug-settings dump controls only render when this is true.
@@ -35,18 +29,7 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
     private const int MaxSteps = 64;
     private const long StallMs = 15000;
 
-    // Comprehensive dump profile: the game object graph contains multi-MB members whose reflection
-    // reads would otherwise be staged and retained by the traversal — those are skipped outright
-    // (pathfinding grids, dat files, label lists: data we don't need for a state overview). Entity
-    // lists ARE walked, and every entity node additionally dumps its game components (Beam,
-    // Positioned, Render, ...) via ExtractEntityComponents, like the old EntityListWrapper dump.
-    // Back-references (element parent/root chains, game/player singletons, hovered/owned targets)
-    // point at already-walked parts of the graph and are skipped so the walk terminates. The node
-    // and elapsed bounds turn an unbounded game graph into a dump that always finishes.
-    // Entity components that only carry rendering/animation noise (the Actor subtree alone dwarfs
-    // every other component combined) are never added as dump children. Gameplay-relevant
-    // components (Render, Positioned, Stats, Life, Monster, BlightTower, Beam, Pathfinding, ...)
-    // are still included.
+    // Comprehensive dump profile: the game object graph contains multi-MB members whose reflection reads would otherwise be staged and retained by the traversal — those are skipped outright (pathfinding grids, dat files, label lists: data we don't need for a state overview). Entity lists ARE walked, and every entity node additionally dumps its game components (Beam, Positioned, Render, ...) via ExtractEntityComponents, like the old EntityListWrapper dump. Back-references (element parent/root chains, game/player singletons, hovered/owned targets) point at already-walked parts of the graph and are skipped so the walk terminates. The node and elapsed bounds turn an unbounded game graph into a dump that always finishes. Entity components that only carry rendering/animation noise (the Actor subtree alone dwarfs every other component combined) are never added as dump children. Gameplay-relevant components (Render, Positioned, Stats, Life, Monster, BlightTower, Beam, Pathfinding, ...) are still included.
     private static readonly HashSet<string> SkippedComponentTypes = new(StringComparer.Ordinal)
     {
         "Actor",
@@ -81,14 +64,10 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
             "Game",
             "Player",
             "HoveredItem",
-            // Entity-in-entity recursion: every buff re-expands the entity that applied it (its own
-            // buffs -> source entities -> ...) and the Animated component re-expands a full entity.
-            // Skipping these two members keeps the Buffs/Animated data but stops the exponential
-            // re-walk that dominates the dump.
+            // Entity-in-entity recursion: every buff re-expands the entity that applied it (its own buffs -> source entities -> ...) and the Animated component re-expands a full entity. Skipping these two members keeps the Buffs/Animated data but stops the exponential re-walk that dominates the dump.
             "SourceEntity",
             "BaseAnimatedObjectEntity",
-            // Pure animation state under the Actor component, and area relation lists that re-expand
-            // whole WorldAreas.
+            // Pure animation state under the Actor component, and area relation lists that re-expand whole WorldAreas.
             "AnimationController",
             "Connections",
         ]);
@@ -177,9 +156,7 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
 
     private IEnumerator DumpCoroutine(GameStateDumpTarget[] targets)
     {
-        // Stream every area's report straight into a dump file next to the plugin, so the report is
-        // never held in memory in full and cannot be silently truncated by the clipboard's size
-        // limit; the coroutine yields between node slices, keeping the runner responsive.
+        // Stream every area's report straight into a dump file next to the plugin, so the report is never held in memory in full and cannot be silently truncated by the clipboard's size limit; the coroutine yields between node slices, keeping the runner responsive.
         string dumpName = targets.Length == 1 ? targets[0].ToString() : "All";
         string dumpPath = Path.Combine(PluginDirectory, $"{dumpName}-{DateTime.Now:yyyyMMdd-HHmmss}.txt");
         StreamWriter? writer = null;
@@ -287,8 +264,7 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
         lock (_stateLock) return _cancelRequested;
     }
 
-    // Records one dump slice (a bounded traversal chunk) into the GameStateDump processing section
-    // so the debug tables show how much CPU + allocation the dump actually consumes while running.
+    // Records one dump slice (a bounded traversal chunk) into the GameStateDump processing section so the debug tables show how much CPU + allocation the dump actually consumes while running.
     private void RecordDumpSlice(long sliceStartTimestamp, long sliceAllocStart)
     {
         PerformanceMonitor? monitor = _dependencies.State.Services.PerformanceMonitor;
@@ -317,9 +293,7 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
         }
     }
 
-    // Entity nodes expose their game components (Beam, Positioned, Render, ...) through CacheComp;
-    // the generic traversal cannot see them, so they are supplied as extra children the same way
-    // the old EntityListWrapper dump did.
+    // Entity nodes expose their game components (Beam, Positioned, Render, ...) through CacheComp; the generic traversal cannot see them, so they are supplied as extra children the same way the old EntityListWrapper dump did.
     private static List<(string Name, object? Value)>? ExtractEntityComponents(object value)
     {
         if (value is not Entity entity)
@@ -339,9 +313,7 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
         return extras;
     }
 
-    // The plugin's own folder (ExileCore sets DirectoryFullName to the plugin directory); dump
-    // files land here next to the DLL. Falls back to the assembly folder for hosts that never
-    // initialized the plugin directory (e.g. tests).
+    // The plugin's own folder (ExileCore sets DirectoryFullName to the plugin directory); dump files land here next to the DLL. Falls back to the assembly folder for hosts that never initialized the plugin directory (e.g. tests).
     private string PluginDirectory
     {
         get

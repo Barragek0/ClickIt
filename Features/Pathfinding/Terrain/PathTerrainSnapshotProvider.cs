@@ -4,17 +4,14 @@ namespace ClickIt.Features.Pathfinding.Terrain
     {
         internal Vector2i AreaDims;
         internal long AreaHash;
-        // The RAW pathfinding grid's dimensions — the authoritative, stable cache key. AreaDimensions
-        // is unreliable as a key (it reads differently for the same area), and the walkable grid is
-        // built from RawPathfindingData, so its real shape must drive the cache comparison.
+        // The RAW pathfinding grid's dimensions — the authoritative, stable cache key. AreaDimensions is unreliable as a key (it reads differently for the same area), and the walkable grid is built from RawPathfindingData, so its real shape must drive the cache comparison.
         internal int GridWidth;
         internal int GridHeight;
         internal bool[][]? Walkable;
         internal object? DataOwner;
         // IngameData.Address is the authoritative per-area cache key (the wrapper churns every ~25ms and can flap in-map).
         internal long DataOwnerAddress;
-        // Candidate owner observed after a key change; the rebuild waits TerrainRebuildConfirmMs to
-        // confirm the address really moved (real area change) rather than flapped back.
+        // Candidate owner observed after a key change; the rebuild waits TerrainRebuildConfirmMs to confirm the address really moved (real area change) rather than flapped back.
         internal long PendingOwnerAddress;
         internal long PendingAtMs;
         // Rebuilds caused purely by wrapper recreation (same address, different reference).
@@ -23,9 +20,7 @@ namespace ClickIt.Features.Pathfinding.Terrain
 
     internal static class PathTerrainSnapshotProvider
     {
-        // A raw terrain rebuild is ~30MB (RawPathfindingData + walkable grid). The IngameData
-        // address can flap for a few frames in-map without a real area change; hold the existing
-        // grid this long before committing a rebuild so transient churn never pays that cost.
+        // A raw terrain rebuild is ~30MB (RawPathfindingData + walkable grid). The IngameData address can flap for a few frames in-map without a real area change; hold the existing grid this long before committing a rebuild so transient churn never pays that cost.
         private const long TerrainRebuildConfirmMs = 150;
 
         internal static bool TryRefreshTerrainData(GameController gameController, PathfindingTerrainCache cache, out bool[][] walkable, out PathfindingService.GridPoint dims, out bool fromCache)
@@ -54,8 +49,7 @@ namespace ClickIt.Features.Pathfinding.Terrain
                     return true;
                 }
 
-                // Owner changed while dims match — could be transient in-map churn. Defer the rebuild
-                // until the new address persists for the confirmation window.
+                // Owner changed while dims match — could be transient in-map churn. Defer the rebuild until the new address persists for the confirmation window.
                 long now = Environment.TickCount64;
                 if (data.Address == cache.PendingOwnerAddress)
                 {
@@ -100,8 +94,7 @@ namespace ClickIt.Features.Pathfinding.Terrain
             return true;
         }
 
-        // Cheap shape read of the raw pathfinding array (no per-cell conversion) so the cache key
-        // never pays the rebuild cost just to decide whether to rebuild.
+        // Cheap shape read of the raw pathfinding array (no per-cell conversion) so the cache key never pays the rebuild cost just to decide whether to rebuild.
         internal static bool TryGetRawGridDims(object? rawPathData, out int width, out int height)
         {
             width = 0;
@@ -274,8 +267,7 @@ namespace ClickIt.Features.Pathfinding.Terrain
             width = 0;
             height = rows.Length;
 
-            // Validate shape and values first (no writes) so a failed rebuild never leaves a
-            // partially-updated cached grid behind.
+            // Validate shape and values first (no writes) so a failed rebuild never leaves a partially-updated cached grid behind.
             int expectedWidth = -1;
             for (int y = 0; y < height; y++)
             {

@@ -1,9 +1,6 @@
 namespace ClickIt.Tests.Behavior.Click
 {
-    // Scenario tests for the REAL LabelClickPointResolver geometry: simulate labels (strongboxes and
-    // world items) at real element rects, partially or fully obscured by unclickable rectangles, and
-    // verify the resolved click point is always inside the label, clickable, and outside every
-    // blocked rectangle - or that resolution correctly fails when nothing is clickable (walk path).
+    // Scenario tests for the REAL LabelClickPointResolver geometry: simulate labels (strongboxes and world items) at real element rects, partially or fully obscured by unclickable rectangles, and verify the resolved click point is always inside the label, clickable, and outside every blocked rectangle - or that resolution correctly fails when nothing is clickable (walk path).
     [TestClass]
     public class ClickPointResolutionScenarioTests
     {
@@ -275,8 +272,7 @@ namespace ClickIt.Tests.Behavior.Click
         [TestMethod]
         public void Label_CompletelyOutsideWindow_ResolvesNoClickPoint()
         {
-            // The clickable area predicate rejects anything outside the window; a label whose rect
-            // sits entirely off-window must resolve nothing.
+            // The clickable area predicate rejects anything outside the window; a label whose rect sits entirely off-window must resolve nothing.
             ClickPipelineScenarioFactory.ScenarioHarness harness = CreateHarness();
             RectangleF rect = new(5000f, 5000f, 160f, 40f);
             var label = ClickPipelineScenarioFactory.CreateLabel(
@@ -332,8 +328,7 @@ namespace ClickIt.Tests.Behavior.Click
         [TestMethod]
         public void ClickableAreaRestrictedToTinyRegion_ResolvesClickPoint_WithinIt()
         {
-            // Only a small sub-rectangle of the label is clickable; the resolver must find a point
-            // inside that sub-rectangle.
+            // Only a small sub-rectangle of the label is clickable; the resolver must find a point inside that sub-rectangle.
             RectangleF rect = new(500f, 300f, 300f, 60f);
             RectangleF onlyClickable = new(700f, 315f, 40f, 30f);
             var config = new ClickPipelineScenarioFactory.ScenarioConfig();

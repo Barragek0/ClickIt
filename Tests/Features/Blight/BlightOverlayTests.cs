@@ -306,8 +306,7 @@ public class BlightOverlayTests
     [TestMethod]
     public void ResolveSegmentWorldMidpoint_ReturnsNull_WhenEndpointWorldPositionUnavailable()
     {
-        // Only one endpoint has a cached world position (the other streamed out) — fall back to the
-        // ground-plane projection rather than place the label off one of the line's ends.
+        // Only one endpoint has a cached world position (the other streamed out) — fall back to the ground-plane projection rather than place the label off one of the line's ends.
         var worldByGrid = new Dictionary<NumVector2, System.Numerics.Vector3>
         {
             [LanePointA] = new(1000f, 1000f, 50f),

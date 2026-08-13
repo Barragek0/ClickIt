@@ -123,8 +123,7 @@ namespace ClickIt.Features.Click.Interaction
                     return (rect, hasRect);
                 });
 
-        // Rect-resolver overload lets callers supply cached per-label rects (overlap checks run per
-        // Execute tick and would otherwise re-read every other label's rect each time).
+        // Rect-resolver overload lets callers supply cached per-label rects (overlap checks run per Execute tick and would otherwise re-read every other label's rect each time).
         internal static List<RectangleF> CollectPotentialBlockingLabelRects(
             LabelOnGround targetLabel,
             RectangleF targetRect,

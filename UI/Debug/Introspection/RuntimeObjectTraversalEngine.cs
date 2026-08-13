@@ -194,8 +194,7 @@ namespace ClickIt.UI.Debug.Introspection
             return events;
         }
 
-        // RemoteMemoryObject wrappers are re-created per memory read, so key cycles by the underlying
-        // memory address (value equality on the boxed long) instead of reference identity.
+        // RemoteMemoryObject wrappers are re-created per memory read, so key cycles by the underlying memory address (value equality on the boxed long) instead of reference identity.
         private static object GetVisitKey(object value)
         {
             if (value is RemoteMemoryObject remote)
@@ -352,8 +351,7 @@ namespace ClickIt.UI.Debug.Introspection
             return accessor;
         }
 
-        // Compiled getter delegates are far faster than reflection GetValue per member; any member
-        // that cannot be compiled (non-public, indexer, exotic shape) falls back to reflection.
+        // Compiled getter delegates are far faster than reflection GetValue per member; any member that cannot be compiled (non-public, indexer, exotic shape) falls back to reflection.
         private static Func<object, object?> TryCompileAccessor(MemberInfo member, Type sourceType)
         {
             try

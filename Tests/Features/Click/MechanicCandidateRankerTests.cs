@@ -133,5 +133,27 @@ namespace ClickIt.Tests.Features.Click
             MechanicCandidateRanker.Compare(left, right).Should().BeLessThan(0);
         }
 
+        [TestMethod]
+        public void Compare_PriorityIndexBreaksDistanceTie_BeforeCursorProximity()
+        {
+            // Spec 4.2: a distance tie is broken by mechanic priority index BEFORE cursor proximity, so the higher-priority candidate wins even when the other is closer to the cursor.
+            var left = new MechanicCandidateRanker.CandidateRank(
+                ignored: false,
+                priorityIndex: 1,
+                weightedDistance: 30,
+                rawDistance: 10,
+                cursorDistance: 50);
+
+            var right = new MechanicCandidateRanker.CandidateRank(
+                ignored: false,
+                priorityIndex: 3,
+                weightedDistance: 30,
+                rawDistance: 10,
+                cursorDistance: 5);
+
+            MechanicCandidateRanker.Compare(left, right).Should().BeLessThan(0,
+                "priority index must break a distance tie before cursor proximity");
+        }
+
     }
 }

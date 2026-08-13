@@ -4,9 +4,7 @@ namespace ClickIt.Features.Click.Core
     {
         private readonly InteractionExecutionEngineDependencies _dependencies = dependencies;
 
-        // Let the game register the hover on the blight menu button before the click lands — clicking
-        // too soon after the cursor arrives can miss the element (the UIHover read is unreliable for
-        // a freshly-moved cursor).
+        // Let the game register the hover on the blight menu button before the click lands — clicking too soon after the cursor arrives can miss the element (the UIHover read is unreliable for a freshly-moved cursor).
         private const int BlightMenuClickSettleMs = 60;
 
         public ExecutionResult Execute(ClickTickContext context, ClickCandidates candidates, DecisionResult decision)
@@ -140,13 +138,21 @@ namespace ClickIt.Features.Click.Core
             return _dependencies.OffscreenPathing.TryWalkTowardOffscreenTarget(entity);
         }
 
-        // Unified click-vs-walk decision for a selected label, shared by the visible and hidden
-        // ground-item paths: click the label in place when its click point resolves into a
-        // clickable area; otherwise pathfind toward its entity.
+        // Unified click-vs-walk decision for a selected label, shared by the visible and hidden ground-item paths: click the label in place when its click point resolves into a clickable area; otherwise pathfind toward its entity.
         private bool TryPathfindToLabelInsteadOfClick(ClickTickContext context, LabelOnGround label, string? mechanicId, Entity? entity)
         {
             if (!_dependencies.Settings.WalkTowardOffscreenLabels.Value || entity == null)
                 return false;
+
+            // Spec 11: a label beyond ClickDistance is walked to even when its click point resolves. Eligibility normally filters these out, but the hover preference and hidden path can surface a far label here - never click it; walk toward it (or do nothing when the walk cannot resolve) and consume the tick so a far label is never clicked.
+            if (DynamicAccess.TryReadFloat(entity, DynamicAccessProfiles.DistancePlayer, out float entityDistance)
+                && entityDistance > _dependencies.Settings.ClickDistance.Value)
+            {
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
+                    "WalkTowardLabel", $"Label beyond ClickDistance ({entityDistance:0.0} > {_dependencies.Settings.ClickDistance.Value}); pathfinding toward entity", mechanicId);
+                _dependencies.OffscreenPathing.TryWalkTowardOffscreenTarget(entity);
+                return true;
+            }
 
             (bool resolved, Vector2 clickPos) = _dependencies.LabelInteraction.TryResolveLabelClickPositionResult(
                 label, mechanicId, default, context.AllLabels);
@@ -216,9 +222,7 @@ namespace ClickIt.Features.Click.Core
             if (candidates.NextLabel == null)
                 return HandleNoVisibleLabel(context);
 
-            // Unified clickability check: if the selected label's click position
-            // is not in a clickable area, pathfind toward its entity instead of
-            // attempting a click that would fail.
+            // Unified clickability check: if the selected label's click position is not in a clickable area, pathfind toward its entity instead of attempting a click that would fail.
             if (TryPathfindToLabelInsteadOfClick(context, candidates.NextLabel, candidates.NextLabelMechanicId,
                 TryGetLabelItemOnGround(candidates.NextLabel)))
                 return StopExecution(didActionableWork: true);
@@ -267,8 +271,7 @@ namespace ClickIt.Features.Click.Core
                         "BlightBuildClick", $"{action.DebugMessage} ({clickPos.X:0.0},{clickPos.Y:0.0})", MechanicIds.Blight);
                     if (action.IsMenuClick)
                     {
-                        // Let the game register the hover on the menu button before the click lands —
-                        // clicking too soon after the cursor arrives can miss the element entirely.
+                        // Let the game register the hover on the menu button before the click lands — clicking too soon after the cursor arrives can miss the element entirely.
                         ClickPipelineTiming.Sleep(BlightMenuClickSettleMs);
                     }
                     _dependencies.LabelInteraction.PerformMechanicClick(clickPos);
@@ -290,8 +293,7 @@ namespace ClickIt.Features.Click.Core
                             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
                                 "BlightBuildWalk", "walkTarget=null - GetPathfindingTargetEntity returned null (entity on screen or no target)", MechanicIds.Blight);
                         }
-                        // The walk was already performed; report handled so the caller's fallback
-                        // does not issue a second redundant walk click on the same target.
+                        // The walk was already performed; report handled so the caller's fallback does not issue a second redundant walk click on the same target.
                         return true;
                     }
 
@@ -361,9 +363,7 @@ namespace ClickIt.Features.Click.Core
             LabelOnGround nextLabel = candidates.NextLabel!;
             Entity? nextLabelItem = TryGetLabelItemOnGround(nextLabel);
 
-            // A locked strongbox (the strongbox overlay's red frame) cannot be opened, so it is
-            // never clicked even if a stale selection cache ranked it; fall through to the
-            // no-visible-label path so the plugin still walks toward other targets.
+            // A locked strongbox (the strongbox overlay's red frame) cannot be opened, so it is never clicked even if a stale selection cache ranked it; fall through to the no-visible-label path so the plugin still walks toward other targets.
             if (nextLabelItem != null && MechanicClassifier.IsLockedStrongbox(nextLabelItem))
             {
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("LockedChestSkipped",

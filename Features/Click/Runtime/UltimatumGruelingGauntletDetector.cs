@@ -9,8 +9,7 @@ namespace ClickIt.Features.Click.Runtime
         private long cacheTimestampMs;
         private bool cachedValue;
         private bool cacheHasValue;
-        // Called from the click coroutine and the preview-refresh coroutine (possibly different
-        // threads with CoroutineMultiThreading), so the cache fields are guarded.
+        // Called from the click coroutine and the preview-refresh coroutine (possibly different threads with CoroutineMultiThreading), so the cache fields are guarded.
         private readonly Lock _lock = new();
 
         internal UltimatumGruelingGauntletDetector(

@@ -25,15 +25,12 @@ namespace ClickIt.Features.Click.Runtime
 
         private const float BlightIconAvoidOffset = 90f;
 
-        // Last target that an A* no-route block rejected, so the coordinator can skip re-running the
-        // doomed full-budget search for the same target during the backoff window.
+        // Last target that an A* no-route block rejected, so the coordinator can skip re-running the doomed full-budget search for the same target during the backoff window.
         private long _blockedTargetAddress;
         private long _blockedAtMs;
         private const int NoRouteBackoffMs = 2500;
 
-        // The traversal target's per-tick validation reads (Path/DistancePlayer/IsValid/IsHidden) are
-        // DLR-bound dynamic reads (~9-14KB each). While walking, the same target persists across
-        // ticks, so cache them keyed by the target's address for a short window.
+        // The traversal target's per-tick validation reads (Path/DistancePlayer/IsValid/IsHidden) are DLR-bound dynamic reads (~9-14KB each). While walking, the same target persists across ticks, so cache them keyed by the target's address for a short window.
         private readonly record struct CachedTraversalReads(long Address, string? Path, float Distance, bool IsValid, bool IsHidden, long AtMs);
         private CachedTraversalReads _cachedTraversalReads;
         private const long TraversalReadCacheWindowMs = 150;
@@ -74,9 +71,7 @@ namespace ClickIt.Features.Click.Runtime
                     preferredTarget != null ? DynamicAccess.TryReadString(preferredTarget, DynamicAccessProfiles.Path, out string entryPrefPath) ? entryPrefPath : "set" : "none",
                     _dependencies.Settings.WalkTowardOffscreenLabels.Value), null);
 
-            // Only gate on the general pathfinding setting when no specific
-            // target is provided.  Blight-specific pathfinding (with a target)
-            // must work even when the general setting is off.
+            // Only gate on the general pathfinding setting when no specific target is provided.  Blight-specific pathfinding (with a target) must work even when the general setting is off.
             if (!_dependencies.Settings.WalkTowardOffscreenLabels.Value && preferredTarget == null)
             {
                 AddPathfindingStage("Walk: disabled - WalkTowardOffscreenLabels setting is off");
@@ -139,8 +134,7 @@ namespace ClickIt.Features.Click.Runtime
         // Position-only walk fallback for blight foundations whose entity has streamed out.
         public bool TryWalkTowardGridPosition(NumVector2 gridPos)
         {
-            // Mirror the entity-walk's safety gates so the fallback never walks when the entity walk
-            // would have been aborted (ritual active, or a clickable on-screen mechanic available).
+            // Mirror the entity-walk's safety gates so the fallback never walks when the entity walk would have been aborted (ritual active, or a clickable on-screen mechanic available).
             if (OffscreenPathingMath.ShouldSkipOffscreenPathfindingForRitual(EntityHelpers.IsRitualActive(_dependencies.GameController)))
                 return AbortOffscreenPathingForBlocker(
                     "[TryWalkTowardGridPosition] Skipping position walk because a RitualBlocker is active.",
@@ -204,8 +198,7 @@ namespace ClickIt.Features.Click.Runtime
                         && _dependencies.PointIsInClickableArea(point, targetPath))
                     : new Vector2(walkClick.X + BlightIconAvoidOffset, walkClick.Y + BlightIconAvoidOffset);
 
-                // The path search falls back to the target when nothing else matched — never click a
-                // point that is still on/near an icon: push it away from the screen center instead.
+                // The path search falls back to the target when nothing else matched — never click a point that is still on/near an icon: push it away from the screen center instead.
                 if (hasWindow && _dependencies.IsBlightBuildOrUpgradeIconAt(offset))
                     offset = EscapeIconBox(offset, win);
             }
@@ -220,8 +213,7 @@ namespace ClickIt.Features.Click.Runtime
             return offset;
         }
 
-        // Pushes a point away from the screen center in increasing steps until it clears every icon
-        // box — the last-resort escape when no point along the player→target line is safe.
+        // Pushes a point away from the screen center in increasing steps until it clears every icon box — the last-resort escape when no point along the player→target line is safe.
         private Vector2 EscapeIconBox(Vector2 point, Size2F win)
         {
             for (float d = BlightIconAvoidOffset; d <= BlightIconAvoidOffset * 4f; d += BlightIconAvoidOffset)
@@ -428,9 +420,7 @@ namespace ClickIt.Features.Click.Runtime
 
         private bool TryBuildTraversalPath(OffscreenTraversalTargetContext context, out bool builtPath)
         {
-            // Same target that A* already ruled unreachable: stay blocked without re-running the
-            // doomed full-budget search during the backoff window (behavior is unchanged, only the
-            // wasted 10-20ms/tick A* is avoided).
+            // Same target that A* already ruled unreachable: stay blocked without re-running the doomed full-budget search during the backoff window (behavior is unchanged, only the wasted 10-20ms/tick A* is avoided).
             if (OffscreenPathingMath.ShouldApplyNoRouteBackoff(
                     context.Target.Address,
                     _blockedTargetAddress,
@@ -495,9 +485,7 @@ namespace ClickIt.Features.Click.Runtime
                 ? TryResolveOffscreenTargetScreenPointFromPath()
                 : (false, default);
 
-            // The path-based point sits at a fixed radius in the path's direction, which overshoots
-            // close targets (e.g. a tower already beside the player). Prefer the target's real
-            // on-screen projection so the player walks onto it instead of around it.
+            // The path-based point sits at a fixed radius in the path's direction, which overshoots close targets (e.g. a tower already beside the player). Prefer the target's real on-screen projection so the player walks onto it instead of around it.
             bool resolvedOnScreen = false;
             if (resolvedFromPath
                 && _dependencies.TargetResolver.TryResolveOnScreenTargetScreenPoint(context.Target, out Vector2 onScreenTargetScreen))

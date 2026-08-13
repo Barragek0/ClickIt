@@ -1,12 +1,9 @@
-using System.Collections.Concurrent;
 using System.Globalization;
 using System.Linq.Expressions;
 
 namespace ClickIt.Shared.Diagnostics.ElementTree;
 
-// Walks any object graph (LabelOnGround, Element, Entity, ...) and captures
-// every scalar property, named object property, collection, element child and
-// entity component as nested nodes. Bounded by depth and node count.
+// Walks any object graph (LabelOnGround, Element, Entity, ...) and captures every scalar property, named object property, collection, element child and entity component as nested nodes. Bounded by depth and node count.
 internal static class ElementTreeDumper
 {
     private const int MaxDepth = 6;
@@ -173,8 +170,7 @@ internal static class ElementTreeDumper
             items));
     }
 
-    // Reads an entity's component map (component type name -> memory address) through dynamic access
-    // — CacheComp is a private obfuscated member, so it is never bound statically.
+    // Reads an entity's component map (component type name -> memory address) through dynamic access — CacheComp is a private obfuscated member, so it is never bound statically.
     internal static bool TryGetEntityComponents(Entity entity, out IReadOnlyDictionary<string, long> cache)
     {
         if (entity == null ||
@@ -201,9 +197,7 @@ internal static class ElementTreeDumper
         }
     }
 
-    // Components are read via a cached compiled delegate to the game's
-    // GetObjectStatic<T> factory — a direct call like the rest of the codebase —
-    // instead of per-call reflection over the obfuscated game assembly.
+    // Components are read via a cached compiled delegate to the game's GetObjectStatic<T> factory — a direct call like the rest of the codebase — instead of per-call reflection over the obfuscated game assembly.
     private static Func<long, RemoteMemoryObject?> CreateComponentFactory(string typeName)
     {
         Type? componentType = ResolveComponentType(typeName);

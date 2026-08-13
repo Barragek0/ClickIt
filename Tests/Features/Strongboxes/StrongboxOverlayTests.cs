@@ -172,8 +172,7 @@ namespace ClickIt.Tests.Features.Strongboxes
         [TestMethod]
         public void Refresh_RescansLabels_WhenLabelSetChanges()
         {
-            // Refresh runs every frame; the expensive scan re-runs only when the label snapshot or
-            // render state changes (the label-ref guard short-circuits unchanged calls).
+            // Refresh runs every frame; the expensive scan re-runs only when the label snapshot or render state changes (the label-ref guard short-circuits unchanged calls).
             var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
             var queue = new DeferredFrameQueue();
             var overlay = new StrongboxOverlay();
@@ -228,8 +227,7 @@ namespace ClickIt.Tests.Features.Strongboxes
         [TestMethod]
         public void Draw_GreenUnopenedBox_HugsChild0Frame()
         {
-            // Unopened (green) boxes hug the label's Child[0] text frame — the base label element is
-            // bigger before the strongbox opens, so the box must be drawn around the child.
+            // Unopened (green) boxes hug the label's Child[0] text frame — the base label element is bigger before the strongbox opens, so the box must be drawn around the child.
             var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
             var queue = new DeferredFrameQueue();
             var overlay = new StrongboxOverlay();
@@ -275,9 +273,7 @@ namespace ClickIt.Tests.Features.Strongboxes
         [TestMethod]
         public void Draw_RedOpenedBox_UsesLabelElementRect()
         {
-            // Regression: opened (red) boxes must use the label element rect — the same geometry the
-            // click pipeline uses — not the Child[0] frame, which is rebuilt and sits at a wrong
-            // offset once the strongbox opens (caused red boxes in incorrect places).
+            // Regression: opened (red) boxes must use the label element rect — the same geometry the click pipeline uses — not the Child[0] frame, which is rebuilt and sits at a wrong offset once the strongbox opens (caused red boxes in incorrect places).
             var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
             var queue = new DeferredFrameQueue();
             var overlay = new StrongboxOverlay();
@@ -304,9 +300,7 @@ namespace ClickIt.Tests.Features.Strongboxes
         [TestMethod]
         public void Draw_RendersStrongbox_ThatWasOffScreenAtScanTime()
         {
-            // Regression: the scan must cache strongboxes by label identity, not on-screen state.
-            // A strongbox that was off-screen when the snapshot was built renders the moment any part
-            // of its label is on screen at draw time — no rescan required.
+            // Regression: the scan must cache strongboxes by label identity, not on-screen state. A strongbox that was off-screen when the snapshot was built renders the moment any part of its label is on screen at draw time — no rescan required.
             var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
             var queue = new DeferredFrameQueue();
             var overlay = new StrongboxOverlay();
@@ -317,8 +311,7 @@ namespace ClickIt.Tests.Features.Strongboxes
             IReadOnlyList<LabelOnGround> labels = [probe];
             overlay.Refresh(CreateRefreshContext(settings, labels, window));
 
-            // …but the label element is now on screen at draw time: the frame must render without
-            // another refresh (the cached entry projects the live label rect per frame).
+            // …but the label element is now on screen at draw time: the frame must render without another refresh (the cached entry projects the live label rect per frame).
             probe.Label = new StrongboxProbeElement(new RectangleF(50f, 60f, 100f, 40f));
             overlay.Draw(CreateDrawContext(settings, window, queue));
 
@@ -332,9 +325,7 @@ namespace ClickIt.Tests.Features.Strongboxes
         [TestMethod]
         public void Draw_GreenBox_FallsBackToLabelRect_WhenChildIsNearOrigin()
         {
-            // Regression: a label entering/leaving the screen edge reports its Child[0] local rect
-            // near the window's top-left corner while the parent label is elsewhere. The box must
-            // not flash at the corner; it falls back to the positioned parent label rect.
+            // Regression: a label entering/leaving the screen edge reports its Child[0] local rect near the window's top-left corner while the parent label is elsewhere. The box must not flash at the corner; it falls back to the positioned parent label rect.
             var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
             var queue = new DeferredFrameQueue();
             var overlay = new StrongboxOverlay();
@@ -358,8 +349,7 @@ namespace ClickIt.Tests.Features.Strongboxes
         [TestMethod]
         public void Draw_GreenBox_FallsBackToLabelRect_WhenChildIsOutsideLabel()
         {
-            // Regression: a mid-layout child can report a rect far from its parent label (not near
-            // the origin). The box must not render at the wrong position; it falls back to the label.
+            // Regression: a mid-layout child can report a rect far from its parent label (not near the origin). The box must not render at the wrong position; it falls back to the label.
             var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
             var queue = new DeferredFrameQueue();
             var overlay = new StrongboxOverlay();
@@ -383,8 +373,7 @@ namespace ClickIt.Tests.Features.Strongboxes
         [TestMethod]
         public void Draw_SkipsStrongbox_WhenLabelRectIsAtOrigin()
         {
-            // A rebuilt label element (strongbox opening) briefly reports an origin rect; no frame is
-            // drawn rather than flashing at the window's top-left.
+            // A rebuilt label element (strongbox opening) briefly reports an origin rect; no frame is drawn rather than flashing at the window's top-left.
             var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
             var queue = new DeferredFrameQueue();
             var overlay = new StrongboxOverlay();
@@ -401,8 +390,7 @@ namespace ClickIt.Tests.Features.Strongboxes
         [TestMethod]
         public void Draw_BeforeFirstRefresh_DoesNotThrow()
         {
-            // Regression: the snapshot must start empty (not null) so the first frame after plugin
-            // load — before the refresh coroutine's first iteration — cannot NRE while iterating.
+            // Regression: the snapshot must start empty (not null) so the first frame after plugin load — before the refresh coroutine's first iteration — cannot NRE while iterating.
             var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
             var queue = new DeferredFrameQueue();
             var overlay = new StrongboxOverlay();
@@ -448,8 +436,7 @@ namespace ClickIt.Tests.Features.Strongboxes
             public new object? GetChildAtIndex(int index) => index == 0 ? Child0 : null;
         }
 
-        // Chest-derived probe so DynamicAccess.GetComponent<Chest>() resolves it; the `new` IsLocked
-        // hides the base memory-read getter (read through DynamicAccess, like the classifier).
+        // Chest-derived probe so DynamicAccess.GetComponent<Chest>() resolves it; the `new` IsLocked hides the base memory-read getter (read through DynamicAccess, like the classifier).
         public sealed class StrongboxChestProbe : Chest
         {
             public new bool IsLocked { get; set; }

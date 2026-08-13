@@ -73,10 +73,7 @@ internal static class BlightFillPlanner
             }
         }
 
-        // Order fill candidates by the first non-default placement among the tier rules. Empowering
-        // rules place via FindBestEmpowerFoundation, so the candidate order is driven by the
-        // direct-build rules (e.g. the fill Scout rule's NearestPump), which can differ from
-        // tierRules[0].
+        // Order fill candidates by the first non-default placement among the tier rules. Empowering rules place via FindBestEmpowerFoundation, so the candidate order is driven by the direct-build rules (e.g. the fill Scout rule's NearestPump), which can differ from tierRules[0].
         BlightPlacementPreference placement = BlightPlacementPreference.Default;
         for (int r = 0; r < tierRules.Count && placement == BlightPlacementPreference.Default; r++)
             placement = tierRules[r].Placement;
@@ -102,9 +99,7 @@ internal static class BlightFillPlanner
                 break;
             if (tierRules[ruleIdx].Placement == BlightPlacementPreference.NearestUncoveredLane)
             {
-                // All NearestUncoveredLane rules are fully placed by the earlier loop; reaching one
-                // here means its foundations are exhausted. Mark it done so the OTHER rules in the
-                // tier keep placing instead of breaking the whole assignment loop.
+                // All NearestUncoveredLane rules are fully placed by the earlier loop; reaching one here means its foundations are exhausted. Mark it done so the OTHER rules in the tier keep placing instead of breaking the whole assignment loop.
                 ruleDone[ruleIdx] = true;
                 continue;
             }
@@ -280,8 +275,7 @@ internal static class BlightFillPlanner
         List<BlightPlanner.CoveragePlacement> coveragePlacements,
         List<NumVector2> orderedFillPositions)
     {
-        // A strategy may declare a coverage rule AND a fill rule for the same tower type (e.g.
-        // coverage scouts + fill scouts), so resolve each step against the rule matching its role.
+        // A strategy may declare a coverage rule AND a fill rule for the same tower type (e.g. coverage scouts + fill scouts), so resolve each step against the rule matching its role.
         Dictionary<BlightTowerType, TowerBuildRule> coverageRuleByType = [];
         Dictionary<BlightTowerType, TowerBuildRule> fillRuleByType = [];
         for (int r = 0; r < rules.Count; r++)

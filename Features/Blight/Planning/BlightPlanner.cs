@@ -103,8 +103,7 @@ internal static class BlightPlanner
             .GroupBy(r => r.Priority)
             .OrderBy(g => g.Key)];
 
-        // A zero branch count does NOT mean coverage is complete — fill only activates after all
-        // branches have full coverage of every coverage type the strategy declares.
+        // A zero branch count does NOT mean coverage is complete — fill only activates after all branches have full coverage of every coverage type the strategy declares.
         bool hasCoverageRules = coverageTypes.Count > 0;
         bool coverageComplete = !hasCoverageRules;
 
@@ -120,15 +119,12 @@ internal static class BlightPlanner
                 failedPositions, assignedIndices, assignments,
                 pumpPosition, playerPosition, coveragePlacements);
 
-            // Coverage is complete ONLY when every branch has full coverage of every coverage type
-            // — the fill tier must never run while any branch still lacks a coverage type.
+            // Coverage is complete ONLY when every branch has full coverage of every coverage type — the fill tier must never run while any branch still lacks a coverage type.
             if (branchCount > 0 && AllBranchesCovered(plannedType))
                 coverageComplete = true;
         }
 
-        // Best-effort escape (spec §4.7): a branch whose subtree has no reachable foundation can never
-        // be covered, so mark it skipped instead of blocking the fill tier forever.  Only branches with
-        // a live coverage segment can be assessed this way.
+        // Best-effort escape (spec §4.7): a branch whose subtree has no reachable foundation can never be covered, so mark it skipped instead of blocking the fill tier forever.  Only branches with a live coverage segment can be assessed this way.
         if (hasCoverageRules && branchCount > 0 && !coverageComplete)
         {
             coverageComplete = true;
@@ -160,9 +156,7 @@ internal static class BlightPlanner
             }
         }
 
-        // Pass 2 — fill tiers in priority order.  Fill always runs after the coverage passes, even
-        // when coverage is incomplete: the plan carries the full build (coverage + fill), so unused
-        // foundations are never left behind while coverage placements are still being planned.
+        // Pass 2 — fill tiers in priority order.  Fill always runs after the coverage passes, even when coverage is incomplete: the plan carries the full build (coverage + fill), so unused foundations are never left behind while coverage placements are still being planned.
         foreach (IGrouping<TowerBuildPriority, TowerBuildRule> group in priorityGroups)
         {
             List<TowerBuildRule> tierRules = [.. group];
@@ -443,8 +437,7 @@ internal static class BlightPlanner
         int placed = maxBuild > 0 ? BlightFillPlanner.CountBuilt(knownTowers, type) : 0;
         float maxRadiusSq = Sq(BlightService.GetCoverageRadiusForLevel(type, rule.MaxUpgradeLevel));
 
-        // Only segments that belong to a pump branch are coverable — isolated fragments far from the
-        // pump are ignored (spec §4.7), and covering them would steal foundations from the fill tier.
+        // Only segments that belong to a pump branch are coverable — isolated fragments far from the pump are ignored (spec §4.7), and covering them would steal foundations from the fill tier.
         bool[] isBranchSegment = new bool[coverage.Length];
         for (int b = 0; b < branches.Count; b++)
         {
@@ -470,8 +463,7 @@ internal static class BlightPlanner
                 if (failedPositions.Contains(knownTowers[i].WorldPosition)) continue;
 
                 NumVector2 pos = knownTowers[i].WorldPosition;
-                // Count directly-covered segments first; only clone+propagate when a candidate actually
-                // covers something, so candidates too far away or already-fully-covered cost nothing.
+                // Count directly-covered segments first; only clone+propagate when a candidate actually covers something, so candidates too far away or already-fully-covered cost nothing.
                 bool[]? local2 = null;
                 int direct = 0;
                 float maxDistSq = 0f;
@@ -523,8 +515,7 @@ internal static class BlightPlanner
             placed++;
         }
 
-        // A branch is planned only when its WHOLE subtree is covered — a tower that reaches the branch
-        // base but stops short of a fork arm no longer counts as covering the branch.
+        // A branch is planned only when its WHOLE subtree is covered — a tower that reaches the branch base but stops short of a fork arm no longer counts as covering the branch.
         for (int b = 0; b < branches.Count; b++)
         {
             if (planned[b]) continue;

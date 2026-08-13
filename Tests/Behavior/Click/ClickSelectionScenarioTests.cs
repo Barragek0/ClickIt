@@ -1,8 +1,6 @@
 namespace ClickIt.Tests.Behavior.Click
 {
-    // Scenario tests for the REAL label selection pipeline (LabelSelectionService +
-    // LabelEligibilityEngine + LabelSelectionScanEngine): multiple strongboxes and items at
-    // different positions/distances, locked boxes, priority ranking, and scan-level suppression.
+    // Scenario tests for the REAL label selection pipeline (LabelSelectionService + LabelEligibilityEngine + LabelSelectionScanEngine): multiple strongboxes and items at different positions/distances, locked boxes, priority ranking, and scan-level suppression.
     [TestClass]
     public class ClickSelectionScenarioTests
     {
@@ -159,8 +157,7 @@ namespace ClickIt.Tests.Behavior.Click
         public void Scan_FullyOverlappedLabel_Skipped_NextLabelReturned()
         {
             var harness = new ClickPipelineScenarioFactory.ScenarioHarness(BaseConfig());
-            // inner is fully inside outer's rect; inner is closer so the scan would rank it first,
-            // but it is fully overlapped and must be skipped in favor of outer.
+            // inner is fully inside outer's rect; inner is closer so the scan would rank it first, but it is fully overlapped and must be skipped in favor of outer.
             RectangleF outerRect = new(100f, 100f, 200f, 60f);
             RectangleF innerRect = new(140f, 120f, 60f, 20f);
             LabelOnGround inner = WorldItem(10f, 0x01, innerRect);
@@ -213,10 +210,7 @@ namespace ClickIt.Tests.Behavior.Click
         [TestMethod]
         public void Scan_CursorOverLockedStrongbox_HoverPreferenceDoesNotSwitchToIt()
         {
-            // The reported in-game bug: the cursor is over a LOCKED strongbox that partially
-            // overlaps an open strongbox. The UI-hover strongbox preference must NOT switch the
-            // scan target to the locked box (the click path would reject it and walk instead) -
-            // the ranked open strongbox must be selected.
+            // The reported in-game bug: the cursor is over a LOCKED strongbox that partially overlaps an open strongbox. The UI-hover strongbox preference must NOT switch the scan target to the locked box (the click path would reject it and walk instead) - the ranked open strongbox must be selected.
             var harness = new ClickPipelineScenarioFactory.ScenarioHarness(BaseConfig());
             RectangleF lockedRect = new(500f, 300f, 160f, 40f);
             RectangleF openRect = new(580f, 310f, 160f, 40f); // partially overlaps lockedRect
@@ -237,9 +231,7 @@ namespace ClickIt.Tests.Behavior.Click
         [TestMethod]
         public void Scan_CursorOverOpenStrongbox_HoverPreferenceSelectsIt()
         {
-            // With the cursor over an OPEN strongbox that overlaps another open strongbox, the
-            // UI-hover preference still selects the hovered one - the intended stacked-label
-            // behavior is preserved.
+            // With the cursor over an OPEN strongbox that overlaps another open strongbox, the UI-hover preference still selects the hovered one - the intended stacked-label behavior is preserved.
             var harness = new ClickPipelineScenarioFactory.ScenarioHarness(BaseConfig());
             RectangleF aRect = new(500f, 300f, 160f, 40f);
             RectangleF bRect = new(580f, 310f, 160f, 40f); // partially overlaps aRect
@@ -260,9 +252,7 @@ namespace ClickIt.Tests.Behavior.Click
         [TestMethod]
         public void LockedStrongboxOnScreen_ClosestOpenStrongboxStillSelected()
         {
-            // Two strongboxes partially overlapping on screen; the CLOSEST one is locked. With
-            // penalty 0 every clickable label sorts purely by distance, so the next closest
-            // clickable label (the open strongbox) must be selected - never a farther target.
+            // Two strongboxes partially overlapping on screen; the CLOSEST one is locked. With penalty 0 every clickable label sorts purely by distance, so the next closest clickable label (the open strongbox) must be selected - never a farther target.
             var harness = new ClickPipelineScenarioFactory.ScenarioHarness(BaseConfig());
             RectangleF lockedRect = new(500f, 300f, 160f, 40f);
             RectangleF openRect = new(580f, 310f, 160f, 40f); // partially overlaps lockedRect
@@ -280,8 +270,7 @@ namespace ClickIt.Tests.Behavior.Click
         [TestMethod]
         public void LockedStrongboxOnScreen_ItemsCloserThanOpenStrongbox_ClosestItemSelected()
         {
-            // The locked strongbox is closest, but an ITEM is closer than the open strongbox. With
-            // penalty 0 the closest clickable label (the item) must win.
+            // The locked strongbox is closest, but an ITEM is closer than the open strongbox. With penalty 0 the closest clickable label (the item) must win.
             var harness = new ClickPipelineScenarioFactory.ScenarioHarness(BaseConfig());
             LabelOnGround locked = Strongbox(10f, 0x01, locked: true, new RectangleF(500f, 300f, 160f, 40f));
             LabelOnGround nearItem = WorldItem(25f, 0x02, new RectangleF(900f, 600f, 60f, 20f));
@@ -295,8 +284,7 @@ namespace ClickIt.Tests.Behavior.Click
         [TestMethod]
         public void EqualDistanceItems_StillSelectsExactlyOne()
         {
-            // Two items at the same distance: the tie must still resolve deterministically to one
-            // of them (the pipeline must never stall on an equal-distance pair).
+            // Two items at the same distance: the tie must still resolve deterministically to one of them (the pipeline must never stall on an equal-distance pair).
             var harness = new ClickPipelineScenarioFactory.ScenarioHarness(BaseConfig());
             LabelOnGround first = WorldItem(50f, 0x01, new RectangleF(100f, 100f, 60f, 20f));
             LabelOnGround second = WorldItem(50f, 0x02, new RectangleF(1500f, 800f, 60f, 20f));

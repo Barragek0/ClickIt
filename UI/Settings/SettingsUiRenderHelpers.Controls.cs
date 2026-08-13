@@ -134,16 +134,10 @@ namespace ClickIt.UI.Settings
                 ImGui.Unindent(indent);
         }
 
-        // Resolves the colour of the word run starting at `index` in `words`. Returns null for the
-        // base colour; `consumed` is the number of words the colour spans (1 unless a multi-word
-        // phrase like "Chilling Tower" matched) and must be set even when returning null.
+        // Resolves the colour of the word run starting at `index` in `words`. Returns null for the base colour; `consumed` is the number of words the colour spans (1 unless a multi-word phrase like "Chilling Tower" matched) and must be set even when returning null.
         internal delegate Vector4? ColoredTextResolver(string[] words, int index, out int consumed);
 
-        // Multi-colour text laid out by explicit '\n' only — no width-based wrapping, so the text
-        // is never re-wrapped or clipped differently from the authored line breaks. Words are drawn
-        // with the raw DrawList at explicitly computed positions, so ImGui's
-        // cursor/SameLine/TextWrapPos bookkeeping can never re-wrap or clip a word differently from
-        // the measurement.
+        // Multi-colour text laid out by explicit '\n' only — no width-based wrapping, so the text is never re-wrapped or clipped differently from the authored line breaks. Words are drawn with the raw DrawList at explicitly computed positions, so ImGui's cursor/SameLine/TextWrapPos bookkeeping can never re-wrap or clip a word differently from the measurement.
         internal static void DrawColoredText(string text, Vector4 baseColor, ColoredTextResolver? colorForWords, float indent = 0f)
         {
             if (string.IsNullOrEmpty(text))

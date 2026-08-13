@@ -82,5 +82,33 @@ namespace ClickIt.Tests.Features.Labels.Selection
             enabled.Should().Contain(MechanicIds.HeistHazards);
             enabled.Should().NotContain(MechanicIds.MirageSilverDjinnCache);
         }
+
+        [TestMethod]
+        public void Create_SpecDefaults_DisabledByDefaultMechanicsStayOff_EnabledByDefaultStayOn()
+        {
+            // Spec 20.3: basic chests, area transitions, labyrinth trials, altar clicks, and ultimatum initial/choices are DISABLED by default; strongboxes, items, essences, shrines, and the ultimatum take-reward button are ENABLED by default.
+            var settings = new ClickItSettings();
+            var factory = new ClickSettingsFactory(
+                settings,
+                new MechanicPrioritySnapshotService(),
+                _ => false,
+                _ => false);
+
+            ClickSettings result = factory.Create(null);
+
+            result.ClickBasicChests.Should().BeFalse("basic chests are disabled by default (spec 14/20)");
+            result.ClickAreaTransitions.Should().BeFalse("area transitions are disabled by default (spec 14/20)");
+            result.ClickLabyrinthTrials.Should().BeFalse("labyrinth trials are disabled by default (spec 14/20)");
+            result.ClickEater.Should().BeFalse("eater altar clicks are disabled by default (spec 22/20)");
+            result.ClickExarch.Should().BeFalse("exarch altar clicks are disabled by default (spec 22/20)");
+            result.ClickInitialUltimatum.Should().BeFalse("initial ultimatum clicks are disabled by default (spec 23/20)");
+            result.ClickOtherUltimatum.Should().BeFalse("ultimatum choice-panel clicks are disabled by default (spec 23/20)");
+            result.ClickStrongboxes.Should().BeTrue("strongbox clicks are enabled by default (spec 14)");
+            result.ClickItems.Should().BeTrue("ground item pickup is enabled by default (spec 14)");
+            result.ClickEssences.Should().BeTrue("essence clicks are enabled by default (spec 14)");
+
+            settings.ClickShrines.Value.Should().BeTrue("shrine clicks are enabled by default (spec 14)");
+            settings.ClickUltimatumTakeRewardButton.Value.Should().BeTrue("the ultimatum take-reward button is enabled by default (spec 23)");
+        }
     }
 }

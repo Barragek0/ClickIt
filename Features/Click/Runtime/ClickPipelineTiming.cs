@@ -1,9 +1,6 @@
 namespace ClickIt.Features.Click.Runtime
 {
-    // Accumulates intentional safety sleeps in the click pipeline (cursor-settle, UI-hover
-    // verification, post-click settle, movement-skill cast) so the measured click "processing"
-    // time can be separated from deliberate wait time. Thread-static because the click coroutine
-    // is a dedicated thread; Reset/Consume bracket each click tick on that same thread.
+    // Accumulates intentional safety sleeps in the click pipeline (cursor-settle, UI-hover verification, post-click settle, movement-skill cast) so the measured click "processing" time can be separated from deliberate wait time. Thread-static because the click coroutine is a dedicated thread; Reset/Consume bracket each click tick on that same thread.
     internal static class ClickPipelineTiming
     {
         [ThreadStatic]

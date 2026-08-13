@@ -15,10 +15,7 @@ namespace ClickIt.Features.Click.Application
     {
         private readonly OffscreenStickyTargetHandlerDependencies _dependencies = dependencies;
 
-        // Retained live reference to the sticky target, so TryResolveStickyOffscreenTarget avoids the
-        // full valid-entity walk (FindEntityByAddress) on every click tick while the target is still
-        // on-screen/valid. Cleared together with the address; falls back to the scan when the reference
-        // is stale (streamed out / replaced) or the address was set directly without a reference.
+        // Retained live reference to the sticky target, so TryResolveStickyOffscreenTarget avoids the full valid-entity walk (FindEntityByAddress) on every click tick while the target is still on-screen/valid. Cleared together with the address; falls back to the scan when the reference is stale (streamed out / replaced) or the address was set directly without a reference.
         private Entity? _stickyEntity;
 
         internal void SetStickyOffscreenTarget(Entity target)
@@ -46,9 +43,7 @@ namespace ClickIt.Features.Click.Application
             if (stickyAddress == 0)
                 return false;
 
-            // Fast path: the retained reference is still the same entity (same address) and passes the
-            // active check — no full valid-entity walk. Falls back to the scan only when the reference
-            // is stale (streamed out, replaced, or the address was set without a reference).
+            // Fast path: the retained reference is still the same entity (same address) and passes the active check — no full valid-entity walk. Falls back to the scan only when the reference is stale (streamed out, replaced, or the address was set without a reference).
             Entity? retained = _stickyEntity;
             if (retained != null
                 && TryGetEntityAddress(retained, out long retainedAddress)

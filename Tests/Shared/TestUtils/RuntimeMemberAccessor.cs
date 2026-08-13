@@ -28,8 +28,7 @@ namespace ClickIt.Tests.Shared.TestUtils
                         }
                         catch
                         {
-                            // Some third-party getters dereference deeper runtime state than the field we want to seed.
-                            // Keep probing backing fields rather than failing the whole lookup.
+                            // Some third-party getters dereference deeper runtime state than the field we want to seed. Keep probing backing fields rather than failing the whole lookup.
                         }
                 }
 

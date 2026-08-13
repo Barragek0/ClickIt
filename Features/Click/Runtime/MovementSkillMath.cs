@@ -3,6 +3,7 @@ namespace ClickIt.Features.Click.Runtime
     internal static class MovementSkillMath
     {
         internal const int RecastDelayMs = 450;
+        internal const int CastDelayMs = 200;
         internal const int KeyTapDelayMs = 30;
         internal const int ShieldChargePostCastClickBlockMs = 100;
         private const int DefaultPostCastClickBlockMs = 120;

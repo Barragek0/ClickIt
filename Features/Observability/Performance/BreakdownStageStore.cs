@@ -1,8 +1,6 @@
 namespace ClickIt.Features.Observability.Performance;
 
-// Records one per-run sample for every stage of a feature's processing (allocation bytes + wall
-// time) so the debug tables can show exactly which sub-step of an area costs time/allocation.
-// Stages are recorded together per run so each stage's window period matches the parent section.
+// Records one per-run sample for every stage of a feature's processing (allocation bytes + wall time) so the debug tables can show exactly which sub-step of an area costs time/allocation. Stages are recorded together per run so each stage's window period matches the parent section.
 internal sealed class BreakdownStageStore
 {
     private readonly string[] _stageNames;
@@ -40,8 +38,7 @@ internal sealed class BreakdownStageStore
         }
     }
 
-    // Records only one named stage (e.g. the Blight executor, which runs on a different thread and
-    // cadence than the refresh stages it belongs with) without zero-filling the sibling stages.
+    // Records only one named stage (e.g. the Blight executor, which runs on a different thread and cadence than the refresh stages it belongs with) without zero-filling the sibling stages.
     internal void RecordStage(int stageIndex, long bytes, double ms)
     {
         lock (_lock)
@@ -73,12 +70,10 @@ internal sealed class BreakdownStageStore
     }
 }
 
-// Synchronous only (no async/iterator capture): ref-struct spans cannot cross those boundaries, and
-// the stage buffers are either stackalloc (plain methods) or a reusable per-thread array (iterators).
+// Synchronous only (no async/iterator capture): ref-struct spans cannot cross those boundaries, and the stage buffers are either stackalloc (plain methods) or a reusable per-thread array (iterators).
 public delegate void BreakdownRecorder(ReadOnlySpan<long> stageBytes, ReadOnlySpan<double> stageMs);
 
-// Rolling per-stage wall-clock window (last/avg/max ms) with the same 10-second expiry and 50-sample
-// average as the parent timing stores, so stage maxes never outlive the parent's window.
+// Rolling per-stage wall-clock window (last/avg/max ms) with the same 10-second expiry and 50-sample average as the parent timing stores, so stage maxes never outlive the parent's window.
 internal sealed class StageTimingSamples
 {
     private readonly ExpiringSampleBuffer _samples = new();

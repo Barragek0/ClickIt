@@ -275,17 +275,14 @@ namespace ClickIt.Shared.Input
             return ResolveLazyClickInputActive(hasRestricted, disableKeyHeld, IsLazyModeMouseButtonBlockActive());
         }
 
-        // Lazy-mode input is active only when no restriction, no disable-key, and no held mouse
-        // button blocks it (the mouse-held disable lets the player attack/use skills freely).
+        // Lazy-mode input is active only when no restriction, no disable-key, and no held mouse button blocks it (the mouse-held disable lets the player attack/use skills freely).
         internal static bool ResolveLazyClickInputActive(bool hasRestrictedItems, bool disableKeyActive, bool mouseButtonBlocked)
             => !hasRestrictedItems && !disableKeyActive && !mouseButtonBlocked;
 
         public bool IsLazyModeDisableActiveForCurrentInputState()
             => _hotkeyStateService.IsLazyModeDisableActive(Keyboard.IsKeyDown);
 
-        // The mouse-held disable settings (left/right click held) pause lazy-mode clicking so the
-        // plugin never fights the player's own held attack/skill buttons; the click hotkey still
-        // overrides, so holding the hotkey restores clicking.
+        // The mouse-held disable settings (left/right click held) pause lazy-mode clicking so the plugin never fights the player's own held attack/skill buttons; the click hotkey still overrides, so holding the hotkey restores clicking.
         private bool IsLazyModeMouseButtonBlockActive()
             => GetMouseButtonBlockingState(_settings, Keyboard.IsKeyDown).mouseButtonBlocks;
 

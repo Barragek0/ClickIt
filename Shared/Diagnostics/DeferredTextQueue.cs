@@ -8,8 +8,7 @@ namespace ClickIt.Shared.Diagnostics
         private List<(string Text, Vector2 Position, Color Color, int Size, FontAlign Align, bool Shadow, RenderSection Section)> _spare = [];
         private int _pendingCount;
 
-        // Ambient render section set by the overlay host around each overlay's Draw, so flushed
-        // text can be attributed back to the feature that enqueued it. Render-thread only.
+        // Ambient render section set by the overlay host around each overlay's Draw, so flushed text can be attributed back to the feature that enqueued it. Render-thread only.
         internal RenderSection CurrentSection { get; set; } = RenderSection.Unknown;
 
         public void Enqueue(string text, Vector2 pos, Color color, int size, FontAlign align = FontAlign.Left, bool shadow = false)

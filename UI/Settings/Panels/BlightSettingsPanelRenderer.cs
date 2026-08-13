@@ -132,9 +132,7 @@ internal sealed class BlightSettingsPanelRenderer(ClickItSettings settings)
         string description = BlightStrategyResolver.GetDescription(strategy);
         if (!string.IsNullOrEmpty(description))
         {
-            // Muted grey base (same tone as item-description text elsewhere); oil colour names,
-            // tower names, and tower phrases (e.g. "Chilling Beams") are tinted to their actual
-            // hues by the resolver.
+            // Muted grey base (same tone as item-description text elsewhere); oil colour names, tower names, and tower phrases (e.g. "Chilling Beams") are tinted to their actual hues by the resolver.
             SettingsUiRenderHelpers.DrawColoredText(
                 description,
                 new Vector4(0.65f, 0.65f, 0.65f, 1f),

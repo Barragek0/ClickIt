@@ -51,9 +51,7 @@ namespace ClickIt.Core.Runtime
         private DebugTelemetrySnapshot? _cachedSnapshot;
         private long _lastSnapshotBuildTimestampMs;
 
-        // The debug overlay reads the snapshot every frame, but the projection scans live sources
-        // (hovered item, altar, inventory). Rebuilding it at most every 200ms cuts that per-frame
-        // main-thread cost ~5x while keeping the debug display plenty fresh.
+        // The debug overlay reads the snapshot every frame, but the projection scans live sources (hovered item, altar, inventory). Rebuilding it at most every 200ms cuts that per-frame main-thread cost ~5x while keeping the debug display plenty fresh.
         private const long SnapshotBuildIntervalMs = 200;
 
         internal DebugTelemetrySnapshot GetSnapshot()

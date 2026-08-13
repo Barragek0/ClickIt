@@ -116,17 +116,14 @@ namespace ClickIt.Shared.Game
         public static void SortLabelsByDistance(List<LabelOnGround> labels)
             => SortLabelsByDistance(labels, GetLabelDistance);
 
-        // Sort against caller-supplied distances so callers that already hold cached per-label
-        // distances (the 50ms label scan) avoid re-reading DistancePlayer during the sort.
+        // Sort against caller-supplied distances so callers that already hold cached per-label distances (the 50ms label scan) avoid re-reading DistancePlayer during the sort.
         public static void SortLabelsByDistance(List<LabelOnGround> labels, Func<LabelOnGround, float> getDistance)
         {
             int count = labels.Count;
             if (count <= 1)
                 return;
 
-            // DistancePlayer is a dynamic game-memory read, so a per-comparison sort would multiply
-            // the cost. Precompute the distances once (stack span for typical counts) and sort the
-            // label list against the cached values instead.
+            // DistancePlayer is a dynamic game-memory read, so a per-comparison sort would multiply the cost. Precompute the distances once (stack span for typical counts) and sort the label list against the cached values instead.
             Span<float> distances = count <= 256 ? stackalloc float[count] : new float[count];
             for (int i = 0; i < count; i++)
                 distances[i] = getDistance(labels[i]);

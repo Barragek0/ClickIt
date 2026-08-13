@@ -2,8 +2,7 @@ namespace ClickIt.Features.Click.Runtime
 {
     internal static class UltimatumGruelingGauntletDetectionStore
     {
-        // Written by the detection thread and read by consumers; Volatile guarantees the reader
-        // never sees a fresh _hasValue with a stale _isActive.
+        // Written by the detection thread and read by consumers; Volatile guarantees the reader never sees a fresh _hasValue with a stale _isActive.
         private static bool _isActive;
         private static bool _hasValue;
 

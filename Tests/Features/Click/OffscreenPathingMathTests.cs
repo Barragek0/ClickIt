@@ -92,10 +92,7 @@ namespace ClickIt.Tests.Features.Click
         [TestMethod]
         public void TryResolveDirectionalWalkClickPosition_FindsNearCenterCandidate_WhenEdgeCandidatesAndClampAreRejected()
         {
-            // Target far above the safe region (e.g. under the buff bar): every candidate at t >= 0.30
-            // and the clamped point fall in the rejected strip, but a point just off-center toward it is
-            // clickable — that keeps the walk clickable instead of returning false (which stalled the
-            // executor's walk toward a foundation near the top HUD edge).
+            // Target far above the safe region (e.g. under the buff bar): every candidate at t >= 0.30 and the clamped point fall in the rejected strip, but a point just off-center toward it is clickable — that keeps the walk clickable instead of returning false (which stalled the executor's walk toward a foundation near the top HUD edge).
             bool result = OffscreenPathingMath.TryResolveDirectionalWalkClickPosition(
                 new RectangleF(0f, 0f, 100f, 100f),
                 new Vector2(50f, -30f),

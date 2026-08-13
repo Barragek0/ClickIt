@@ -125,8 +125,7 @@ namespace ClickIt.Core.Settings.Runtime
             if (snapshot.Length != settings.MechanicPriorityIgnoreDistanceIds.Count)
                 return false;
 
-            // The cached snapshot is the sorted form of the settings set; verify containment
-            // directly instead of materializing a fresh ordered copy on the cache-hit path.
+            // The cached snapshot is the sorted form of the settings set; verify containment directly instead of materializing a fresh ordered copy on the cache-hit path.
             foreach (string id in settings.MechanicPriorityIgnoreDistanceIds)
             {
                 bool found = false;
@@ -152,8 +151,7 @@ namespace ClickIt.Core.Settings.Runtime
             if (snapshot.Length != settings.MechanicPriorityIgnoreDistanceWithinById.Count)
                 return false;
 
-            // The cached snapshot is the sorted form of the settings map; verify containment
-            // directly instead of materializing a fresh ordered copy on the cache-hit path.
+            // The cached snapshot is the sorted form of the settings map; verify containment directly instead of materializing a fresh ordered copy on the cache-hit path.
             foreach (KeyValuePair<string, int> entry in settings.MechanicPriorityIgnoreDistanceWithinById)
             {
                 bool found = false;

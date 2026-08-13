@@ -37,6 +37,7 @@ public sealed class BlightService
         _recordExecutorStage = recordExecutorStage;
         _cache = new BlightEntityCache(settings, _debugEvents, _encounter, recordEventStage);
         _cache.ClearRequested += Clear;
+        _cache.EncounterEnded += ClearAfterEncounterEnd;
         _cache.DataChanged += HandleCacheDataChanged;
     }
 
@@ -44,13 +45,11 @@ public sealed class BlightService
     internal void RecordBreakdown(ReadOnlySpan<long> stageBytes, ReadOnlySpan<double> stageMs)
         => _recordBreakdown?.Invoke(stageBytes, stageMs);
 
-    // Plugin disable/reload teardown: unhooks the live GameController entity-event subscriptions so
-    // the disposed cache's handler (a per-entity path read) stops running on every EntityAdded.
+    // Plugin disable/reload teardown: unhooks the live GameController entity-event subscriptions so the disposed cache's handler (a per-entity path read) stops running on every EntityAdded.
     internal void DisposeForShutdown()
         => _cache.DisposeForShutdown();
 
-    // Executor stage (the click-pipeline building work): recorded separately from the refresh stages
-    // because it runs on the click thread at a different cadence.
+    // Executor stage (the click-pipeline building work): recorded separately from the refresh stages because it runs on the click thread at a different cadence.
     internal void RecordExecutorStage(long bytes, double ms)
         => _recordExecutorStage?.Invoke(bytes, ms);
 
@@ -247,9 +246,7 @@ public sealed class BlightService
     private readonly BlightDebugEvents _debugEvents = new();
     internal IReadOnlyList<string> DebugStages => _debugEvents.Stages;
 
-    // Un-throttled executor event trail (menu snapshots, phase transitions, click decisions) so the
-    // detailed "what did the executor actually see/click" trail is never dropped by the 10/sec
-    // Recent Stages throttle. Bounded + deduped like the stages buffer.
+    // Un-throttled executor event trail (menu snapshots, phase transitions, click decisions) so the detailed "what did the executor actually see/click" trail is never dropped by the 10/sec Recent Stages throttle. Bounded + deduped like the stages buffer.
     private readonly BlightDebugEvents _executorEvents = new();
     internal IReadOnlyList<string> ExecutorEvents => _executorEvents.Stages;
 
@@ -291,10 +288,7 @@ public sealed class BlightService
         Entity? entity = GetBestEntityAtPosition(step.Value.FoundationPosition);
         if (entity == null) return null;
 
-        // Stop walking only when the executor genuinely doesn't need to approach any more — the
-        // executor and the pipeline share ONE walk-readiness decision (BlightPlanExecutor.
-        // WantsWalkForCurrentStep), so pathfinding can never refuse a walk the executor needs
-        // (e.g. an upgrade icon that sits off-window while the tower entity is already on-screen).
+        // Stop walking only when the executor genuinely doesn't need to approach any more — the executor and the pipeline share ONE walk-readiness decision (BlightPlanExecutor. WantsWalkForCurrentStep), so pathfinding can never refuse a walk the executor needs (e.g. an upgrade icon that sits off-window while the tower entity is already on-screen).
         if (!_executor.WantsWalkForCurrentStep(_gameController, this, _lastLabels))
             return null;
         return entity;
@@ -302,16 +296,12 @@ public sealed class BlightService
 
     internal Entity? GetBestEntityAtPosition(NumVector2 pos) => _cache.GetBestEntityAtPosition(pos);
 
-    // The tower's dat id at a position (e.g. "MeteorTower"/"FlamethrowerTower" for a specialized
-    // Fireball) — read from the cached component data. Unlike the entity path (which is the base
-    // type + rank, e.g. "BlightTowerFlameRank4"), the dat id reveals the actual specialization, so
-    // the executor can verify a spec click landed on the intended tower.
+    // The tower's dat id at a position (e.g. "MeteorTower"/"FlamethrowerTower" for a specialized Fireball) — read from the cached component data. Unlike the entity path (which is the base type + rank, e.g. "BlightTowerFlameRank4"), the dat id reveals the actual specialization, so the executor can verify a spec click landed on the intended tower.
     internal string? GetTowerDatIdAt(NumVector2 pos) => _cache.GetTowerDatIdAt(pos);
 
     internal Entity? GetTowerEntityAt(NumVector2 pos) => _cache.GetTowerEntityAt(pos);
 
-    // Cached entity-path read (entity-id validated) for the executor's per-tick rank/verify loops —
-    // avoids re-reading entity.Path (a process-memory read + string allocation) every tick.
+    // Cached entity-path read (entity-id validated) for the executor's per-tick rank/verify loops — avoids re-reading entity.Path (a process-memory read + string allocation) every tick.
     internal string? GetEntityPathCached(Entity entity) => _cache.GetEntityPathCached(entity);
     internal static string? GetEntityPath(Entity entity) => BlightEntityCache.GetEntityPathFresh(entity);
 
@@ -386,8 +376,7 @@ public sealed class BlightService
 
         List<NumVector2>? pathwayPositions = _cache.GetAlignedPathways(coverage);
 
-        // Coordinate-space correction: terrain objects (pump/pathways) can report local-space positions offset
-        // from world space by thousands of units — apply the foundation-centroid offset only when it is large.
+        // Coordinate-space correction: terrain objects (pump/pathways) can report local-space positions offset from world space by thousands of units — apply the foundation-centroid offset only when it is large.
         IReadOnlyList<BlightCachedTower> towerSnapshot = KnownTowers;
         if (pumpPos.HasValue && pathwayPositions != null && pathwayPositions.Count > 0 && towerSnapshot.Count > 0)
         {
@@ -455,14 +444,11 @@ public sealed class BlightService
         IReadOnlyList<TowerBuildRule> rules = CurrentStrategy.Rules;
         for (int r = 0; r < rules.Count; r++)
             if (rules[r].TowerType == type) return rules[r].Specialization;
-        // Fail closed: no rule for this type means "no specialization", never a real spec index (0
-        // would treat a stale lvl4 step as a spec step and click the first spec button — e.g. Meteor
-        // on a type whose strategy caps at 3).
+        // Fail closed: no rule for this type means "no specialization", never a real spec index (0 would treat a stale lvl4 step as a spec step and click the first spec button — e.g. Meteor on a type whose strategy caps at 3).
         return (int)TowerSpecialization.None;
     }
 
-    // Plan UI display: a spec-tier upgrade (Fireball lvl4) shows the specialization tower the
-    // strategy chose ("Meteor") instead of the raw base type + level ("Fireball lvl4").
+    // Plan UI display: a spec-tier upgrade (Fireball lvl4) shows the specialization tower the strategy chose ("Meteor") instead of the raw base type + level ("Fireball lvl4").
     internal string GetStepTargetName(BlightPlanStep step)
     {
         if (step.Action == BlightPlanAction.Upgrade && step.TargetLevel > 3)
@@ -486,9 +472,19 @@ public sealed class BlightService
         ResetInteractionState();
         _executor.ClearPlan();
 
-        // A cleared encounter must rebuild its plan on the next detection — without this reset a
-        // re-detected encounter with identical geometry would compare equal to the stale counters
-        // and ShouldRebuildPlan() would skip the rebuild.
+        // A cleared encounter must rebuild its plan on the next detection — without this reset a re-detected encounter with identical geometry would compare equal to the stale counters and ShouldRebuildPlan() would skip the rebuild.
+        _lastPlannedTowerCount = 0;
+        _lastPlannedPathwayCount = 0;
+        _lastPlannedBuiltCount = 0;
+        _lastPlannedBuiltSignature = string.Empty;
+    }
+
+    // An encounter END clears the data and stops the executor/plan, but must NOT call _encounter.Reset(): the ended latch must survive so the re-rendered blight web (the player walked far from the pump) can never re-activate a finished encounter in the same area. Only an area change / explicit Clear() resets the encounter for the next area.
+    internal void ClearAfterEncounterEnd()
+    {
+        _cache.ClearData();
+        ResetInteractionState();
+        _executor.ClearPlan();
         _lastPlannedTowerCount = 0;
         _lastPlannedPathwayCount = 0;
         _lastPlannedBuiltCount = 0;

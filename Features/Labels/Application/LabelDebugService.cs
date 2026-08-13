@@ -10,8 +10,7 @@ namespace ClickIt.Features.Labels.Application
         private readonly LabelMechanicResolutionService _mechanicResolutionService;
         private readonly LabelSelectionDiagnostics _diagnostics;
 
-        // The debug telemetry rebuilds this every frame while the debug window is open; reading the
-        // ground-label list on every frame is a major allocation source, so the counts are cached.
+        // The debug telemetry rebuilds this every frame while the debug window is open; reading the ground-label list on every frame is a major allocation source, so the counts are cached.
         private readonly TimeCache<(bool LabelsAvailable, int TotalVisibleLabels, int ValidVisibleLabels)> _visibleLabelCounts;
 
         public LabelDebugService(

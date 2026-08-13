@@ -85,8 +85,7 @@
         [TestMethod]
         public void ShouldUseTerrainCache_ReturnsFalse_WhenDimsMatchButAreaHashDiffers()
         {
-            // Two different maps can share the same grid dimensions; a stale cache must not be
-            // reused just because the dimensions match.
+            // Two different maps can share the same grid dimensions; a stale cache must not be reused just because the dimensions match.
             PathfindingTerrainCache cache = new()
             {
                 AreaDims = new Vector2i { X = 1242, Y = 1242 },

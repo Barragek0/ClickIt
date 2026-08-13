@@ -1,5 +1,3 @@
-using System.Runtime;
-
 namespace ClickIt.Shared.Diagnostics
 {
     public enum TimingChannel
@@ -33,9 +31,7 @@ namespace ClickIt.Shared.Diagnostics
         FrameFlush = 8
     }
 
-    // Per-feature domain work (label scan, altar scan, blight refresh, path build, ...). Recorded
-    // at the processing boundaries independent of rendering or the coroutine framework so the debug
-    // table can show "how much does feature X cost each run".
+    // Per-feature domain work (label scan, altar scan, blight refresh, path build, ...). Recorded at the processing boundaries independent of rendering or the coroutine framework so the debug table can show "how much does feature X cost each run".
     public enum ProcessingSection
     {
         Unknown = 0,
@@ -61,12 +57,9 @@ namespace ClickIt.Shared.Diagnostics
     {
         private readonly ClickItSettings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
 
-        // Stage index of the Blight breakdown's "Executor" stage (the click-pipeline building work),
-        // recorded separately from the refresh stages because it runs on the click thread.
+        // Stage index of the Blight breakdown's "Executor" stage (the click-pipeline building work), recorded separately from the refresh stages because it runs on the click thread.
         internal const int BlightExecutorStageIndex = 3;
-        // Stage index of the Blight breakdown's "Events" stage (the entity-event background work:
-        // retained-set tracking + DLR path reads per streamed entity), recorded separately because
-        // it runs on the game's entity-event path at a different cadence than the refresh stages.
+        // Stage index of the Blight breakdown's "Events" stage (the entity-event background work: retained-set tracking + DLR path reads per streamed entity), recorded separately because it runs on the game's entity-event path at a different cadence than the refresh stages.
         internal const int BlightEventsStageIndex = 4;
         private readonly FpsTracker _fpsTracker = new();
         private readonly RenderSectionMetricsStore _renderSectionMetrics = new();
@@ -76,17 +69,11 @@ namespace ClickIt.Shared.Diagnostics
         private readonly ClickAllocationStore _clickAllocation = new();
         private readonly TimingChannelMetricsTracker _timingTracker = new();
 
-        // Per-frame render-section accumulators (render-thread only): OverlayRenderHost accumulates
-        // each overlay's enqueue cost, flush attribution accumulates the actual draw cost, and
-        // CompleteRenderSectionFrame records ONE combined sample per section per frame so the section
-        // average is enqueue + flush (separate samples would dilute the average by 2x and hide the
-        // flush attribution from the tables).
+        // Per-frame render-section accumulators (render-thread only): OverlayRenderHost accumulates each overlay's enqueue cost, flush attribution accumulates the actual draw cost, and CompleteRenderSectionFrame records ONE combined sample per section per frame so the section average is enqueue + flush (separate samples would dilute the average by 2x and hide the flush attribution from the tables).
         private readonly Dictionary<RenderSection, double> _pendingRenderSectionMs = [];
         private readonly Dictionary<RenderSection, double> _pendingRenderSectionFlushMs = [];
 
-        // Per-area sub-stage breakdowns (allocation + time) for the heavier processing sections.
-        // Populated once in the constructor and read-only afterwards, so concurrent Record calls are
-        // safe; only sections with a registered breakdown can be recorded (unregistered = no-op).
+        // Per-area sub-stage breakdowns (allocation + time) for the heavier processing sections. Populated once in the constructor and read-only afterwards, so concurrent Record calls are safe; only sections with a registered breakdown can be recorded (unregistered = no-op).
         private readonly Dictionary<ProcessingSection, BreakdownStageStore> _breakdownStores = new()
         {
             [ProcessingSection.Pathfinding] = new BreakdownStageStore(trackTiming: true, "Terrain", "Goal", "AStar", "Projection"),
@@ -107,28 +94,20 @@ namespace ClickIt.Shared.Diagnostics
         private long _lastWorkingSetFetchMs;
         private double _cachedWorkingSetMb;
 
-        // Rolling DLR-read rate (reads/sec + ms/sec) sampled on a 500ms cadence from the
-        // DynamicAccess counters, plus the share of reads in the last window that failed. The ms/sec
-        // is the actual wall-clock time spent inside dynamic reads (the freeze-relevant question —
-        // how much main-thread time do the reads actually cost), mirroring the GC Pause row.
+        // Rolling DLR-read rate (reads/sec + ms/sec) sampled on a 500ms cadence from the DynamicAccess counters, plus the share of reads in the last window that failed. The ms/sec is the actual wall-clock time spent inside dynamic reads (the freeze-relevant question — how much main-thread time do the reads actually cost), mirroring the GC Pause row.
         private readonly ExpiringSampleBuffer _dlrReadRateBuffer = new(expiryMs: 10_000, maxSamples: 60, averageSamples: 10);
         private readonly ExpiringSampleBuffer _dlrReadMsBuffer = new(expiryMs: 10_000, maxSamples: 60, averageSamples: 10);
         private long _lastDlrSampleMs;
         private DynamicAccessStats _lastDlrStats;
         private double _dlrFailPercent;
 
-        // Per-feature DLR-read attribution: one reads/sec + ms/sec buffer per ProcessingSection (the
-        // same sections the DLR table rows use), sampled on the same 500ms cadence as the total.
+        // Per-feature DLR-read attribution: one reads/sec + ms/sec buffer per ProcessingSection (the same sections the DLR table rows use), sampled on the same 500ms cadence as the total.
         private readonly ExpiringSampleBuffer[] _dlrSectionReadsBuffers = CreateSectionBuffers();
         private readonly ExpiringSampleBuffer[] _dlrSectionMsBuffers = CreateSectionBuffers();
         private readonly long[] _lastDlrSectionCalls = new long[DynamicAccess.DlrSectionCount];
         private readonly long[] _lastDlrSectionTicks = new long[DynamicAccess.DlrSectionCount];
 
-        // Per-feature GC allocation-rate attribution: one bytes/sec buffer per ProcessingSection,
-        // sampled on the same 500ms cadence as the timing tables so the GC table's Last/Avg/Max
-        // matches the other tables exactly (10s expiry, 10-sample average). RecordAllocation
-        // accumulates per-section bytes; SampleGcAllocationRates converts the delta over the window
-        // into a bytes/sec rate.
+        // Per-feature GC allocation-rate attribution: one bytes/sec buffer per ProcessingSection, sampled on the same 500ms cadence as the timing tables so the GC table's Last/Avg/Max matches the other tables exactly (10s expiry, 10-sample average). RecordAllocation accumulates per-section bytes; SampleGcAllocationRates converts the delta over the window into a bytes/sec rate.
         private readonly ExpiringSampleBuffer[] _gcSectionByteBuffers = CreateSectionBuffers();
         private readonly long[] _gcSectionCumulativeBytes = new long[DynamicAccess.DlrSectionCount];
         private readonly long[] _lastGcSectionCumulativeBytes = new long[DynamicAccess.DlrSectionCount];
@@ -474,8 +453,7 @@ namespace ClickIt.Shared.Diagnostics
         internal int GetTimingSampleCount(TimingChannel channel)
             => _timingTracker.GetTimingSampleCount(channel);
 
-        // Working set read is throttled to once per second: Process.GetCurrentProcess() allocates a
-        // Process object per call, which would add GC pressure on the per-frame snapshot path.
+        // Working set read is throttled to once per second: Process.GetCurrentProcess() allocates a Process object per call, which would add GC pressure on the per-frame snapshot path.
         private double GetProcessWorkingSetMb()
         {
             long now = Environment.TickCount64;
@@ -493,10 +471,7 @@ namespace ClickIt.Shared.Diagnostics
             return _cachedWorkingSetMb;
         }
 
-        // Samples the DynamicAccess read counters on a 500ms cadence (called every render frame) so
-        // the debug tables show a rolling reads/sec AND ms/sec rate for the freeze-relevant DLR-read
-        // cost. The percent is the share of reads in the window that failed (wasted reads on invalid
-        // entities). nowMs is injectable for tests; production uses Environment.TickCount64.
+        // Samples the DynamicAccess read counters on a 500ms cadence (called every render frame) so the debug tables show a rolling reads/sec AND ms/sec rate for the freeze-relevant DLR-read cost. The percent is the share of reads in the window that failed (wasted reads on invalid entities). nowMs is injectable for tests; production uses Environment.TickCount64.
         internal void SampleDlrReadRate(long? nowMs = null)
         {
             long now = nowMs ?? Environment.TickCount64;
@@ -549,10 +524,7 @@ namespace ClickIt.Shared.Diagnostics
             _dlrFailPercent = failDelta * 100.0 / callsDelta;
         }
 
-        // Per-feature GC allocation-rate sampling on the same 500ms cadence as the DLR reads: the
-        // bytes recorded since the last sample, divided by the window, become that section's
-        // bytes/sec for the buffer (10s expiry, 10-sample average, max over the live window). nowMs
-        // is injectable for tests; production uses Environment.TickCount64.
+        // Per-feature GC allocation-rate sampling on the same 500ms cadence as the DLR reads: the bytes recorded since the last sample, divided by the window, become that section's bytes/sec for the buffer (10s expiry, 10-sample average, max over the live window). nowMs is injectable for tests; production uses Environment.TickCount64.
         internal void SampleGcAllocationRates(long? nowMs = null)
         {
             long now = nowMs ?? Environment.TickCount64;
@@ -570,8 +542,7 @@ namespace ClickIt.Shared.Diagnostics
             }
         }
 
-        // Snapshot of the per-feature GC allocation rates (bytes/sec, indexed by ProcessingSection
-        // value; the GC table renders rows 1..DlrSectionCount-1, 0 is the un-attributed Other bucket).
+        // Snapshot of the per-feature GC allocation rates (bytes/sec, indexed by ProcessingSection value; the GC table renders rows 1..DlrSectionCount-1, 0 is the un-attributed Other bucket).
         internal GcSectionSnapshot[] GetGcSectionSnapshot()
         {
             GcSectionSnapshot[] result = new GcSectionSnapshot[DynamicAccess.DlrSectionCount];
@@ -583,8 +554,7 @@ namespace ClickIt.Shared.Diagnostics
             return result;
         }
 
-        // Snapshot of the per-feature DLR reads/sec + ms/sec (indexed by ProcessingSection value; the
-        // DLR table renders rows 1..DlrSectionCount-1, 0 is the un-attributed Other bucket).
+        // Snapshot of the per-feature DLR reads/sec + ms/sec (indexed by ProcessingSection value; the DLR table renders rows 1..DlrSectionCount-1, 0 is the un-attributed Other bucket).
         internal DlrSectionSnapshot[] GetDlrSectionSnapshot()
         {
             DlrSectionSnapshot[] result = new DlrSectionSnapshot[DynamicAccess.DlrSectionCount];
@@ -605,9 +575,7 @@ namespace ClickIt.Shared.Diagnostics
                 ? info.TotalCommittedBytes * 100.0 / info.TotalAvailableMemoryBytes
                 : 0;
 
-            // Recent blocking-GC pause picture (the actual cause of whole-process hitches). The
-            // pause durations span only the GCs since the last GetGCMemoryInfo() call, so they are
-            // a rolling recent window, not process-lifetime.
+            // Recent blocking-GC pause picture (the actual cause of whole-process hitches). The pause durations span only the GCs since the last GetGCMemoryInfo() call, so they are a rolling recent window, not process-lifetime.
             double pauseLastMs = 0, pauseAvgMs = 0, pauseMaxMs = 0;
             ReadOnlySpan<TimeSpan> pauses = info.PauseDurations;
             if (pauses.Length > 0)

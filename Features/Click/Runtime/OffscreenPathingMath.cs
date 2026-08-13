@@ -57,8 +57,7 @@ namespace ClickIt.Features.Click.Runtime
         internal static bool ShouldBlockOffscreenTraversalAfterPathBuildFailure(string? failureReason)
             => string.Equals(failureReason, PathfindingService.AStarNoRouteFailureReason, StringComparison.Ordinal);
 
-        // After an A* no-route block, the same target cannot become reachable for a while, so the
-        // coordinator skips re-running the doomed full-budget search during the backoff window.
+        // After an A* no-route block, the same target cannot become reachable for a while, so the coordinator skips re-running the doomed full-budget search during the backoff window.
         internal static bool ShouldApplyNoRouteBackoff(
             long targetAddress,
             long blockedTargetAddress,

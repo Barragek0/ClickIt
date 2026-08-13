@@ -36,8 +36,7 @@ namespace ClickIt.Features.Labels.Selection
                 return false;
             }
 
-            // A locked strongbox (the strongbox overlay's red frame) cannot be opened, so it is
-            // never a click candidate even when a mechanic would otherwise match.
+            // A locked strongbox (the strongbox overlay's red frame) cannot be opened, so it is never a click candidate even when a mechanic would otherwise match.
             if (MechanicClassifier.IsLockedStrongbox(item))
             {
                 rejectReason = LabelCandidateRejectReason.LockedChest;
@@ -51,10 +50,7 @@ namespace ClickIt.Features.Labels.Selection
                 return false;
             }
 
-            // When lifeforce estimation is active, reject all harvest labels
-            // here so they don't go through the normal label pipeline. The
-            // dedicated click path in InteractionExecutionEngine handles
-            // harvest clicking directly (like the altar pattern).
+            // When lifeforce estimation is active, reject all harvest labels here so they don't go through the normal label pipeline. The dedicated click path in InteractionExecutionEngine handles harvest clicking directly (like the altar pattern).
             if (clickSettings.HarvestLabelSelectionBlocked
                 && string.Equals(mechanicId, MechanicIds.Harvest, StringComparison.OrdinalIgnoreCase))
             {

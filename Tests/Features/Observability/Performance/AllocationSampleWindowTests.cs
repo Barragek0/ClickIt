@@ -46,9 +46,7 @@ public class AllocationSampleWindowTests
     [TestMethod]
     public void MaxAllocPerSecond_DoesNotExplode_OnSubMillisecondGap()
     {
-        // A normal ~16ms cadence with one big 500KB rescan that lands 1ms after the previous run.
-        // The per-sample rate floors the observation period to 50ms, so the run claims at most
-        // 500KB / 50ms = 10MB/s instead of extrapolating 500KB / 1ms = 500MB/s.
+        // A normal ~16ms cadence with one big 500KB rescan that lands 1ms after the previous run. The per-sample rate floors the observation period to 50ms, so the run claims at most 500KB / 50ms = 10MB/s instead of extrapolating 500KB / 1ms = 500MB/s.
         var clock = new FakeClock { Now = 0 };
         var window = new AllocationSampleWindow(nowProvider: () => clock.Now);
 

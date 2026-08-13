@@ -108,11 +108,12 @@ namespace ClickIt.Features.Click.Ranking
             if (byRawDistanceNonIgnored != 0)
                 return byRawDistanceNonIgnored;
 
-            int byCursorDistance = left.CursorDistance.CompareTo(right.CursorDistance);
-            if (byCursorDistance != 0)
-                return byCursorDistance;
+            // Spec 4.2: a distance tie is broken by mechanic priority index BEFORE cursor proximity, so the higher-priority label wins even when the other is closer to the cursor.
+            int byPriorityIndex = left.PriorityIndex.CompareTo(right.PriorityIndex);
+            if (byPriorityIndex != 0)
+                return byPriorityIndex;
 
-            return left.PriorityIndex.CompareTo(right.PriorityIndex);
+            return left.CursorDistance.CompareTo(right.CursorDistance);
         }
     }
 }

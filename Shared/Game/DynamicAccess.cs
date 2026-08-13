@@ -17,9 +17,7 @@ namespace ClickIt.Shared.Game
     // Per-feature DLR read + time totals, indexed by ProcessingSection value.
     internal readonly record struct DlrSectionStats(long Calls, long Ticks);
 
-    // Ambient DLR-read attribution scope: while active, DynamicAccess charges each read (and its
-    // time) to the given processing section so the DLR breakdown table shows which feature commits
-    // the most dynamic-read pressure. Nested scopes restore the previous section on dispose.
+    // Ambient DLR-read attribution scope: while active, DynamicAccess charges each read (and its time) to the given processing section so the DLR breakdown table shows which feature commits the most dynamic-read pressure. Nested scopes restore the previous section on dispose.
     internal readonly struct DlrReadScope : IDisposable
     {
         private readonly int _previous;
@@ -42,14 +40,10 @@ namespace ClickIt.Shared.Game
         private static long _floatConversionFailures;
         private static long _intConversionFailures;
         private static long _emptyStringFailures;
-        // Accumulated high-resolution ticks spent inside TryGetDynamicValue, so the DLR Reads metric
-        // can report the actual TIME cost of dynamic reads (not just the count) — the freeze-relevant
-        // question is ms per second, not reads per second.
+        // Accumulated high-resolution ticks spent inside TryGetDynamicValue, so the DLR Reads metric can report the actual TIME cost of dynamic reads (not just the count) — the freeze-relevant question is ms per second, not reads per second.
         private static long _tryGetTicks;
 
-        // Per-feature attribution: DlrReadScope sets the ambient section on the current thread so each
-        // read is charged to the feature doing the work. Array index = ProcessingSection value; 0
-        // (Unknown) is the un-attributed "Other" bucket.
+        // Per-feature attribution: DlrReadScope sets the ambient section on the current thread so each read is charged to the feature doing the work. Array index = ProcessingSection value; 0 (Unknown) is the un-attributed "Other" bucket.
         internal const int DlrSectionCount = 13;
         [field: ThreadStatic]
         internal static int CurrentDlrSection { get; set; }
@@ -186,9 +180,7 @@ namespace ClickIt.Shared.Game
             }
         }
 
-        // Child indices used by the hot paths (strongbox child 0, blight menu children 0-3) are
-        // pre-built so no closure is allocated per call; larger indices fall back to a per-call
-        // closure.
+        // Child indices used by the hot paths (strongbox child 0, blight menu children 0-3) are pre-built so no closure is allocated per call; larger indices fall back to a per-call closure.
         private static readonly Func<dynamic, object?>[] s_childAccessors = BuildChildAccessors(16);
 
         private static Func<dynamic, object?>[] BuildChildAccessors(int count)
@@ -208,10 +200,7 @@ namespace ClickIt.Shared.Game
             if (index < 0)
                 return false;
 
-            // ExileCore logs "Element with index N not found" to the game log when GetChildAtIndex
-            // misses, so pre-check ChildCount and never enter the failing traversal. Only guard real
-            // game elements — reflection probe objects subclass Element too, but their ChildCount
-            // reads garbage memory and would spuriously reject valid reads.
+            // ExileCore logs "Element with index N not found" to the game log when GetChildAtIndex misses, so pre-check ChildCount and never enter the failing traversal. Only guard real game elements — reflection probe objects subclass Element too, but their ChildCount reads garbage memory and would spuriously reject valid reads.
             if (source is Element element
                 && element.GetType().Assembly == typeof(Element).Assembly
                 && index >= element.ChildCount)

@@ -47,8 +47,7 @@ public class PerformanceInGameOverlayTests
         overlay.Draw(CreateContext(textQueue));
 
         string[] lines = textQueue.GetPendingTextSnapshot();
-        // The render, CR ms/f, processing, DLR and GC tables keep "Last/Avg/Max" columns, matching
-        // the timing tables (the GC table shows byte/s in those same columns).
+        // The render, CR ms/f, processing, DLR and GC tables keep "Last/Avg/Max" columns, matching the timing tables (the GC table shows byte/s in those same columns).
         lines.Count(l => l == "Last").Should().Be(5);
         lines.Count(l => l == "Avg").Should().Be(5);
         lines.Count(l => l == "Max").Should().Be(5);
@@ -107,8 +106,7 @@ public class PerformanceInGameOverlayTests
         var monitor = new PerformanceMonitor(settings);
         monitor.RecordFpsSample(120);
 
-        // Blight breakdown stages: Entities/Foundations/Coverage/Events allocate, Executor (index 3)
-        // never allocates and must not appear in the GC table.
+        // Blight breakdown stages: Entities/Foundations/Coverage/Events allocate, Executor (index 3) never allocates and must not appear in the GC table.
         Span<long> bytes = stackalloc long[5];
         Span<double> ms = stackalloc double[5];
         bytes[0] = 4096; bytes[1] = 2048; bytes[2] = 1024; bytes[3] = 0; bytes[4] = 512;
@@ -126,8 +124,7 @@ public class PerformanceInGameOverlayTests
         lines.Should().Contain("Foundations");
         lines.Should().Contain("Coverage");
         lines.Should().Contain("Events");
-        // The process table keeps the Executor TIME row; the GC table must skip the 0-byte stage,
-        // so "Executor" appears exactly once instead of once per table.
+        // The process table keeps the Executor TIME row; the GC table must skip the 0-byte stage, so "Executor" appears exactly once instead of once per table.
         lines.Count(l => l == "Executor").Should().Be(1);
     }
 

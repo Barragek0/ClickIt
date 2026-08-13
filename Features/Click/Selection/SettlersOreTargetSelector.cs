@@ -12,10 +12,7 @@ namespace ClickIt.Features.Click.Selection
     internal sealed class SettlersOreTargetSelector(SettlersOreTargetSelectorDependencies dependencies)
     {
         private readonly SettlersOreTargetSelectorDependencies _dependencies = dependencies;
-        // Settlers-ore entities are retained by the shared EntityEventHub with ONE subscription and
-        // ONE path read per event — the 80ms resolution walks only these instead of every entity in
-        // the area. Falls back to the full valid walk when the set is empty (no settlers entities, or
-        // a test controller without a live entity cache).
+        // Settlers-ore entities are retained by the shared EntityEventHub with ONE subscription and ONE path read per event — the 80ms resolution walks only these instead of every entity in the area. Falls back to the full valid walk when the set is empty (no settlers entities, or a test controller without a live entity cache).
 
         internal SettlersOreCandidate? ResolveNextSettlersOreCandidate()
         {

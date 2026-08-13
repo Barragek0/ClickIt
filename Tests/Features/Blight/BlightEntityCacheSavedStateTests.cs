@@ -15,8 +15,7 @@ public class BlightEntityCacheSavedStateTests
     [TestMethod]
     public void RestoreSavedState_DriftedPosition_RestoresBuiltLevel_NoPhantomFoundation()
     {
-        // A tower was built at grid cell ~(10,20); the next scan's foundation entity reports
-        // (10.4,20.3) — the SAME cell, but not an exact dictionary-key match.
+        // A tower was built at grid cell ~(10,20); the next scan's foundation entity reports (10.4,20.3) — the SAME cell, but not an exact dictionary-key match.
         List<BlightCachedTower> scanned = [new(new NumVector2(10.4f, 20.3f), BlightTowerType.Chilling)];
         Dictionary<NumVector2, (BlightTowerType, int, BlightTowerType)> saved = Saved(
             (new NumVector2(10.1f, 20.1f), BlightTowerType.Chilling, 3, BlightTowerType.Chilling));
@@ -65,8 +64,7 @@ public class BlightEntityCacheSavedStateTests
     [TestMethod]
     public void RestoreSavedState_TwoFoundationsNearOneSavedTower_FirstMatchConsumesIt()
     {
-        // Two scanned foundations within the tolerance of one saved tower — the first consumes it,
-        // the second stays a fresh foundation (same ambiguity as every other tolerance lookup).
+        // Two scanned foundations within the tolerance of one saved tower — the first consumes it, the second stays a fresh foundation (same ambiguity as every other tolerance lookup).
         List<BlightCachedTower> scanned =
         [
             new(new NumVector2(10.0f, 20.0f), BlightTowerType.Chilling),

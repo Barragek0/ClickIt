@@ -85,8 +85,7 @@ namespace ClickIt.Core.Bootstrap
                 context.Runtime.LastTickTimer,
                 context.Runtime.Timer,
                 context.Runtime.SecondTimer));
-            // Unhook the live GameController entity events so the disposed blight cache's handler
-            // (a per-entity path read) stops running on every EntityAdded after a reload.
+            // Unhook the live GameController entity events so the disposed blight cache's handler (a per-entity path read) stops running on every EntityAdded after a reload.
             context.ServiceRegistry.Register(() => context.Services.BlightService?.DisposeForShutdown());
         }
 

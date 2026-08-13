@@ -269,8 +269,7 @@ namespace ClickIt.Tests.Features.Labels.Application
             LabelOnGround? first = service.GetNextLabelToClick(labels, 0, 10);
             first.Should().BeSameAs(farLabel);
 
-            // The player closes in on nearLabel. The expensive per-label build must NOT re-run (same
-            // addresses), but the live distance must be re-read so the ranking flips to nearLabel.
+            // The player closes in on nearLabel. The expensive per-label build must NOT re-run (same addresses), but the live distance must be re-read so the ranking flips to nearLabel.
             nearProbe.DistancePlayer = 10f;
             farProbe.DistancePlayer = 200f;
 
@@ -304,8 +303,7 @@ namespace ClickIt.Tests.Features.Labels.Application
             // Far away: rejected as out of range, so nothing is selected.
             service.GetNextLabelToClick([label], 0, 10).Should().BeNull("the label is initially out of distance");
 
-            // The player walks closer; the cached OutOfDistance rejection must be re-evaluated, not
-            // held for the rest of the 1s cache window.
+            // The player walks closer; the cached OutOfDistance rejection must be re-evaluated, not held for the rest of the 1s cache window.
             probe.DistancePlayer = 10f;
 
             service.GetNextLabelToClick([label], 0, 10).Should().BeSameAs(label,
@@ -315,9 +313,7 @@ namespace ClickIt.Tests.Features.Labels.Application
         [TestMethod]
         public void GetNextLabelToClick_ReevaluatesNullSelection_AfterCacheWindow()
         {
-            // Regression guard: a stable label-list reference plus a cached null selection deadlocked
-            // item pickup (the scan never re-ran, so items that became clickable were never picked
-            // up). A stale null result must be re-evaluated after the cache window.
+            // Regression guard: a stable label-list reference plus a cached null selection deadlocked item pickup (the scan never re-ran, so items that became clickable were never picked up). A stale null result must be re-evaluated after the cache window.
             LabelOnGround label = CreateOpaqueLabel(address: 0x1000);
             bool shouldSelect = false;
             int buildCount = 0;
@@ -354,8 +350,7 @@ namespace ClickIt.Tests.Features.Labels.Application
             service.GetNextLabelToClick(labels, 0, 10).Should().BeNull();
             buildCount.Should().Be(buildsAfterFirstScan, "the cached null must be served within the window");
 
-            // The label becomes selectable; after the window the selection must re-evaluate and pick
-            // it up instead of being pinned to the stale null result.
+            // The label becomes selectable; after the window the selection must re-evaluate and pick it up instead of being pinned to the stale null result.
             shouldSelect = true;
             Thread.Sleep(300);
 

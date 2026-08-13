@@ -33,9 +33,7 @@ namespace ClickIt.Tests.Features.Click
         [TestMethod]
         public void TryWalkTowardGridPosition_ReturnsFalse_WhenNoCameraAvailable()
         {
-            // Blight foundations whose entity streamed out are walked toward by grid position.
-            // With no camera the position cannot be projected, so the walk must fail closed
-            // instead of clicking somewhere arbitrary.
+            // Blight foundations whose entity streamed out are walked toward by grid position. With no camera the position cannot be projected, so the walk must fail closed instead of clicking somewhere arbitrary.
             var coordinator = CreateCoordinator(new ClickRuntimeState());
 
             bool walked = coordinator.TryWalkTowardGridPosition(new NumVector2(1653f, 800f));
@@ -767,8 +765,7 @@ namespace ClickIt.Tests.Features.Click
         {
             Vector2 target = new(1303f, 199f);
 
-            // The first ~150px toward the player are blocked (e.g. buff bar); the walk must
-            // keep stepping back along the path until it finds a clickable point.
+            // The first ~150px toward the player are blocked (e.g. buff bar); the walk must keep stepping back along the path until it finds a clickable point.
             Vector2 result = OffscreenPathingCoordinator.ResolveSafeClickAlongPath(
                 target,
                 new Size2F(1920f, 1080f),
@@ -798,6 +795,7 @@ namespace ClickIt.Tests.Features.Click
             GameController? gameController = null,
             PathfindingService? pathfindingService = null,
             ClickDebugPublicationService? clickDebugPublisher = null,
+            Func<Vector2, bool>? isBlightIconAt = null,
             Func<LabelOnGround, Vector2, IReadOnlyList<LabelOnGround>?, Func<Vector2, bool>?, (bool Success, Vector2 ClickPos)>? tryResolveClickPosition = null,
             Func<InteractionExecutionRequest, bool>? executeInteraction = null,
             ILabelInteractionPort? labelInteractionPort = null,
@@ -874,7 +872,106 @@ namespace ClickIt.Tests.Features.Click
                 HoldDebugTelemetryAfterSuccess: holdDebugTelemetryAfterSuccess,
                 ClickDebugPublisher: clickDebugPublisher,
                 PointIsInClickableArea: pointIsInClickableArea,
+                IsBlightBuildOrUpgradeIconAt: isBlightIconAt,
                 RuntimeSeam: runtimeSeam));
+        }
+
+        [TestMethod]
+        public void TryWalkTowardOffscreenTarget_OffsetsWalkClickAwayFromBlightIcon()
+        {
+            // Spec 12: walk clicks must never land on a blight build/upgrade icon box. The raw directional walk click lands in the icon region here; the coordinator must offset it so the executed click is outside every icon box, and publish the avoidance stage.
+            var settings = new ClickItSettings
+            {
+                WalkTowardOffscreenLabels = new ToggleNode(true)
+            };
+            var runtimeState = new ClickRuntimeState();
+            Entity preferredTarget = OffscreenStickyTargetGraphShaper.CreateActiveStickyEntity(address: 70, path: "Metadata/Monsters/BlightIconTarget");
+            List<Vector2> executedClicks = [];
+            List<ClickDebugSnapshot> published = [];
+            List<string> logs = [];
+            Func<Vector2, bool> isBlightIconAt = point => point.X < 1000f && point.Y < 500f;
+            PathfindingService pathfindingService = new();
+            GameController interactionController = ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindow(new RectangleF(100f, 200f, 1280f, 720f));
+            ClickDebugPublicationService clickDebugPublisher = ClickTestDebugPublisherFactory.Create(() => true, snapshot => published.Add(snapshot));
+            Func<Vector2, string, bool> pointIsInClickableArea = static (_, _) => true;
+            ILabelInteractionPort labelInteractionPort = ClickTestServiceFactory.CreateNoOpLabelInteractionPort();
+            ClickLabelInteractionService labelInteraction = ClickTestServiceFactory.CreateLabelInteractionService(
+                gameController: interactionController,
+                labelInteractionPort: labelInteractionPort,
+                executeInteraction: request =>
+                {
+                    executedClicks.Add(request.ClickPosition);
+                    return true;
+                },
+                isClickableInEitherSpace: pointIsInClickableArea,
+                isInsideWindowInEitherSpace: static _ => true);
+            OffscreenTargetResolver targetResolver = new(
+                interactionController,
+                pathfindingService,
+                new StubOffscreenRuntimeSeam
+                {
+                    Player = EntityProbeFactory.Create(address: 1, gridX: 0, gridY: 0, type: EntityType.Monster),
+                    PlayerGrid = Vector2.Zero,
+                    TargetGrid = new Vector2(6f, 1f),
+                    Window = new RectangleF(100f, 200f, 1280f, 720f),
+                    ProjectedPoint = new Vector2(980f, 480f),
+                    ProjectWorldToScreen = true
+                });
+            MovementSkillCoordinator movementSkills = new(new MovementSkillCoordinatorDependencies(
+                Settings: settings,
+                GameController: interactionController,
+                RuntimeState: runtimeState,
+                PerformanceMonitor: new PerformanceMonitor(settings),
+                GetRemainingOffscreenPathNodeCount: targetResolver.GetRemainingOffscreenPathNodeCount,
+                EnsureCursorInsideGameWindowForClick: static _ => true,
+                PointIsInClickableArea: pointIsInClickableArea,
+                DebugLog: logs.Add));
+            OffscreenStickyTargetHandler stickyHandler = new(new OffscreenStickyTargetHandlerDependencies(
+                GameController: interactionController,
+                ShrineService: new ShrineService(interactionController, (Camera)RuntimeHelpers.GetUninitializedObject(typeof(Camera))),
+                RuntimeState: runtimeState,
+                LabelInteraction: labelInteraction,
+                ChestLootSettlement: CreateChestLootSettlementTracker(settings, clickDebugPublisher, labelInteraction),
+                IsClickableInEitherSpace: pointIsInClickableArea,
+                PathfindingLabelSuppression: new PathfindingLabelSuppressionEvaluator(new PathfindingLabelSuppressionEvaluatorDependencies(settings, runtimeState)),
+                LabelInteractionPort: labelInteractionPort,
+                HoldDebugTelemetryAfterSuccess: static _ => { }));
+            OffscreenPathingCoordinator coordinator = new(new OffscreenPathingCoordinatorDependencies(
+                Settings: settings,
+                GameController: null!,
+                PathfindingService: pathfindingService,
+                OnscreenMechanicPathingBlocker: new OnscreenMechanicPathingBlocker(new OnscreenMechanicPathingBlockerDependencies(
+                    Settings: settings,
+                    AltarAutomation: ClickTestServiceFactory.CreateAltarAutomationService(settings),
+                    VisibleMechanics: new StubVisibleMechanicSelectionSource(hasClickableShrine: false, hasLostShipment: false, hasSettlers: false),
+                    ClickDebugPublisher: clickDebugPublisher)),
+                TraversalTargetResolver: null!,
+                StickyTargetHandler: stickyHandler,
+                TargetResolver: targetResolver,
+                MovementSkills: movementSkills,
+                LabelInteraction: labelInteraction,
+                DebugLog: logs.Add,
+                HoldDebugTelemetryAfterSuccess: static _ => { },
+                ClickDebugPublisher: clickDebugPublisher,
+                PointIsInClickableArea: pointIsInClickableArea,
+                IsBlightBuildOrUpgradeIconAt: isBlightIconAt,
+                RuntimeSeam: new StubOffscreenRuntimeSeam
+                {
+                    Player = EntityProbeFactory.Create(address: 1, gridX: 0, gridY: 0, type: EntityType.Monster),
+                    PlayerGrid = Vector2.Zero,
+                    TargetGrid = new Vector2(6f, 1f),
+                    Window = new RectangleF(100f, 200f, 1280f, 720f),
+                    ProjectedPoint = new Vector2(980f, 480f),
+                    ProjectWorldToScreen = true
+                }));
+
+            bool walked = coordinator.TryWalkTowardOffscreenTarget(preferredTarget);
+
+            walked.Should().BeTrue($"walk should complete; logs: [{string.Join(" | ", logs)}]");
+            executedClicks.Should().NotBeEmpty();
+            foreach (Vector2 click in executedClicks)
+                isBlightIconAt(click).Should().BeFalse("a walk click must never land on a blight build/upgrade icon");
+            published.Should().Contain(snapshot => snapshot.Stage == "BlightIconAvoided");
         }
 
         private static ChestLootSettlementTracker CreateChestLootSettlementTracker(

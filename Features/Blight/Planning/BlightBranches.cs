@@ -17,9 +17,7 @@ internal static class BlightBranches
         return (dx * dx) + (dy * dy);
     }
 
-    // Shared placement metric for coverage and fill tiers: how desirable a foundation is for a
-    // rule.  NearestPump prefers pump proximity, NearExistingTowers prefers clustering beside an
-    // already-assigned tower, and everything else falls back to the caller's metric.
+    // Shared placement metric for coverage and fill tiers: how desirable a foundation is for a rule.  NearestPump prefers pump proximity, NearExistingTowers prefers clustering beside an already-assigned tower, and everything else falls back to the caller's metric.
     internal static float PlacementMetric(
         IReadOnlyList<BlightCachedTower> knownTowers,
         HashSet<int> assignedIndices,
@@ -86,8 +84,7 @@ internal static class BlightBranches
             branches.Add(new PumpBranch(s, anchor));
         }
 
-        // Persist branches from earlier rebuilds even when their pump-near entities streamed out; only
-        // attach a CoverageSegment when a segment's midpoint is actually near the anchor.
+        // Persist branches from earlier rebuilds even when their pump-near entities streamed out; only attach a CoverageSegment when a segment's midpoint is actually near the anchor.
         if (cachedAnchors != null)
         {
             foreach (NumVector2 anchor in cachedAnchors.Keys)
@@ -117,9 +114,7 @@ internal static class BlightBranches
         return SubtreeFullyCovered(branch, coverage, covered, knownTowers, type, targetLevel);
     }
 
-    // The working coverage state the planner plans against: the current coverage array (which already
-    // includes AND/OR propagation of built towers) plus the segments an in-progress (below-max) built
-    // tower of the type will cover once upgraded to max, re-propagated through the same rules.
+    // The working coverage state the planner plans against: the current coverage array (which already includes AND/OR propagation of built towers) plus the segments an in-progress (below-max) built tower of the type will cover once upgraded to max, re-propagated through the same rules.
     internal static bool[] ComputePlannedCoveredState(
         LaneCoverageResult[] coverage, BlightTowerType type, IReadOnlyList<BlightCachedTower> knownTowers,
         int targetLevel)
@@ -254,8 +249,7 @@ internal static class BlightBranches
     {
         List<int> children = [];
 
-        // Direct children: any segment whose ParentIndex == segmentIdx.  Full scan — in the
-        // pump-rooted tree a child can sit on either side of its parent in the array.
+        // Direct children: any segment whose ParentIndex == segmentIdx.  Full scan — in the pump-rooted tree a child can sit on either side of its parent in the array.
         for (int s = 0; s < coverage.Length; s++)
         {
             if (s != segmentIdx && coverage[s].ParentIndex == segmentIdx && !coverage[s].IsPumpStub)
@@ -265,15 +259,7 @@ internal static class BlightBranches
         return children;
     }
 
-    // Post-pass over the computed coverage: chains that the normal branch pass left with no branch
-    // are attached to the most appropriate branch. The game can split one visual lane into several
-    // beam chains, so a split-off chain's head (pump-ward end) sits right at the end of a branch
-    // lane; re-parenting it under that lane end makes it the lane's continuation (e.g. A-1.4...).
-    // If the head is out of range, walk the chain from its head (furthest from the portal) toward
-    // the portal end and attach the first in-range segment. A very close gap (<= closeGapDistance)
-    // joins on a looser angle — real continuations can leave the lane end at a noticeable angle, but
-    // a lane that far-off the end that far away is separate. Unattachable chains are left untouched
-    // so the debug UI can surface them as unassigned.
+    // Post-pass over the computed coverage: chains that the normal branch pass left with no branch are attached to the most appropriate branch. The game can split one visual lane into several beam chains, so a split-off chain's head (pump-ward end) sits right at the end of a branch lane; re-parenting it under that lane end makes it the lane's continuation (e.g. A-1.4...). If the head is out of range, walk the chain from its head (furthest from the portal) toward the portal end and attach the first in-range segment. A very close gap (<= closeGapDistance) joins on a looser angle — real continuations can leave the lane end at a noticeable angle, but a lane that far-off the end that far away is separate. Unattachable chains are left untouched so the debug UI can surface them as unassigned.
     internal static bool AttachUnassignedLanes(
         LaneCoverageResult[] coverage,
         IReadOnlyList<NumVector2> positions,
@@ -294,9 +280,7 @@ internal static class BlightBranches
 
         foreach (int root in unassignedRoots)
         {
-            // Walk the chain from its pump-ward head (furthest from the portal) toward the portal
-            // end, trying each segment as the attach point: a short stub poking back toward the
-            // pump can put the head out of range while the real junction sits one segment deeper.
+            // Walk the chain from its pump-ward head (furthest from the portal) toward the portal end, trying each segment as the attach point: a short stub poking back toward the pump can put the head out of range while the real junction sits one segment deeper.
             int seg = root;
             while (true)
             {
@@ -328,14 +312,7 @@ internal static class BlightBranches
         return attachedAny;
     }
 
-    // Post-pass over the computed coverage: chains that run PARALLEL to an assigned lane within a
-    // small distance are merged into that lane. The game lays one visual lane twice as stacked
-    // parallel rows a few units apart (MergeStackedLaneFlags already merges their coverage flags),
-    // but a stacked chain's head does not sit at a lane END, so the lane-end attach pass above never
-    // attaches it and it stays an unassigned branch. When a chain segment travels parallel to an
-    // assigned segment (|cos| >= alignmentCos — the row can be laid either way up) within
-    // parallelDistance, re-parent the chain onto that segment so both rows are treated as one lane
-    // (e.g. the orange row beside B-1.2/1.3/1.4 and the red row after B-1.21).
+    // Post-pass over the computed coverage: chains that run PARALLEL to an assigned lane within a small distance are merged into that lane. The game lays one visual lane twice as stacked parallel rows a few units apart (MergeStackedLaneFlags already merges their coverage flags), but a stacked chain's head does not sit at a lane END, so the lane-end attach pass above never attaches it and it stays an unassigned branch. When a chain segment travels parallel to an assigned segment (|cos| >= alignmentCos — the row can be laid either way up) within parallelDistance, re-parent the chain onto that segment so both rows are treated as one lane (e.g. the orange row beside B-1.2/1.3/1.4 and the red row after B-1.21).
     internal static bool AttachParallelLanes(
         LaneCoverageResult[] coverage,
         IReadOnlyList<NumVector2> positions,
@@ -354,9 +331,7 @@ internal static class BlightBranches
 
         foreach (int root in unassignedRoots)
         {
-            // Walk the chain from its pump-ward head toward the portal end, trying each segment as
-            // the attach point — the row's head can drift out of the parallel window while a deeper
-            // segment hugs the lane.
+            // Walk the chain from its pump-ward head toward the portal end, trying each segment as the attach point — the row's head can drift out of the parallel window while a deeper segment hugs the lane.
             int seg = root;
             while (true)
             {
@@ -401,9 +376,7 @@ internal static class BlightBranches
         return attachedAny;
     }
 
-    // Segments already claimed by a branch (the union of every branch's subtree). BranchSegments
-    // walks a branch's subtree but excludes the branch's own orphan root, so those roots are marked
-    // assigned here too — they anchor a branch and are never unassigned.
+    // Segments already claimed by a branch (the union of every branch's subtree). BranchSegments walks a branch's subtree but excludes the branch's own orphan root, so those roots are marked assigned here too — they anchor a branch and are never unassigned.
     private static bool[] BuildAssignedMask(LaneCoverageResult[] coverage, List<PumpBranch> branches)
     {
         int n = coverage.Length;
@@ -466,9 +439,7 @@ internal static class BlightBranches
         return NumVector2.Zero;
     }
 
-    // Re-parent seg under an assigned lane segment and reconnect the head-side (the segments between
-    // the chain head and seg) onto seg: the whole chain is one physical lane, so it joins the branch
-    // as a single connected run instead of leaving an unassigned stub that shows as a gap.
+    // Re-parent seg under an assigned lane segment and reconnect the head-side (the segments between the chain head and seg) onto seg: the whole chain is one physical lane, so it joins the branch as a single connected run instead of leaving an unassigned stub that shows as a gap.
     private static void ReparentUnder(
         LaneCoverageResult[] coverage, List<List<int>> children, bool[] assigned, int seg, int newParent)
     {
@@ -497,8 +468,7 @@ internal static class BlightBranches
             assigned[s] = true;
     }
 
-    // Whether the direction from a branch lane end toward an unattached chain head aligns with the
-    // lane's own heading at that end (the fragment continues the lane, not a crossing line).
+    // Whether the direction from a branch lane end toward an unattached chain head aligns with the lane's own heading at that end (the fragment continues the lane, not a crossing line).
     private static bool AlignedAt(
         LaneCoverageResult[] coverage, IReadOnlyList<NumVector2> positions, int laneEnd, int fragmentHead, float cos)
     {

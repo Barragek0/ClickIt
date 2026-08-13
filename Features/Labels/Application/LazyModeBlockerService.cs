@@ -76,12 +76,7 @@ namespace ClickIt.Features.Labels.Application
                 settings: new TimedValueCacheSettings(RequireNonNegativeAge: true));
         private long _lastLazyModeRestrictionLogTimestampMs = long.MinValue;
         private string _lastLazyModeRestrictionLogReason = string.Empty;
-        // Locked-chest scan cache. The label-list reference does NOT change while the visible label
-        // addresses are stable (StableLabelSetCache returns the same instance), so a reference-equality
-        // gate would never re-run the scan while the player walks — yet DistancePlayer <= ClickDistance
-        // changes with movement. A time-based cache (mirroring the nearby-monster cache) re-scans on a
-        // short cadence instead. Thread-safe: called from the render thread (LazyModeOverlay.Draw) and
-        // the click coroutine.
+        // Locked-chest scan cache. The label-list reference does NOT change while the visible label addresses are stable (StableLabelSetCache returns the same instance), so a reference-equality gate would never re-run the scan while the player walks — yet DistancePlayer <= ClickDistance changes with movement. A time-based cache (mirroring the nearby-monster cache) re-scans on a short cadence instead. Thread-safe: called from the render thread (LazyModeOverlay.Draw) and the click coroutine.
         private const long LockedChestScanCacheWindowMs = 200;
         private readonly TimedValueCache<IReadOnlyList<LabelOnGround>, LazyModeRestrictionResult> _lockedChestRestrictionCache
             = new(LockedChestScanCacheWindowMs);
@@ -128,9 +123,7 @@ namespace ClickIt.Features.Labels.Application
             if (allLabels == null)
                 return default;
 
-            // Time-gated (not reference-gated): the label reference is stable while addresses are
-            // unchanged, but the locked-chest check depends on DistancePlayer which changes with
-            // movement — so re-scan on a short cadence rather than only on label-set change.
+            // Time-gated (not reference-gated): the label reference is stable while addresses are unchanged, but the locked-chest check depends on DistancePlayer which changes with movement — so re-scan on a short cadence rather than only on label-set change.
             long nowMs = _nowProvider();
             if (_lockedChestRestrictionCache.TryGetValue(allLabels, nowMs, out LazyModeRestrictionResult cached))
                 return cached;

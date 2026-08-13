@@ -66,8 +66,7 @@ public class ClickItHarvestFeatureTests
     [TestMethod]
     public void ShouldSkipRescan_SameSetAfterWindow_ReScans()
     {
-        // A stable reference must never freeze position-dependent bounds — the cadence forces a
-        // re-scan even when the label set is unchanged.
+        // A stable reference must never freeze position-dependent bounds — the cadence forces a re-scan even when the label set is unchanged.
         HarvestService.ShouldSkipRescan(sameLabelSet: true, now: 100, lastScanAtMs: 0, rescanIntervalMs: 100)
             .Should().BeFalse();
     }
@@ -88,8 +87,7 @@ public class ClickItHarvestFeatureTests
         var svc = new HarvestService(s, () => now);
         IReadOnlyList<LabelOnGround> labels = [];
 
-        // First scan runs; a second call inside the window is skipped; after the cadence the scan
-        // runs again (observable via the re-scan path not throwing and the guard releasing).
+        // First scan runs; a second call inside the window is skipped; after the cadence the scan runs again (observable via the re-scan path not throwing and the guard releasing).
         svc.ProcessHarvestPlots(labels, gameController: null);
         now = 50;
         svc.ProcessHarvestPlots(labels, gameController: null);
@@ -109,10 +107,7 @@ public class ClickItHarvestFeatureTests
         var svc = new HarvestService(s);
         // Manually set blocked decision (normally done by DecideBestPlot)
         typeof(HarvestService).GetField("_settings", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(svc, s);
-        // We can't easily simulate the full state, but GetLabelToClick
-        // checks IsHarvestClickBlocked which defaults to false in a
-        // fresh HarvestDecision. With no ChosenLabel and no blocked flag,
-        // and lifeforce off, GetLabelToClick returns null.
+        // We can't easily simulate the full state, but GetLabelToClick checks IsHarvestClickBlocked which defaults to false in a fresh HarvestDecision. With no ChosenLabel and no blocked flag, and lifeforce off, GetLabelToClick returns null.
         svc.GetLabelToClick().Should().BeNull();
     }
 

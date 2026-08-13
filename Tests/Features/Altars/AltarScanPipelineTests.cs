@@ -50,8 +50,7 @@ namespace ClickIt.Tests.Features.Altars
             var debugInfo = new AltarServiceDebugInfo();
             var pipeline = new AltarScanPipeline(store, debugInfo, CreateFactory());
 
-            // A TimeCache factory returning the SAME list instance models the read model's
-            // stable-instance behavior: unchanged visible label set -> same reference.
+            // A TimeCache factory returning the SAME list instance models the read model's stable-instance behavior: unchanged visible label set -> same reference.
             var stableLabels = new List<LabelOnGround> { new() };
             var cachedLabels = new TimeCache<List<LabelOnGround>>(() => stableLabels, 50);
 
@@ -60,8 +59,7 @@ namespace ClickIt.Tests.Features.Altars
             store.Add(TestBuilders.BuildPrimary()).Should().BeTrue();
 
             pipeline.ProcessScan(cachedLabels, includeExarch: true, includeEater: true);
-            // Second scan: same label reference AND the store is populated -> the element walk is
-            // skipped, so the store is not cleared by an unchanged no-altar-label set.
+            // Second scan: same label reference AND the store is populated -> the element walk is skipped, so the store is not cleared by an unchanged no-altar-label set.
             store.GetComponentsReadOnly().Should().NotBeEmpty(
                 "an unchanged label set must not clear the warmed store");
         }
@@ -79,12 +77,10 @@ namespace ClickIt.Tests.Features.Altars
             pipeline.ProcessScan(cachedLabels, includeExarch: true, includeEater: true);
             store.Add(TestBuilders.BuildPrimary()).Should().BeTrue();
 
-            // External clear: the store is emptied while the label set is unchanged. The gate must
-            // NOT skip (store count == 0) so the store gets re-evaluated.
+            // External clear: the store is emptied while the label set is unchanged. The gate must NOT skip (store count == 0) so the store gets re-evaluated.
             store.Clear();
             pipeline.ProcessScan(cachedLabels, includeExarch: true, includeEater: true);
-            // No altar labels in the stable set -> the re-run clears again (empty result), but the
-            // important part is the gate did not short-circuit past the altar-label evaluation.
+            // No altar labels in the stable set -> the re-run clears again (empty result), but the important part is the gate did not short-circuit past the altar-label evaluation.
             store.GetComponentsReadOnly().Should().BeEmpty();
             debugInfo.LastScanExarchLabels.Should().Be(0);
             debugInfo.LastScanEaterLabels.Should().Be(0);

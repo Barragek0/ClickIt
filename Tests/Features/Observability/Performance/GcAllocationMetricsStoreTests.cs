@@ -70,8 +70,7 @@ namespace ClickIt.Tests.Features.Observability.Performance
         {
             var store = new GcAllocationMetricsStore();
 
-            // 1000 bytes per run, recorded ~100ms apart -> ~10,000 bytes/s. TickCount64's ~15ms
-            // granularity widens the measured period, so assert a loose band instead of an exact value.
+            // 1000 bytes per run, recorded ~100ms apart -> ~10,000 bytes/s. TickCount64's ~15ms granularity widens the measured period, so assert a loose band instead of an exact value.
             store.Record(ProcessingSection.Label, 1000);
             Thread.Sleep(100);
             store.Record(ProcessingSection.Label, 1000);
@@ -86,8 +85,7 @@ namespace ClickIt.Tests.Features.Observability.Performance
         {
             var store = new GcAllocationMetricsStore();
 
-            // A small then a large sample over similar periods: the peak single-sample rate must
-            // exceed the average rate (TickCount64 granularity ~15ms, so keep the bounds loose).
+            // A small then a large sample over similar periods: the peak single-sample rate must exceed the average rate (TickCount64 granularity ~15ms, so keep the bounds loose).
             store.Record(ProcessingSection.Label, 1000);
             Thread.Sleep(80);
             store.Record(ProcessingSection.Label, 5000);

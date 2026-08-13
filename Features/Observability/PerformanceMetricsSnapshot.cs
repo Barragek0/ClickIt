@@ -5,11 +5,7 @@ namespace ClickIt.Features.Observability
         double Average,
         double Max);
 
-    // GC pressure per processing section: steady-state alloc/s (bytes per run / run period) plus
-    // per-run bytes, so the debug table can rank where allocations actually happen. LastBytesPerRun
-    // and AvgPeriodMs let the summary normalize per-run bytes to per-frame last/avg/max;
-    // MaxAllocPerSecond is the highest per-sample rate in the live window (a run's bytes / its
-    // observed period, floored to a 50ms observation window) — the Max KB/s column on every surface.
+    // GC pressure per processing section: steady-state alloc/s (bytes per run / run period) plus per-run bytes, so the debug table can rank where allocations actually happen. LastBytesPerRun and AvgPeriodMs let the summary normalize per-run bytes to per-frame last/avg/max; MaxAllocPerSecond is the highest per-sample rate in the live window (a run's bytes / its observed period, floored to a 50ms observation window) — the Max KB/s column on every surface.
     internal readonly record struct GcAllocationSnapshot(
         double AllocPerSecond,
         double AvgBytesPerRun,
@@ -27,17 +23,14 @@ namespace ClickIt.Features.Observability
         long SortBytes,
         long TotalBytes);
 
-    // Per-stage allocation snapshot over the same 10s rolling window as the main GC sections:
-    // MaxAllocPerSecond is the highest per-sample rate (a run's bytes / its observed period, floored
-    // to a 50ms observation window) — the Max KB/s column on every surface.
+    // Per-stage allocation snapshot over the same 10s rolling window as the main GC sections: MaxAllocPerSecond is the highest per-sample rate (a run's bytes / its observed period, floored to a 50ms observation window) — the Max KB/s column on every surface.
     public readonly record struct AllocationStageSnapshot(
         double LastBytesPerRun,
         double AvgBytesPerRun,
         double MaxBytesPerRun,
         double MaxAllocPerSecond = 0);
 
-    // Rolling per-stage label-scan allocation stats so the debug tables can show last/avg/max
-    // bytes-per-run for each stage instead of the whole scan's aggregate.
+    // Rolling per-stage label-scan allocation stats so the debug tables can show last/avg/max bytes-per-run for each stage instead of the whole scan's aggregate.
     public readonly record struct LabelScanAllocationStats(
         AllocationStageSnapshot ListRead,
         AllocationStageSnapshot ListAlloc,
@@ -45,10 +38,7 @@ namespace ClickIt.Features.Observability
         AllocationStageSnapshot Sort,
         long SampleCount);
 
-    // Per-stage allocation inside the click pipeline (bytes allocated by one stage of one run).
-    // OtherBytes captures click work outside the named stages (Run() prelude, debug-stage
-    // publishing, iterator machinery) so the stages sum to the recorded TotalBytes. The *Ms fields
-    // carry the same stages' wall-clock time so the debug tables can show time AND allocation.
+    // Per-stage allocation inside the click pipeline (bytes allocated by one stage of one run). OtherBytes captures click work outside the named stages (Run() prelude, debug-stage publishing, iterator machinery) so the stages sum to the recorded TotalBytes. The *Ms fields carry the same stages' wall-clock time so the debug tables can show time AND allocation.
     public readonly record struct ClickAllocationBreakdown(
         long ContextBytes,
         long AcquireBytes,
@@ -71,8 +61,7 @@ namespace ClickIt.Features.Observability
         AllocationStageSnapshot Allocation,
         TimingStageSnapshot Time);
 
-    // Per-stage breakdown of one processing section over the same rolling windows as the main GC
-    // table, so the debug surfaces can drill from an area into its sub-steps.
+    // Per-stage breakdown of one processing section over the same rolling windows as the main GC table, so the debug surfaces can drill from an area into its sub-steps.
     public readonly record struct BreakdownStats(
         IReadOnlyList<BreakdownStageSnapshot> Stages,
         long SampleCount);
@@ -92,13 +81,7 @@ namespace ClickIt.Features.Observability
         TimingStageSnapshot ExecuteTime = default,
         TimingStageSnapshot PostTime = default);
 
-    // Process + managed-heap memory picture. ProcessWorkingSetMb is the WHOLE process (game +
-    // ExileCore/ExileApi + plugin), so per-feature attribution is not possible — the GC table's
-    // alloc/s column is the per-feature allocation proxy instead. GcPause* carries the recent
-    // blocking GC pause picture (last/avg/max ms + pause-time % of the last observed window), which
-    // is what actually stalls all threads when the plugin churns the heap. DlrReads* carries the
-    // recent DynamicAccess read picture — reads/sec plus the actual ms/sec spent inside the dynamic
-    // reads (the freeze-relevant cost) — with the share of reads that failed (%).
+    // Process + managed-heap memory picture. ProcessWorkingSetMb is the WHOLE process (game + ExileCore/ExileApi + plugin), so per-feature attribution is not possible — the GC table's alloc/s column is the per-feature allocation proxy instead. GcPause* carries the recent blocking GC pause picture (last/avg/max ms + pause-time % of the last observed window), which is what actually stalls all threads when the plugin churns the heap. DlrReads* carries the recent DynamicAccess read picture — reads/sec plus the actual ms/sec spent inside the dynamic reads (the freeze-relevant cost) — with the share of reads that failed (%).
     internal readonly record struct MemoryMetricsSnapshot(
         double ProcessWorkingSetMb,
         double ManagedHeapMb,
@@ -122,9 +105,7 @@ namespace ClickIt.Features.Observability
         IReadOnlyList<DlrSectionSnapshot>? DlrSections = null,
         IReadOnlyList<GcSectionSnapshot>? GcSections = null);
 
-    // One feature's DLR-read attribution over the recent window: reads/sec plus the actual ms/sec
-    // spent inside the dynamic reads (last/avg/max). Indexed by ProcessingSection value; the DLR
-    // table maps each entry to a feature row so the per-feature dynamic-read pressure is visible.
+    // One feature's DLR-read attribution over the recent window: reads/sec plus the actual ms/sec spent inside the dynamic reads (last/avg/max). Indexed by ProcessingSection value; the DLR table maps each entry to a feature row so the per-feature dynamic-read pressure is visible.
     internal readonly record struct DlrSectionSnapshot(
         double ReadsLastPerSec = 0,
         double ReadsAvgPerSec = 0,
@@ -133,10 +114,7 @@ namespace ClickIt.Features.Observability
         double MsAvgPerSec = 0,
         double MsMaxPerSec = 0);
 
-    // One feature's GC allocation-rate attribution over the recent window: bytes/sec (last/avg/max),
-    // sampled on the same 500ms cadence as the timing tables so the GC table's Last/Avg/Max matches
-    // the other tables (10s expiry, 10-sample average, max over the live window). Indexed by
-    // ProcessingSection value; the GC table maps each entry to a feature row.
+    // One feature's GC allocation-rate attribution over the recent window: bytes/sec (last/avg/max), sampled on the same 500ms cadence as the timing tables so the GC table's Last/Avg/Max matches the other tables (10s expiry, 10-sample average, max over the live window). Indexed by ProcessingSection value; the GC table maps each entry to a feature row.
     internal readonly record struct GcSectionSnapshot(
         double BytesLastPerSec = 0,
         double BytesAvgPerSec = 0,
@@ -267,8 +245,7 @@ namespace ClickIt.Features.Observability
                 _ => default,
             };
 
-        // Combined background-coroutine cost: last/avg are summed across every channel with samples,
-        // max is the worst single spike. Mirrors the Render summary line in the debug overlay.
+        // Combined background-coroutine cost: last/avg are summed across every channel with samples, max is the worst single spike. Mirrors the Render summary line in the debug overlay.
         public TimingMetricsSnapshot CoroutinesTotal
         {
             get
@@ -296,9 +273,7 @@ namespace ClickIt.Features.Observability
             }
         }
 
-        // Combined background-coroutine cost normalized per frame: last/avg/max summed across every
-        // channel with a measured run period (scaled by that channel's own period), so the totals
-        // row is the combination of all rows beneath it.
+        // Combined background-coroutine cost normalized per frame: last/avg/max summed across every channel with a measured run period (scaled by that channel's own period), so the totals row is the combination of all rows beneath it.
         public TimingMetricsSnapshot CoroutinesTotalPerFrameSnapshot
         {
             get
@@ -329,9 +304,7 @@ namespace ClickIt.Features.Observability
 
         public double CoroutinesTotalPerFrame => CoroutinesTotalPerFrameSnapshot.AverageMs;
 
-        // Combined feature-processing cost normalized per frame: last/avg/max summed across every
-        // section with a measured run period (scaled by that section's own period), so the totals
-        // row is the combination of all rows beneath it.
+        // Combined feature-processing cost normalized per frame: last/avg/max summed across every section with a measured run period (scaled by that section's own period), so the totals row is the combination of all rows beneath it.
         public TimingMetricsSnapshot ProcessingTotalPerFrameSnapshot
         {
             get
@@ -366,8 +339,7 @@ namespace ClickIt.Features.Observability
             }
         }
 
-        // Render-table totals: last/avg/max summed across every render section with samples, so the
-        // totals row is the combination of all rows beneath it.
+        // Render-table totals: last/avg/max summed across every render section with samples, so the totals row is the combination of all rows beneath it.
         public TimingMetricsSnapshot RenderTableTotal
         {
             get
@@ -404,8 +376,7 @@ namespace ClickIt.Features.Observability
             }
         }
 
-        // GC-table totals matching the units of each row beneath: last rate normalized to bytes per
-        // frame, total average allocation per second, and total max bytes per single run.
+        // GC-table totals matching the units of each row beneath: last rate normalized to bytes per frame, total average allocation per second, and total max bytes per single run.
         public (double LastBytesPerFrame, double TotalBytesPerSecond, double TotalMaxBytesPerRun) GcTableTotalBytesPerFrame
         {
             get
@@ -427,9 +398,7 @@ namespace ClickIt.Features.Observability
             }
         }
 
-        // Total peak allocation rate across every main GC row (the section rows only — the click and
-        // label-scan stage breakdown rows are sub-parts of their parent section, so including them
-        // would double-count), matching the section-only sum convention of GcTableTotalBytesPerFrame.
+        // Total peak allocation rate across every main GC row (the section rows only — the click and label-scan stage breakdown rows are sub-parts of their parent section, so including them would double-count), matching the section-only sum convention of GcTableTotalBytesPerFrame.
         public double GcTableTotalMaxBytesPerSecond
         {
             get
@@ -444,8 +413,7 @@ namespace ClickIt.Features.Observability
             }
         }
 
-        // Combined feature-processing cost: last/avg are summed across every section with samples,
-        // max is the worst single spike. Mirrors the CoroutinesTotal aggregate for the summary line.
+        // Combined feature-processing cost: last/avg are summed across every section with samples, max is the worst single spike. Mirrors the CoroutinesTotal aggregate for the summary line.
         public TimingMetricsSnapshot ProcessingTotal
         {
             get

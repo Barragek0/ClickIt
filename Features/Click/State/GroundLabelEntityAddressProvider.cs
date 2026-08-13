@@ -33,8 +33,7 @@ namespace ClickIt.Features.Click.State
                 long now = Environment.TickCount64;
                 if (_cachedGroundLabelEntityAddressesCache.TryGetValue(labelCount, now, out IReadOnlySet<long> cachedAddresses))
                 {
-                    // The cache stores a COPY per count, so a hit for this count can never be the
-                    // count-7 set served for a count-5 query within the same window.
+                    // The cache stores a COPY per count, so a hit for this count can never be the count-7 set served for a count-5 query within the same window.
                     _cachedGroundLabelEntityAddresses.Clear();
                     _cachedGroundLabelEntityAddresses.UnionWith(cachedAddresses);
                     return _cachedGroundLabelEntityAddresses;

@@ -8,11 +8,17 @@ namespace ClickIt.Features.Click.Runtime
         Func<int> GetRemainingOffscreenPathNodeCount,
         Func<string, bool> EnsureCursorInsideGameWindowForClick,
         Func<Vector2, string, bool> PointIsInClickableArea,
-        Action<string> DebugLog);
+        Action<string> DebugLog,
+        Func<long>? GetTimestampMs = null);
 
     internal sealed class MovementSkillCoordinator(MovementSkillCoordinatorDependencies dependencies)
     {
         private readonly MovementSkillCoordinatorDependencies _dependencies = dependencies;
+        private readonly Func<long> _getTimestampMs = dependencies.GetTimestampMs ?? (static () => Environment.TickCount64);
+
+        // The skill may not be cast until ~200ms have elapsed since pathfinding to the CURRENT target started (so the mouse moves to the correct direction first). Pathfinding and walk clicks continue during the delay - only the cast is gated. A new target restarts the clock.
+        private string? _castDelayTargetPath;
+        private long _castDelayStartTimestampMs;
 
         public bool TryUseMovementSkillForOffscreenPathing(string targetPath, Vector2 targetScreen, bool builtPath, out Vector2 castPoint, out string debugReason)
         {
@@ -21,7 +27,7 @@ namespace ClickIt.Features.Click.Runtime
 
             int remainingNodes = _dependencies.GetRemainingOffscreenPathNodeCount();
             int minimumNodes = SystemMath.Max(1, _dependencies.Settings.OffscreenMovementSkillMinPathSubsectionLength?.Value ?? 8);
-            long now = Environment.TickCount64;
+            long now = _getTimestampMs();
             bool movementSkillsEnabled = _dependencies.Settings.UseMovementSkillsForOffscreenPathfinding?.Value == true;
             long lastSkillUseTimestampMs = _dependencies.RuntimeState.LastMovementSkillUseTimestampMs;
 
@@ -63,6 +69,20 @@ namespace ClickIt.Features.Click.Runtime
                 MovementSkillMath.RecastDelayMs))
             {
                 debugReason = "Skipped: movement skill gate returned false.";
+                return false;
+            }
+
+            // Spec 13/20: the cast is gated until ~200ms after pathfinding to the current target started; walk-clicks keep flowing during the delay because this returns false and the caller falls through to the normal walk click.
+            if (!string.Equals(targetPath, _castDelayTargetPath, StringComparison.Ordinal))
+            {
+                _castDelayTargetPath = targetPath;
+                _castDelayStartTimestampMs = now;
+            }
+
+            long castDelayElapsed = now - _castDelayStartTimestampMs;
+            if (castDelayElapsed < MovementSkillMath.CastDelayMs)
+            {
+                debugReason = $"Skipped: movement skill cast delay active ({castDelayElapsed}ms elapsed, need {MovementSkillMath.CastDelayMs}ms).";
                 return false;
             }
 
@@ -159,7 +179,21 @@ namespace ClickIt.Features.Click.Runtime
 
         private bool TryResolveMovementSkillCastPosition(Vector2 targetScreen, string targetPath, out Vector2 castPoint)
         {
-            RectangleF win = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
+            castPoint = default;
+            GameController controller = _dependencies.GameController;
+            if (controller?.Window == null)
+                return false;
+
+            RectangleF win;
+            try
+            {
+                win = controller.Window.GetWindowRectangleTimeCache;
+            }
+            catch
+            {
+                return false;
+            }
+
             return MovementSkillCastPointResolver.TryResolveCastPoint(win, targetScreen, targetPath, _dependencies.PointIsInClickableArea, out castPoint);
         }
     }

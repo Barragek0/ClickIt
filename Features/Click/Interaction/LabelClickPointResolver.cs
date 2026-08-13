@@ -4,23 +4,17 @@ namespace ClickIt.Features.Click.Interaction
     {
         private readonly ClickItSettings _settings = settings;
 
-        // Same label's metadata (ItemOnGround/Type/Path/RenderName — 4 DLR reads) is resolved for
-        // overlap checks and click-position resolution 2-3x per tick; keyed on the label ADDRESS
-        // (stable across snapshots even when wrapper instances differ) with a short TTL.
+        // Same label's metadata (ItemOnGround/Type/Path/RenderName — 4 DLR reads) is resolved for overlap checks and click-position resolution 2-3x per tick; keyed on the label ADDRESS (stable across snapshots even when wrapper instances differ) with a short TTL.
         private readonly Dictionary<long, ResolvedLabelMetadata> _metadataCache = [];
         private long _metadataCacheWindowStartMs;
         private const long MetadataCacheWindowMs = 250;
 
-        // Overlap-blocker collection reads every other label's rect (3 DLR reads each) per Execute
-        // tick; cache per label address so the reads happen once per window.
+        // Overlap-blocker collection reads every other label's rect (3 DLR reads each) per Execute tick; cache per label address so the reads happen once per window.
         private readonly Dictionary<long, (RectangleF Rect, bool HasRect)> _rectCache = [];
         private long _rectCacheWindowStartMs;
         private const long RectCacheWindowMs = 250;
 
-        // The click coroutine and the manual-hover coroutine share this resolver and, with
-        // CoroutineMultiThreading enabled, can run on different threads. Both caches are plain
-        // dictionaries mutated from those paths, so they are guarded by a lock (the same corruption
-        // class previously fixed in LabelReadModelService).
+        // The click coroutine and the manual-hover coroutine share this resolver and, with CoroutineMultiThreading enabled, can run on different threads. Both caches are plain dictionaries mutated from those paths, so they are guarded by a lock (the same corruption class previously fixed in LabelReadModelService).
         private readonly Lock _cacheLock = new();
 
         private readonly record struct ResolvedLabelMetadata(EntityType ItemType, string? ItemPath, string? RenderName);

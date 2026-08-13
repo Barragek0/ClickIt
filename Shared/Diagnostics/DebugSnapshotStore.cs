@@ -70,8 +70,7 @@ namespace ClickIt.Shared.Diagnostics
                     if (existingIdx >= 0)
                     {
                         string existing = _trail[existingIdx];
-                        // A suffix-less entry represents count 1 (the first occurrence); ExtractCount
-                        // returns 0 for it, so the first repeat must yield x2, not x1.
+                        // A suffix-less entry represents count 1 (the first occurrence); ExtractCount returns 0 for it, so the first repeat must yield x2, not x1.
                         int count = SystemMath.Max(1, ExtractCount(existing)) + 1;
                         _trail.RemoveAt(existingIdx);
                         _dedupKeys.RemoveAt(existingIdx);
@@ -93,9 +92,7 @@ namespace ClickIt.Shared.Diagnostics
         {
             for (int i = _trail.Count - 1; i >= 0; i--)
             {
-                // Compare the stored key directly — parsing the formatted string only works for
-                // channels whose display format starts with the key (the sequence-prefixed click/log
-                // channels); offscreen movement's "{Stage} Path=..." format would never round-trip.
+                // Compare the stored key directly — parsing the formatted string only works for channels whose display format starts with the key (the sequence-prefixed click/log channels); offscreen movement's "{Stage} Path=..." format would never round-trip.
                 if (_dedupKeys[i] == dedupKey)
                     return i;
             }

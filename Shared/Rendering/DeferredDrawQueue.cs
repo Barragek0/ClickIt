@@ -45,8 +45,7 @@ namespace ClickIt.Shared.Rendering
         private readonly NumVector2[] _polyBuffer = new NumVector2[MaxPolySegments + 1];
         private int _pendingCount;
 
-        // Ambient render section set by the overlay host around each overlay's Draw, so flushed
-        // items can be attributed back to the feature that enqueued them. Render-thread only.
+        // Ambient render section set by the overlay host around each overlay's Draw, so flushed items can be attributed back to the feature that enqueued them. Render-thread only.
         internal RenderSection CurrentSection { get; set; } = RenderSection.Unknown;
 
         private static bool IsValidRect(RectangleF rectangle)
@@ -144,8 +143,7 @@ namespace ClickIt.Shared.Rendering
                 _pendingCount = 0;
             }
 
-            // Per-section flush accumulation. RenderSection values are small (0..14); a fixed
-            // bucket array avoids per-flush allocation on this hot path.
+            // Per-section flush accumulation. RenderSection values are small (0..14); a fixed bucket array avoids per-flush allocation on this hot path.
             double[]? sectionMs = recordSectionFlush != null ? new double[15] : null;
 
             for (int i = 0; i < _spare.Count; i++)
@@ -221,9 +219,7 @@ namespace ClickIt.Shared.Rendering
                     center.X + (MathF.Cos(a) * radius),
                     center.Y + (MathF.Sin(a) * radius));
             }
-            // ExileCore's DrawConvexPolyFilled reads points.Length, so pass only the filled prefix —
-            // passing the whole preallocated buffer feeds it stale (0,0) tail points and draws
-            // spurious lines from the top-left of the screen to every disc.
+            // ExileCore's DrawConvexPolyFilled reads points.Length, so pass only the filled prefix — passing the whole preallocated buffer feeds it stale (0,0) tail points and draws spurious lines from the top-left of the screen to every disc.
             graphics.DrawConvexPolyFilled(buffer[..(count + 1)], color);
         }
 

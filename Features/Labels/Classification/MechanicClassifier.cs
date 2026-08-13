@@ -555,13 +555,11 @@ namespace ClickIt.Features.Labels.Classification
             return DynamicAccess.TryReadBool(rawChest, DynamicAccessProfiles.IsLocked, out isLocked);
         }
 
-        // A chest that reports IsLocked (the strongbox overlay's red-frame condition) cannot be
-        // opened, so it is excluded from every click path regardless of its mechanic resolution.
+        // A chest that reports IsLocked (the strongbox overlay's red-frame condition) cannot be opened, so it is excluded from every click path regardless of its mechanic resolution.
         internal static bool IsLockedChest(object item)
             => TryGetChestLocked(item, out bool isLocked) && isLocked;
 
-        // Locked strongboxes (the overlay's red frame) are excluded from the clickable scope in
-        // non-lazy mode; lazy mode has its own strongbox restrictions.
+        // Locked strongboxes (the overlay's red frame) are excluded from the clickable scope in non-lazy mode; lazy mode has its own strongbox restrictions.
         internal static bool IsLockedStrongbox(object item)
             => IsLockedChest(item)
                 && DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string path)

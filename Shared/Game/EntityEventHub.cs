@@ -1,13 +1,6 @@
 namespace ClickIt.Shared.Game;
 
-// ONE subscription to EntityAdded/EntityRemoved/OnAreaChange that classifies every entity ONCE
-// (a single path read per event) into every tracked category, so N entity-tracking consumers cost
-// ONE read per event instead of N. Shared static singleton: every consumer (blight, offscreen
-// structures, settlers ore, shrines, ritual blockers) goes through the same handler, keeping the
-// walking-triggered entity-event burst to one dynamic read on the main thread regardless of how
-// many categories are registered. The shared reseed (a full retained-cache walk) refills every
-// category in one pass. Consumers read their category's Snapshot()/Count/Any and call Reseed() when
-// it is empty; per-controller rebinding keeps tests and plugin reloads isolated.
+// ONE subscription to EntityAdded/EntityRemoved/OnAreaChange that classifies every entity ONCE (a single path read per event) into every tracked category, so N entity-tracking consumers cost ONE read per event instead of N. Shared static singleton: every consumer (blight, offscreen structures, settlers ore, shrines, ritual blockers) goes through the same handler, keeping the walking-triggered entity-event burst to one dynamic read on the main thread regardless of how many categories are registered. The shared reseed (a full retained-cache walk) refills every category in one pass. Consumers read their category's Snapshot()/Count/Any and call Reseed() when it is empty; per-controller rebinding keeps tests and plugin reloads isolated.
 internal sealed class EntityEventHub
 {
     internal static EntityEventHub Instance { get; } = new();
@@ -22,8 +15,7 @@ internal sealed class EntityEventHub
     private bool _subscribed;
     private long _lastReseedMs;
 
-    // Accumulated entity-event cost (bytes, ms), polled via TakePendingCost so a walking burst shows
-    // as one large sample (the Blight "Events" stage) instead of per-event averages.
+    // Accumulated entity-event cost (bytes, ms), polled via TakePendingCost so a walking burst shows as one large sample (the Blight "Events" stage) instead of per-event averages.
     private long _pendingCostBytes;
     private double _pendingCostMs;
 
@@ -54,10 +46,7 @@ internal sealed class EntityEventHub
         }
     }
 
-    // Subscribe once per controller, then seed from the retained cache (entities already present when
-    // we subscribe never fire EntityAdded). Fail-closed for controllers without a readable wrapper.
-    // A different controller (plugin reload, test isolation) rebinds instead of reusing stale
-    // subscriptions.
+    // Subscribe once per controller, then seed from the retained cache (entities already present when we subscribe never fire EntityAdded). Fail-closed for controllers without a readable wrapper. A different controller (plugin reload, test isolation) rebinds instead of reusing stale subscriptions.
     internal void EnsureSubscribed(GameController? controller = null)
     {
         if (controller == null)
@@ -79,16 +68,14 @@ internal sealed class EntityEventHub
         try { controller.Area.OnAreaChange += OnAreaChanged; }
         catch
         {
-            // Area unreadable (test fakes, defensive): keep the wrapper events and seed anyway — the
-            // sets simply won't clear on area change. Downstream consumers re-validate liveness.
+            // Area unreadable (test fakes, defensive): keep the wrapper events and seed anyway — the sets simply won't clear on area change. Downstream consumers re-validate liveness.
         }
         _subscribedController = controller;
         _subscribed = true;
         ReseedCore();
     }
 
-    // Explicit teardown for plugin disable/reload: unhooks the live GameController events so a
-    // disposed composition's handler stops running on every EntityAdded.
+    // Explicit teardown for plugin disable/reload: unhooks the live GameController events so a disposed composition's handler stops running on every EntityAdded.
     internal void Dispose()
     {
         GameController? gc;
@@ -124,9 +111,7 @@ internal sealed class EntityEventHub
         }
     }
 
-    // A rebind to a different controller must never keep the previous controller's retained entities:
-    // consumers that fail to subscribe (no readable wrapper, e.g. test fakes) would otherwise keep
-    // serving stale structures from the old controller.
+    // A rebind to a different controller must never keep the previous controller's retained entities: consumers that fail to subscribe (no readable wrapper, e.g. test fakes) would otherwise keep serving stale structures from the old controller.
     private void ClearAll()
     {
         lock (_lock)
@@ -139,9 +124,7 @@ internal sealed class EntityEventHub
         }
     }
 
-    // Shared reseed (one full retained-cache walk refills every category), gated at the hub level so
-    // concurrent consumer-driven reseeds (blight + offscreen both use a 2s cadence) run at most one
-    // walk per window.
+    // Shared reseed (one full retained-cache walk refills every category), gated at the hub level so concurrent consumer-driven reseeds (blight + offscreen both use a 2s cadence) run at most one walk per window.
     private const long ReseedIntervalMs = 2000;
 
     internal void Reseed()
@@ -153,9 +136,7 @@ internal sealed class EntityEventHub
         ReseedCore();
     }
 
-    // Clears and re-seeds from the retained cache of the currently subscribed controller, classifying
-    // every entity into every category. Seed from the retained cache; fall back to the valid-only
-    // view when the retained cache is unreadable (test fakes, defensive).
+    // Clears and re-seeds from the retained cache of the currently subscribed controller, classifying every entity into every category. Seed from the retained cache; fall back to the valid-only view when the retained cache is unreadable (test fakes, defensive).
     private void ReseedCore()
     {
         lock (_lock)
@@ -240,9 +221,7 @@ internal sealed class EntityEventHub
         }
     }
 
-    // ONE path read shared by every category, plus a direct type read only for the offscreen
-    // AreaTransition fallback. This is the only read on the walking-triggered entity-event burst
-    // regardless of how many categories are registered.
+    // ONE path read shared by every category, plus a direct type read only for the offscreen AreaTransition fallback. This is the only read on the walking-triggered entity-event burst regardless of how many categories are registered.
     private void Classify(Entity entity)
     {
         string path = ReadPath(entity);
@@ -269,10 +248,7 @@ internal sealed class EntityEventHub
         }
     }
 
-    // Path read is DIRECT first (the freeze-rule pattern: the entity-event burst must never do a
-    // dynamic dispatch per entity), falling back to a DynamicAccess read only for test probes whose
-    // base Path getter throws. In production the direct read succeeds, so the hub adds ZERO DLR
-    // reads per entity — the shared reseed and per-event classification stay off the DLR counter.
+    // Path read is DIRECT first (the freeze-rule pattern: the entity-event burst must never do a dynamic dispatch per entity), falling back to a DynamicAccess read only for test probes whose base Path getter throws. In production the direct read succeeds, so the hub adds ZERO DLR reads per entity — the shared reseed and per-event classification stay off the DLR counter.
     private static string ReadPath(Entity entity)
     {
         try
@@ -297,8 +273,7 @@ internal sealed class EntityEventHub
         }
     }
 
-    // Fail-safe Id read (the established pattern): the obfuscated base getter throws on uninitialized
-    // entities, and a 0-key fallback preserves presence semantics for those.
+    // Fail-safe Id read (the established pattern): the obfuscated base getter throws on uninitialized entities, and a 0-key fallback preserves presence semantics for those.
     private static long TryGetEntityId(Entity entity)
     {
         try { return entity.Id; }
@@ -328,8 +303,7 @@ internal sealed class EntityEventHub
         return DynamicAccess.TryHasComponent<Shrine>(entity, out bool hasShrine) && hasShrine;
     }
 
-    // Shared offscreen-structure path classification (also used by OffscreenTraversalTargetResolver's
-    // tested IsOffscreenWalkableStructure so the path markers live in one place).
+    // Shared offscreen-structure path classification (also used by OffscreenTraversalTargetResolver's tested IsOffscreenWalkableStructure so the path markers live in one place).
     internal static bool IsOffscreenStructurePath(string path)
         => path.Contains(Constants.CleansingFireAltar, StringComparison.OrdinalIgnoreCase)
         || path.Contains(Constants.TangleAltar, StringComparison.OrdinalIgnoreCase)
@@ -340,8 +314,7 @@ internal sealed class EntityEventHub
         || path.Contains(ShrinePathMarker, StringComparison.OrdinalIgnoreCase);
 }
 
-// A category's retained-entity view over the shared hub: Snapshot/Count/Any/Clear all take the hub's
-// shared lock, so event handlers and consumers never deadlock or race.
+// A category's retained-entity view over the shared hub: Snapshot/Count/Any/Clear all take the hub's shared lock, so event handlers and consumers never deadlock or race.
 internal sealed class TrackedEntityView
 {
     private readonly Lock _lock;

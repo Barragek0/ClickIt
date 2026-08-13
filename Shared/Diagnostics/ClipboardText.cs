@@ -1,7 +1,6 @@
 namespace ClickIt.Shared.Diagnostics;
 
-// Copies text to the Windows clipboard from any thread: STA threads use Clipboard.SetText directly,
-// other threads pipe through clip.exe so background coroutines can copy without an STA marshaller.
+// Copies text to the Windows clipboard from any thread: STA threads use Clipboard.SetText directly, other threads pipe through clip.exe so background coroutines can copy without an STA marshaller.
 internal static class ClipboardText
 {
     internal static bool TryCopy(string text)
@@ -47,8 +46,7 @@ internal static class ClipboardText
     }
 }
 
-// Streams text to the Windows clipboard via clip.exe stdin, so a large report is never held in
-// memory in full. Callers write chunks, then Finish() closes stdin and waits for clip.exe to exit.
+// Streams text to the Windows clipboard via clip.exe stdin, so a large report is never held in memory in full. Callers write chunks, then Finish() closes stdin and waits for clip.exe to exit.
 internal sealed class ClipboardTextWriter : IDisposable
 {
     private readonly Process _process;

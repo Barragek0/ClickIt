@@ -13,21 +13,16 @@ namespace ClickIt.Features.Click.Selection
         ClickDebugPublicationService ClickDebugPublisher,
         Action<string> DebugLog)
     {
-        // When essence clicking is disabled the UI-hover essence preference is dead work (it walks
-        // the whole label element tree), so it is skipped entirely.
+        // When essence clicking is disabled the UI-hover essence preference is dead work (it walks the whole label element tree), so it is skipped entirely.
         public Func<bool> IsEssenceClickingEnabled { get; init; } = static () => true;
 
-        // Same skip for strongboxes: the UI-hover strongbox preference only runs when strongbox
-        // clicking is enabled, so stacked strongbox labels are never re-targeted when it is off.
+        // Same skip for strongboxes: the UI-hover strongbox preference only runs when strongbox clicking is enabled, so stacked strongbox labels are never re-targeted when it is off.
         public Func<bool> IsStrongboxClickingEnabled { get; init; } = static () => true;
 
-        // A freshly-opened strongbox is locked (red frame) and cannot be clicked, but the selection
-        // caches can still rank it for up to a second. Skipping it here advances the scan to the
-        // next clickable label instead of stalling on the locked box at click time.
+        // A freshly-opened strongbox is locked (red frame) and cannot be clicked, but the selection caches can still rank it for up to a second. Skipping it here advances the scan to the next clickable label instead of stalling on the locked box at click time.
         public Func<LabelOnGround, bool> ShouldSuppressLockedStrongboxClick { get; init; } = static _ => false;
 
-        // The hovered element read by the essence/strongbox UI-hover preferences. Production reads
-        // the game's UIHoverElement; tests inject a probe so the preference path is exercised.
+        // The hovered element read by the essence/strongbox UI-hover preferences. Production reads the game's UIHoverElement; tests inject a probe so the preference path is exercised.
         public Func<Element?>? GetUiHoverElement { get; init; }
     }
 
@@ -94,9 +89,7 @@ namespace ClickIt.Features.Click.Selection
 
             if (ManualCursorSelectionMath.ShouldPreferHoveredEssenceLabel(hoveredIsEssence, hoveredHasOverlappingEssence, nextIsEssence, hoveredDiffersFromNext))
             {
-                // The preference must not re-target a label the scan itself would suppress (locked
-                // strongbox, fully overlapped, lever/ultimatum/blight): the click path would reject
-                // it and the tick would fall through to walking instead of clicking the ranked label.
+                // The preference must not re-target a label the scan itself would suppress (locked strongbox, fully overlapped, lever/ultimatum/blight): the click path would reject it and the tick would fall through to walking instead of clicking the ranked label.
                 if (IsHoveredLabelSuppressed(hovered, allLabels))
                     return nextLabel;
 
@@ -149,9 +142,7 @@ namespace ClickIt.Features.Click.Selection
 
             if (ManualCursorSelectionMath.ShouldPreferHoveredStrongboxLabel(hoveredIsStrongbox, hoveredHasOverlappingStrongbox, nextIsStrongbox, hoveredDiffersFromNext))
             {
-                // Same guard as the essence preference: never switch to a hovered strongbox the scan
-                // would suppress - in particular a LOCKED strongbox must not override the ranked
-                // next label, or the click path skips it and the tick falls through to walking.
+                // Same guard as the essence preference: never switch to a hovered strongbox the scan would suppress - in particular a LOCKED strongbox must not override the ranked next label, or the click path skips it and the tick falls through to walking.
                 if (IsHoveredLabelSuppressed(hovered, allLabels))
                     return nextLabel;
 
@@ -162,8 +153,7 @@ namespace ClickIt.Features.Click.Selection
             return nextLabel;
         }
 
-        // The hovered element drives the essence/strongbox preferences; production reads the game's
-        // UIHoverElement, tests inject a probe so the preference path is exercised.
+        // The hovered element drives the essence/strongbox preferences; production reads the game's UIHoverElement, tests inject a probe so the preference path is exercised.
         private Element? ResolveUiHoverElement()
         {
             if (_dependencies.GetUiHoverElement != null)
@@ -179,9 +169,7 @@ namespace ClickIt.Features.Click.Selection
             }
         }
 
-        // A hovered label must never override the ranked next label when the scan itself would have
-        // suppressed it (lever/ultimatum/blight/overlap/locked) - the UI-hover preference must not
-        // re-target a label the click path would immediately reject.
+        // A hovered label must never override the ranked next label when the scan itself would have suppressed it (lever/ultimatum/blight/overlap/locked) - the UI-hover preference must not re-target a label the click path would immediately reject.
         private bool IsHoveredLabelSuppressed(LabelOnGround hovered, IReadOnlyList<LabelOnGround> allLabels)
         {
             if (_dependencies.ShouldSuppressLeverClick(hovered))
@@ -299,8 +287,7 @@ namespace ClickIt.Features.Click.Selection
                     if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
                         _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("FindLabelIndexMiss", $"range:{start}-{endExclusive} examined:{examined} misses:{indexMisses}");
                     _dependencies.DebugLog($"[LabelSelectDiag] index-miss range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} bt:{blightChestTransitionSuppressed} ls:{lockedStrongboxSuppressed} im:{indexMisses}");
-                    // A single transient index miss (duplicate reference / snapshot anomaly) must not
-                    // reject every remaining label in the range — advance past it and keep scanning.
+                    // A single transient index miss (duplicate reference / snapshot anomaly) must not reject every remaining label in the range — advance past it and keep scanning.
                     currentStart++;
                     continue;
                 }

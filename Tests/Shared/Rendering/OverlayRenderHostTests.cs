@@ -82,8 +82,7 @@ namespace ClickIt.Tests.Shared.Rendering
 
             host.Render(ctx, perf);
 
-            // Flush the draw queue the way PluginRenderHost does: per-section attribution records
-            // each feature's own draw cost into its render section.
+            // Flush the draw queue the way PluginRenderHost does: per-section attribution records each feature's own draw cost into its render section.
             var reported = new List<(RenderSection Section, double Ms)>();
             ctx.DrawQueue.Flush((Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics)), (section, ms) => reported.Add((section, ms)));
 

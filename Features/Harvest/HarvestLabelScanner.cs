@@ -1,5 +1,3 @@
-using System.Text.RegularExpressions;
-
 namespace ClickIt.Features.Harvest;
 
 internal static class HarvestLabelScanner
@@ -54,9 +52,7 @@ internal static class HarvestLabelScanner
     }
 
     private const int MaxSeedRowCache = 64;
-    // Cap the uncached element-tree walks per pass so entering a large harvest garden spreads the
-    // per-plot first-scan cost across frames instead of one processing spike (the full-clear at the
-    // cap used to re-scan every plot in the same pass).
+    // Cap the uncached element-tree walks per pass so entering a large harvest garden spreads the per-plot first-scan cost across frames instead of one processing spike (the full-clear at the cap used to re-scan every plot in the same pass).
     private const int MaxSeedRowScansPerPass = 2;
 
     internal static List<(LabelOnGround Label, List<HarvestSeedRow> Rows)> ScanHarvestPlots(
@@ -91,8 +87,7 @@ internal static class HarvestLabelScanner
                     seedRowCache[address] = rows;
                     if (seedRowCache.Count > MaxSeedRowCache)
                     {
-                        // Evict one entry (not a full clear) so an over-cap garden never re-scans
-                        // every plot in the same pass.
+                        // Evict one entry (not a full clear) so an over-cap garden never re-scans every plot in the same pass.
                         foreach (long existingKey in seedRowCache.Keys)
                         {
                             seedRowCache.Remove(existingKey);

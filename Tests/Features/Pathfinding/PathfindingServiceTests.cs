@@ -94,9 +94,7 @@ namespace ClickIt.Tests.Features.Pathfinding
         [TestMethod]
         public void FindPathAStar_ConsecutiveCalls_OnDifferentGrids_DoNotLeakState()
         {
-            // A* reuses per-thread search buffers with a generation stamp. Run several searches
-            // back-to-back on different-sized grids (with obstacles) and verify each still returns
-            // a valid path from its own start to its own goal.
+            // A* reuses per-thread search buffers with a generation stamp. Run several searches back-to-back on different-sized grids (with obstacles) and verify each still returns a valid path from its own start to its own goal.
             bool[][] small =
             [
                 [true, true, true],

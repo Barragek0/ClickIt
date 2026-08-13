@@ -4,10 +4,7 @@ namespace ClickIt.Features.Click.Runtime
     {
         internal static int GetModifierPriorityIndex(string modifierName, IReadOnlyList<string> priorities)
         {
-            // Exact and prefix matches are checked across the whole list before the contains
-            // fallback, so a longer modifier name that embeds another priority (e.g. "Stalking
-            // Ruin" embeds "Ruin", and its "Stalking Ruin I-IV" tiers) still resolves to its own
-            // entry instead of the shorter one's.
+            // Exact and prefix matches are checked across the whole list before the contains fallback, so a longer modifier name that embeds another priority (e.g. "Stalking Ruin" embeds "Ruin", and its "Stalking Ruin I-IV" tiers) still resolves to its own entry instead of the shorter one's.
             int exact = FindFirstMatch(modifierName, priorities, static (name, priority) => name.Equals(priority, StringComparison.OrdinalIgnoreCase));
             if (exact != int.MaxValue)
                 return exact;

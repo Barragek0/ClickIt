@@ -9,8 +9,7 @@ public class BlightServiceTests
     [TestMethod]
     public void GetStepTargetName_SpecTierUpgrade_ShowsChosenSpecialization()
     {
-        // ChillingSeismicMeteorStrategy sets Fireball -> Meteor, so the plan UI
-        // shows "UPGRADE Meteor" instead of "UPGRADE Fireball lvl4".
+        // ChillingSeismicMeteorStrategy sets Fireball -> Meteor, so the plan UI shows "UPGRADE Meteor" instead of "UPGRADE Fireball lvl4".
         var service = new BlightService(new ClickItSettings());
         service.GetStepTargetName(Step(BlightPlanAction.Upgrade, BlightTowerType.Fireball, 4))
             .Should().Be("Meteor");
@@ -35,8 +34,7 @@ public class BlightServiceTests
     [TestMethod]
     public void GetStepTargetName_NoSpecializationChosen_ShowsBaseType()
     {
-        // Chilling/Seismic rules carry no specialization, so even a lvl4-style
-        // step (if ever planned) shows the base tower type, never a guessed spec.
+        // Chilling/Seismic rules carry no specialization, so even a lvl4-style step (if ever planned) shows the base tower type, never a guessed spec.
         var service = new BlightService(new ClickItSettings());
         service.GetStepTargetName(Step(BlightPlanAction.Upgrade, BlightTowerType.Seismic, 4))
             .Should().Be("Seismic");
@@ -56,8 +54,7 @@ public class BlightServiceTests
             });
 
         service.Should().NotBeNull();
-        // The recorder is wired into the entity-event set; forcing a subscribe+reseed through the
-        // service's cache path must not throw and exercises the recorder plumbing end to end.
+        // The recorder is wired into the entity-event set; forcing a subscribe+reseed through the service's cache path must not throw and exercises the recorder plumbing end to end.
         recordedBytes.Should().Be(0);
         recordedMs.Should().Be(0);
     }

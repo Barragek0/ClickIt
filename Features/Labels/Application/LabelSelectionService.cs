@@ -19,22 +19,12 @@ namespace ClickIt.Features.Labels.Application
     {
         private readonly LabelSelectionServiceDependencies _dependencies = dependencies;
 
-        // Selection cache (single-threaded click coroutine): the full label scan only re-runs when
-        // the label-list reference changes, a new range is queried, or the cached result goes stale.
-        // A null result must not be pinned for the life of a stable label set - validity, distance,
-        // and lock state change without the label-list reference changing (a pinned null deadlocks
-        // item pickup), so entries are time-bounded like the other click caches.
+        // Selection cache (single-threaded click coroutine): the full label scan only re-runs when the label-list reference changes, a new range is queried, or the cached result goes stale. A null result must not be pinned for the life of a stable label set - validity, distance, and lock state change without the label-list reference changing (a pinned null deadlocks item pickup), so entries are time-bounded like the other click caches.
         private IReadOnlyList<LabelOnGround>? _selectionCacheLabelsRef;
         private readonly Dictionary<(int Start, int MaxCount), (LabelOnGround? Selected, long AtMs)> _selectionCacheByRange = new();
         private const long SelectionCacheWindowMs = 250;
 
-        // Per-label build cache: the selection scan re-runs whenever the 50ms label-list reference
-        // changes (and on every suppression-fallback range), and each candidate build costs ~13 DLR
-        // reads on the obfuscated game types (the dominant Acquire allocation). The build result is
-        // static per entity, so it is cached on the label ADDRESS (stable across snapshots even when
-        // wrapper instances differ) with a long window. Distance and label rect are re-read fresh on
-        // every scan, so out-of-range rejection and ranking stay live as the player moves. The
-        // interaction path re-validates the chosen label before clicking.
+        // Per-label build cache: the selection scan re-runs whenever the 50ms label-list reference changes (and on every suppression-fallback range), and each candidate build costs ~13 DLR reads on the obfuscated game types (the dominant Acquire allocation). The build result is static per entity, so it is cached on the label ADDRESS (stable across snapshots even when wrapper instances differ) with a long window. Distance and label rect are re-read fresh on every scan, so out-of-range rejection and ranking stay live as the player moves. The interaction path re-validates the chosen label before clicking.
         private readonly record struct CachedLabelScanEntry(
             LabelCandidateBuildResult Candidate,
             float Distance,
@@ -168,8 +158,7 @@ namespace ClickIt.Features.Labels.Application
                 _buildCache[address] = candidate;
             }
 
-            // A NullItem rejection is usually a transient item read failure (entity streaming) and
-            // must not pin the label as unclickable for the rest of the build-cache window.
+            // A NullItem rejection is usually a transient item read failure (entity streaming) and must not pin the label as unclickable for the rest of the build-cache window.
             if (!candidate.Success && candidate.RejectReason == LabelCandidateRejectReason.NullItem)
             {
                 candidate = _dependencies.TryBuildLabelCandidate(label, clickSettings, out Entity? freshItem, out string? freshMechanicId, out LabelCandidateRejectReason freshRejectReason)
@@ -178,17 +167,14 @@ namespace ClickIt.Features.Labels.Application
                 _buildCache[address] = candidate;
             }
 
-            // Fresh per scan: the on-screen rect and distance change as the player moves, so they
-            // are read live instead of being cached alongside the (static) build result.
+            // Fresh per scan: the on-screen rect and distance change as the player moves, so they are read live instead of being cached alongside the (static) build result.
             Entity? buildItem = candidate.Item;
             float distance = buildItem != null
                 && DynamicAccess.TryReadFloat(buildItem, DynamicAccessProfiles.DistancePlayer, out float resolvedDistance)
                 ? resolvedDistance
                 : float.MaxValue;
 
-            // An OutOfDistance rejection is distance-dependent and must not stay cached while the
-            // player closes in: re-check the fresh distance and rebuild (clears the rejection) when
-            // the label is now within range.
+            // An OutOfDistance rejection is distance-dependent and must not stay cached while the player closes in: re-check the fresh distance and rebuild (clears the rejection) when the label is now within range.
             if (candidate.RejectReason == LabelCandidateRejectReason.OutOfDistance
                 && distance <= clickSettings.ClickDistance)
             {

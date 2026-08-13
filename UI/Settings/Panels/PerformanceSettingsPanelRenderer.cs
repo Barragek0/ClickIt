@@ -23,9 +23,7 @@ namespace ClickIt.UI.Settings.Panels
         private const string ProcessLassoWarning = "If you use Process Lasso and have the CPU -> 'ProBalance' feature enabled, you must exclude Loader.exe (ExileAPI) from it, otherwise, ExileAPI may sometimes hang when used with ClickIt.";
 
         private static Func<PerformanceSettingsPanelRenderer?>? s_current;
-        // Set by the debug-box "Reset setup flag" button so the setup popup shows again after reload
-        // even when every recommended setting is already correct (otherwise the empty-changes
-        // auto-confirm silently swallows the reset). Cleared once the popup is confirmed.
+        // Set by the debug-box "Reset setup flag" button so the setup popup shows again after reload even when every recommended setting is already correct (otherwise the empty-changes auto-confirm silently swallows the reset). Cleared once the popup is confirmed.
         private static bool s_forceShowSetup;
 
         private readonly ClickItSettings _settings = settings;
@@ -65,8 +63,7 @@ namespace ClickIt.UI.Settings.Panels
             DrawProcessLassoWarning();
         }
 
-        // Main-render entry point: shows the first-run setup popup on plugin start, not only when
-        // the settings window is open.
+        // Main-render entry point: shows the first-run setup popup on plugin start, not only when the settings window is open.
         internal void DrawSetupFlow()
         {
             if (_settings.ShownPerformanceConfirmation.Value)
@@ -97,8 +94,7 @@ namespace ClickIt.UI.Settings.Panels
             CenterPopupOnScreen();
             ImGui.OpenPopup(SetupPopupTitle);
 
-            // One modal only; the skip confirmation swaps in as the same window's content so no
-            // second popup is stacked on top. X closes it as confirm; ESC leaves it open.
+            // One modal only; the skip confirmation swaps in as the same window's content so no second popup is stacked on top. X closes it as confirm; ESC leaves it open.
             bool open = true;
             if (ImGui.BeginPopupModal(SetupPopupTitle, ref open, ImGuiWindowFlags.AlwaysAutoResize))
             {

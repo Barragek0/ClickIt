@@ -30,11 +30,7 @@ namespace ClickIt.Shared.Game
             return false;
         }
 
-        // Iterates EVERY entity ExileCore has ever seen in the area (EntityListWrapper.Entities = the
-        // retained entity cache). Streamed-out entities stay in the cache marked IsValid=false, so this
-        // is the complete source for long-lived objects like BlightPathway icons that the active-only
-        // ValidEntitiesByType view drops once the player moves away. Fail-closed: a controller whose
-        // wrapper/cache is not readable (tests, uninitialized graphs) yields no entities.
+        // Iterates EVERY entity ExileCore has ever seen in the area (EntityListWrapper.Entities = the retained entity cache). Streamed-out entities stay in the cache marked IsValid=false, so this is the complete source for long-lived objects like BlightPathway icons that the active-only ValidEntitiesByType view drops once the player moves away. Fail-closed: a controller whose wrapper/cache is not readable (tests, uninitialized graphs) yields no entities.
         internal static bool VisitAllEntities(GameController? gameController, Func<Entity, bool> visitor)
         {
             ArgumentNullException.ThrowIfNull(visitor);

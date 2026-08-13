@@ -37,8 +37,7 @@ namespace ClickIt.Tests.Features.Labels.Selection
         [TestMethod]
         public void TryBuildCandidate_ReturnsFalse_WhenChestIsLocked()
         {
-            // A locked chest (the strongbox overlay's red frame) must be rejected even when a
-            // mechanic would otherwise match, so it never enters the clickable label scope.
+            // A locked chest (the strongbox overlay's red frame) must be rejected even when a mechanic would otherwise match, so it never enters the clickable label scope.
             Entity item = EntityProbeFactory.Create(path: "Metadata/Chests/StrongBoxes/Arcanist");
             EntityProbeFactory.WithComponent<Chest>(item, new LockedChestProbe { IsLocked = true });
             LabelOnGround label = new LabelProbe { ItemOnGround = item };
@@ -65,8 +64,7 @@ namespace ClickIt.Tests.Features.Labels.Selection
         [TestMethod]
         public void TryBuildCandidate_DoesNotRejectLockedNonStrongboxChest()
         {
-            // The locked-chest eligibility rule targets strongboxes; other locked chests are left
-            // to their own mechanic and lazy-mode restrictions.
+            // The locked-chest eligibility rule targets strongboxes; other locked chests are left to their own mechanic and lazy-mode restrictions.
             Entity item = EntityProbeFactory.Create(path: "Metadata/Chests/Standard");
             EntityProbeFactory.WithComponent<Chest>(item, new LockedChestProbe { IsLocked = true });
             LabelOnGround label = new LabelProbe { ItemOnGround = item };

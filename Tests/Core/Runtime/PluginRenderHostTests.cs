@@ -60,8 +60,7 @@ namespace ClickIt.Tests.Core.Runtime
                 graphics: null,
                 debugClipboardService);
 
-            // The copy button must be consumed regardless of the debug-render gate — leaving it
-            // latched would flush a stale backlog whenever debug rendering is later enabled.
+            // The copy button must be consumed regardless of the debug-render gate — leaving it latched would flush a stale backlog whenever debug rendering is later enabled.
             debugClipboardService.HasPendingAdditionalDebugInfoCopyRequest.Should().BeFalse();
         }
 

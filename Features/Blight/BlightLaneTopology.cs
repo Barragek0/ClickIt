@@ -23,12 +23,7 @@ internal static class BlightLaneTopology
         for (int i = 0; i < n; i++)
             results[i] = new LaneCoverageResult(OrphanSentinel, false, NumVector2.Zero);
 
-        // The parent tree comes straight from the game's beam chains (each segment's pump-ward
-        // neighbour), so there is no re-splitting, phantom bridging, or pump-stub removal.  At a
-        // convergence junction several beams can end at the SAME point that another starts from
-        // (two lanes joining), so an icon can have several pump-ward parents.  We probe EVERY
-        // incoming beam's midpoint and OR the flags — a tower on any real beam into the junction
-        // protects it — while the primary parent keeps the tree shape for propagation.
+        // The parent tree comes straight from the game's beam chains (each segment's pump-ward neighbour), so there is no re-splitting, phantom bridging, or pump-stub removal.  At a convergence junction several beams can end at the SAME point that another starts from (two lanes joining), so an icon can have several pump-ward parents.  We probe EVERY incoming beam's midpoint and OR the flags — a tower on any real beam into the junction protects it — while the primary parent keeps the tree shape for propagation.
         for (int i = 0; i < n; i++)
         {
             int par = precomputedParents[i];
@@ -88,9 +83,7 @@ internal static class BlightLaneTopology
             localSummoning[i] = results[i].HasSummoning;
         }
 
-        // Stacked parallel rows of one physical lane share coverage BEFORE propagation.  Without
-        // this, the AND-upward rule treats the stacked row as a fork arm with no coverage and blocks
-        // coverage from propagating up the lane.
+        // Stacked parallel rows of one physical lane share coverage BEFORE propagation.  Without this, the AND-upward rule treats the stacked row as a fork arm with no coverage and blocks coverage from propagating up the lane.
         MergeStackedLaneFlags(
             localChilling, localSeismic, localFireball,
             localEmpowering, localShockNova, localSummoning, results, n);
@@ -126,8 +119,7 @@ internal static class BlightLaneTopology
         bool[] empowering, bool[] shockNova, bool[] summoning,
         LaneCoverageResult[] results, int n)
     {
-        // Bucket segments by rounded midpoint so the pairwise stacked-row scan only compares
-        // segments in the same or adjacent buckets instead of every pair (O(n^2) on dense webs).
+        // Bucket segments by rounded midpoint so the pairwise stacked-row scan only compares segments in the same or adjacent buckets instead of every pair (O(n^2) on dense webs).
         int bucketSize = (int)StackedLaneMergeDistance;
         Dictionary<(int, int), List<int>> buckets = [];
         for (int i = 0; i < n; i++)
@@ -194,9 +186,7 @@ internal static class BlightLaneTopology
         float lb = MathF.Sqrt((bx * bx) + (by * by));
         if (la < 0.5f || lb < 0.5f)
             return false; // unknown direction — don't merge on it
-        // Stacked rows of ONE lane run almost exactly parallel (cos ≈ 1).  Two arms of a genuine
-        // fork fan out at a wider angle, so 0.9 separates them while still accepting real stacked
-        // rows (the debug case is ~1-4 units apart and < 10° apart).
+        // Stacked rows of ONE lane run almost exactly parallel (cos ≈ 1).  Two arms of a genuine fork fan out at a wider angle, so 0.9 separates them while still accepting real stacked rows (the debug case is ~1-4 units apart and < 10° apart).
         float cos = ((ax * bx) + (ay * by)) / (la * lb);
         return cos >= 0.9f;
     }
@@ -273,8 +263,7 @@ internal static class BlightLaneTopology
             MarkSubtreeVisited(children, visited, c[i]);
     }
 
-    // Whether a segment that is not part of the rendered forest is a stacked duplicate of a rendered
-    // lane (merged into it, so it must not be reported as an unmapped topology anomaly).
+    // Whether a segment that is not part of the rendered forest is a stacked duplicate of a rendered lane (merged into it, so it must not be reported as an unmapped topology anomaly).
     internal static bool IsStackedOnRenderedLane(int segment, LaneCoverageResult[] coverage, IReadOnlySet<int> rendered)
     {
         int parent = coverage[segment].ParentIndex;
@@ -316,15 +305,13 @@ internal static class BlightLaneTopology
         return agg;
     }
 
-    // Phase 2 (AND upward) then Phase 3 (OR downward), each to fixed point — with a pump-rooted tree
-    // a child can sit on either side of its parent, so a single ascending/descending pass would be wrong.
+    // Phase 2 (AND upward) then Phase 3 (OR downward), each to fixed point — with a pump-rooted tree a child can sit on either side of its parent, so a single ascending/descending pass would be wrong.
     internal static bool[] PropagateType(LaneCoverageResult[] results, bool[] localHas)
     {
         int n = results.Length;
         bool[] has = (bool[])localHas.Clone();
 
-        // Scratch buffers reused across fixed-point iterations (cleared each pass) instead of allocating
-        // a fresh pair per iteration — propagation depth is small but the arrays are per-iteration objects.
+        // Scratch buffers reused across fixed-point iterations (cleared each pass) instead of allocating a fresh pair per iteration — propagation depth is small but the arrays are per-iteration objects.
         bool[] ac = new bool[n];
         bool[] seen = new bool[n];
 
@@ -413,9 +400,7 @@ internal static class BlightLaneTopology
         if (tops.Remove(mainTop))
             tops.Insert(0, mainTop);
 
-        // Every lane except the branch's main lane gets a unique short name ({letter}-{n}); the
-        // main lane keeps the bare {letter}. One counter shared across all tops and forks keeps
-        // names collision-free no matter how deep the divergence tree gets.
+        // Every lane except the branch's main lane gets a unique short name ({letter}-{n}); the main lane keeps the bare {letter}. One counter shared across all tops and forks keeps names collision-free no matter how deep the divergence tree gets.
         int nameIndex = 0;
         bool[] visited = new bool[coverage.Length];
         int[] subtreeSize = ComputeSubtreeSizes(children);
@@ -540,9 +525,7 @@ internal static class BlightLaneTopology
             if (current < 0)
                 break;
 
-            // At a fork the LARGEST arm continues THIS lane (same name) so a winding trunk stays
-            // ONE lane instead of fragmenting into a new lane per segment; only the smaller arms
-            // become short numbered side lanes.
+            // At a fork the LARGEST arm continues THIS lane (same name) so a winding trunk stays ONE lane instead of fragmenting into a new lane per segment; only the smaller arms become short numbered side lanes.
             List<int> forkChildren = children[current];
             int mainChild = -1;
             int mainSize = -1;
@@ -564,9 +547,7 @@ internal static class BlightLaneTopology
                 if (visited[child] || child == mainChild)
                     continue;
 
-                // A fork arm whose run is a stacked duplicate of the main continuation (parallel
-                // rows of the SAME physical lane — the game lays rows on top of one another) is
-                // merged into this lane instead of rendering as a separate divergence.
+                // A fork arm whose run is a stacked duplicate of the main continuation (parallel rows of the SAME physical lane — the game lays rows on top of one another) is merged into this lane instead of rendering as a separate divergence.
                 if (IsRunStackedOnRun(coverage, children, child, mainChild, StackedLaneMergeDistance))
                 {
                     MarkSubtreeVisited(children, visited, child);

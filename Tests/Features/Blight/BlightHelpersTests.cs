@@ -12,8 +12,7 @@ public class BlightHelpersTests
     [DataRow("Metadata/Monsters/LeagueBlight/BlightFoundationMinion", (int)BlightTowerType.Summoning)]
     public void DetectFoundationTypeFromPath_MapsEachFoundationPathToItsTowerType(string path, int expected)
     {
-        // Regression guard: ScanFoundations previously hardcoded every labeled foundation as
-        // Chilling and overwrote the type the entity scan had already resolved from the path.
+        // Regression guard: ScanFoundations previously hardcoded every labeled foundation as Chilling and overwrote the type the entity scan had already resolved from the path.
         BlightHelpers.DetectFoundationTypeFromPath(path).Should().Be((BlightTowerType)expected);
     }
 
@@ -35,8 +34,7 @@ public class BlightHelpersTests
     [DataRow("Metadata/Monsters/LeagueBlight/BlightTowerMinionRank2@83", (int)BlightTowerType.Summoning)]
     public void DetectTowerTypeFromPath_MapsEachTowerPathToItsBaseType(string path, int expected)
     {
-        // Regression guard: streamed-out/far-away towers have an unreadable BlightTower component, so
-        // the retained path's type marker is the only signal for keeping them in the coverage set.
+        // Regression guard: streamed-out/far-away towers have an unreadable BlightTower component, so the retained path's type marker is the only signal for keeping them in the coverage set.
         BlightHelpers.DetectTowerTypeFromPath(path).Should().Be((BlightTowerType)expected);
     }
 
@@ -103,9 +101,7 @@ public class BlightHelpersTests
     [TestMethod]
     public void TryReadStateValue_ReadsNumericValuesRobustly()
     {
-        // StateMachine state values can be int/long/byte; the robust read converts any numeric form.
-        // The probe must be PUBLIC: dynamic dispatch from the product assembly cannot bind to an
-        // internal test type's members (RuntimeBinderException -> 0).
+        // StateMachine state values can be int/long/byte; the robust read converts any numeric form. The probe must be PUBLIC: dynamic dispatch from the product assembly cannot bind to an internal test type's members (RuntimeBinderException -> 0).
         BlightHelpers.TryReadStateValue(new StateProbe { Value = 5L }).Should().Be(5);
         BlightHelpers.TryReadStateValue(new StateProbe { Value = 1 }).Should().Be(1);
         BlightHelpers.TryReadStateValue(new StateProbe { Value = 0L }).Should().Be(0);
@@ -114,9 +110,7 @@ public class BlightHelpersTests
     [TestMethod]
     public void TryReadStateValue_UnreadableValue_ReturnsZero()
     {
-        // One state with an unreadable value must not fail the whole StateMachine read: the robust
-        // per-state conversion returns 0 so the "pending"/"success"/"fail" checks still run on the
-        // other states (this was failing open and kept the completed pump/encounter active).
+        // One state with an unreadable value must not fail the whole StateMachine read: the robust per-state conversion returns 0 so the "pending"/"success"/"fail" checks still run on the other states (this was failing open and kept the completed pump/encounter active).
         BlightHelpers.TryReadStateValue(new StateProbe { Value = "not-a-number" }).Should().Be(0);
     }
 

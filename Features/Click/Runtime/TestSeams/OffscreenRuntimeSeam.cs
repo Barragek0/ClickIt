@@ -1,6 +1,6 @@
 namespace ClickIt.Features.Click.Runtime.TestSeams
 {
-    /** This seam isolates the offscreen owners from the concrete ExileCore player, window, and world-to-screen getter chain because the current harness cannot safely shape GameController.Player without triggering IngameData static offset initialization. Keep the default implementation behavior-equivalent to the underlying runtime getters; tests may replace it only to model that external boundary. */
+    // This seam isolates the offscreen owners from the concrete ExileCore player, window, and world-to-screen getter chain because the current harness cannot safely shape GameController.Player without triggering IngameData static offset initialization. Keep the default implementation behavior-equivalent to the underlying runtime getters; tests may replace it only to model that external boundary.
     internal interface IOffscreenRuntimeSeam
     {
         Entity? GetPlayer(GameController gameController);

@@ -1,12 +1,6 @@
 namespace ClickIt.Features.Observability.Performance;
 
-// Rolling per-section/per-stage allocation window shared by the GC, click-stage, and label-scan
-// stores. Samples expire after a fixed window; average bytes + average period cover only the most
-// recent AverageSampleCount samples so the table reacts quickly, while MaxBytesPerRun keeps the
-// full live-window peak. MaxAllocPerSecond is the highest per-sample allocation rate in the live
-// window (a run's bytes divided by its observed period), floored to MinSampleRatePeriodMs so a
-// sub-resolution inter-sample gap (TickCount64 ~15ms) or an every-frame overlay can never
-// extrapolate one run into a nonsensical hundreds-of-MB/s reading.
+// Rolling per-section/per-stage allocation window shared by the GC, click-stage, and label-scan stores. Samples expire after a fixed window; average bytes + average period cover only the most recent AverageSampleCount samples so the table reacts quickly, while MaxBytesPerRun keeps the full live-window peak. MaxAllocPerSecond is the highest per-sample allocation rate in the live window (a run's bytes divided by its observed period), floored to MinSampleRatePeriodMs so a sub-resolution inter-sample gap (TickCount64 ~15ms) or an every-frame overlay can never extrapolate one run into a nonsensical hundreds-of-MB/s reading.
 internal sealed class AllocationSampleWindow
 {
     internal const int AverageSampleCount = 50;
@@ -94,10 +88,7 @@ internal sealed class AllocationSampleWindow
         _bytesScratch = new long[size];
     }
 
-    // Highest per-sample allocation rate: each run's bytes divided by the period it was observed in,
-    // floored to MinSampleRatePeriodMs so a gap that is tiny or TickCount64-quantized cannot inflate
-    // a single run into an absurd rate. A run can therefore claim at most the rate it would have if
-    // it repeated every MinSampleRatePeriodMs.
+    // Highest per-sample allocation rate: each run's bytes divided by the period it was observed in, floored to MinSampleRatePeriodMs so a gap that is tiny or TickCount64-quantized cannot inflate a single run into an absurd rate. A run can therefore claim at most the rate it would have if it repeated every MinSampleRatePeriodMs.
     private double ComputeMaxSampleRate(int count)
     {
         double best = 0;

@@ -114,11 +114,7 @@ public class BlightPlannerTests
     [TestMethod]
     public void FillRule_PreferCloseFoundationToPump_BuildsNearestPumpFirst()
     {
-        // Regression: AssignFill sorted fill candidates by the placement
-        // preference, but BuildOrderedSteps re-iterated knownTowers in scan
-        // order, so the preference was lost and far-away towers were built
-        // before nearby ones.  Fill BUILD steps must follow the
-        // placement-preferred order (nearest pump first).
+        // Regression: AssignFill sorted fill candidates by the placement preference, but BuildOrderedSteps re-iterated knownTowers in scan order, so the preference was lost and far-away towers were built before nearby ones.  Fill BUILD steps must follow the placement-preferred order (nearest pump first).
         var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
         var foundations = new List<BlightCachedTower>
         {
@@ -201,9 +197,7 @@ public class BlightPlannerTests
     [TestMethod]
     public void MixedFillTier_DefaultFirstRule_StillBuildsNearestPumpFirst()
     {
-        // Regression: AssignFill ordered fill candidates by tierRules[0].Placement, so a fill tier
-        // whose first rule has no placement preference (Empowering) ignored a later rule's
-        // NearestPump (fill Scouts) and built the farthest foundation first.
+        // Regression: AssignFill ordered fill candidates by tierRules[0].Placement, so a fill tier whose first rule has no placement preference (Empowering) ignored a later rule's NearestPump (fill Scouts) and built the farthest foundation first.
         var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
         var foundations = new List<BlightCachedTower>
         {
@@ -377,14 +371,7 @@ public class BlightPlannerTests
     [TestMethod]
     public void BuiltCoverageTowerDownstream_StillUpgradedToMaxBeforeFill()
     {
-        // Regression (Residence 83): a built Seismic that covers the branch
-        // from a downstream position (beyond its max range from the branch
-        // ANCHOR) was never recorded as a coverage placement, so its upgrade
-        // steps were silently dropped and the plan moved straight to Fireball
-        // fill.  Coverage is measured against SEGMENTS (downstream reach), so
-        // such a tower still contributes coverage and, with
-        // UpgradeBeforeMovingOntoLowerPriority, must reach max level BEFORE
-        // any fill step is emitted.
+        // Regression (Residence 83): a built Seismic that covers the branch from a downstream position (beyond its max range from the branch ANCHOR) was never recorded as a coverage placement, so its upgrade steps were silently dropped and the plan moved straight to Fireball fill.  Coverage is measured against SEGMENTS (downstream reach), so such a tower still contributes coverage and, with UpgradeBeforeMovingOntoLowerPriority, must reach max level BEFORE any fill step is emitted.
         var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
         var foundations = new List<BlightCachedTower>
         {
@@ -442,14 +429,7 @@ public class BlightPlannerTests
     [TestMethod]
     public void BuiltCoverageTowerBelowCoverageLevel_NoDuplicateTowerPlaced()
     {
-        // Regression (Residence 82 / Desert 82): a coverage tower that is
-        // built but not yet upgraded to the level that actually covers its
-        // branch used to be treated as "no coverage" on the next rebuild, so
-        // the planner placed a SECOND tower for the same branch (observed:
-        // two Chilling towers ~34 apart and two Seismic towers ~21 apart,
-        // both pairs covering the same branch).  A built coverage tower whose
-        // MAX-level range reaches the branch base counts as in-progress
-        // coverage — the plan upgrades it instead of duplicating it.
+        // Regression (Residence 82 / Desert 82): a coverage tower that is built but not yet upgraded to the level that actually covers its branch used to be treated as "no coverage" on the next rebuild, so the planner placed a SECOND tower for the same branch (observed: two Chilling towers ~34 apart and two Seismic towers ~21 apart, both pairs covering the same branch).  A built coverage tower whose MAX-level range reaches the branch base counts as in-progress coverage — the plan upgrades it instead of duplicating it.
         var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
         var foundations = new List<BlightCachedTower>
         {
@@ -510,9 +490,7 @@ public class BlightPlannerTests
     [TestMethod]
     public void PlanSteps_CappedAtMaxPlanSteps()
     {
-        // A blight map can have 100+ foundations; without a cap the fill tier would emit hundreds
-        // of steps and the executor would try to walk to every one. A single plan must carry at
-        // most 30 steps (builds + upgrades) — finishing a batch rebuilds and plans the next.
+        // A blight map can have 100+ foundations; without a cap the fill tier would emit hundreds of steps and the executor would try to walk to every one. A single plan must carry at most 30 steps (builds + upgrades) — finishing a batch rebuilds and plans the next.
         var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
         var foundations = new List<BlightCachedTower>();
         for (int i = 0; i < 60; i++)
@@ -675,8 +653,7 @@ public class BlightPlannerTests
             new(20, 0), new(52, 0), new(84, 0),    // branch A — base midpoint (36,0)
             new(-20, 0), new(-52, 0), new(-84, 0), // branch B — base midpoint (-36,0)
         };
-        // (0,0) and (0,-4) reach both bases only with Seismic's base radius (45 ≥ 36); they are
-        // outside Chilling's base radius (35 < 36), so (40,0)/(-40,0) cover each branch separately.
+        // (0,0) and (0,-4) reach both bases only with Seismic's base radius (45 ≥ 36); they are outside Chilling's base radius (35 < 36), so (40,0)/(-40,0) cover each branch separately.
         var foundations = Foundations((0, 0), (0, -4), (40, 0), (-40, 0));
 
         // Branch A = positions 0-2, branch B = positions 3-5 (two separate root chains).
@@ -695,10 +672,7 @@ public class BlightPlannerTests
     [TestMethod]
     public void RootChainStartingBeyondRadius_NotCountedAsBranch()
     {
-        // Chain A starts at (5,0) — within the pump radius, so it is a branch.
-        // Chain B starts at (45,50) — 67 units from the pump, beyond the 30
-        // radius, so it must NOT be counted as a main branch even though it is
-        // a root chain.  Only root chains that START near the pump count.
+        // Chain A starts at (5,0) — within the pump radius, so it is a branch. Chain B starts at (45,50) — 67 units from the pump, beyond the 30 radius, so it must NOT be counted as a main branch even though it is a root chain.  Only root chains that START near the pump count.
         var lane = new List<NumVector2>
         {
             new(5, 0), new(15, 0), new(25, 0), new(35, 0),   // branch A — starts 5 from pump
@@ -737,9 +711,7 @@ public class BlightPlannerTests
             .Should().Be(1, "initial build detects the branch");
         cache.Should().NotBeEmpty("freshly detected branch anchors are persisted");
 
-        // Simulate the player walking away: the pump-near pathway entities
-        // stream out, so fresh chain-base detection finds nothing near the
-        // pump.  The cached anchor must keep the branch alive.
+        // Simulate the player walking away: the pump-near pathway entities stream out, so fresh chain-base detection finds nothing near the pump.  The cached anchor must keep the branch alive.
         BlightPlan second = BuildPlan(lane, foundations, CoverageRules(),
             pump: new NumVector2(1000, 1000), cachedAnchors: cache);
         second.Steps.Count(s => s.Action == BlightPlanAction.Build && s.TowerType == BlightTowerType.Chilling)
@@ -749,18 +721,11 @@ public class BlightPlannerTests
     [TestMethod]
     public void CachedBranchWithoutNearbySegment_IsNotFalselyCoveredByAnotherBranch()
     {
-        // A cached branch whose entities fully streamed out and whose anchor is
-        // NOT near any connected segment must NOT be reported as covered.  The
-        // old code mapped it to the globally-nearest connected segment (a
-        // segment of ANOTHER branch near the shared pump node), which made it
-        // inherit that branch's coverage — exactly the false "branch covered"
-        // the user reported.  It must stay detected (cache keeps it alive) but
-        // uncovered, so the planner cannot declare full coverage it doesn't have.
+        // A cached branch whose entities fully streamed out and whose anchor is NOT near any connected segment must NOT be reported as covered.  The old code mapped it to the globally-nearest connected segment (a segment of ANOTHER branch near the shared pump node), which made it inherit that branch's coverage — exactly the false "branch covered" the user reported.  It must stay detected (cache keeps it alive) but uncovered, so the planner cannot declare full coverage it doesn't have.
         var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
         var foundations = Foundations((5, 0), (15, 0), (25, 0));
 
-        // Cached anchor far from branch A's chain — no connected segment is
-        // within the merge radius, and no foundation can reach it either.
+        // Cached anchor far from branch A's chain — no connected segment is within the merge radius, and no foundation can reach it either.
         var cache = new ConcurrentDictionary<NumVector2, byte> { [new(200, 200)] = 0 };
 
         BlightPlan plan = BuildPlan(lane, foundations, CoverageRules(),
@@ -774,16 +739,7 @@ public class BlightPlannerTests
     [TestMethod]
     public void CachedBranch_BuiltCoverageNearAnchor_KeepsCoverageWhenEntitiesStreamOut()
     {
-        // Regression: when the player walks away from the pump, pump-near
-        // pathway entities stream out and the branch becomes cached (no live
-        // segment to measure).  BranchHasCoverage used to report such a branch
-        // as NOT covered, which flipped the coverage gate to incomplete and
-        // collapsed the rebuilt plan to ZERO steps.  A branch whose built
-        // coverage towers already reach its persisted ANCHOR must stay covered
-        // — the anchor and the towers both survive streaming, so this is the
-        // same physical guarantee the live segment check provides.
-        //
-        // Lane far from the pump: it is not a live branch.  The cached anchor
+        // Regression: when the player walks away from the pump, pump-near pathway entities stream out and the branch becomes cached (no live segment to measure).  BranchHasCoverage used to report such a branch as NOT covered, which flipped the coverage gate to incomplete and collapsed the rebuilt plan to ZERO steps.  A branch whose built coverage towers already reach its persisted ANCHOR must stay covered — the anchor and the towers both survive streaming, so this is the same physical guarantee the live segment check provides.  Lane far from the pump: it is not a live branch.  The cached anchor
         var lane = CreateChain((200, 200), (210, 200));
         var foundations = new List<BlightCachedTower>
         {
@@ -924,10 +880,7 @@ public class BlightPlannerTests
     [TestMethod]
     public void Fork_NewBranchWithoutSeismic_PlansSeismicOnNewBranch()
     {
-        // User scenario: Branch A (trunk) is fully covered by Chilling + Seismic; a new branch forks
-        // off between the Chilling tower (on the trunk) and the Seismic tower (on the main
-        // continuation).  The Seismic tower does not cover the new fork, so the coverage must turn
-        // blue there and the plan must add a Seismic tower for the new branch.
+        // User scenario: Branch A (trunk) is fully covered by Chilling + Seismic; a new branch forks off between the Chilling tower (on the trunk) and the Seismic tower (on the main continuation).  The Seismic tower does not cover the new fork, so the coverage must turn blue there and the plan must add a Seismic tower for the new branch.
         var lane = new List<NumVector2>
         {
             new(0, 0),   // 0 root (pump)
@@ -1026,13 +979,7 @@ public class BlightPlannerTests
     [TestMethod]
     public void WindingLane_BaseTowerCoversWholeLane_NoDuplicateTower()
     {
-        // A winding (U-shaped) lane whose far end is beyond the base tower's CURRENT radius.  Under
-        // the old "nearest strictly-closer-to-pump" parent tree the lane fragmented at the pump-
-        // distance local minimum, so the coverage array showed the far end red and the planner
-        // added a duplicate tower; the user also saw "full coverage" reported while segments stayed
-        // uncovered.  With the intact lane tree, a tower covering ANY trunk segment covers the whole
-        // winding lane through AND/OR propagation (Rule 1), so a single base tower is enough and no
-        // second coverage tower is planned.
+        // A winding (U-shaped) lane whose far end is beyond the base tower's CURRENT radius.  Under the old "nearest strictly-closer-to-pump" parent tree the lane fragmented at the pump- distance local minimum, so the coverage array showed the far end red and the planner added a duplicate tower; the user also saw "full coverage" reported while segments stayed uncovered.  With the intact lane tree, a tower covering ANY trunk segment covers the whole winding lane through AND/OR propagation (Rule 1), so a single base tower is enough and no second coverage tower is planned.
         var lane = new List<NumVector2>
         {
             new(10, 10), // 0 root
@@ -1086,11 +1033,7 @@ public class BlightPlannerTests
     [TestMethod]
     public void ForkAtPumpRoot_IsOneBranch_NotOnePerArm()
     {
-        // A lane that forks right at the pump-near root is ONE branch (one lane network from the
-        // pump), not one branch per arm.  The old detection started a branch at every child of an
-        // orphan root, so a fork at the pump produced phantom branches (the user saw "4 branches"
-        // for two lanes) and let the coverage gate report "full coverage" while an arm was still
-        // uncovered.
+        // A lane that forks right at the pump-near root is ONE branch (one lane network from the pump), not one branch per arm.  The old detection started a branch at every child of an orphan root, so a fork at the pump produced phantom branches (the user saw "4 branches" for two lanes) and let the coverage gate report "full coverage" while an arm was still uncovered.
         var lane = new List<NumVector2>
         {
             new(5, 0),      // 0 root (pump-near)
@@ -1170,8 +1113,7 @@ public class BlightPlannerTests
     [TestMethod]
     public void EmpoweringRule_OnlyPlacesFoundationsInRangeOfEmpowerTargets()
     {
-        // Two built coverage towers (Chilling + Seismic) with an Empowering rule that must empower
-        // them. Only foundations within Empowering's max radius of a target tower may be assigned.
+        // Two built coverage towers (Chilling + Seismic) with an Empowering rule that must empower them. Only foundations within Empowering's max radius of a target tower may be assigned.
         var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
         var foundations = new List<BlightCachedTower>
         {
@@ -1207,8 +1149,7 @@ public class BlightPlannerTests
     [TestMethod]
     public void EmpoweringRule_StopsOnceEveryTargetIsInRange()
     {
-        // Two built target towers close together: one Empowering foundation covers both, so the rule
-        // must not keep assigning further Empowering towers after both targets are in range.
+        // Two built target towers close together: one Empowering foundation covers both, so the rule must not keep assigning further Empowering towers after both targets are in range.
         var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
         var foundations = new List<BlightCachedTower>
         {
@@ -1264,8 +1205,7 @@ public class BlightPlannerTests
     [TestMethod]
     public void EmpoweringRule_InterleavesWithOtherFillRuleInSameTier()
     {
-        // Empowering (High) + Fireball (High): the plan must carry both, with Empowering only on
-        // in-range foundations and Fireball filling the remaining spots.
+        // Empowering (High) + Fireball (High): the plan must carry both, with Empowering only on in-range foundations and Fireball filling the remaining spots.
         var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
         var foundations = new List<BlightCachedTower>
         {

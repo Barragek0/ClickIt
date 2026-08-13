@@ -13,15 +13,12 @@ namespace ClickIt.Core.Runtime
         private long _lastCanClickFailureLogTimestampMs;
         private const int ClickIdleWaitMs = 50;
         private bool _lastClickTickDidWork;
-        // Set to the remaining frequency-target time when the gate is only waiting on the click
-        // timer, so the observed click interval tracks the target instead of overshooting by up to
-        // the coarse idle-wait window. Falls back to ClickIdleWaitMs otherwise.
+        // Set to the remaining frequency-target time when the gate is only waiting on the click timer, so the observed click interval tracks the target instead of overshooting by up to the coarse idle-wait window. Falls back to ClickIdleWaitMs otherwise.
         private int _clickIdleWaitMs = ClickIdleWaitMs;
         private double _clickTargetTimeCorrectionMs;
         private bool _lastClickTimerRestarted;
 
-        // Delve-flare decision cache: per-player-address inputs (darkness-debuff charges, health/ES
-        // percent) refreshed at most every FlareCacheWindowMs to avoid re-materializing Player.Buffs.
+        // Delve-flare decision cache: per-player-address inputs (darkness-debuff charges, health/ES percent) refreshed at most every FlareCacheWindowMs to avoid re-materializing Player.Buffs.
         private long _flarePlayerOwnerAddress;
         private int _cachedFlareCharges = -1;
         private float _cachedFlareHealth = 100f;
@@ -122,9 +119,7 @@ namespace ClickIt.Core.Runtime
 
         private IEnumerator MainScanForAltarsLogic()
         {
-            // Idle-yield while the Enable master switch is off instead of terminating: a finished
-            // coroutine can never be resumed, so terminating here would leave the plugin dead after
-            // the user toggles Enable back on (until a full reload).
+            // Idle-yield while the Enable master switch is off instead of terminating: a finished coroutine can never be resumed, so terminating here would leave the plugin dead after the user toggles Enable back on (until a full reload).
             while (!_state.Runtime.IsShuttingDown)
             {
                 if (!_settings.Enable)
@@ -136,9 +131,7 @@ namespace ClickIt.Core.Runtime
             }
         }
 
-        // Catches exceptions escaping a plugin coroutine step and logs them through
-        // the plugin ErrorHandler (Recent Errors + game log) instead of letting
-        // ExileCore's runner swallow them into the game log only.
+        // Catches exceptions escaping a plugin coroutine step and logs them through the plugin ErrorHandler (Recent Errors + game log) instead of letting ExileCore's runner swallow them into the game log only.
         private IEnumerator Guarded(Func<IEnumerator> step, string name)
         {
             bool failed = false;
@@ -175,8 +168,7 @@ namespace ClickIt.Core.Runtime
                 }
                 try
                 {
-                    // Let the scheduler honor BlockedUiRefreshIntervalMs; forcing here would bypass
-                    // the documented refresh interval and rebuild blocked rects redundantly.
+                    // Let the scheduler honor BlockedUiRefreshIntervalMs; forcing here would bypass the documented refresh interval and rebuild blocked rects redundantly.
                     long start = Stopwatch.GetTimestamp();
                     long allocStart = GC.GetAllocatedBytesForCurrentThread();
                     using (new DlrReadScope(ProcessingSection.AreaBlockedUi))
@@ -255,9 +247,7 @@ namespace ClickIt.Core.Runtime
                 if (gateDecision.ShouldCancelOffscreenPathing)
                     clickPort.CancelOffscreenPathingState();
 
-                // When only the frequency timer is gating (click is possible, just not due yet),
-                // sleep exactly the remaining time instead of the coarse idle wait so the observed
-                // click interval tracks the target.
+                // When only the frequency timer is gating (click is possible, just not due yet), sleep exactly the remaining time instead of the coarse idle wait so the observed click interval tracks the target.
                 _clickIdleWaitMs = !gateDecision.ReadyByTime && gateDecision.CanClick
                     ? SystemMath.Clamp((int)SystemMath.Ceiling(targetTime - _state.Runtime.Timer.ElapsedMilliseconds), 1, ClickIdleWaitMs)
                     : ClickIdleWaitMs;
@@ -285,10 +275,7 @@ namespace ClickIt.Core.Runtime
                     RecordClickStartDelay(_state.Runtime.Timer.ElapsedMilliseconds, frequencyTarget.TargetIntervalMs);
             }
 
-            // Harvest labels are processed in the render path
-            // (PluginRenderHost) so the overlay renders correctly and the
-            // click path reads the decision via GetLabelToClick without
-            // needing to reprocess labels.
+            // Harvest labels are processed in the render path (PluginRenderHost) so the overlay renders correctly and the click path reads the decision via GetLabelToClick without needing to reprocess labels.
 
             long clickSequenceBefore = GetSuccessfulClickSequence();
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
@@ -384,9 +371,7 @@ namespace ClickIt.Core.Runtime
             }
         }
 
-        // The whole body runs synchronously (the only yield is the post-use cooldown), so timing is
-        // recorded here around the actual work — measuring around `yield return Guarded(...)` in the
-        // caller instead would span the coroutine scheduler's frame gap and report ~16ms of noise.
+        // The whole body runs synchronously (the only yield is the post-use cooldown), so timing is recorded here around the actual work — measuring around `yield return Guarded(...)` in the caller instead would span the coroutine scheduler's frame gap and report ~16ms of noise.
         private IEnumerator ProcessFlare()
         {
             if (!_settings.ClickDelveFlares)
@@ -407,9 +392,7 @@ namespace ClickIt.Core.Runtime
             {
                 if (player != null)
                 {
-                    // Player.Buffs materializes every buff wrapper and FindDarknessDebuffCharges reads each
-                    // buff's Name/Charges over the obfuscated game types. Cache the decision inputs per
-                    // player address with a short window; the darkness-debuff decision tolerates 200ms staleness.
+                    // Player.Buffs materializes every buff wrapper and FindDarknessDebuffCharges reads each buff's Name/Charges over the obfuscated game types. Cache the decision inputs per player address with a short window; the darkness-debuff decision tolerates 200ms staleness.
                     long buffsStart = Stopwatch.GetTimestamp();
                     long buffsAllocStart = GC.GetAllocatedBytesForCurrentThread();
                     if (now - _flareCacheAtMs >= FlareCacheWindowMs || player.Address != _flarePlayerOwnerAddress)

@@ -228,6 +228,70 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
+        public void TryUseMovementSkillForOffscreenPathing_ReturnsFalse_WhenCastDelayIsActive()
+        {
+            // Spec 13/20: the skill may not be cast until ~200ms have elapsed since pathfinding to the current target started. Within the window the cast is refused (walk-clicks flow).
+            var settings = new ClickItSettings();
+            settings.UseMovementSkillsForOffscreenPathfinding.Value = true;
+            settings.OffscreenMovementSkillMinPathSubsectionLength.Value = 2;
+            long now = 10_000;
+            var coordinator = CreateCoordinator(new ClickRuntimeState(), settings, remainingNodes: 8, getTimestampMs: () => now);
+
+            bool first = coordinator.TryUseMovementSkillForOffscreenPathing("Metadata/TestTarget", new Vector2(100, 100), builtPath: true, out _, out string firstReason);
+
+            now += 100; // still inside the 200ms cast delay
+            bool second = coordinator.TryUseMovementSkillForOffscreenPathing("Metadata/TestTarget", new Vector2(100, 100), builtPath: true, out _, out string secondReason);
+
+            first.Should().BeFalse();
+            firstReason.Should().Contain("cast delay");
+            second.Should().BeFalse();
+            secondReason.Should().Contain("cast delay");
+        }
+
+        [TestMethod]
+        public void TryUseMovementSkillForOffscreenPathing_ProceedsPastCastDelay_WhenDelayElapsed()
+        {
+            // Once the 200ms cast delay has elapsed the cast is allowed to proceed - it advances to the binding gate (which fails here only because no skill bar is available).
+            var settings = new ClickItSettings();
+            settings.UseMovementSkillsForOffscreenPathfinding.Value = true;
+            settings.OffscreenMovementSkillMinPathSubsectionLength.Value = 2;
+            long now = 10_000;
+            var coordinator = CreateCoordinator(
+                new ClickRuntimeState(),
+                settings,
+                remainingNodes: 8,
+                gameController: ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindow(new RectangleF(0f, 0f, 1920f, 1080f)),
+                getTimestampMs: () => now);
+
+            coordinator.TryUseMovementSkillForOffscreenPathing("Metadata/TestTarget", new Vector2(100, 100), builtPath: true, out _, out _);
+
+            now += MovementSkillMath.CastDelayMs + 50;
+            bool afterDelay = coordinator.TryUseMovementSkillForOffscreenPathing("Metadata/TestTarget", new Vector2(100, 100), builtPath: true, out _, out string afterReason);
+
+            afterDelay.Should().BeFalse();
+            afterReason.Should().NotContain("cast delay", "once the cast delay has elapsed the cast proceeds to the next gate");
+            afterReason.Should().Contain("unable to resolve safe/clickable movement-skill cast point", "with no readable window rect the cast fails closed at cast-point resolution");
+        }
+
+        [TestMethod]
+        public void TryUseMovementSkillForOffscreenPathing_RestartsCastDelay_WhenTargetChanges()
+        {
+            var settings = new ClickItSettings();
+            settings.UseMovementSkillsForOffscreenPathfinding.Value = true;
+            settings.OffscreenMovementSkillMinPathSubsectionLength.Value = 2;
+            long now = 10_000;
+            var coordinator = CreateCoordinator(new ClickRuntimeState(), settings, remainingNodes: 8, getTimestampMs: () => now);
+
+            coordinator.TryUseMovementSkillForOffscreenPathing("Metadata/TargetA", new Vector2(100, 100), builtPath: true, out _, out _);
+
+            now += MovementSkillMath.CastDelayMs + 50;
+            bool newTarget = coordinator.TryUseMovementSkillForOffscreenPathing("Metadata/TargetB", new Vector2(100, 100), builtPath: true, out _, out string newReason);
+
+            newTarget.Should().BeFalse();
+            newReason.Should().Contain("cast delay", "a new target restarts the 200ms cast delay");
+        }
+
+        [TestMethod]
         public void TryGetMovementSkillPostCastBlockState_ReturnsFalse_WhenTrackedRuntimeEntryCannotBeRead()
         {
             var runtimeState = new ClickRuntimeState
@@ -263,7 +327,8 @@ namespace ClickIt.Tests.Features.Click
             int remainingNodes = 0,
             GameController? gameController = null,
             Func<Vector2, string, bool>? pointIsInClickableArea = null,
-            Func<string, bool>? ensureCursorInsideGameWindowForClick = null)
+            Func<string, bool>? ensureCursorInsideGameWindowForClick = null,
+            Func<long>? getTimestampMs = null)
         {
             settings ??= new ClickItSettings();
 
@@ -275,7 +340,8 @@ namespace ClickIt.Tests.Features.Click
                 GetRemainingOffscreenPathNodeCount: () => remainingNodes,
                 EnsureCursorInsideGameWindowForClick: ensureCursorInsideGameWindowForClick ?? (static _ => true),
                 PointIsInClickableArea: pointIsInClickableArea ?? (static (_, _) => true),
-                DebugLog: static _ => { }));
+                DebugLog: static _ => { },
+                GetTimestampMs: getTimestampMs));
         }
 
         public sealed class FakeSkillEntry

@@ -1,13 +1,8 @@
-using System.Text;
-using ImGuiNET;
 using NumVec4 = System.Numerics.Vector4;
 
 namespace ClickIt.Shared.Diagnostics.ElementTree;
 
-// Self-contained debug UI for an ElementTreeInspector: the first capture of a
-// target renders the full tree, later captures only render changed values
-// (old value in red, new value in green). Also appends the same view to the
-// copy-all dump.
+// Self-contained debug UI for an ElementTreeInspector: the first capture of a target renders the full tree, later captures only render changed values (old value in red, new value in green). Also appends the same view to the copy-all dump.
 internal static class ElementTreeDebugUi
 {
     private static readonly NumVec4 CHeader = Vec4(Color.Orange);

@@ -75,8 +75,7 @@ namespace ClickIt.Tests.UI
         [TestMethod]
         public void BuildReport_DeduplicatesRemoteMemoryObjects_ByUnderlyingAddress()
         {
-            // Game memory wrappers are re-created per read, so the same underlying element appears as a
-            // distinct CLR instance each time; two wrappers with the same Address must count as a cycle.
+            // Game memory wrappers are re-created per read, so the same underlying element appears as a distinct CLR instance each time; two wrappers with the same Address must count as a cycle.
             LabelOnGround first = CreateOpaqueLabel(0x1234);
             LabelOnGround sameAddress = CreateOpaqueLabel(0x1234);
             LabelOnGround otherAddress = CreateOpaqueLabel(0x5678);
@@ -310,8 +309,7 @@ namespace ClickIt.Tests.UI
             using StreamWriter writer = new(stream, new UTF8Encoding(false)) { AutoFlush = true };
             var progress = new List<int>();
 
-            // A small graph with a huge fixed projection: without measuring, the bar would sit near 0
-            // and jump to 100; with measurement the write phase climbs toward 100 against the real count.
+            // A small graph with a huge fixed projection: without measuring, the bar would sit near 0 and jump to 100; with measurement the write phase climbs toward 100 against the real count.
             IEnumerator routine = RuntimeObjectIntrospection.WriteReportCoroutine(
                 new { A = 1, Items = new[] { 1, 2, 3, 4, 5, 6, 7, 8 } },
                 writer,

@@ -1,7 +1,3 @@
-using System.Collections;
-using System.Diagnostics;
-using System.Text;
-
 namespace ClickIt.UI.Debug.Introspection
 {
     internal static class RuntimeObjectIntrospectionCoroutineWriter
@@ -55,9 +51,7 @@ namespace ClickIt.UI.Debug.Introspection
             }
         }
 
-        // Streaming report core shared by the file writer and the clipboard dumper: writes the title,
-        // traverses the root, and writes event slices to the provided writer, yielding every budget
-        // nodes (or ~1ms) with progress + total-node callbacks. The report is never held in full.
+        // Streaming report core shared by the file writer and the clipboard dumper: writes the title, traverses the root, and writes event slices to the provided writer, yielding every budget nodes (or ~1ms) with progress + total-node callbacks. The report is never held in full.
         internal static IEnumerator WriteReportCoroutine(
             object? root,
             StreamWriter writer,
@@ -88,10 +82,7 @@ namespace ClickIt.UI.Debug.Introspection
                 yield break;
             }
 
-            // When requested, count the reachable nodes with the same engine/options before writing
-            // so progress reflects the real graph instead of a fixed projection (the dump blacklist
-            // makes the real graph a small fraction of the old projection). The count phase maps into
-            // the lower half of the bar; the write phase reports 50..100 against the measured total.
+            // When requested, count the reachable nodes with the same engine/options before writing so progress reflects the real graph instead of a fixed projection (the dump blacklist makes the real graph a small fraction of the old projection). The count phase maps into the lower half of the bar; the write phase reports 50..100 against the measured total.
             int progressTotal = normalized.ProgressNodeTotal;
             if (measureProgressTotal)
             {

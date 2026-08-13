@@ -1,9 +1,6 @@
 namespace ClickIt.Tests.Behavior.Click
 {
-    // Scenario harness that composes the REAL click-pipeline components exactly the way production
-    // wires them (see ClickAutomationPort.Composition / LabelFilterPort.Composition), so scenario
-    // tests exercise the actual geometry, selection, ranking, and click-vs-walk logic against
-    // simulated game state (labels with real element rects + entity probes + blocked rectangles).
+    // Scenario harness that composes the REAL click-pipeline components exactly the way production wires them (see ClickAutomationPort.Composition / LabelFilterPort.Composition), so scenario tests exercise the actual geometry, selection, ranking, and click-vs-walk logic against simulated game state (labels with real element rects + entity probes + blocked rectangles).
     internal static class ClickPipelineScenarioFactory
     {
         internal sealed class ScenarioConfig
@@ -16,6 +13,14 @@ namespace ClickIt.Tests.Behavior.Click
             public int MechanicPriorityDistancePenalty { get; set; }
             public Dictionary<string, int> MechanicPriorityIndexMap { get; set; } = new(StringComparer.OrdinalIgnoreCase);
             public List<RectangleF> BlockedRects { get; set; } = [];
+
+            // Visible mechanics simulated on screen (shrine / settlers ore / lost shipment) and whether the port reports their interaction as succeeding.
+            public Entity? ShrineCandidate { get; set; }
+            public bool ShrineClickable { get; set; } = true;
+            public SettlersOreCandidate? SettlersCandidate { get; set; }
+            public bool SettlersClickable { get; set; } = true;
+            public LostShipmentCandidate? LostShipmentCandidate { get; set; }
+            public bool LostShipmentClickable { get; set; } = true;
         }
 
         internal sealed class ScenarioLabelElement(RectangleF clientRect) : Element
@@ -25,9 +30,11 @@ namespace ClickIt.Tests.Behavior.Click
             public override RectangleF GetClientRect() => clientRect;
         }
 
-        // Mirrors production mechanic classification for the scenario label set. Reads entity
-        // fields via DynamicAccess (production-style) because the base Entity memory-read properties
-        // cannot be touched on uninitialized probe objects.
+        // A scenario element with a virtual rect; set its Address (IsVisible = address > 0) when it must be treated as visible on screen (e.g. for altar option elements).
+        internal static Element CreateLabelElement(RectangleF clientRect)
+            => new ScenarioLabelElement(clientRect);
+
+        // Mirrors production mechanic classification for the scenario label set. Reads entity fields via DynamicAccess (production-style) because the base Entity memory-read properties cannot be touched on uninitialized probe objects.
         internal static string? ResolveMechanicId(LabelOnGround label, Entity item, ClickSettings settings)
         {
             string path = DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
@@ -132,8 +139,7 @@ namespace ClickIt.Tests.Behavior.Click
             addressProperty!.SetValue(element, address);
         }
 
-        // The label element is read via DynamicAccess (the production pattern) because LabelProbe
-        // hides LabelOnGround.Label with `new`, so the typed property hits the memory-read base getter.
+        // The label element is read via DynamicAccess (the production pattern) because LabelProbe hides LabelOnGround.Label with `new`, so the typed property hits the memory-read base getter.
         internal static Element GetLabelElement(LabelOnGround label)
             => DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawElement) && rawElement is Element element
                 ? element
@@ -151,25 +157,24 @@ namespace ClickIt.Tests.Behavior.Click
             public ClickLabelInteractionService LabelInteraction { get; }
             public Func<Vector2, bool> ClickableArea { get; }
 
-            // The game's hovered UI element, simulated for the UI-hover essence/strongbox
-            // preferences; null means nothing is hovered (the preference is inert).
+            // The game's hovered UI element, simulated for the UI-hover essence/strongbox preferences; null means nothing is hovered (the preference is inert).
             public Element? HoveredElement { get; set; }
 
-            // Number of times the click interaction was actually executed (the click path reached
-            // PerformResolvedLabelInteraction). A walk decision stops the tick before this runs.
+            // Number of times the click interaction was actually executed (the click path reached PerformResolvedLabelInteraction). A walk decision stops the tick before this runs.
             public int InteractionsExecuted { get; private set; }
 
-            // The click position of the last executed interaction, so tests can assert the click
-            // landed inside the label and outside any blocked rectangle.
+            // The click position of the last executed interaction, so tests can assert the click landed inside the label and outside any blocked rectangle.
             public Vector2? LastClickPosition { get; private set; }
 
             public ILabelInteractionPort LabelInteractionPort => _labelInteractionPort;
 
+            // The visible-mechanic interaction port the execution engine clicks through; tests read its click counters to affirm which mechanic was actually clicked.
+            public ScenarioVisibleMechanicInteractionPort VisibleMechanics { get; }
+
             // Labels currently on the ground, consumed by the real offscreen traversal resolver.
             public List<LabelOnGround> CurrentLabels { get; set; } = [];
 
-            // Direct eligibility probe (same builder the selection service uses) so tests can assert
-            // exactly why a label is or is not a candidate.
+            // Direct eligibility probe (same builder the selection service uses) so tests can assert exactly why a label is or is not a candidate.
             public bool TryBuildCandidate(LabelOnGround label, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason)
                 => LabelEligibilityEngine.TryBuildCandidate(
                     label,
@@ -191,6 +196,7 @@ namespace ClickIt.Tests.Behavior.Click
                 ClickableArea = CreateClickableArea(config);
                 ClickPointResolver = new LabelClickPointResolver(Settings);
                 _labelInteractionPort = new ScenarioLabelInteractionPort(config);
+                VisibleMechanics = new ScenarioVisibleMechanicInteractionPort(config);
 
                 SelectionService = new LabelSelectionService(new LabelSelectionServiceDependencies(
                     GameController: null,
@@ -256,13 +262,16 @@ namespace ClickIt.Tests.Behavior.Click
             }
 
             public ClickTickContext CreateContext(bool groundItemsVisible, IReadOnlyList<LabelOnGround>? allLabels)
+                => CreateContext(groundItemsVisible, allLabels, nextShrine: null);
+
+            public ClickTickContext CreateContext(bool groundItemsVisible, IReadOnlyList<LabelOnGround>? allLabels, Entity? nextShrine)
                 => new(
                     WindowTopLeft: Vector2.Zero,
                     CursorAbsolute: Vector2.Zero,
                     IsPostChestLootSettleBlocking: false,
                     ChestLootSettleReason: string.Empty,
                     AllLabels: allLabels,
-                    NextShrine: null,
+                    NextShrine: nextShrine,
                     MechanicPriorityContext: default,
                     GroundItemsVisible: groundItemsVisible);
 
@@ -279,6 +288,13 @@ namespace ClickIt.Tests.Behavior.Click
 
             public ClickCandidates CreateCandidates(LabelOnGround? nextLabel, string? mechanicId)
                 => new(null, null, nextLabel, mechanicId);
+
+            public ClickCandidates CreateCandidates(
+                LabelOnGround? nextLabel,
+                string? mechanicId,
+                SettlersOreCandidate? settlers,
+                LostShipmentCandidate? lostShipment)
+                => new(lostShipment, settlers, nextLabel, mechanicId);
 
             private InteractionExecutionEngine CreateExecutionEngine(
                 ScenarioConfig config,
@@ -301,7 +317,7 @@ namespace ClickIt.Tests.Behavior.Click
                     Settings,
                     labelInteractionPort,
                     pathfindingService,
-                    new ScenarioVisibleMechanicInteractionPort(),
+                    VisibleMechanics,
                     CreateSpecialLabelInteractionHandler(),
                     pathfindingLabelSuppression,
                     chestLootSettlement,
@@ -414,13 +430,37 @@ namespace ClickIt.Tests.Behavior.Click
                 => false;
         }
 
-        internal sealed class ScenarioVisibleMechanicInteractionPort : IVisibleMechanicInteractionPort
+        internal sealed class ScenarioVisibleMechanicInteractionPort(ScenarioConfig config) : IVisibleMechanicInteractionPort
         {
-            public bool TryClickSettlersOre(SettlersOreCandidate candidate) => false;
+            public int ShrineClicks { get; private set; }
 
-            public bool TryClickLostShipmentInteraction(LostShipmentCandidate candidate) => false;
+            public int SettlersClicks { get; private set; }
 
-            public bool TryClickShrineInteraction(Entity shrine) => false;
+            public int LostShipmentClicks { get; private set; }
+
+            public bool TryClickSettlersOre(SettlersOreCandidate candidate)
+            {
+                if (!config.SettlersClickable)
+                    return false;
+                SettlersClicks++;
+                return true;
+            }
+
+            public bool TryClickLostShipmentInteraction(LostShipmentCandidate candidate)
+            {
+                if (!config.LostShipmentClickable)
+                    return false;
+                LostShipmentClicks++;
+                return true;
+            }
+
+            public bool TryClickShrineInteraction(Entity shrine)
+            {
+                if (!config.ShrineClickable)
+                    return false;
+                ShrineClicks++;
+                return true;
+            }
 
             public void HandleSuccessfulMechanicEntityClick(Entity? entity)
             {

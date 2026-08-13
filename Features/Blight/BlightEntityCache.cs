@@ -1,10 +1,6 @@
 namespace ClickIt.Features.Blight;
 
-// One BlightPathway IngameIcon = one real lane segment. BeamStart is the segment's own world
-// position; BeamEnd is the world position one step OUTWARD (away from the pump). Lanes form a WEB:
-// every icon whose BeamEnd matches this icon's BeamStart is a pump-ward parent. Parents[0] is the
-// primary/tree parent (used for coverage propagation and branch naming); Parents[1..] are the extra
-// real beam connections at convergence junctions (two lanes joining into one). Computed per scan.
+// One BlightPathway IngameIcon = one real lane segment. BeamStart is the segment's own world position; BeamEnd is the world position one step OUTWARD (away from the pump). Lanes form a WEB: every icon whose BeamEnd matches this icon's BeamStart is a pump-ward parent. Parents[0] is the primary/tree parent (used for coverage propagation and branch naming); Parents[1..] are the extra real beam connections at convergence junctions (two lanes joining into one). Computed per scan.
 internal readonly record struct BlightPathwayIcon(
     int Id,
     NumVector2 GridPos,
@@ -13,8 +9,7 @@ internal readonly record struct BlightPathwayIcon(
     System.Numerics.Vector3 BeamEnd,
     int[] Parents)
 {
-    // visual == 1 (spawned, not yet sending enemies) and visual == 2 (actively sending) show the
-    // lane; visual == 3 (all enemies sent, inactive) hides it. 0 = unknown, hidden.
+    // visual == 1 (spawned, not yet sending enemies) and visual == 2 (actively sending) show the lane; visual == 3 (all enemies sent, inactive) hides it. 0 = unknown, hidden.
     internal bool IsActive => VisualState is 1 or 2;
 }
 
@@ -25,10 +20,10 @@ internal sealed class BlightEntityCache
     private readonly BlightEncounter _encounter;
 
     internal event Action? ClearRequested;
+    internal event Action? EncounterEnded;
     internal event Action? DataChanged;
 
-    // Plugin disable/reload teardown: clears the cache's blight state (and the shared hub's blight
-    // category); the hub's EntityAdded/EntityRemoved subscription is unhooked in ClickIt.OnClose.
+    // Plugin disable/reload teardown: clears the cache's blight state (and the shared hub's blight category); the hub's EntityAdded/EntityRemoved subscription is unhooked in ClickIt.OnClose.
     internal void DisposeForShutdown()
     {
         ClearData();
@@ -47,8 +42,7 @@ internal sealed class BlightEntityCache
     private System.Numerics.Vector3? _persistedPumpWorldPosition;
     private bool _hasDetectedAnyBlightContent;
     private bool _hasCompletedInitialScan;
-    // When no blight content has been found, the entity scan pauses between full scans; this bounds
-    // how long it stays paused so an encounter starting in the current area is still picked up.
+    // When no blight content has been found, the entity scan pauses between full scans; this bounds how long it stays paused so an encounter starting in the current area is still picked up.
     private const long NoBlightContentRescanIntervalMs = 2000;
     private long _lastFullRefreshEntityScanMs;
     private long _lastRefreshDebugTimestampMs;
@@ -61,26 +55,21 @@ internal sealed class BlightEntityCache
     private const string BlightFoundationEntityMetadata = "Monsters/LeagueBlight/BlightFoundation";
     private const int MaxEntityPathCacheEntries = 2048;
 
-    // Shared by the scan coroutine, the entity-event thread (EntityEventHub.Reseed/EntityAdded) and
-    // the render thread (DrawTowerRanges) without a common lock, so both caches must be concurrent.
+    // Shared by the scan coroutine, the entity-event thread (EntityEventHub.Reseed/EntityAdded) and the render thread (DrawTowerRanges) without a common lock, so both caches must be concurrent.
     private readonly ConcurrentDictionary<string, int> _towerRadiusCache = new(StringComparer.OrdinalIgnoreCase);
 
-    // entity.Path reads are the heaviest per-entity memory/alloc cost in the scan; cache the string
-    // by entity address so the 200ms sweep only reads it once per entity (path is immutable while
-    // the entity lives). Cleared on encounter end / area change.
+    // entity.Path reads are the heaviest per-entity memory/alloc cost in the scan; cache the string by entity address so the 200ms sweep only reads it once per entity (path is immutable while the entity lives). Cleared on encounter end / area change.
     private readonly ConcurrentDictionary<long, (long Id, string Path)> _entityPathCache = [];
 
     private LaneCoverageResult[]? _cachedCoverage;
     // Dirty flag — keeps last-good coverage available during recomputation so lanes never flash red.
     private bool _coverageDirty;
-    // Signature of the last scanned coverage-relevant data; when unchanged, the scan skips invalidating
-    // the coverage cache so the steady state never re-allocates the coverage computation.
+    // Signature of the last scanned coverage-relevant data; when unchanged, the scan skips invalidating the coverage cache so the steady state never re-allocates the coverage computation.
     private int _lastScanCoverageSignature;
     // Pathway snapshot aligned with _cachedCoverage so the render thread always draws a consistent bundle.
     private NumVector2[]? _cachedCoveragePathways;
 
-    // Branch-debug data cached on the scan thread so the render thread never re-runs the branch search
-    // or the coverage-tree building (children + lane forests) that the debug tree and lane labels render.
+    // Branch-debug data cached on the scan thread so the render thread never re-runs the branch search or the coverage-tree building (children + lane forests) that the debug tree and lane labels render.
     private LaneCoverageResult[]? _cachedBranchDebugCoverage;
     private List<NumVector2>? _cachedBranchDebugPositions;
     private List<(PumpBranch Branch, List<int> Segments)>? _cachedBranchDebugBranches;
@@ -95,31 +84,21 @@ internal sealed class BlightEntityCache
     private (Entity Entity, string TowerId)[]? _cachedTowerEntities;
     private BlightCachedTower[]? _cachedKnownTowers;
 
-    // Reused per-scan scratch buffers (the scan runs on a single coroutine thread), so a steady-state
-    // scan does not re-allocate the saved-state map and local result lists every 200ms.
+    // Reused per-scan scratch buffers (the scan runs on a single coroutine thread), so a steady-state scan does not re-allocate the saved-state map and local result lists every 200ms.
     private readonly Dictionary<NumVector2, (BlightTowerType Type, int Level, BlightTowerType Planned)> _scanSavedState = [];
     private readonly List<Entity> _scanLocalPathways = [];
     private readonly List<(Entity Entity, string TowerId)> _scanLocalTowers = [];
     private readonly List<BlightCachedTower> _scanLocalKnown = [];
 
-    // Game-visible pathway icons (BlightPathway IngameIcons) with active/inactive + beam endpoints;
-    // the coverage tree and the lane overlay both derive from this snapshot.
+    // Game-visible pathway icons (BlightPathway IngameIcons) with active/inactive + beam endpoints; the coverage tree and the lane overlay both derive from this snapshot.
     private readonly List<BlightPathwayIcon> _iconPathwaySnapshot = [];
-    // Icons keyed by entity Id so streamed-out segments (OnlyValidEntities drops entities as the
-    // player moves) survive the next scan — same persistence policy as the old geometry positions.
+    // Icons keyed by entity Id so streamed-out segments (OnlyValidEntities drops entities as the player moves) survive the next scan — same persistence policy as the old geometry positions.
     private readonly Dictionary<long, BlightPathwayIcon> _persistedIcons = [];
-    // Live count of currently-flowing lanes (StateMachine pending > 0 among valid retained entities);
-    // the encounter uses it as the liveness signal when the pump has streamed out and is unreadable.
+    // Live count of currently-flowing lanes (StateMachine pending > 0 among valid retained entities); the encounter uses it as the liveness signal when the pump has streamed out and is unreadable.
     private int _activePathwayCount;
     private BlightPathwayIcon[]? _cachedIconPathwaySnapshot;
 
-    // The shared EntityEventHub retains the blight set (pathways + pump + towers + foundations) with
-    // ONE EntityAdded/EntityRemoved subscription and ONE path read per event (the walking burst must
-    // never do a read per consumer per entity — the freeze source). The refresh re-reads each
-    // retained entity's CURRENT path on the small retained set to classify pathway vs structure, and
-    // tower level/type from the component because it changes in place and does not fire events.
-    // Reports the accumulated entity-event cost (bytes, ms) once per refresh; wired to the Blight
-    // breakdown's "Events" stage so the walking-triggered entity-event burst is visible.
+    // The shared EntityEventHub retains the blight set (pathways + pump + towers + foundations) with ONE EntityAdded/EntityRemoved subscription and ONE path read per event (the walking burst must never do a read per consumer per entity — the freeze source). The refresh re-reads each retained entity's CURRENT path on the small retained set to classify pathway vs structure, and tower level/type from the component because it changes in place and does not fire events. Reports the accumulated entity-event cost (bytes, ms) once per refresh; wired to the Blight breakdown's "Events" stage so the walking-triggered entity-event burst is visible.
     private readonly Action<long, double>? _recordEventCost;
 
     internal BlightEntityCache(ClickItSettings settings, BlightDebugEvents debug, BlightEncounter encounter, Action<long, double>? recordEventCost = null)
@@ -191,8 +170,7 @@ internal sealed class BlightEntityCache
         }
     }
     internal HashSet<NumVector2> FailedFoundationPositions { get; } = [];
-    // Read by the render thread (GetBranchDebug/DrawLaneLabels) while the scan thread persists new
-    // branch anchors in BlightPlanner.Build, so it must be a concurrent collection.
+    // Read by the render thread (GetBranchDebug/DrawLaneLabels) while the scan thread persists new branch anchors in BlightPlanner.Build, so it must be a concurrent collection.
     internal ConcurrentDictionary<NumVector2, byte> CachedBranchAnchors { get; } = new();
     internal NumVector2[]? CachedCoveragePathways
     {
@@ -239,10 +217,7 @@ internal sealed class BlightEntityCache
         return new BlightPathwayIcon((int)entity.Id, grid, visualState, beamStart, beamEnd, []);
     }
 
-    // The lane's own StateMachine "visual" state is the authoritative render signal: visual == 1
-    // (spawned, not yet sending enemies) and visual == 2 (actively sending) both show the lane,
-    // visual == 3 (all enemies sent, inactive) hides it. Returns the visual value when readable,
-    // else 0 (unknown — treated as hidden).
+    // The lane's own StateMachine "visual" state is the authoritative render signal: visual == 1 (spawned, not yet sending enemies) and visual == 2 (actively sending) both show the lane, visual == 3 (all enemies sent, inactive) hides it. Returns the visual value when readable, else 0 (unknown — treated as hidden).
     private static int ReadPathwayVisualState(Entity entity)
     {
         try
@@ -272,35 +247,28 @@ internal sealed class BlightEntityCache
         return 0;
     }
 
-    // Only currently-valid entities have trustworthy component reads; streamed-out (retained but
-    // invalid) entities must keep their last-good persisted icon data instead.
+    // Only currently-valid entities have trustworthy component reads; streamed-out (retained but invalid) entities must keep their last-good persisted icon data instead.
     private static bool IsEntityCurrentlyValid(Entity entity)
     {
         try { return entity.IsValid; }
         catch { return false; }
     }
 
-    // Path read for a retained-but-invalid (streamed-out/far-away) structure entity: GetEntityPathCached
-    // does Address+Id DLR reads that can throw on an invalid entity, so the retained path is read
-    // directly and fail-closed (null) so the caller keeps last-known state.
+    // Path read for a retained-but-invalid (streamed-out/far-away) structure entity: GetEntityPathCached does Address+Id DLR reads that can throw on an invalid entity, so the retained path is read directly and fail-closed (null) so the caller keeps last-known state.
     private static string? ReadRetainedPath(Entity entity)
     {
         try { return entity.Path; }
         catch { return null; }
     }
 
-    // Fail-closed world-position read for a retained structure entity (PosNum can throw on an
-    // invalid/streamed-out entity, e.g. a far-away foundation's in-world dot).
+    // Fail-closed world-position read for a retained structure entity (PosNum can throw on an invalid/streamed-out entity, e.g. a far-away foundation's in-world dot).
     private static System.Numerics.Vector3 SafeReadPosNum(Entity entity)
     {
         try { return entity.PosNum; }
         catch { return default; }
     }
 
-    // Subscribe to the retained-entity events once per GameController; reseed when the set was
-    // cleared (encounter end, area change, blight toggle) so entities already present refill it.
-    // Cooldown the reseed: with no blight pathways in the area the set stays empty, and a
-    // per-refresh reseed would scan every retained entity on every 200ms refresh.
+    // Subscribe to the retained-entity events once per GameController; reseed when the set was cleared (encounter end, area change, blight toggle) so entities already present refill it. Cooldown the reseed: with no blight pathways in the area the set stays empty, and a per-refresh reseed would scan every retained entity on every 200ms refresh.
     private const long EventReseedIntervalMs = 2000;
     private long _lastEventReseedMs;
 
@@ -322,14 +290,7 @@ internal sealed class BlightEntityCache
         return default;
     }
 
-    // Lanes chain by beam endpoints: this segment's BeamEnd == the next segment's BeamStart (BeamEnd
-    // points one step OUTWARD, away from the pump). Lanes form a WEB, not a strict tree: at a
-    // convergence junction two beams can end at the SAME point that another beam starts from (two
-    // lanes joining into one), so an icon can have several pump-ward parents. We connect EVERY beam
-    // first (multimap over beam ends), then apply the genuine filters: gap-close only fills icons
-    // with no exact parent, and the co-located twin merge folds duplicate node entities. Parents[0]
-    // is the primary (tree) parent used by coverage propagation and branch naming; Parents[1..] are
-    // the extra real beam connections the overlay draws.
+    // Lanes chain by beam endpoints: this segment's BeamEnd == the next segment's BeamStart (BeamEnd points one step OUTWARD, away from the pump). Lanes form a WEB, not a strict tree: at a convergence junction two beams can end at the SAME point that another beam starts from (two lanes joining into one), so an icon can have several pump-ward parents. We connect EVERY beam first (multimap over beam ends), then apply the genuine filters: gap-close only fills icons with no exact parent, and the co-located twin merge folds duplicate node entities. Parents[0] is the primary (tree) parent used by coverage propagation and branch naming; Parents[1..] are the extra real beam connections the overlay draws.
     internal static int[][] ComputePathwayParents(IReadOnlyList<BlightPathwayIcon> icons)
     {
         int n = icons.Count;
@@ -361,10 +322,7 @@ internal sealed class BlightEntityCache
             }
         }
 
-        // Gap-close fallback: an icon whose beam start matches no beam end exactly (the game's
-        // rounded endpoints can drift by a hair) chains to the nearest icon whose beam end is
-        // within GapCloseLinkMaxDistance of its beam start, so coverage keeps propagating past a
-        // single nearly-matching hop instead of severing the lane at an orphan.
+        // Gap-close fallback: an icon whose beam start matches no beam end exactly (the game's rounded endpoints can drift by a hair) chains to the nearest icon whose beam end is within GapCloseLinkMaxDistance of its beam start, so coverage keeps propagating past a single nearly-matching hop instead of severing the lane at an orphan.
         for (int i = 0; i < n; i++)
         {
             if (parents[i].Length > 0)
@@ -385,10 +343,7 @@ internal sealed class BlightEntityCache
                 parents[i] = [best];
         }
 
-        // Co-located twin merge: the game can emit several pathway entities for the SAME lane node
-        // (one per outgoing arm at a fork/hub). When co-located icons share the same valid parent
-        // (a real fork node), keep the first as the node and make the later ones zero-length
-        // children so the shared incoming edge is drawn once instead of stacked on top of itself.
+        // Co-located twin merge: the game can emit several pathway entities for the SAME lane node (one per outgoing arm at a fork/hub). When co-located icons share the same valid parent (a real fork node), keep the first as the node and make the later ones zero-length children so the shared incoming edge is drawn once instead of stacked on top of itself.
         for (int i = 0; i < n; i++)
         {
             if (parents[i].Length == 0)
@@ -406,18 +361,12 @@ internal sealed class BlightEntityCache
             }
         }
 
-        // Two overlapping routes between the same lane junctions (the game lays one lane twice)
-        // wrap the beam parent chain into a cycle. A cycle has no orphan head, so the loop component
-        // is never claimed by any branch and renders as unassigned — break it so every chain reaches
-        // a root, preferring to connect the loop to a rooted tree via a secondary parent.
+        // Two overlapping routes between the same lane junctions (the game lays one lane twice) wrap the beam parent chain into a cycle. A cycle has no orphan head, so the loop component is never claimed by any branch and renders as unassigned — break it so every chain reaches a root, preferring to connect the loop to a rooted tree via a secondary parent.
         BreakParentCycles(parents);
         return parents;
     }
 
-    // Breaks primary-parent cycles so the lane tree stays acyclic and every pump-ward chain reaches
-    // an orphan root. When a cycle node has a secondary parent that leads toward a rooted tree its
-    // primary is re-pointed there (connecting the whole loop to the main tree); otherwise the node
-    // whose parent closes the loop is orphaned so the loop becomes a proper tree.
+    // Breaks primary-parent cycles so the lane tree stays acyclic and every pump-ward chain reaches an orphan root. When a cycle node has a secondary parent that leads toward a rooted tree its primary is re-pointed there (connecting the whole loop to the main tree); otherwise the node whose parent closes the loop is orphaned so the loop becomes a proper tree.
     private static void BreakParentCycles(int[][] parents)
     {
         int n = parents.Length;
@@ -428,8 +377,7 @@ internal sealed class BlightEntityCache
         for (int i = 0; i < n; i++)
             prim[i] = parents[i].Length > 0 ? parents[i][0] : -1;
 
-        // Flood "rooted" from orphan heads (no primary parent) along primary-parent edges, so a node
-        // is rooted exactly when its chain reaches an orphan; the un-rooted nodes are the cycle parts.
+        // Flood "rooted" from orphan heads (no primary parent) along primary-parent edges, so a node is rooted exactly when its chain reaches an orphan; the un-rooted nodes are the cycle parts.
         List<int>[] children = new List<int>[n];
         for (int i = 0; i < n; i++)
             children[i] = [];
@@ -456,9 +404,7 @@ internal sealed class BlightEntityCache
                 }
         }
 
-        // Resolve each un-rooted component (a cycle plus any chain feeding it): walk the primary
-        // chain to locate the cycle, then connect it to a rooted tree via a cycle node's secondary
-        // parent, or orphan the closing node so the loop becomes a proper tree.
+        // Resolve each un-rooted component (a cycle plus any chain feeding it): walk the primary chain to locate the cycle, then connect it to a rooted tree via a cycle node's secondary parent, or orphan the closing node so the loop becomes a proper tree.
         int[] state = new int[n]; // 0 unvisited, 1 on the current walk, 2 resolved
         for (int start = 0; start < n; start++)
         {
@@ -493,9 +439,7 @@ internal sealed class BlightEntityCache
                     int alt = parents[node][k];
                     if (alt >= 0 && alt < n && rooted[alt])
                     {
-                        // Move the rooted secondary to the primary slot, keeping every other real
-                        // beam edge (deduped) so the loop connects to the rooted tree without
-                        // dropping the overlapping route from the web.
+                        // Move the rooted secondary to the primary slot, keeping every other real beam edge (deduped) so the loop connects to the rooted tree without dropping the overlapping route from the web.
                         int[] existing = parents[node];
                         int[] updated = new int[existing.Length];
                         updated[0] = alt;
@@ -548,9 +492,7 @@ internal sealed class BlightEntityCache
         return links;
     }
 
-    // The game can spawn duplicate pathway entities (same spot and same beam, separate entity
-    // ids); keep one icon per (spot, beam) triple so duplicates never split or tangle the lane
-    // chain. Shared pump stubs keep their own beams and stay separate.
+    // The game can spawn duplicate pathway entities (same spot and same beam, separate entity ids); keep one icon per (spot, beam) triple so duplicates never split or tangle the lane chain. Shared pump stubs keep their own beams and stay separate.
     internal static List<BlightPathwayIcon> DedupePathwayIcons(IEnumerable<BlightPathwayIcon> icons)
     {
         List<BlightPathwayIcon> result = [];
@@ -568,8 +510,7 @@ internal sealed class BlightEntityCache
                 continue;
             }
 
-            // A dead duplicate at the same spot must never hide the live lane, so the active icon
-            // wins when two overlapping lane entities collide.
+            // A dead duplicate at the same spot must never hide the live lane, so the active icon wins when two overlapping lane entities collide.
             if (!result[index].IsActive && icon.IsActive)
                 result[index] = icon;
         }
@@ -671,9 +612,7 @@ internal sealed class BlightEntityCache
             return (_cachedBranchDebugPositions!, _cachedBranchDebugBranches!, _cachedBranchDebugUnassigned!, _cachedBranchDebugChildren, _cachedBranchDebugForests);
     }
 
-    // Debug: raw tracked pathway entities vs. the persisted icon snapshot, with beam endpoints, so
-    // a lane connector that never made it into the snapshot (zero GridPos, invalid entity, dedupe)
-    // is visible instead of silently missing from the coverage tree.
+    // Debug: raw tracked pathway entities vs. the persisted icon snapshot, with beam endpoints, so a lane connector that never made it into the snapshot (zero GridPos, invalid entity, dedupe) is visible instead of silently missing from the coverage tree.
     internal string DumpPathwayIconDebug()
     {
         StringBuilder sb = new();
@@ -726,18 +665,14 @@ internal sealed class BlightEntityCache
     {
         lock (_blightDataLock)
         {
-            // The scan already flags coverage dirty only when the icon/tower data it depends on
-            // changed, so an unchanged scan returns the cached tree instead of recomputing it
-            // (the O(n^2)-ish coverage pass on a 400+ segment web is the single biggest Blight cost).
+            // The scan already flags coverage dirty only when the icon/tower data it depends on changed, so an unchanged scan returns the cached tree instead of recomputing it (the O(n^2)-ish coverage pass on a 400+ segment web is the single biggest Blight cost).
             if (!_coverageDirty && _cachedCoverage != null)
                 return _cachedCoverage;
         }
         return ComputeIconLaneCoverage();
     }
 
-    // Icon-lane mode: the coverage tree is built from the game's BlightPathway icon beam chains
-    // instead of the geometry/id-run graph, so every consumer (render bundle, branches debug,
-    // planner) sees the true lane structure.  The pump-ward head of each chain is the branch root.
+    // Icon-lane mode: the coverage tree is built from the game's BlightPathway icon beam chains instead of the geometry/id-run graph, so every consumer (render bundle, branches debug, planner) sees the true lane structure.  The pump-ward head of each chain is the branch root.
     private LaneCoverageResult[] ComputeIconLaneCoverage()
     {
         BlightPathwayIcon[] iconsSnapshot;
@@ -756,16 +691,12 @@ internal sealed class BlightEntityCache
         int[][]? allParents = null;
         for (int i = 0; i < iconsSnapshot.Length; i++)
         {
-            // The beam is the true lane geometry: anchor every segment at its beam start (world ->
-            // grid) instead of the icon's dot position, so the lane lines, coverage midpoints, and
-            // arrows all follow the beams the monsters actually walk.
+            // The beam is the true lane geometry: anchor every segment at its beam start (world -> grid) instead of the icon's dot position, so the lane lines, coverage midpoints, and arrows all follow the beams the monsters actually walk.
             positions[i] = BlightHelpers.BeamAnchorToGrid(iconsSnapshot[i].GridPos, iconsSnapshot[i].BeamStart);
             parents[i] = iconsSnapshot[i].Parents.Length > 0 ? iconsSnapshot[i].Parents[0] : -1;
             if (iconsSnapshot[i].Parents.Length > 1)
             {
-                // A convergence junction feeds the tree's single primary parent, but every incoming
-                // beam is a real walkable segment: probe all of them for coverage (OR), not just
-                // the one the tree keeps as the continuation.
+                // A convergence junction feeds the tree's single primary parent, but every incoming beam is a real walkable segment: probe all of them for coverage (OR), not just the one the tree keeps as the continuation.
                 allParents ??= new int[iconsSnapshot.Length][];
                 allParents[i] = iconsSnapshot[i].Parents;
             }
@@ -784,10 +715,7 @@ internal sealed class BlightEntityCache
         }
         LaneCoverageResult[] result = BlightLaneTopology.ComputeCoverage(positions, CoverProbe, parents, SupportProbe, allParents);
 
-        // The game can split one visual lane into several beam chains. After the normal branch pass,
-        // any chain that still has no branch is attached to the most appropriate branch — its head
-        // sits at a branch lane's end, so it is re-parented under that end and becomes the lane's
-        // continuation.
+        // The game can split one visual lane into several beam chains. After the normal branch pass, any chain that still has no branch is attached to the most appropriate branch — its head sits at a branch lane's end, so it is re-parented under that end and becomes the lane's continuation.
         if (pumpPos.HasValue)
         {
             List<PumpBranch> branches = BlightBranches.FindPumpBranches(result, pumpPos, positions, CachedBranchAnchors);
@@ -795,9 +723,7 @@ internal sealed class BlightEntityCache
             attachedAny |= BlightBranches.AttachParallelLanes(result, positions, branches);
             if (attachedAny)
             {
-                // Rebuild with the attached parent tree so the re-parented chain gets a real midpoint
-                // (an orphan attached to a lane end otherwise keeps the (0,0) default), freshly probed
-                // coverage flags, and propagation through the joined tree.
+                // Rebuild with the attached parent tree so the re-parented chain gets a real midpoint (an orphan attached to a lane end otherwise keeps the (0,0) default), freshly probed coverage flags, and propagation through the joined tree.
                 for (int i = 0; i < result.Length; i++)
                     parents[i] = result[i].ParentIndex;
                 result = BlightLaneTopology.ComputeCoverage(positions, CoverProbe, parents, SupportProbe, allParents);
@@ -806,10 +732,7 @@ internal sealed class BlightEntityCache
 
         lock (_blightDataLock)
         {
-            // The icon snapshot keeps the RAW beam web (Parents) — the overlay draws the primary
-            // edge from the coverage tree (coverage[i].ParentIndex, gap-closing attached links
-            // included) and every extra parent edge from Parents[1..], so no post-attach sync of
-            // the snapshot's parents is needed.
+            // The icon snapshot keeps the RAW beam web (Parents) — the overlay draws the primary edge from the coverage tree (coverage[i].ParentIndex, gap-closing attached links included) and every extra parent edge from Parents[1..], so no post-attach sync of the snapshot's parents is needed.
             _cachedIconPathwaySnapshot = null;
             _cachedCoverage = result;
             _cachedCoveragePathways = positions;
@@ -819,8 +742,7 @@ internal sealed class BlightEntityCache
         return result;
     }
 
-    // Snapshot the tower state and build the per-midpoint coverage probe under the data lock; the
-    // returned closure is safe to call without the lock because it only touches the copied arrays.
+    // Snapshot the tower state and build the per-midpoint coverage probe under the data lock; the returned closure is safe to call without the lock because it only touches the copied arrays.
     private Func<NumVector2, (bool chilling, bool seismic, bool fireball, bool empowering, bool shockNova, bool summoning)> BuildCoverageProbe(
         out (Entity Entity, string TowerId, int RadiusSq)[] towersSnapshot,
         out (NumVector2 Pos, BlightTowerType Type, int RadiusSq)[] cachedBuilt)
@@ -839,8 +761,7 @@ internal sealed class BlightEntityCache
                 towersSnapshot[t] = (rawTowers[t].Entity, rawTowers[t].TowerId, coverageRadius * coverageRadius);
             }
 
-            // Use the tower's ACTUAL dat radius when captured from a loaded entity; the linear estimate can
-            // exceed the real radius and would falsely mark segments covered.
+            // Use the tower's ACTUAL dat radius when captured from a loaded entity; the linear estimate can exceed the real radius and would falsely mark segments covered.
             List<(NumVector2, BlightTowerType, int)> builtList = [];
             for (int i = 0; i < _knownTowers.Count; i++)
             {
@@ -959,9 +880,7 @@ internal sealed class BlightEntityCache
             return;
         }
 
-        // Report the entity-event cost accumulated since the last refresh as ONE sample, so a walking
-        // burst (many EntityAdded path reads on the main thread) shows as a single large Events-stage
-        // value instead of being hidden behind per-event averages.
+        // Report the entity-event cost accumulated since the last refresh as ONE sample, so a walking burst (many EntityAdded path reads on the main thread) shows as a single large Events-stage value instead of being hidden behind per-event averages.
         if (_recordEventCost != null)
         {
             (long eventBytes, double eventMs) = EntityEventHub.Instance.TakePendingCost();
@@ -1021,13 +940,7 @@ internal sealed class BlightEntityCache
         _scanLocalKnown.Clear();
         Entity? localPump = null;
 
-        // Blight structures (pump/towers/foundations) come from the EVENT-MAINTAINED retained set —
-        // the complete structure set with no per-refresh full-entity walk. Re-read each retained
-        // entity's CURRENT state because tower level/type changes in place (build/upgrade/specialize)
-        // and does not fire EntityAdded/Removed; this is what the old VisitValidEntities pass did but
-        // only for the handful of retained structure entities instead of every entity in the area.
-        // A valid-entity walk is only the fallback when nothing is retained yet (first scan or a
-        // stale/unseeded retained cache), so the common per-refresh path stays cheap.
+        // Blight structures (pump/towers/foundations) come from the EVENT-MAINTAINED retained set — the complete structure set with no per-refresh full-entity walk. Re-read each retained entity's CURRENT state because tower level/type changes in place (build/upgrade/specialize) and does not fire EntityAdded/Removed; this is what the old VisitValidEntities pass did but only for the handful of retained structure entities instead of every entity in the area. A valid-entity walk is only the fallback when nothing is retained yet (first scan or a stale/unseeded retained cache), so the common per-refresh path stays cheap.
         List<Entity> blightEntities = EntityEventHub.Instance.Blight.Snapshot();
 
         void ClassifyStructure(Entity entity, string? path)
@@ -1052,9 +965,7 @@ internal sealed class BlightEntityCache
             }
             else if (path != null && path.Contains(BlightTowerPathMarker, StringComparison.OrdinalIgnoreCase))
             {
-                // Streamed-out/far-away tower: the component is unreadable, so derive type + rank
-                // from the retained path so coverage and the plan still account for it. The tower
-                // import loop prefers the authoritative component/known state when it becomes valid.
+                // Streamed-out/far-away tower: the component is unreadable, so derive type + rank from the retained path so coverage and the plan still account for it. The tower import loop prefers the authoritative component/known state when it becomes valid.
                 BlightTowerType? fType = BlightHelpers.DetectTowerTypeFromPath(path);
                 if (fType.HasValue)
                 {
@@ -1109,10 +1020,7 @@ internal sealed class BlightEntityCache
         }
         else
         {
-            // Discovery fallback (only when nothing is retained yet): a stale/unseeded retained cache
-            // or an encounter that started after the last reseed. All entities here are valid, so the
-            // component-based tower path applies; no path-derived far-away fallback is needed. This
-            // fallback also discovers pathways by the same path marker.
+            // Discovery fallback (only when nothing is retained yet): a stale/unseeded retained cache or an encounter that started after the last reseed. All entities here are valid, so the component-based tower path applies; no path-derived far-away fallback is needed. This fallback also discovers pathways by the same path marker.
             EntityQueryService.VisitValidEntities(gameController, entity =>
             {
                 string? path = GetEntityPathCached(entity);
@@ -1130,8 +1038,7 @@ internal sealed class BlightEntityCache
             });
         }
 
-        // Sort the collected pathways by entity Id DESC (the game's lane order) in one O(n log n)
-        // pass instead of O(n²) insertion-order inserts during the scan.
+        // Sort the collected pathways by entity Id DESC (the game's lane order) in one O(n log n) pass instead of O(n²) insertion-order inserts during the scan.
         _scanLocalPathways.Sort(static (a, b) => b.Id.CompareTo(a.Id));
 
         _hasCompletedInitialScan = true;
@@ -1202,11 +1109,7 @@ internal sealed class BlightEntityCache
             _knownTowers.Clear();
             _knownTowers.AddRange(_scanLocalKnown);
 
-            // Game-visible pathway icons feed the icon-lane coverage and overlay. Persisted by
-            // entity Id so icons that stream out of the active list (player moved away) keep
-            // rendering on the map; only currently-valid entities refresh their active/beam state
-            // — a streamed-out entity's component reads can be stale and must not overwrite the last
-            // good persisted value.
+            // Game-visible pathway icons feed the icon-lane coverage and overlay. Persisted by entity Id so icons that stream out of the active list (player moved away) keep rendering on the map; only currently-valid entities refresh their active/beam state — a streamed-out entity's component reads can be stale and must not overwrite the last good persisted value.
             _iconPathwaySnapshot.Clear();
             _activePathwayCount = 0;
             for (int p = 0; p < _scanLocalPathways.Count; p++)
@@ -1217,9 +1120,7 @@ internal sealed class BlightEntityCache
                 BlightPathwayIcon icon = ReadPathwayIcon(e);
                 if (icon.IsActive)
                     _activePathwayCount++;
-                // A junction connector can carry a real Beam but no readable icon dot (GridPos
-                // (0,0)); keep it when the beam is valid — the beam anchor becomes its position
-                // (lanes are beam geometry now), so a lane joining another at a corner is not lost.
+                // A junction connector can carry a real Beam but no readable icon dot (GridPos (0,0)); keep it when the beam is valid — the beam anchor becomes its position (lanes are beam geometry now), so a lane joining another at a corner is not lost.
                 bool hasBeam = icon.BeamStart != default || icon.BeamEnd != default;
                 if (icon.GridPos.X == 0f && icon.GridPos.Y == 0f && !hasBeam)
                     continue;
@@ -1230,9 +1131,7 @@ internal sealed class BlightEntityCache
             for (int p = 0; p < _iconPathwaySnapshot.Count; p++)
                 _iconPathwaySnapshot[p] = _iconPathwaySnapshot[p] with { Parents = parents[p] };
 
-            // Snapshot the pathway world positions (with terrain Z) for lane-label/arrow projection,
-            // keyed by BOTH the dot grid position and the beam-derived anchor so labels and arrows
-            // resolve the terrain height whether they project dot positions or beam anchors.
+            // Snapshot the pathway world positions (with terrain Z) for lane-label/arrow projection, keyed by BOTH the dot grid position and the beam-derived anchor so labels and arrows resolve the terrain height whether they project dot positions or beam anchors.
             Dictionary<NumVector2, System.Numerics.Vector3> newWorldPositions = [];
             for (int p = 0; p < _iconPathwaySnapshot.Count; p++)
             {
@@ -1257,9 +1156,7 @@ internal sealed class BlightEntityCache
             // Snapshot cache is stale after list changes; next read reallocates.
             InvalidateCachedSnapshots();
 
-            // A scan that finds no live blight content re-arms the no-blight pause so later
-            // refreshes skip the per-200ms scan — otherwise one transient detection (previous
-            // area, a stray entity) keeps the expensive scan running forever in a blight-free area.
+            // A scan that finds no live blight content re-arms the no-blight pause so later refreshes skip the per-200ms scan — otherwise one transient detection (previous area, a stray entity) keeps the expensive scan running forever in a blight-free area.
             if (_towerEntities.Count == 0 && _pathwayEntities.Count == 0 && _pumpEntity == null)
                 _hasDetectedAnyBlightContent = false;
         }
@@ -1359,32 +1256,23 @@ internal sealed class BlightEntityCache
             activePathwayCount = _activePathwayCount;
         }
 
-        // The pump's completion StateMachine is only readable while the pump is in range; compute it
-        // here so Update can latch it for the streamed-out case.
+        // The pump's completion StateMachine is only readable while the pump is in range; compute it here so Update can latch it for the streamed-out case.
         bool pumpValid = BlightEncounter.IsPumpCurrentlyValid(pump);
         bool pumpCompleted = pumpValid && pump != null && BlightEncounter.IsPumpCompleted(pump);
 
         bool wasActive = _encounter.IsActive;
         bool ended = _encounter.Update(pump, pathwayCount, activePathwayCount, pumpCompleted);
 
-        // An encounter (re)start must not wait for the next label change to trigger the plan
-        // rebuild — the entity scan already knows the encounter is back (e.g. after respawn), so
-        // signal it immediately.  Clears (ended) deliberately do not fire DataChanged.
+        // An encounter (re)start must not wait for the next label change to trigger the plan rebuild — the entity scan already knows the encounter is back (e.g. after respawn), so signal it immediately.  Clears (ended) deliberately do not fire DataChanged.
         if (!wasActive && _encounter.IsActive)
             DataChanged?.Invoke();
 
         if (!ended)
             return;
 
-        if (pump == null)
-        {
-            ClearRequested?.Invoke();
-        }
-        else
-        {
-            _debug.Add("Blight encounter ended - clearing cached data");
-            ClearRequested?.Invoke();
-        }
+        // Encounter ended: clear the cached data WITHOUT the full ClearRequested path - a full clear calls Reset() on the encounter, which would clear the ended latch and let the re-rendered lanes (player walked far from the pump) re-activate a finished encounter.
+        _debug.Add("Blight encounter ended - clearing cached data");
+        EncounterEnded?.Invoke();
     }
 
     private static string? GetEntityPath(Entity entity)
@@ -1393,14 +1281,10 @@ internal sealed class BlightEntityCache
         catch { return null; }
     }
 
-    // Fresh (uncached) entity-path read for the executor's verify/rank checks — the cached path can
-    // lag one rank behind when a tower is upgraded in place, and that stale rank makes the verify
-    // loop re-click an already-upgraded tower. The executor ticks a few times per second, so the
-    // process-memory read here is cheap.
+    // Fresh (uncached) entity-path read for the executor's verify/rank checks — the cached path can lag one rank behind when a tower is upgraded in place, and that stale rank makes the verify loop re-click an already-upgraded tower. The executor ticks a few times per second, so the process-memory read here is cheap.
     internal static string? GetEntityPathFresh(Entity entity) => GetEntityPath(entity);
 
-    // Cached entity-path read (validated by entity id) — avoids a process-memory path read + string
-    // allocation per call in the executor's hot per-tick rank/verify loops.
+    // Cached entity-path read (validated by entity id) — avoids a process-memory path read + string allocation per call in the executor's hot per-tick rank/verify loops.
     internal string? GetEntityPathCached(Entity entity)
     {
         long address = DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.Address, out object? rawAddress)
@@ -1471,8 +1355,7 @@ internal sealed class BlightEntityCache
 
             NumVector2 worldPos = BlightHelpers.GetGridPosition(entity);
 
-            // The foundation type comes from the label's metadata path (the same BlightFoundation<Tower>
-            // pattern the entity scan uses in RefreshEntities) — never from a hardcoded default.
+            // The foundation type comes from the label's metadata path (the same BlightFoundation<Tower> pattern the entity scan uses in RefreshEntities) — never from a hardcoded default.
             BlightTowerType currentType = BlightHelpers.DetectFoundationTypeFromPath(path);
 
             lock (_blightDataLock)
@@ -1481,9 +1364,7 @@ internal sealed class BlightEntityCache
                 if (existingIndex >= 0)
                 {
                     BlightCachedTower existing = _knownTowers[existingIndex];
-                    // Never let a foundation label clobber a built tower's type — built types come
-                    // from the entity import / executor, and a lingering foundation label must not
-                    // turn a built Seismic/Fireball into a Chilling tower.
+                    // Never let a foundation label clobber a built tower's type — built types come from the entity import / executor, and a lingering foundation label must not turn a built Seismic/Fireball into a Chilling tower.
                     if (existing.UpgradeLevel == 0)
                         existing.TowerType = currentType;
                     existing.FoundationEntity = entity;
@@ -1620,9 +1501,7 @@ internal sealed class BlightEntityCache
         return null;
     }
 
-    // The freshly-scanned tower entity at a position (null when only a foundation exists). Prefer
-    // this over the cached foundation entity for rank reads: the foundation path stays a foundation
-    // path (rank 0) even after in-place upgrades, while the tower entity path carries the live rank.
+    // The freshly-scanned tower entity at a position (null when only a foundation exists). Prefer this over the cached foundation entity for rank reads: the foundation path stays a foundation path (rank 0) even after in-place upgrades, while the tower entity path carries the live rank.
     internal Entity? GetTowerEntityAt(NumVector2 pos)
     {
         IReadOnlyList<(Entity Entity, string TowerId)> towerList = TowerEntities;
@@ -1637,9 +1516,7 @@ internal sealed class BlightEntityCache
         return null;
     }
 
-    // The tower dat id at a position from the cached component data (e.g. "MeteorTower" for a
-    // specialized Fireball). The entity path only carries the base type + rank, so the dat id is the
-    // ONLY cached signal that reveals which specialization a tower actually is.
+    // The tower dat id at a position from the cached component data (e.g. "MeteorTower" for a specialized Fireball). The entity path only carries the base type + rank, so the dat id is the ONLY cached signal that reveals which specialization a tower actually is.
     internal string? GetTowerDatIdAt(NumVector2 pos)
     {
         IReadOnlyList<(Entity Entity, string TowerId)> towerList = TowerEntities;
@@ -1663,8 +1540,7 @@ internal sealed class BlightEntityCache
             || (!path.Contains(BlightFoundationPathMarker, StringComparison.OrdinalIgnoreCase)
                 && !path.Contains(BlightTowerPathMarker, StringComparison.OrdinalIgnoreCase)))
             return false;
-        // A streamed-out / dead entity must never be used as a walk/verify target — it would make the
-        // executor chase a tower that isn't there ("target REJECTED valid=False" loop).
+        // A streamed-out / dead entity must never be used as a walk/verify target — it would make the executor chase a tower that isn't there ("target REJECTED valid=False" loop).
         return DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsValid, out bool valid) && valid;
     }
 

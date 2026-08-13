@@ -8,8 +8,7 @@ namespace ClickIt.Shared.Diagnostics
         private List<(RectangleF Rectangle, Color Color, int Thickness, RenderSection Section)> _spare = [];
         private int _pendingCount;
 
-        // Ambient render section set by the overlay host around each overlay's Draw, so flushed
-        // frames can be attributed back to the feature that enqueued them. Render-thread only.
+        // Ambient render section set by the overlay host around each overlay's Draw, so flushed frames can be attributed back to the feature that enqueued them. Render-thread only.
         internal RenderSection CurrentSection { get; set; } = RenderSection.Unknown;
 
         private static bool IsValidRect(RectangleF rectangle)

@@ -1,5 +1,3 @@
-using ClickIt.Tests.Shared.TestUtils;
-
 namespace ClickIt.Tests.Features.Blight;
 
 [TestClass]
@@ -71,8 +69,7 @@ public class BlightLaneCoverageTests
     [TestMethod]
     public void BuildLaneTree_LargestArmContinuesLane_SmallerArmIsNumberedSideLane()
     {
-        // Tree: 0(root)->1->2(fork). Arm 3->4 has 2 segments, arm 5->6->7 has 3 — the larger arm
-        // continues the lane "A", the smaller one becomes the numbered side lane "A-1".
+        // Tree: 0(root)->1->2(fork). Arm 3->4 has 2 segments, arm 5->6->7 has 3 — the larger arm continues the lane "A", the smaller one becomes the numbered side lane "A-1".
         LaneCoverageResult[] coverage =
         [
             new(BlightLaneTopology.OrphanSentinel, false, new NumVector2(0, 0)),
@@ -98,8 +95,7 @@ public class BlightLaneCoverageTests
     [TestMethod]
     public void BuildLaneTree_DeepChain_StaysOneLane_WithNumberedSideLane()
     {
-        // A deep chain 0->1->2->3->4->5 then a fork at 5: child 6 (1 seg) vs child 7->8 (2 segs).
-        // The larger arm (7->8) continues the lane, so the deep chain stays ONE lane "A".
+        // A deep chain 0->1->2->3->4->5 then a fork at 5: child 6 (1 seg) vs child 7->8 (2 segs). The larger arm (7->8) continues the lane, so the deep chain stays ONE lane "A".
         LaneCoverageResult[] coverage =
         [
             new(BlightLaneTopology.OrphanSentinel, false, new NumVector2(0, 0)),
@@ -125,10 +121,7 @@ public class BlightLaneCoverageTests
     [TestMethod]
     public void ComputeCoverage_StackedParallelRows_MergeCoverage_AndPropagate()
     {
-        // The game lays the SAME lane down as two stacked parallel rows.  A tower on the main row
-        // (3,4) must cover the stacked row (5,6) too, and coverage must then propagate up the fork
-        // at 2 to the trunk (1,0) — without the merge the uncovered stacked row blocks AND-upward
-        // propagation (the reported bug).
+        // The game lays the SAME lane down as two stacked parallel rows.  A tower on the main row (3,4) must cover the stacked row (5,6) too, and coverage must then propagate up the fork at 2 to the trunk (1,0) — without the merge the uncovered stacked row blocks AND-upward propagation (the reported bug).
         var positions = new List<NumVector2>
         {
             new(0, 0),   // 0 root (pump)
@@ -185,9 +178,7 @@ public class BlightLaneCoverageTests
     [TestMethod]
     public void BuildLaneTree_StackedDuplicateArm_MergesIntoMainLane()
     {
-        // Fork at 2 with two equal arms: main 3->4 and a stacked duplicate 5->6 three units away.
-        // The stacked duplicate is the same physical lane written twice, so it merges into the lane
-        // instead of rendering as a numbered divergence.
+        // Fork at 2 with two equal arms: main 3->4 and a stacked duplicate 5->6 three units away. The stacked duplicate is the same physical lane written twice, so it merges into the lane instead of rendering as a numbered divergence.
         LaneCoverageResult[] coverage =
         [
             new(BlightLaneTopology.OrphanSentinel, false, new NumVector2(0, 0)),
@@ -209,8 +200,7 @@ public class BlightLaneCoverageTests
     [TestMethod]
     public void BuildLaneTree_DistantParallelArm_StaysDivergence()
     {
-        // A parallel arm 15 units away is a genuinely separate lane — the "quite close" merge
-        // threshold must NOT absorb it.
+        // A parallel arm 15 units away is a genuinely separate lane — the "quite close" merge threshold must NOT absorb it.
         LaneCoverageResult[] coverage =
         [
             new(BlightLaneTopology.OrphanSentinel, false, new NumVector2(0, 0)),
@@ -277,8 +267,7 @@ public class BlightLaneCoverageTests
     [TestMethod]
     public void BuildLaneTree_StopsOnSingleChildCycle_InsteadOfLooping()
     {
-        // A corrupt children graph whose single-child chain cycles back on itself (1 -> 2 -> 1)
-        // would walk forever without the guard; BuildLaneTree must terminate.
+        // A corrupt children graph whose single-child chain cycles back on itself (1 -> 2 -> 1) would walk forever without the guard; BuildLaneTree must terminate.
         LaneCoverageResult[] coverage =
         [
             new(BlightLaneTopology.OrphanSentinel, false, new NumVector2(0, 0)), // 0
@@ -463,8 +452,7 @@ public class BlightLaneCoverageTests
         branches.Should().BeEmpty();
     }
 
-    // ── Game-Id lane adjacency (the reference Blight plugin connects pathways whose entity Ids
-    //    are consecutive, which is how the game encodes adjacent points on the same lane) ──
+    // ── Game-Id lane adjacency (the reference Blight plugin connects pathways whose entity Ids are consecutive, which is how the game encodes adjacent points on the same lane) ──
 
     [TestMethod]
     public void BuildCoverageChildren_ExcludesPumpStubSegments()
@@ -498,9 +486,7 @@ public class BlightLaneCoverageTests
     [TestMethod]
     public void ComputeCoverage_PrecomputedParents_UsesBeamChainTree_NoStubsNoPhantoms()
     {
-        // Icon-lane mode: the parent tree comes straight from the game's beam chains (pump-ward
-        // neighbour). Segment 2 is the pump-ward root; 0 and 1 chain toward it. No id-run
-        // re-splitting, no phantom bridging, no pump-stub removal.
+        // Icon-lane mode: the parent tree comes straight from the game's beam chains (pump-ward neighbour). Segment 2 is the pump-ward root; 0 and 1 chain toward it. No id-run re-splitting, no phantom bridging, no pump-stub removal.
         var positions = new List<NumVector2> { new(30, 0), new(20, 0), new(10, 0) };
         int[] parents = [1, 2, -1];
 
@@ -517,8 +503,7 @@ public class BlightLaneCoverageTests
     [TestMethod]
     public void ComputeCoverage_PrecomputedParents_SharedStubPosition_TwoSeparateRoots()
     {
-        // Two lanes (485 and 563 from the plaza dump) whose pump-ward heads sit at the SAME grid
-        // position must stay two separate branch roots — the beam chains are per-lane.
+        // Two lanes (485 and 563 from the plaza dump) whose pump-ward heads sit at the SAME grid position must stay two separate branch roots — the beam chains are per-lane.
         var positions = new List<NumVector2>
         {
             new(484, 140), // 0 lane A segment
@@ -542,10 +527,7 @@ public class BlightLaneCoverageTests
     [TestMethod]
     public void ComputeCoverage_ConvergenceJunction_ProbesEveryIncomingBeam()
     {
-        // The reported bug: B.19 (0) and C.11 (1) both end at B.20's start (2) — a convergence
-        // junction. The tree keeps only the primary parent (0), but BOTH incoming beams are real
-        // walkable segments: a tower on the C.11 -> B.20 beam must count as covering the junction
-        // even though C.11 is not the tree parent. allParents feeds the web into coverage.
+        // The reported bug: B.19 (0) and C.11 (1) both end at B.20's start (2) — a convergence junction. The tree keeps only the primary parent (0), but BOTH incoming beams are real walkable segments: a tower on the C.11 -> B.20 beam must count as covering the junction even though C.11 is not the tree parent. allParents feeds the web into coverage.
         var positions = new List<NumVector2>
         {
             new(0, 0),    // 0 B.19 start

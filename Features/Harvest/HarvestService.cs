@@ -27,10 +27,7 @@ internal readonly record struct HarvestPlotEstimate(
 
 public sealed class HarvestService
 {
-    // The visible label reference is stable while the label addresses are unchanged, but the
-    // on-screen label bounds move with the player — so the scan must re-run while harvest labels are
-    // present (every frame) or the frames/prices freeze at their first position. When no harvest
-    // labels are on screen, a slower idle cadence still picks up newly-appearing plots.
+    // The visible label reference is stable while the label addresses are unchanged, but the on-screen label bounds move with the player — so the scan must re-run while harvest labels are present (every frame) or the frames/prices freeze at their first position. When no harvest labels are on screen, a slower idle cadence still picks up newly-appearing plots.
     private const long HarvestRescanFrameIntervalMs = 0;
     private const long HarvestRescanIdleIntervalMs = 250;
 
@@ -41,8 +38,7 @@ public sealed class HarvestService
     private long _lastScanAtMs;
     private bool _lastScanFoundHarvest;
 
-    // Seed rows keyed by label element address so the every-frame bounds refresh never re-walks the
-    // element tree; bounded by the scanner's cache cap.
+    // Seed rows keyed by label element address so the every-frame bounds refresh never re-walks the element tree; bounded by the scanner's cache cap.
     private readonly Dictionary<long, List<HarvestSeedRow>> _seedRowCache = [];
 
     internal IReadOnlyList<HarvestPlotEstimate> CurrentEstimates { get; private set; } = [];
@@ -65,9 +61,7 @@ public sealed class HarvestService
             return;
         }
 
-        // Re-scan when the visible label set changes OR on a cadence, so the on-screen label bounds
-        // (which move with the player) stay current even though the label reference is stable.
-        // Every frame while harvest labels are present; slower when none are on screen.
+        // Re-scan when the visible label set changes OR on a cadence, so the on-screen label bounds (which move with the player) stay current even though the label reference is stable. Every frame while harvest labels are present; slower when none are on screen.
         long now = _getTimestampMs();
         long intervalMs = _lastScanFoundHarvest ? HarvestRescanFrameIntervalMs : HarvestRescanIdleIntervalMs;
         if (ShouldSkipRescan(ReferenceEquals(_lastProcessedList, allLabels)
@@ -145,9 +139,7 @@ public sealed class HarvestService
 
         if (estimates.Count == 1)
         {
-            // With lifeforce estimation enabled, a single harvest label means
-            // the second plot is not yet visible. Block clicking to avoid
-            // committing to the first label before comparison is possible.
+            // With lifeforce estimation enabled, a single harvest label means the second plot is not yet visible. Block clicking to avoid committing to the first label before comparison is possible.
             return new HarvestDecision(
                 HarvestDecisionOutcome.SingleLabelNoClick,
                 ChosenLabel: null,
@@ -156,8 +148,7 @@ public sealed class HarvestService
                 IsHarvestClickBlocked: true);
         }
 
-        // Sort a copy — CurrentEstimates is published to the render thread; mutating it here would
-        // throw mid-frame while the renderer iterates it.
+        // Sort a copy — CurrentEstimates is published to the render thread; mutating it here would throw mid-frame while the renderer iterates it.
         List<HarvestPlotEstimate> sorted = [.. estimates];
         sorted.Sort(static (a, b) => b.EstimatedLifeforce.CompareTo(a.EstimatedLifeforce));
 
@@ -180,8 +171,7 @@ public sealed class HarvestService
     internal LabelOnGround? GetChosenLabel()
         => CurrentDecision.ChosenLabel;
 
-    // A scan can be skipped only when the label set is unchanged AND the cadence window has not
-    // elapsed — a stable reference alone must never freeze position-dependent bounds.
+    // A scan can be skipped only when the label set is unchanged AND the cadence window has not elapsed — a stable reference alone must never freeze position-dependent bounds.
     internal static bool ShouldSkipRescan(bool sameLabelSet, long now, long lastScanAtMs, long rescanIntervalMs)
         => sameLabelSet && (now - lastScanAtMs) < rescanIntervalMs;
 

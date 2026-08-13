@@ -6,8 +6,7 @@ internal sealed class StableLabelSetCache
     private List<LabelOnGround>? _stable;
     private readonly HashSet<long> _addresses = [];
 
-    // Returns the previous stable instance when freshlyBuilt has the same label addresses, otherwise
-    // adopts freshlyBuilt as the new stable instance and returns it.
+    // Returns the previous stable instance when freshlyBuilt has the same label addresses, otherwise adopts freshlyBuilt as the new stable instance and returns it.
     internal List<LabelOnGround> Resolve(List<LabelOnGround> freshlyBuilt)
     {
         bool unchanged = _stable != null && _addresses.Count == freshlyBuilt.Count;
@@ -33,8 +32,7 @@ internal sealed class StableLabelSetCache
         return freshlyBuilt;
     }
 
-    // Invalidates the cached reference (e.g. the visible set became empty) so the next non-empty
-    // snapshot is returned as a new reference and downstream re-runs exactly once.
+    // Invalidates the cached reference (e.g. the visible set became empty) so the next non-empty snapshot is returned as a new reference and downstream re-runs exactly once.
     internal void Reset()
     {
         _stable = null;

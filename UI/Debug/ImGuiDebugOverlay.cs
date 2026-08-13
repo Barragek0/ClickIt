@@ -1,14 +1,6 @@
-using ImGuiNET;
 using System.Globalization;
 using NumVec2 = System.Numerics.Vector2;
 using NumVec4 = System.Numerics.Vector4;
-using ClickIt.Features.Observability;
-using ClickIt.Features.Blight;
-using ClickIt.Features.Blight.Data;
-using ClickIt.Features.Blight.Planning;
-using ClickIt.Features.Pathfinding.Diagnostics;
-using ClickIt.Features.Labels.Inventory;
-using ClickIt.Shared.Diagnostics;
 
 namespace ClickIt.UI.Debug;
 
@@ -561,8 +553,7 @@ internal sealed class ImGuiDebugOverlay(
         _ = ImGui.TableNextColumn(); ImGui.TextColored(ClickTargetColor(s.MaxMs, targetMs), $"{s.MaxMs:F1}");
     }
 
-    // ms/click coloring relative to the click frequency target: green within the target, yellow
-    // up to +25% over it, red beyond that.
+    // ms/click coloring relative to the click frequency target: green within the target, yellow up to +25% over it, red beyond that.
     private static NumVec4 ClickTargetColor(double msPerClick, double targetMs)
         => targetMs <= 0 ? FrameColor(msPerClick)
             : msPerClick <= targetMs ? CGreen
@@ -1675,8 +1666,7 @@ internal sealed class ImGuiDebugOverlay(
                 sb.AppendLine($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                 sb.AppendLine();
 
-                // Copy All dumps every section regardless of which toggles are visible on screen, so
-                // the clipboard always carries a complete overview of the whole plugin state.
+                // Copy All dumps every section regardless of which toggles are visible on screen, so the clipboard always carries a complete overview of the whole plugin state.
                 AppendStatus(sb);
                 AppendPerformance(sb);
                 AppendErrors(sb);
@@ -1692,8 +1682,7 @@ internal sealed class ImGuiDebugOverlay(
             }
             catch
             {
-                // One unreadable section (e.g. an entity streamed out mid-read) must not drop the
-                // whole report; copy whatever was built before the failure.
+                // One unreadable section (e.g. an entity streamed out mid-read) must not drop the whole report; copy whatever was built before the failure.
             }
 
             _ = ClipboardText.TryCopy(sb.ToString());

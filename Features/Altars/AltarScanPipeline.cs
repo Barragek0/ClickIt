@@ -29,10 +29,7 @@ namespace ClickIt.Features.Altars
                 return;
             }
 
-            // The read model returns the same list reference while the visible label set is unchanged
-            // — skip the per-label element-tree walk and component rebuild (warmed components stay
-            // valid; the store prunes invalid ones on the next real label-set change). Re-process if
-            // the store was cleared externally so it re-populates even with an unchanged label set.
+            // The read model returns the same list reference while the visible label set is unchanged — skip the per-label element-tree walk and component rebuild (warmed components stay valid; the store prunes invalid ones on the next real label-set change). Re-process if the store was cleared externally so it re-populates even with an unchanged label set.
             if (ReferenceEquals(labelsFromCache, _lastProcessedLabels)
                 && (!_lastScanFoundAltarLabels || _altarStore.GetComponentCount() > 0))
                 return;

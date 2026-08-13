@@ -4,8 +4,7 @@ internal sealed class EmpoweredScoutsStrategy : IBlightTowerStrategy
 {
     private static readonly TowerBuildRule[] s_rules =
     [
-        // Phase 1 — one Scout tower per lane (coverage), each pushed to Scout Minion level 4 before
-        // any lower-priority work starts.
+        // Phase 1 — one Scout tower per lane (coverage), each pushed to Scout Minion level 4 before any lower-priority work starts.
         TowerStrategyBuilder.CreateRule()
             .SetTower(BlightTowerType.Summoning)
             .SetPriority(TowerBuildPriority.Critical)
@@ -14,8 +13,7 @@ internal sealed class EmpoweredScoutsStrategy : IBlightTowerStrategy
             .TreatAsCoverageTower()
             .PreferCloseFoundationToPump()
             .UpgradeBeforeMovingOntoLowerPriority(),
-        // Phases 2 + 3 — same tier so the fill planner round-robins them: each new Scout tower is
-        // followed by an Empowering tower (upgraded to 3) that covers it.
+        // Phases 2 + 3 — same tier so the fill planner round-robins them: each new Scout tower is followed by an Empowering tower (upgraded to 3) that covers it.
         TowerStrategyBuilder.CreateRule()
             .SetTower(BlightTowerType.Empowering)
             .SetPriority(TowerBuildPriority.Normal)

@@ -23,17 +23,13 @@ namespace ClickIt.Core.Runtime
             {
                 services.PerformanceMonitor?.UpdateFPS();
 
-                // The "Copy Additional Debug Info" button must be consumed regardless of whether the
-                // debug overlays are rendering — otherwise the pending request latches forever and a
-                // later debug-mode toggle flushes a stale backlog. With no debug rendering the queue
-                // is empty and the service clears the flag without copying.
+                // The "Copy Additional Debug Info" button must be consumed regardless of whether the debug overlays are rendering — otherwise the pending request latches forever and a later debug-mode toggle flushes a stale backlog. With no debug rendering the queue is empty and the service clears the flag without copying.
                 bool shouldCopyDebugInfo = debugClipboardService.HasPendingAdditionalDebugInfoCopyRequest;
                 if (shouldCopyDebugInfo)
                 {
                     int debugTextStartCount = rendering.DeferredTextQueue?.GetPendingCount() ?? 0;
                     string[] debugLines = rendering.DeferredTextQueue?.GetPendingTextSnapshot(debugTextStartCount) ?? [];
-                    // The copy service builds the payload + writes the clipboard off-thread; the
-                    // recorder surfaces that background cost under the Dump processing section.
+                    // The copy service builds the payload + writes the clipboard off-thread; the recorder surfaces that background cost under the Dump processing section.
                     PerformanceMonitor? perf = services.PerformanceMonitor;
                     debugClipboardService.CompleteAdditionalDebugInfoCopy(debugLines,
                         (bytes, ms) =>
@@ -77,10 +73,7 @@ namespace ClickIt.Core.Runtime
             {
                 PerformanceMonitor? pm = services.PerformanceMonitor;
 
-                // Flush attribution: every deferred item is stamped with the overlay section that
-                // enqueued it, so each feature's render row includes its own actual draw cost. Only
-                // items enqueued outside the overlay host (section Unknown) fall back to the
-                // aggregate TextFlush/FrameFlush rows, keeping the render-total sum non-redundant.
+                // Flush attribution: every deferred item is stamped with the overlay section that enqueued it, so each feature's render row includes its own actual draw cost. Only items enqueued outside the overlay host (section Unknown) fall back to the aggregate TextFlush/FrameFlush rows, keeping the render-total sum non-redundant.
                 double textUnknownMs = 0;
                 rendering.DeferredTextQueue?.Flush(graphics!, (section, ms) =>
                 {

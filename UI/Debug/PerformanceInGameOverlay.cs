@@ -11,8 +11,7 @@ namespace ClickIt.UI.Debug
         private static readonly Color HeaderColor = Color.Orange;
         private static readonly Color LabelColor = Color.White;
 
-        // All three-value tables (render, CR ms/f, processing) share the column positions so every
-        // Last/Avg/Max value lines up vertically. The GC and DLR tables use the same columns.
+        // All three-value tables (render, CR ms/f, processing) share the column positions so every Last/Avg/Max value lines up vertically. The GC and DLR tables use the same columns.
         private static readonly float[] FourCol = [140f, 225f, 310f];
         private static readonly float[] TwoCol = [110f];
 
@@ -262,8 +261,7 @@ namespace ClickIt.UI.Debug
                 $"{s.LastMs:F1}", $"{s.AverageMs:F1}", $"{s.MaxMs:F1}");
         }
 
-        // ms/click coloring relative to the click frequency target: green within the target, yellow
-        // up to +25% over it, red beyond that.
+        // ms/click coloring relative to the click frequency target: green within the target, yellow up to +25% over it, red beyond that.
         private static Color ClickTargetColor(double msPerClick, double targetMs)
             => targetMs <= 0 ? FrameColor(msPerClick)
                 : msPerClick <= targetMs ? Color.LightGreen
@@ -353,8 +351,7 @@ namespace ClickIt.UI.Debug
             StageRow(b, "Other", s.Other, periodMs);
         }
 
-        // One breakdown stage as byte/s Last/Avg/Max (per-run bytes normalized by the parent period,
-        // max from the live-window peak). Stages that never allocated any bytes are skipped.
+        // One breakdown stage as byte/s Last/Avg/Max (per-run bytes normalized by the parent period, max from the live-window peak). Stages that never allocated any bytes are skipped.
         private static void StageRow(TextBlock b, string label, AllocationStageSnapshot s, double periodMs)
         {
             double lastPerSecond = periodMs > 0 ? s.LastBytesPerRun * 1000.0 / periodMs : 0;
@@ -394,13 +391,11 @@ namespace ClickIt.UI.Debug
                 $"{m.GcPauseLastMs:F0}/{m.GcPauseAvgMs:F0}/{m.GcPauseMaxMs:F0} ms");
         }
 
-        // Per-value ms/f coloring: each Last/Avg/Max column is colored by its OWN value so a single
-        // bad spike shows red even when the average looks healthy. <=3ms green, <=6ms yellow, >6ms red.
+        // Per-value ms/f coloring: each Last/Avg/Max column is colored by its OWN value so a single bad spike shows red even when the average looks healthy. <=3ms green, <=6ms yellow, >6ms red.
         private static Color FrameColor(double ms)
             => ms <= 3.0 ? Color.LightGreen : ms <= 6.0 ? Color.Yellow : Color.Red;
 
-        // Per-feature allocation rate: <=10MB/s is healthy, <=25MB/s elevated but tolerable, above
-        // that one feature is eating the whole plugin's allocation budget (~50MB/s total across all).
+        // Per-feature allocation rate: <=10MB/s is healthy, <=25MB/s elevated but tolerable, above that one feature is eating the whole plugin's allocation budget (~50MB/s total across all).
         private static Color GcColor(double allocPerSecond)
         {
             double mb = 1024.0 * 1024.0;
@@ -436,8 +431,7 @@ namespace ClickIt.UI.Debug
         private static string FormatMemoryMb(double mb)
             => mb >= 1024.0 ? $"{mb / 1024.0:F1} GB" : $"{mb:F0} MB";
 
-        // Renders one aligned row of text: the label at the block's base X and each value at a
-        // fixed per-column X, so the proportional game font does not break the table alignment.
+        // Renders one aligned row of text: the label at the block's base X and each value at a fixed per-column X, so the proportional game font does not break the table alignment.
         private sealed class TextBlock(DeferredTextQueue queue, float baseX, float startY, float lineHeight)
         {
             private readonly DeferredTextQueue _queue = queue;
@@ -451,8 +445,7 @@ namespace ClickIt.UI.Debug
                 _y += _lineHeight;
             }
 
-            // Column headers aligned to the VALUE columns (not the label column) so "Last" sits
-            // above the first value, "Avg" above the second, "Max" above the third.
+            // Column headers aligned to the VALUE columns (not the label column) so "Last" sits above the first value, "Avg" above the second, "Max" above the third.
             public void ColumnHeader(float[] colX, params string[] values)
             {
                 for (int i = 0; i < values.Length; i++)
@@ -460,8 +453,7 @@ namespace ClickIt.UI.Debug
                 _y += _lineHeight;
             }
 
-            // Table title (orange, label column) with the table-wide totals on the same row, each
-            // aligned above its value column.
+            // Table title (orange, label column) with the table-wide totals on the same row, each aligned above its value column.
             public void TitleRow(float[] colX, string title, Color valueColor, params string[] values)
             {
                 _queue.Enqueue(title, new Vector2(_baseX, _y), HeaderColor, 14, shadow: true);
@@ -470,8 +462,7 @@ namespace ClickIt.UI.Debug
                 _y += _lineHeight;
             }
 
-            // Table title with a distinct color per value column, so the Last/Avg/Max cells of the
-            // ms/f and GC tables are each colored by their own value.
+            // Table title with a distinct color per value column, so the Last/Avg/Max cells of the ms/f and GC tables are each colored by their own value.
             public void TitleRow3(float[] colX, string title, Color c1, Color c2, Color c3, string v1, string v2, string v3)
             {
                 _queue.Enqueue(title, new Vector2(_baseX, _y), HeaderColor, 14, shadow: true);
@@ -492,8 +483,7 @@ namespace ClickIt.UI.Debug
                 _y += _lineHeight;
             }
 
-            // Aligned row with a distinct color per value column (ms/f and GC tables color each of
-            // the Last/Avg/Max columns by its own value).
+            // Aligned row with a distinct color per value column (ms/f and GC tables color each of the Last/Avg/Max columns by its own value).
             public void Row3(float[] colX, string label, Color c1, Color c2, Color c3, string v1, string v2, string v3)
             {
                 _queue.Enqueue(label, new Vector2(_baseX, _y), LabelColor, 14, shadow: true);
@@ -503,8 +493,7 @@ namespace ClickIt.UI.Debug
                 _y += _lineHeight;
             }
 
-            // Indented sub-table row (indented label + fixed per-column values) for breakdowns
-            // nested under a table row, e.g. the per-stage label-scan allocation breakdown.
+            // Indented sub-table row (indented label + fixed per-column values) for breakdowns nested under a table row, e.g. the per-stage label-scan allocation breakdown.
             public void SubRow(float[] colX, Color color, string label, params string[] values)
             {
                 _queue.Enqueue(label, new Vector2(_baseX + 10f, _y), LabelColor, 14, shadow: true);

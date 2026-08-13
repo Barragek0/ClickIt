@@ -17,10 +17,7 @@ namespace ClickIt.Core.Runtime
             HasPendingAdditionalDebugInfoCopyRequest = true;
         }
 
-        // Render-thread call: clears the request immediately (so a second hotkey press during the
-        // copy re-arms properly), then builds the payload + writes the clipboard off-thread because
-        // a large pending text queue can block rendering for hundreds of ms. recordCost reports the
-        // background work's (bytes, ms) so the debug tables can show the copy under the Dump row.
+        // Render-thread call: clears the request immediately (so a second hotkey press during the copy re-arms properly), then builds the payload + writes the clipboard off-thread because a large pending text queue can block rendering for hundreds of ms. recordCost reports the background work's (bytes, ms) so the debug tables can show the copy under the Dump row.
         public void CompleteAdditionalDebugInfoCopy(string[] debugLines, Action<long, double>? recordCost = null)
         {
             HasPendingAdditionalDebugInfoCopyRequest = false;

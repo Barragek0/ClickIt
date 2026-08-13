@@ -102,8 +102,7 @@ namespace ClickIt.Tests.Features.Click
         [TestMethod]
         public void Execute_VisibleLabelWithLockedChest_IsNotClicked()
         {
-            // A locked chest selected by a stale/cached ranking must still be skipped at click
-            // time (the strongbox overlay's red frame is the same Chest.IsLocked read).
+            // A locked chest selected by a stale/cached ranking must still be skipped at click time (the strongbox overlay's red frame is the same Chest.IsLocked read).
             Entity item = EntityProbeFactory.Create(path: "Metadata/Chests/StrongBoxes/Arcanist");
             EntityProbeFactory.WithComponent<Chest>(item, new LockedChestProbe { IsLocked = true });
             LabelOnGround label = new LabelProbe { ItemOnGround = item };
@@ -544,8 +543,7 @@ namespace ClickIt.Tests.Features.Click
         [TestMethod]
         public void Execute_VisibleWalksTowardLabel_WhenClickPointCannotBeResolved()
         {
-            // A selected label whose click point cannot be resolved must pathfind toward its entity
-            // (the shared click-vs-walk decision) rather than silently dropping the tick.
+            // A selected label whose click point cannot be resolved must pathfind toward its entity (the shared click-vs-walk decision) rather than silently dropping the tick.
             var settings = new ClickItSettings();
             settings.WalkTowardOffscreenLabels.Value = true;
             Entity item = EntityProbeFactory.Create(path: "Metadata/MiscellaneousObjects/WorldItem");
@@ -575,10 +573,7 @@ namespace ClickIt.Tests.Features.Click
         [TestMethod]
         public void Execute_VisibleClicksLabelInPlace_WhenClickPointIsResolvableAndClickable()
         {
-            // A selected label whose click point resolves into a clickable area must be clicked in
-            // place, never walked to (the walk-to-onscreen-target regression guard). If the engine
-            // had walked instead, the tick would have stopped before HandleVisibleLabel, so the
-            // interaction never running proves the walk was skipped.
+            // A selected label whose click point resolves into a clickable area must be clicked in place, never walked to (the walk-to-onscreen-target regression guard). If the engine had walked instead, the tick would have stopped before HandleVisibleLabel, so the interaction never running proves the walk was skipped.
             var settings = new ClickItSettings();
             settings.WalkTowardOffscreenLabels.Value = true;
             Entity item = EntityProbeFactory.Create(path: "Metadata/MiscellaneousObjects/WorldItem");

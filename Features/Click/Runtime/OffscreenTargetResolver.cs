@@ -78,10 +78,7 @@ namespace ClickIt.Features.Click.Runtime
 
             if (IsFinite(projected) && !IsNearCorner(projected, window))
             {
-                // Target is on screen — but can we actually click there?
-                // If the projected position falls in a blocked zone (minimap,
-                // right panel, etc.), treat the target as still offscreen so
-                // pathfinding keeps walking until it moves into a clickable area.
+                // Target is on screen — but can we actually click there? If the projected position falls in a blocked zone (minimap, right panel, etc.), treat the target as still offscreen so pathfinding keeps walking until it moves into a clickable area.
                 if (_pointIsInClickableArea != null
                     && !_pointIsInClickableArea(projected, "offscreen"))
                 {
@@ -97,9 +94,7 @@ namespace ClickIt.Features.Click.Runtime
             return TryComputeGridDirectionPoint(center, deltaX, deltaY, radius, out targetScreen);
         }
 
-        // True when the target's world projection is on-screen and clickable. The path-based
-        // target point sits at a fixed radius in the path's direction, so callers use this to
-        // click close targets at their real screen position instead of overshooting them.
+        // True when the target's world projection is on-screen and clickable. The path-based target point sits at a fixed radius in the path's direction, so callers use this to click close targets at their real screen position instead of overshooting them.
         internal bool TryResolveOnScreenTargetScreenPoint(Entity target, out Vector2 targetScreen)
         {
             targetScreen = default;

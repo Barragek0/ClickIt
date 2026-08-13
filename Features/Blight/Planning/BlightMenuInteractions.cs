@@ -1,7 +1,6 @@
 namespace ClickIt.Features.Blight.Planning;
 
-// Menu structure: Child[0].Child[3] is the 6-child tower type/upgrade menu; Child[0].Child[2] = build icon,
-// Child[0].Child[3] = upgrade icon; a specialization upgrade (Fireball 3→4) has NO sub-menu.
+// Menu structure: Child[0].Child[3] is the 6-child tower type/upgrade menu; Child[0].Child[2] = build icon, Child[0].Child[3] = upgrade icon; a specialization upgrade (Fireball 3→4) has NO sub-menu.
 internal static class BlightMenuInteractions
 {
     internal static bool IsTowerMenuOpen(Element labelElement)
@@ -36,8 +35,7 @@ internal static class BlightMenuInteractions
     internal static NumVector2? GetTowerMenuChildClickPosition(
         Element labelElement, BlightTowerType towerType)
     {
-        // The tower-type slot is a child of the tower/upgrade menu: Child[0].Child[3].Child[(int)towerType].
-        // (Order confirmed in-game: Chilling=0, ShockNova=1, Empowering=2, Seismic=3, Summoning=4, Fireball=5.)
+        // The tower-type slot is a child of the tower/upgrade menu: Child[0].Child[3].Child[(int)towerType]. (Order confirmed in-game: Chilling=0, ShockNova=1, Empowering=2, Seismic=3, Summoning=4, Fireball=5.)
         try
         {
             Element? menu = GetMenuChildElement(labelElement, 3);
@@ -74,9 +72,7 @@ internal static class BlightMenuInteractions
         catch { return null; }
     }
 
-    // Full readable dump of a tower label's menu element state (label, build icon, upgrade/spec menu
-    // and every child with index, address, visibility, rect and best-effort dat id) — the diagnostic
-    // for "which button did the executor actually click" (e.g. Fireball 3->4 landing on Flamethrower).
+    // Full readable dump of a tower label's menu element state (label, build icon, upgrade/spec menu and every child with index, address, visibility, rect and best-effort dat id) — the diagnostic for "which button did the executor actually click" (e.g. Fireball 3->4 landing on Flamethrower).
     internal static string BuildMenuSnapshot(Element labelElement)
     {
         try
@@ -162,9 +158,7 @@ internal static class BlightMenuInteractions
         catch { return "rect=?"; }
     }
 
-    // The upgrade menu's visible child count: a plain tier upgrade shows ONE button (the next
-    // tier), while a tower at max plain shows the specialization buttons (two+). This tells a
-    // maxed tower apart from a tier upgrade even when the rank read lags behind reality.
+    // The upgrade menu's visible child count: a plain tier upgrade shows ONE button (the next tier), while a tower at max plain shows the specialization buttons (two+). This tells a maxed tower apart from a tier upgrade even when the rank read lags behind reality.
     internal static int CountVisibleUpgradeButtons(Element labelElement)
     {
         try
@@ -210,13 +204,10 @@ internal static class BlightMenuInteractions
     internal static NumVector2? GetUpgradeIconClickPosition(Element labelElement)
         => TryGetMenuChildCenter(labelElement, 3);
 
-    // The menu region (build icon Child[2] / upgrade icon Child[3]) is bigger than the icon but
-    // still doesn't cover the whole sub-menu, so the region we require to be fully on-screen and
-    // clickable is the step's icon rect enlarged by ~30% around its center.
+    // The menu region (build icon Child[2] / upgrade icon Child[3]) is bigger than the icon but still doesn't cover the whole sub-menu, so the region we require to be fully on-screen and clickable is the step's icon rect enlarged by ~30% around its center.
     internal const float MenuRegionEnlargeRatio = 1.3f;
 
-    // The walk-ready region uses the step's own icon: build (Child[2]) for unbuilt foundations,
-    // upgrade (Child[3]) for built towers — a foundation has no upgrade button.
+    // The walk-ready region uses the step's own icon: build (Child[2]) for unbuilt foundations, upgrade (Child[3]) for built towers — a foundation has no upgrade button.
     internal static int MenuChildIndexForStep(BlightPlanAction action)
         => action == BlightPlanAction.Upgrade ? 3 : 2;
 
@@ -233,8 +224,7 @@ internal static class BlightMenuInteractions
     {
         try
         {
-            // Bounds-check before GetChildAtIndex — ExileCore logs "Element with index N not found"
-            // to the game log on a miss, and the menu is usually absent (0 children) on foundations.
+            // Bounds-check before GetChildAtIndex — ExileCore logs "Element with index N not found" to the game log on a miss, and the menu is usually absent (0 children) on foundations.
             if (childIndex < 0 || labelElement.ChildCount <= 0)
                 return null;
             Element? child0 = labelElement.GetChildAtIndex(0);
@@ -245,8 +235,7 @@ internal static class BlightMenuInteractions
         catch { return null; }
     }
 
-    // True when the hovered element address is the build/upgrade icon (Child[2]/Child[3]) or one of
-    // its direct children — used to keep pathfinding clicks off tower build/upgrade icons.
+    // True when the hovered element address is the build/upgrade icon (Child[2]/Child[3]) or one of its direct children — used to keep pathfinding clicks off tower build/upgrade icons.
     internal static bool IsMenuChildHit(Element labelElement, int childIndex, long hoveredAddress)
     {
         Element? child = GetMenuChildElement(labelElement, childIndex);

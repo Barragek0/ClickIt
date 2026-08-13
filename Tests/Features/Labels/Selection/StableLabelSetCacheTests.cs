@@ -8,8 +8,7 @@ public class StableLabelSetCacheTests
     {
         var cache = new StableLabelSetCache();
         List<LabelOnGround> first = [CreateOpaqueLabel(0x1000), CreateOpaqueLabel(0x2000)];
-        // Same address set, different instances/order — must still be recognized as unchanged so
-        // downstream ReferenceEquals-gated caches hit.
+        // Same address set, different instances/order — must still be recognized as unchanged so downstream ReferenceEquals-gated caches hit.
         List<LabelOnGround> second = [CreateOpaqueLabel(0x2000), CreateOpaqueLabel(0x1000)];
 
         List<LabelOnGround> a = cache.Resolve(first);

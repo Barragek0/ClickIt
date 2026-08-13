@@ -15,12 +15,13 @@ namespace ClickIt.Features.Blight
         private const float TowerDotRadius = 3.5f;
         private const int TowerDotSegments = 12;
 
-        // Small map-only dots per lane icon colored by visual state (1 red spawning, 2 green sending, 3 none).
-        private const float PathwayDotRadius = 1.5f;
-        private const int PathwayDotSegments = 3;
+        // Small map-only arrows per lane icon colored by visual state (1 red spawning, 2 green sending, 3 none).
+        private const float PathwayArrowLength = 5f;
+        private const float PathwayArrowHalfWidth = 1.5f;
+        private const int PathwayArrowThickness = 2;
         private const float MapCullMargin = 60f;
-        private static readonly Color PathwayDotSpawningColor = new(255, 70, 70, 230);
-        private static readonly Color PathwayDotActiveColor = new(70, 255, 90, 230);
+        private static readonly Color PathwayArrowSpawningColor = new(255, 70, 70, 230);
+        private static readonly Color PathwayArrowActiveColor = new(70, 255, 90, 230);
 
         private static readonly IReadOnlyList<int> EmptyPendingNumbers = [];
         private static readonly IReadOnlyList<string> EmptyPendingStrings = [];
@@ -31,8 +32,8 @@ namespace ClickIt.Features.Blight
         private Dictionary<NumVector2, List<string>>? _pendingNumberTextsByPosition;
         // Grid cells that already drew a tower dot this frame, so overlapping dots never stack.
         private readonly HashSet<(int X, int Y)> _drawnDotKeys = [];
-        // Grid cells that already drew a pathway dot this frame, so overlapping lane dots never stack.
-        private readonly HashSet<(int X, int Y)> _drawnPathwayDotKeys = [];
+        // Grid cells that already drew a pathway arrow this frame, so overlapping lane arrows never stack.
+        private readonly HashSet<(int X, int Y)> _drawnPathwayArrowKeys = [];
 
         // Per-frame icon screen-visibility arrays (reused across frames; resized on snapshot change).
         private bool[]? _iconMapVis;
@@ -285,8 +286,7 @@ namespace ClickIt.Features.Blight
             }
             IBlightTowerStrategy strategy = _blightService.CurrentStrategy;
 
-            // Precompute each icon's map/world screen visibility once so edge culling never
-            // re-projects the same beam anchor (hundreds of edges share few anchor points).
+            // Precompute each icon's map/world screen visibility once so edge culling never re-projects the same beam anchor (hundreds of edges share few anchor points).
             EnsureIconVisArrays(icons.Count);
             for (int i = 0; i < icons.Count; i++)
             {
@@ -328,51 +328,79 @@ namespace ClickIt.Features.Blight
                 }
             }
 
-            DrawPathwayDots(ctx, queue);
+            DrawPathwayArrows(ctx, queue, beamPaths, coverage);
         }
 
-        // Map-only dots per lane icon colored by visual state (1 red spawning, 2 green sending, 3 none).
-        private void DrawPathwayDots(RenderContext ctx, DeferredDrawQueue queue)
+        // Map-only arrows per lane icon colored by visual state (1 red spawning, 2 green sending, 3 none).
+        private void DrawPathwayArrows(RenderContext ctx, DeferredDrawQueue queue, NumVector2[]? beamPaths, LaneCoverageResult[]? coverage)
         {
             if (!ctx.LargeMapOpen)
                 return;
-            _drawnPathwayDotKeys.Clear();
+            _drawnPathwayArrowKeys.Clear();
             IReadOnlyList<BlightPathwayIcon> icons = _blightService.IconPathwaySnapshot;
-            LaneCoverageResult[]? coverage = _blightService.TryGetCachedCoverage();
-            // The coverage array only aligns with the icon snapshot when both came from the same
-            // scan; guard the index like DrawIconPathways so a transient refresh never overruns it.
-            bool aligned = coverage != null && coverage.Length == icons.Count;
             for (int i = 0; i < icons.Count; i++)
             {
-                // Half the dots: skip every other icon, always keeping branch roots and junctions.
+                // Half the arrows: skip every other icon, always keeping branch roots and junctions.
                 if ((i & 1) != 0)
                 {
-                    int parent = aligned ? coverage![i].ParentIndex : -1;
+                    int parent = coverage != null ? coverage[i].ParentIndex : -1;
                     bool junction = icons[i].Parents.Length > 1 || parent < 0;
                     if (!junction)
                         continue;
                 }
 
                 BlightPathwayIcon icon = icons[i];
-                Color? dotColor = icon.VisualState switch
+                Color? arrowColor = icon.VisualState switch
                 {
-                    1 => PathwayDotSpawningColor,
-                    2 => PathwayDotActiveColor,
+                    1 => PathwayArrowSpawningColor,
+                    2 => PathwayArrowActiveColor,
                     _ => null,
                 };
-                if (dotColor is not { } color)
+                if (arrowColor is not { } color)
                     continue;
 
-                // Cull dots that project outside the visible map region (the web can hold hundreds).
+                // The beam is the true lane geometry: anchor the arrow at the beam start like the lane edges.
+                NumVector2 pos = beamPaths != null ? beamPaths[i] : icon.GridPos;
+
+                // Cull arrows that project outside the visible map region (the web can hold hundreds).
                 if (!_iconMapVis![i])
                     continue;
 
-                // Co-located twin lane entities share a grid cell; keep one dot per cell.
-                if (!_drawnPathwayDotKeys.Add(((int)MathF.Round(icon.GridPos.X), (int)MathF.Round(icon.GridPos.Y))))
+                // Co-located twin lane entities share a cell; keep one arrow per cell.
+                if (!_drawnPathwayArrowKeys.Add(((int)MathF.Round(pos.X), (int)MathF.Round(pos.Y))))
                     continue;
 
-                queue.EnqueueFilledCircleOnLargeMap(icon.GridPos, true, PathwayDotRadius, color, PathwayDotSegments);
+                // Direction of travel is pump-ward: from the beam's outward end toward its start; fall back to the lane's pump-ward parent when the beam could not be read.
+                NumVector2 dir = new(icon.BeamStart.X - icon.BeamEnd.X, icon.BeamStart.Y - icon.BeamEnd.Y);
+                if (dir.X == 0f && dir.Y == 0f)
+                {
+                    int parent = coverage != null ? coverage[i].ParentIndex : -1;
+                    if (parent < 0 || parent >= icons.Count)
+                        continue;
+                    NumVector2 parentPos = beamPaths != null ? beamPaths[parent] : icons[parent].GridPos;
+                    dir = new NumVector2(parentPos.X - pos.X, parentPos.Y - pos.Y);
+                    if (dir.X == 0f && dir.Y == 0f)
+                        continue;
+                }
+
+                EnqueuePathwayArrow(queue, pos, dir, color);
             }
+        }
+
+        private static void EnqueuePathwayArrow(DeferredDrawQueue queue, NumVector2 center, NumVector2 dir, Color color)
+        {
+            float len = MathF.Sqrt((dir.X * dir.X) + (dir.Y * dir.Y));
+            float ux = dir.X / len;
+            float uy = dir.Y / len;
+            float px = -uy;
+            float py = ux;
+            float half = PathwayArrowLength * 0.5f;
+            NumVector2 head = new(center.X + (ux * half), center.Y + (uy * half));
+            NumVector2 tail = new(center.X - (ux * half), center.Y - (uy * half));
+            NumVector2 back = new(head.X - (ux * PathwayArrowLength * 0.45f), head.Y - (uy * PathwayArrowLength * 0.45f));
+            queue.EnqueueLineOnLargeMap(tail, head, PathwayArrowThickness, color);
+            queue.EnqueueLineOnLargeMap(head, new NumVector2(back.X + (px * PathwayArrowHalfWidth), back.Y + (py * PathwayArrowHalfWidth)), PathwayArrowThickness, color);
+            queue.EnqueueLineOnLargeMap(head, new NumVector2(back.X - (px * PathwayArrowHalfWidth), back.Y - (py * PathwayArrowHalfWidth)), PathwayArrowThickness, color);
         }
 
         // Reuse the per-frame icon visibility arrays; only resize when the icon snapshot changes.
@@ -459,8 +487,7 @@ namespace ClickIt.Features.Blight
             if (Branches.Count == 0 || Positions.Count != coverage.Length || Forests == null)
                 return;
 
-            // The per-branch lane forests are built on the scan thread; the render thread only labels
-            // the cached lanes when the coverage reference changes.
+            // The per-branch lane forests are built on the scan thread; the render thread only labels the cached lanes when the coverage reference changes.
             string?[] labelFor = new string?[coverage.Length];
             for (int b = 0; b < Branches.Count; b++)
             {

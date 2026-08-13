@@ -119,8 +119,11 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void ResolveHotkeyActive_ReturnsTrue_WhenLazyModeCanDriveInputWithoutRestrictions()
         {
+            // The lazy-mode click input must not depend on the live mouse state during tests: the mouse-held disable toggles default ON and read real input, so they are disabled here to keep this deterministic (mirrors InputHandlerCanClickTests).
             var settings = new ClickItSettings();
             settings.LazyMode.Value = true;
+            settings.DisableLazyModeLeftClickHeld.Value = false;
+            settings.DisableLazyModeRightClickHeld.Value = false;
             var handler = new InputHandler(settings);
             List<LabelOnGround> labels = [];
             var cachedLabels = new TimeCache<List<LabelOnGround>>(() => labels, 50);

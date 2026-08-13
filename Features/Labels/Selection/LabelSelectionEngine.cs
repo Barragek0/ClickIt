@@ -6,9 +6,7 @@ namespace ClickIt.Features.Labels.Selection
         string? MechanicId,
         LabelCandidateRejectReason RejectReason);
 
-    // Distance + cursor distance for ranking. Production resolves both from a per-label cache keyed
-    // on the label address (the DLR reads behind each are the dominant Click-Acquire allocation);
-    // tests supply plain values.
+    // Distance + cursor distance for ranking. Production resolves both from a per-label cache keyed on the label address (the DLR reads behind each are the dominant Click-Acquire allocation); tests supply plain values.
     internal readonly record struct LabelRankInput(float Distance, float CursorDistance);
 
     internal readonly record struct LabelSelectionStats(

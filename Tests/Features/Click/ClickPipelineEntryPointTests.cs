@@ -1,10 +1,6 @@
 namespace ClickIt.Tests.Features.Click;
 
-// Guards the click pipeline rewrite: every runtime entry point the rewrite phases may touch must
-// stay on the port (or an equivalent, test-updated surface).  A phase that deletes/merges a wrapper
-// must NOT drop a member the runtime still calls — this test fails if an entry point disappears.
-// Entry points are asserted by name AND declaring type, so a silent move behind another wrapper
-// (the exact pass-through pattern this rewrite removes) also fails.
+// Guards the click pipeline rewrite: every runtime entry point the rewrite phases may touch must stay on the port (or an equivalent, test-updated surface).  A phase that deletes/merges a wrapper must NOT drop a member the runtime still calls — this test fails if an entry point disappears. Entry points are asserted by name AND declaring type, so a silent move behind another wrapper (the exact pass-through pattern this rewrite removes) also fails.
 [TestClass]
 public class ClickPipelineEntryPointTests
 {

@@ -18,9 +18,7 @@ namespace ClickIt.Tests.Features.Altars
         [TestMethod]
         public void TryMatchMod_TrarthanFinalBossScarab_Matches_WithMapbossNegativeType()
         {
-            // Regression for the reported failure: the game emitted
-            // "Final Boss drops 3 additional Trarthan Scarabs" with NegativeModType "Mapboss",
-            // which previously logged "Failed to match mod" because Trarthan wasn't catalogued.
+            // Regression for the reported failure: the game emitted "Final Boss drops 3 additional Trarthan Scarabs" with NegativeModType "Mapboss", which previously logged "Failed to match mod" because Trarthan wasn't catalogued.
             bool isUp;
             string matched;
             bool ok = AltarModMatcher.TryMatchMod(

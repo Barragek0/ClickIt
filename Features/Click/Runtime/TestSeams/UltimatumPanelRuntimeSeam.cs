@@ -1,6 +1,6 @@
 namespace ClickIt.Features.Click.Runtime.TestSeams
 {
-    /** This seam isolates concrete ExileCore Ultimatum panel traversal behind a single boundary because the owner logic depends on third-party panel objects whose visibility, child-path, and element-state getters are not safely shapeable in the current test harness. Keep the default implementation behavior-equivalent to the underlying runtime helpers; tests may replace it only to model that external boundary. */
+    // This seam isolates concrete ExileCore Ultimatum panel traversal behind a single boundary because the owner logic depends on third-party panel objects whose visibility, child-path, and element-state getters are not safely shapeable in the current test harness. Keep the default implementation behavior-equivalent to the underlying runtime helpers; tests may replace it only to model that external boundary.
     internal interface IUltimatumPanelRuntimeSeam
     {
         bool TryGetVisiblePanel(GameController? gameController, bool logFailures, Action<string> debugLog, out UltimatumPanel? panelObj);

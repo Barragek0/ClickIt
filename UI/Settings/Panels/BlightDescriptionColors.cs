@@ -1,17 +1,11 @@
 namespace ClickIt.UI.Settings.Panels;
 
-// Maps oil colour names and blight tower names in strategy descriptions to their display colours,
-// so the rule lines and recommended-anoint lines render each colour with its actual hue. Words and
-// phrases are matched case-insensitively with punctuation ignored, so "Seismic." resolves through
-// "Seismic" and "(Chilling Beams)" keeps the whole parenthetical evenly tinted instead of
-// half-blue. Only singular "Tower" phrases are matched — a plural "Towers" stays in the base
-// colour.
+// Maps oil colour names and blight tower names in strategy descriptions to their display colours, so the rule lines and recommended-anoint lines render each colour with its actual hue. Words and phrases are matched case-insensitively with punctuation ignored, so "Seismic." resolves through "Seismic" and "(Chilling Beams)" keeps the whole parenthetical evenly tinted instead of half-blue. Only singular "Tower" phrases are matched — a plural "Towers" stays in the base colour.
 internal static class BlightDescriptionColors
 {
     private static readonly Dictionary<string, Vector4> s_wordColors = BuildWordColors();
 
-    // Anoint oils keep their own palette; tower words resolve through BlightTowerColors so the
-    // description rendering always matches the overlay dots and the plan debug box.
+    // Anoint oils keep their own palette; tower words resolve through BlightTowerColors so the description rendering always matches the overlay dots and the plan debug box.
     private static Dictionary<string, Vector4> BuildWordColors()
     {
         Dictionary<string, Vector4> colors = new(StringComparer.OrdinalIgnoreCase)
@@ -45,9 +39,7 @@ internal static class BlightDescriptionColors
     private static void AddTower(Dictionary<string, Vector4> colors, string name, BlightTowerType type)
         => colors[name] = BlightTowerColors.AsVector4(type);
 
-    // Multi-word phrases keyed by lowercase, punctuation-stripped text; the value is the leading
-    // word's tower/oil name so the phrase keeps that tower's hue ("Chilling Beams" is blue). Only
-    // singular "Tower" phrases are matched — a plural "Towers" stays in the base colour.
+    // Multi-word phrases keyed by lowercase, punctuation-stripped text; the value is the leading word's tower/oil name so the phrase keeps that tower's hue ("Chilling Beams" is blue). Only singular "Tower" phrases are matched — a plural "Towers" stays in the base colour.
     private static readonly Dictionary<string, string> s_phraseLeadWords = new(StringComparer.OrdinalIgnoreCase)
     {
         ["chilling tower"] = "Chilling",
@@ -77,9 +69,7 @@ internal static class BlightDescriptionColors
         return length > 0 && s_wordColors.TryGetValue(new string(buffer[..length]), out Vector4 color) ? color : null;
     }
 
-    // Phrase-aware resolution for the coloured-text renderer: matches the longest known multi-word
-    // phrase starting at `index`, otherwise falls back to the single word. `consumed` is the number
-    // of words the returned colour spans (1 when unmatched).
+    // Phrase-aware resolution for the coloured-text renderer: matches the longest known multi-word phrase starting at `index`, otherwise falls back to the single word. `consumed` is the number of words the returned colour spans (1 when unmatched).
     internal static Vector4? TryResolvePhrase(string[] words, int index, out int consumed)
     {
         consumed = 1;

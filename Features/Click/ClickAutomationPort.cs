@@ -208,9 +208,7 @@ namespace ClickIt.Features.Click
             return false;
         }
 
-        // True when the point is inside any VISIBLE child of the tower menu
-        // (Child[0].Child[3].Child[i]) — the tower-type build slots and specialization buttons,
-        // which extend beyond the upgrade icon's own rect.
+        // True when the point is inside any VISIBLE child of the tower menu (Child[0].Child[3].Child[i]) — the tower-type build slots and specialization buttons, which extend beyond the upgrade icon's own rect.
         private static bool IsBlightMenuSlotAt(Element labelElement, Vector2 screenPos)
         {
             Element? menu = BlightMenuInteractions.GetMenuChildElement(labelElement, 3);
@@ -232,8 +230,7 @@ namespace ClickIt.Features.Click
             return false;
         }
 
-        // Padding around a blight build/upgrade icon that makes it an unclickable box — a click that
-        // lands in or near the icon is treated as an accidental icon click.
+        // Padding around a blight build/upgrade icon that makes it an unclickable box — a click that lands in or near the icon is treated as an accidental icon click.
         private const float BlightIconBoxPadding = 30f;
 
         private static bool PointInRect(RectangleF rect, Vector2 point)
