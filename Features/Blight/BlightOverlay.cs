@@ -15,10 +15,10 @@ namespace ClickIt.Features.Blight
         private const float TowerDotRadius = 3.5f;
         private const int TowerDotSegments = 12;
 
-        // Small map-only arrows per lane icon colored by visual state (1 red spawning, 2 green sending, 3 none).
-        private const float PathwayArrowLength = 5f;
-        private const float PathwayArrowHalfWidth = 1.5f;
-        private const int PathwayArrowThickness = 2;
+        // Map-only arrows per lane icon colored by visual state (1 red spawning, 2 green sending, 3 none).
+        private const float PathwayArrowLength = 9f;
+        private const float PathwayArrowHalfWidth = 2.5f;
+        private const int PathwayArrowThickness = 3;
         private const float MapCullMargin = 60f;
         private static readonly Color PathwayArrowSpawningColor = new(255, 70, 70, 230);
         private static readonly Color PathwayArrowActiveColor = new(70, 255, 90, 230);
