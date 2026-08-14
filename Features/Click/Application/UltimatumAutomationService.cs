@@ -181,7 +181,7 @@ namespace ClickIt.Features.Click.Application
                 return false;
             }
 
-            Thread.Sleep(UltimatumChoiceToBeginDelayMs);
+            ClickPipelineTiming.Sleep(UltimatumChoiceToBeginDelayMs);
             bool clickedBeginButton = TryClickBeginButton(label, windowTopLeft);
             _dependencies.PublishUltimatumDebug(new UltimatumDebugEvent("InitialHandled", "InitialLabel", false, false)
             {
@@ -242,7 +242,7 @@ namespace ClickIt.Features.Click.Application
             if (!TryClickElement(beginButton, windowTopLeft, "[TryClickUltimatumBeginButton] Skipping click - cursor outside PoE window", "[TryClickUltimatumBeginButton] Rejected by clickable-area check.", "[TryClickUltimatumBeginButton] Clicking Begin at"))
                 return false;
 
-            Thread.Sleep(UltimatumPostBeginDelayMs + UltimatumPostBeginAdditionalClickDelayMs);
+            ClickPipelineTiming.Sleep(UltimatumPostBeginDelayMs + UltimatumPostBeginAdditionalClickDelayMs);
             return true;
         }
 

@@ -49,6 +49,17 @@ namespace ClickIt.Shared.Diagnostics
         GameStateDump = 12
     }
 
+    // Periodic-work cadence markers: the measured time between consecutive occurrences of the same event (click run, blight refresh, label scan, blocked-UI refresh, ultimatum poll, flare poll), shown in the perf tables so the real in-game cadence is visible next to the configured targets.
+    public enum IntervalKind
+    {
+        Click = 1,
+        Blight = 2,
+        Label = 3,
+        Area = 4,
+        Ultimatum = 5,
+        Flare = 6
+    }
+
     /// <summary>
     /// Handles all performance monitoring, timing, and FPS calculations for the ClickIt plugin.
     /// Provides thread-safe access to timing queues and performance metrics.
@@ -57,10 +68,8 @@ namespace ClickIt.Shared.Diagnostics
     {
         private readonly ClickItSettings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
 
-        // Stage index of the Blight breakdown's "Executor" stage (the click-pipeline building work), recorded separately from the refresh stages because it runs on the click thread.
-        internal const int BlightExecutorStageIndex = 3;
-        // Stage index of the Blight breakdown's "Events" stage (the entity-event background work: retained-set tracking + DLR path reads per streamed entity), recorded separately because it runs on the game's entity-event path at a different cadence than the refresh stages.
-        internal const int BlightEventsStageIndex = 4;
+        // Stage index of the Blight breakdown's "Events" stage (the off-refresh work: blight plan executor on the click thread + entity-event background tracking), merged with the executor for table brevity.
+        internal const int BlightEventsStageIndex = 1;
         // Stage indexes of the Click breakdown (sub-stages of the click coroutine run, recorded at their true source so a slow stage is attributable).
         internal const int ClickContextStageIndex = 0;
         internal const int ClickMechanicScanStageIndex = 1;
@@ -76,6 +85,7 @@ namespace ClickIt.Shared.Diagnostics
         private readonly LabelScanAllocationStore _labelScanAllocation = new();
         private readonly ClickAllocationStore _clickAllocation = new();
         private readonly TimingChannelMetricsTracker _timingTracker = new();
+        private readonly IntervalTimingStore _intervalTiming = new();
 
         // Per-frame render-section accumulators (render-thread only): OverlayRenderHost accumulates each overlay's enqueue cost, flush attribution accumulates the actual draw cost, and CompleteRenderSectionFrame records ONE combined sample per section per frame so the section average is enqueue + flush (separate samples would dilute the average by 2x and hide the flush attribution from the tables).
         private readonly Dictionary<RenderSection, double> _pendingRenderSectionMs = [];
@@ -85,8 +95,7 @@ namespace ClickIt.Shared.Diagnostics
         private readonly Dictionary<ProcessingSection, BreakdownStageStore> _breakdownStores = new()
         {
             [ProcessingSection.Pathfinding] = new BreakdownStageStore(trackTiming: true, "Terrain", "Goal", "AStar", "Projection"),
-            [ProcessingSection.Blight] = new BreakdownStageStore(trackTiming: true, "Entities", "Foundations", "Coverage", "Executor", "Events"),
-            [ProcessingSection.Flare] = new BreakdownStageStore(trackTiming: true, "Buffs", "Decision", "Input"),
+            [ProcessingSection.Blight] = new BreakdownStageStore(trackTiming: true, "Scan", "Events"),
             [ProcessingSection.Altar] = new BreakdownStageStore(trackTiming: true, "Labels", "Build"),
             [ProcessingSection.Strongbox] = new BreakdownStageStore(trackTiming: true, "Metadata", "Resolve", "Scan"),
             [ProcessingSection.Click] = new BreakdownStageStore(trackTiming: true, "Context", "MechanicScan", "LabelScan", "Rank", "Resolve", "Input", "Post"),
@@ -103,20 +112,20 @@ namespace ClickIt.Shared.Diagnostics
         private long _lastWorkingSetFetchMs;
         private double _cachedWorkingSetMb;
 
-        // Rolling DLR-read rate (reads/sec + ms/sec) sampled on a 500ms cadence from the DynamicAccess counters, plus the share of reads in the last window that failed. The ms/sec is the actual wall-clock time spent inside dynamic reads (the freeze-relevant question — how much main-thread time do the reads actually cost), mirroring the GC Pause row.
+        // Rolling DLR-read rate (reads/sec + ms/sec) sampled on a 200ms cadence from the DynamicAccess counters, plus the share of reads in the last window that failed. The ms/sec is the actual wall-clock time spent inside dynamic reads (the freeze-relevant question — how much main-thread time do the reads actually cost), mirroring the GC Pause row.
         private readonly ExpiringSampleBuffer _dlrReadRateBuffer = new(expiryMs: 10_000, maxSamples: 60, averageSamples: 10);
         private readonly ExpiringSampleBuffer _dlrReadMsBuffer = new(expiryMs: 10_000, maxSamples: 60, averageSamples: 10);
         private long _lastDlrSampleMs;
         private DynamicAccessStats _lastDlrStats;
         private double _dlrFailPercent;
 
-        // Per-feature DLR-read attribution: one reads/sec + ms/sec buffer per ProcessingSection (the same sections the DLR table rows use), sampled on the same 500ms cadence as the total.
+        // Per-feature DLR-read attribution: one reads/sec + ms/sec buffer per ProcessingSection (the same sections the DLR table rows use), sampled on the same 200ms cadence as the total.
         private readonly ExpiringSampleBuffer[] _dlrSectionReadsBuffers = CreateSectionBuffers();
         private readonly ExpiringSampleBuffer[] _dlrSectionMsBuffers = CreateSectionBuffers();
         private readonly long[] _lastDlrSectionCalls = new long[DynamicAccess.DlrSectionCount];
         private readonly long[] _lastDlrSectionTicks = new long[DynamicAccess.DlrSectionCount];
 
-        // Per-feature GC allocation-rate attribution: one bytes/sec buffer per ProcessingSection, sampled on the same 500ms cadence as the timing tables so the GC table's Last/Avg/Max matches the other tables exactly (10s expiry, 10-sample average). RecordAllocation accumulates per-section bytes; SampleGcAllocationRates converts the delta over the window into a bytes/sec rate.
+        // Per-feature GC allocation-rate attribution: one bytes/sec buffer per ProcessingSection, sampled on the same 200ms cadence as the timing tables so the GC table's Last/Avg/Max matches the other tables exactly (10s expiry, 10-sample average). RecordAllocation accumulates per-section bytes; SampleGcAllocationRates converts the delta over the window into a bytes/sec rate.
         private readonly ExpiringSampleBuffer[] _gcSectionByteBuffers = CreateSectionBuffers();
         private readonly long[] _gcSectionCumulativeBytes = new long[DynamicAccess.DlrSectionCount];
         private readonly long[] _lastGcSectionCumulativeBytes = new long[DynamicAccess.DlrSectionCount];
@@ -265,7 +274,8 @@ namespace ClickIt.Shared.Diagnostics
                 GetClickAllocationStats(),
                 GetMemorySnapshot(),
                 GetBreakdownStats(),
-                ClickSleepTiming: new TimingMetricsSnapshot(clickSleepStats.LastMs, clickSleepStats.AverageMs, clickSleepStats.MaxMs, clickSleepStats.SampleCount));
+                ClickSleepTiming: new TimingMetricsSnapshot(clickSleepStats.LastMs, clickSleepStats.AverageMs, clickSleepStats.MaxMs, clickSleepStats.SampleCount),
+                Intervals: _intervalTiming.GetSnapshots());
         }
 
         internal void RecordFpsSample(double fps)
@@ -462,6 +472,47 @@ namespace ClickIt.Shared.Diagnostics
         internal int GetTimingSampleCount(TimingChannel channel)
             => _timingTracker.GetTimingSampleCount(channel);
 
+        public void MarkInterval(IntervalKind kind)
+            => _intervalTiming.Mark(kind);
+
+        // Click-anchored frequency clock: the regular click gate waits for the target interval measured from the
+        // LAST actual click, minus the average time a run needs before its click dispatches, so consecutive clicks
+        // land ~frequencyTarget apart instead of being offset by the run's pre-click scan work.
+        private long _lastClickAtMs;
+        private long _lastClickRunStartAtMs;
+        private long _lastDispatchedRunStartAtMs;
+        private const long MaxTimeToClickMs = 1000;
+        private readonly ExpiringSampleBuffer _timeToClickSamples = new(expiryMs: 10_000, maxSamples: 60, averageSamples: 20);
+
+        public void MarkClickRunStart()
+            => _lastClickRunStartAtMs = HighResNowMs();
+
+        public void RecordClickDispatch()
+        {
+            long now = HighResNowMs();
+            _lastClickAtMs = now;
+            // Record time-to-click only for the FIRST click of a run (a later click in the same run would inflate the average with a longer elapsed), and only when the run start is fresh (a click dispatched outside a run, e.g. manual hover, must not poison the compensation with a stale run start).
+            if (_lastClickRunStartAtMs > 0 && _lastDispatchedRunStartAtMs != _lastClickRunStartAtMs)
+            {
+                long timeToClick = now - _lastClickRunStartAtMs;
+                if (timeToClick is >= 0 and <= MaxTimeToClickMs)
+                {
+                    _lastDispatchedRunStartAtMs = _lastClickRunStartAtMs;
+                    _timeToClickSamples.Record(timeToClick);
+                }
+            }
+        }
+
+        public long GetElapsedSinceLastClickMs()
+            => HighResNowMs() - _lastClickAtMs;
+
+        public double GetAverageTimeToClickMs()
+            => _timeToClickSamples.Stats.Average;
+
+        // High-resolution monotonic millisecond clock: allocation/DLR rates are sampled on a minimum window, and TickCount64's ~15ms resolution would jitter the window size ~2x.
+        private static long HighResNowMs()
+            => (long)(Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency);
+
         // Working set read is throttled to once per second: Process.GetCurrentProcess() allocates a Process object per call, which would add GC pressure on the per-frame snapshot path.
         private double GetProcessWorkingSetMb()
         {
@@ -480,12 +531,12 @@ namespace ClickIt.Shared.Diagnostics
             return _cachedWorkingSetMb;
         }
 
-        // Samples the DynamicAccess read counters on a 500ms cadence (called every render frame) so the debug tables show a rolling reads/sec AND ms/sec rate for the freeze-relevant DLR-read cost. The percent is the share of reads in the window that failed (wasted reads on invalid entities). nowMs is injectable for tests; production uses Environment.TickCount64.
+        // Samples the DynamicAccess read counters on a 200ms cadence (called every render frame via UpdateFPS) so the debug tables show a rolling reads/sec AND ms/sec rate for the freeze-relevant DLR-read cost. The percent is the share of reads in the window that failed (wasted reads on invalid entities). nowMs is injectable for tests; production uses a high-resolution clock so the 200ms window is accurate.
         internal void SampleDlrReadRate(long? nowMs = null)
         {
-            long now = nowMs ?? Environment.TickCount64;
+            long now = nowMs ?? HighResNowMs();
             long elapsed = now - _lastDlrSampleMs;
-            if (elapsed < 500)
+            if (elapsed < 200)
                 return;
             _lastDlrSampleMs = now;
 
@@ -533,12 +584,12 @@ namespace ClickIt.Shared.Diagnostics
             _dlrFailPercent = failDelta * 100.0 / callsDelta;
         }
 
-        // Per-feature GC allocation-rate sampling on the same 500ms cadence as the DLR reads: the bytes recorded since the last sample, divided by the window, become that section's bytes/sec for the buffer (10s expiry, 10-sample average, max over the live window). nowMs is injectable for tests; production uses Environment.TickCount64.
+        // Per-feature GC allocation-rate sampling on a 200ms cadence (called every render frame via UpdateFPS): the bytes recorded since the last sample, divided by the window, become that section's bytes/sec for the buffer (10s expiry, 10-sample average, max over the live window). A minimum window is required because per-frame allocation bursts are not a meaningful rate. nowMs is injectable for tests; production uses a high-resolution clock so the 200ms window is accurate.
         internal void SampleGcAllocationRates(long? nowMs = null)
         {
-            long now = nowMs ?? Environment.TickCount64;
+            long now = nowMs ?? HighResNowMs();
             long elapsed = now - _lastGcSampleMs;
-            if (elapsed < 500)
+            if (elapsed < 200)
                 return;
             _lastGcSampleMs = now;
 

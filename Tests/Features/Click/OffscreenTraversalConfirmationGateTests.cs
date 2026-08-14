@@ -12,11 +12,11 @@ namespace ClickIt.Tests.Features.Click
 
             bool firstDelayed = gate.ShouldDelay(target, "Metadata/Chests/Chest9", out long firstRemainingDelayMs);
 
-            now = 1125;
+            now = 1055;
             bool secondDelayed = gate.ShouldDelay(target, "Metadata/Chests/Chest9", out long secondRemainingDelayMs);
 
             firstDelayed.Should().BeTrue();
-            firstRemainingDelayMs.Should().Be(120);
+            firstRemainingDelayMs.Should().Be(50);
             secondDelayed.Should().BeFalse();
             secondRemainingDelayMs.Should().Be(0);
         }
@@ -36,7 +36,7 @@ namespace ClickIt.Tests.Features.Click
             bool delayedAfterReset = gate.ShouldDelay(target, "Metadata/Chests/Chest9", out long remainingDelayMs);
 
             delayedAfterReset.Should().BeTrue();
-            remainingDelayMs.Should().Be(120);
+            remainingDelayMs.Should().Be(50);
         }
 
         [TestMethod]
@@ -52,7 +52,7 @@ namespace ClickIt.Tests.Features.Click
             bool delayed = gate.ShouldDelay(target, "Metadata/Chests/Chest10", out long remainingDelayMs);
 
             delayed.Should().BeTrue();
-            remainingDelayMs.Should().Be(120);
+            remainingDelayMs.Should().Be(50);
         }
     }
 }

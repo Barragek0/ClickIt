@@ -2,7 +2,7 @@ namespace ClickIt.Features.Click.Runtime
 {
     internal sealed class OffscreenTraversalConfirmationGate(Func<long>? getTimestampMs = null)
     {
-        private const int ConfirmationWindowMs = 120;
+        private const int ConfirmationWindowMs = 50;
 
         private readonly Func<long> _getTimestampMs = getTimestampMs ?? (() => Environment.TickCount64);
         private long _pendingTargetAddress;

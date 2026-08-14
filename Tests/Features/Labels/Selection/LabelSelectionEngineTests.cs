@@ -83,5 +83,34 @@ namespace ClickIt.Tests.Features.Labels.Selection
                 "the would-be-best label is suppressed, so the next best acceptable label must be picked in the single pass");
             result.Stats.ConsideredCandidates.Should().Be(3);
         }
+
+        [TestMethod]
+        public void SelectNextLabelByPriority_ScanEntryOverload_ResolvesEachLabelOnce_AndPicksBest()
+        {
+            // Regression: the production path resolves candidate + rank from ONE scan entry per label (the
+            // live distance/rect DLR reads happen once, not twice) - the result must match the two-resolver
+            // overload while touching the resolver a single time per label.
+            LabelOnGround near = CreateLabel();
+            LabelOnGround far = CreateLabel();
+            IReadOnlyList<LabelOnGround> labels = [far, near];
+            int resolves = 0;
+
+            LabelSelectionResult result = LabelSelectionEngine.SelectNextLabelByPriority(
+                labels,
+                startIndex: 0,
+                endExclusive: labels.Count,
+                CreateClickSettings(),
+                label =>
+                {
+                    resolves++;
+                    bool isNear = ReferenceEquals(label, near);
+                    return new LabelScanEntry(
+                        CreateSuccessfulCandidate("items"),
+                        new LabelRankInput(isNear ? 1f : 100f, 0f));
+                });
+
+            result.SelectedCandidate.Should().BeSameAs(near);
+            resolves.Should().Be(2, "each label is resolved exactly once");
+        }
     }
 }

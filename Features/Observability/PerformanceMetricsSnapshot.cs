@@ -51,7 +51,10 @@ namespace ClickIt.Features.Observability
         double AcquireMs = 0,
         double RankMs = 0,
         double ExecuteMs = 0,
-        double PostMs = 0);
+        double PostMs = 0,
+        long AltarBytes = 0,
+        double AltarMs = 0,
+        double OtherMs = 0);
 
     public readonly record struct TimingStageSnapshot(double LastMs, double AvgMs, double MaxMs);
 
@@ -79,7 +82,10 @@ namespace ClickIt.Features.Observability
         TimingStageSnapshot AcquireTime = default,
         TimingStageSnapshot RankTime = default,
         TimingStageSnapshot ExecuteTime = default,
-        TimingStageSnapshot PostTime = default);
+        TimingStageSnapshot PostTime = default,
+        AllocationStageSnapshot Altar = default,
+        TimingStageSnapshot AltarTime = default,
+        TimingStageSnapshot OtherTime = default);
 
     // Process + managed-heap memory picture. ProcessWorkingSetMb is the WHOLE process (game + ExileCore/ExileApi + plugin), so per-feature attribution is not possible — the GC table's alloc/s column is the per-feature allocation proxy instead. GcPause* carries the recent blocking GC pause picture (last/avg/max ms + pause-time % of the last observed window), which is what actually stalls all threads when the plugin churns the heap. DlrReads* carries the recent DynamicAccess read picture — reads/sec plus the actual ms/sec spent inside the dynamic reads (the freeze-relevant cost) — with the share of reads that failed (%).
     internal readonly record struct MemoryMetricsSnapshot(
@@ -119,6 +125,9 @@ namespace ClickIt.Features.Observability
         double BytesLastPerSec = 0,
         double BytesAvgPerSec = 0,
         double BytesMaxPerSec = 0);
+
+    // Observed interval between consecutive marks of one periodic event (click run, blight refresh, label scan), in ms.
+    internal readonly record struct IntervalTimingSnapshot(double LastMs, double AvgMs, double MaxMs, long SampleCount);
 
     internal readonly record struct TimingMetricsSnapshot(
         double LastMs,
@@ -184,7 +193,8 @@ namespace ClickIt.Features.Observability
         ClickAllocationStats ClickAllocation = default,
         MemoryMetricsSnapshot Memory = default,
         IReadOnlyDictionary<ProcessingSection, BreakdownStats>? Breakdowns = null,
-        TimingMetricsSnapshot ClickSleepTiming = default)
+        TimingMetricsSnapshot ClickSleepTiming = default,
+        IReadOnlyDictionary<IntervalKind, IntervalTimingSnapshot>? Intervals = null)
     {
         public GcAllocationSnapshot GetAllocationSection(ProcessingSection section)
             => Allocations != null && Allocations.TryGetValue(section, out GcAllocationSnapshot value)

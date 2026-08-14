@@ -15,6 +15,34 @@ namespace ClickIt.Tests.Features.Click.Interaction
         }
 
         [TestMethod]
+        public void PerformClick_MarksClickInterval_WhenClickIsDispatched()
+        {
+            var settings = new ClickItSettings();
+            var monitor = new PerformanceMonitor(settings);
+            var executor = new InteractionExecutor(settings, monitor, () => true);
+
+            executor.PerformClick(new Vector2(50f, 50f));
+            executor.PerformClick(new Vector2(50f, 50f));
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+            snapshot.Intervals.Should().NotBeNull();
+            snapshot.Intervals.Should().ContainKey(IntervalKind.Click);
+            snapshot.Intervals![IntervalKind.Click].SampleCount.Should().Be(1);
+        }
+
+        [TestMethod]
+        public void PerformClick_DoesNotMarkClickInterval_WhenClickIsRejected()
+        {
+            var settings = new ClickItSettings();
+            var monitor = new PerformanceMonitor(settings);
+            var executor = new InteractionExecutor(settings, monitor, () => false);
+
+            executor.PerformClick(new Vector2(50f, 50f));
+
+            monitor.GetDebugSnapshot().Intervals.Should().NotContainKey(IntervalKind.Click);
+        }
+
+        [TestMethod]
         public void PerformClick_LogsAndReturns_WhenLazyModeLimiterIsActive()
         {
             var settings = new ClickItSettings();

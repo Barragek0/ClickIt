@@ -58,6 +58,16 @@ namespace ClickIt.Shared.Rendering
                     if (channel is { } activeChannel)
                         _performanceMonitor?.StartCoroutineTiming(activeChannel);
 
+                    switch (_overlay.ProcessingSection)
+                    {
+                        case ProcessingSection.Blight:
+                            _performanceMonitor?.MarkInterval(IntervalKind.Blight);
+                            break;
+                        case ProcessingSection.Ultimatum:
+                            _performanceMonitor?.MarkInterval(IntervalKind.Ultimatum);
+                            break;
+                    }
+
                     long start = Stopwatch.GetTimestamp();
                     long allocStart = GC.GetAllocatedBytesForCurrentThread();
                     try

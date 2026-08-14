@@ -147,15 +147,6 @@ namespace ClickIt.Features.Labels.Application
             });
         }
 
-        private LabelCandidateBuildResult BuildLabelCandidateCached(LabelOnGround label, ClickSettings clickSettings)
-            => GetOrBuildScanEntry(label, clickSettings).Candidate;
-
-        private LabelRankInput ResolveRankInputCached(LabelOnGround label, ClickSettings clickSettings)
-        {
-            CachedLabelScanEntry entry = GetOrBuildScanEntry(label, clickSettings);
-            return new LabelRankInput(entry.Distance, ComputeCursorDistance(entry.Rect, entry.HasRect));
-        }
-
         private CachedLabelScanEntry GetOrBuildScanEntry(LabelOnGround label, ClickSettings clickSettings)
         {
             long address = label.Address;
@@ -241,13 +232,20 @@ namespace ClickIt.Features.Labels.Application
         {
             int start = SystemMath.Max(0, startIndex);
             int end = SystemMath.Min(allLabels.Count, endExclusive);
+            // One GetOrBuildScanEntry per label (candidate + rank together) halves the per-label live DLR reads
+            // (distance + label rect) that dominate the LabelScan stage.
             LabelSelectionResult selection = LabelSelectionEngine.SelectNextLabelByPriority(
                 allLabels,
                 start,
                 end,
                 clickSettings,
-                label => BuildLabelCandidateCached(label, clickSettings),
-                label => ResolveRankInputCached(label, clickSettings),
+                label =>
+                {
+                    CachedLabelScanEntry entry = GetOrBuildScanEntry(label, clickSettings);
+                    return new LabelScanEntry(
+                        entry.Candidate,
+                        new LabelRankInput(entry.Distance, ComputeCursorDistance(entry.Rect, entry.HasRect)));
+                },
                 isAcceptable);
 
             LabelOnGround? selected = selection.SelectedCandidate;

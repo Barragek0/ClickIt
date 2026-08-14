@@ -495,6 +495,42 @@ namespace ClickIt.Tests.Features.Observability.Performance
         }
 
         [TestMethod]
+        public void MarkInterval_ExposesIntervalInSnapshot()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+            monitor.MarkInterval(IntervalKind.Click);
+            monitor.MarkInterval(IntervalKind.Click);
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+            snapshot.Intervals.Should().NotBeNull();
+            snapshot.Intervals.Should().ContainKey(IntervalKind.Click);
+            snapshot.Intervals![IntervalKind.Click].SampleCount.Should().Be(1);
+        }
+
+        [TestMethod]
+        public void ClickClock_TracksTimeToClick_AndElapsedSinceLastClick()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            monitor.MarkClickRunStart();
+            Thread.Sleep(10);
+            monitor.RecordClickDispatch();
+
+            monitor.GetAverageTimeToClickMs().Should().BeGreaterThanOrEqualTo(5);
+            monitor.GetElapsedSinceLastClickMs().Should().BeLessThan(1000);
+        }
+
+        [TestMethod]
+        public void RecordClickDispatch_WithoutRunStart_DoesNotRecordTimeToClick()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            monitor.RecordClickDispatch();
+
+            monitor.GetAverageTimeToClickMs().Should().Be(0);
+        }
+
+        [TestMethod]
         public void GameStateDump_SectionFlowsThroughProcessingAndAllocations()
         {
             var monitor = new PerformanceMonitor(new ClickItSettings());
@@ -511,30 +547,27 @@ namespace ClickIt.Tests.Features.Observability.Performance
         }
 
         [TestMethod]
-        public void BlightExecutorStage_RecordsOnlyExecutorStage_ThroughMonitor()
+        public void BlightBreakdown_MergesRefreshScanAndOffRefreshWork_ThroughMonitor()
         {
             var monitor = new PerformanceMonitor(new ClickItSettings());
 
-            Span<long> bytes = stackalloc long[3];
-            Span<double> ms = stackalloc double[3];
-            bytes[0] = 100; bytes[1] = 200; bytes[2] = 300;
-            ms[0] = 1.0; ms[1] = 2.0; ms[2] = 3.0;
+            Span<long> bytes = stackalloc long[1];
+            Span<double> ms = stackalloc double[1];
+            bytes[0] = 600;
+            ms[0] = 6.0;
             monitor.RecordBreakdown(ProcessingSection.Blight, bytes, ms);
-            monitor.RecordBreakdownStage(ProcessingSection.Blight, PerformanceMonitor.BlightExecutorStageIndex, 4096, 7.5);
+            monitor.RecordBreakdownStage(ProcessingSection.Blight, PerformanceMonitor.BlightEventsStageIndex, 4096, 7.5);
             monitor.RecordBreakdownStage(ProcessingSection.Blight, PerformanceMonitor.BlightEventsStageIndex, 512, 0.9);
 
             PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
             BreakdownStats stats = snapshot.Breakdowns![ProcessingSection.Blight];
-            stats.Stages.Should().HaveCount(5);
-            stats.Stages[3].Name.Should().Be("Executor");
-            stats.Stages[3].Allocation.AvgBytesPerRun.Should().Be(4096);
-            stats.Stages[3].Time.AvgMs.Should().Be(7.5);
-            stats.Stages[4].Name.Should().Be("Events");
-            stats.Stages[4].Allocation.AvgBytesPerRun.Should().Be(512);
-            stats.Stages[4].Time.AvgMs.Should().Be(0.9);
-            stats.Stages[0].Allocation.AvgBytesPerRun.Should().Be(100);
-            stats.Stages[1].Allocation.AvgBytesPerRun.Should().Be(200);
-            stats.Stages[2].Allocation.AvgBytesPerRun.Should().Be(300);
+            stats.Stages.Should().HaveCount(2);
+            stats.Stages[0].Name.Should().Be("Scan");
+            stats.Stages[0].Allocation.AvgBytesPerRun.Should().Be(600);
+            stats.Stages[0].Time.AvgMs.Should().Be(6.0);
+            stats.Stages[1].Name.Should().Be("Events");
+            stats.Stages[1].Allocation.AvgBytesPerRun.Should().Be((4096 + 512) / 2.0);
+            stats.Stages[1].Time.AvgMs.Should().Be((7.5 + 0.9) / 2.0);
         }
 
         [TestMethod]

@@ -6,6 +6,7 @@ namespace ClickIt.Features.Labels.Selection
         private readonly Action<double>? _recordProcessingMs;
         private readonly Action<long>? _recordAllocationBytes;
         private readonly Action<LabelScanAllocationBreakdown>? _recordAllocationBreakdown;
+        private readonly Action? _markScan;
 
         public TimeCache<List<LabelOnGround>> CachedLabels { get; }
 
@@ -22,12 +23,13 @@ namespace ClickIt.Features.Labels.Selection
         private readonly StableLabelSetCache _stableSet = new();
         private readonly List<LabelOnGround> _emptyLabels = [];
 
-        public LabelReadModelService(GameController gameController, Action<double>? recordProcessingMs = null, Action<long>? recordAllocationBytes = null, Action<LabelScanAllocationBreakdown>? recordAllocationBreakdown = null)
+        public LabelReadModelService(GameController gameController, Action<double>? recordProcessingMs = null, Action<long>? recordAllocationBytes = null, Action<LabelScanAllocationBreakdown>? recordAllocationBreakdown = null, Action? markScan = null)
         {
             _gameController = gameController;
             _recordProcessingMs = recordProcessingMs;
             _recordAllocationBytes = recordAllocationBytes;
             _recordAllocationBreakdown = recordAllocationBreakdown;
+            _markScan = markScan;
             CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, 50);
         }
 
@@ -38,6 +40,7 @@ namespace ClickIt.Features.Labels.Selection
 
         public List<LabelOnGround> UpdateLabelComponent()
         {
+            _markScan?.Invoke();
             lock (_scanLock)
             {
                 using (new DlrReadScope(ProcessingSection.Label))

@@ -38,6 +38,8 @@ namespace ClickIt.Features.Click
         internal Func<Vector2, string, bool> PointIsInClickableArea { get; }
         internal Func<Vector2, string, bool> ForceRefreshPointIsInClickableArea { get; }
 
+        private readonly ClickSuccessAnchor _clickSuccessAnchor = new();
+
 
 
         internal ClickAutomationPort(

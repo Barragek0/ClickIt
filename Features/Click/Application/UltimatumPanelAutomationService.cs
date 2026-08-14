@@ -51,14 +51,14 @@ namespace ClickIt.Features.Click.Application
             {
                 clickedAny = true;
                 clickedChoice = true;
-                Thread.Sleep(UltimatumChoiceToBeginDelayMs);
+                ClickPipelineTiming.Sleep(UltimatumChoiceToBeginDelayMs);
             }
 
             if (TryClickPanelConfirm(panelObj, windowTopLeft))
             {
                 clickedAny = true;
                 clickedConfirm = true;
-                Thread.Sleep(UltimatumPostBeginDelayMs);
+                ClickPipelineTiming.Sleep(UltimatumPostBeginDelayMs);
             }
 
             automation.PublishUltimatumDebug(new UltimatumDebugEvent("PanelHandled", "PanelUi", true, false)
@@ -130,7 +130,7 @@ namespace ClickIt.Features.Click.Application
 
             bool clickedAny = clickedConfirm || clickedTakeRewards;
             if (clickedAny)
-                Thread.Sleep(UltimatumPostBeginDelayMs);
+                ClickPipelineTiming.Sleep(UltimatumPostBeginDelayMs);
 
             string note = decision.Saturation.Action == GruelingGauntletAction.TakeRewards
                 ? (clickedTakeRewards ? "Take Rewards clicked" : "Take Rewards action selected but click failed")

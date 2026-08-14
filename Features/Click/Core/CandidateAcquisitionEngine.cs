@@ -16,9 +16,10 @@ namespace ClickIt.Features.Click.Core
             {
                 long mechanicStart = GC.GetAllocatedBytesForCurrentThread();
                 long mechanicTimestamp = Stopwatch.GetTimestamp();
+                double mechanicSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
                 VisibleMechanicSelectionSnapshot hiddenFallbackSelection = _dependencies.VisibleMechanics.GetHiddenFallbackSelectionSnapshot();
                 long mechanicBytes = GC.GetAllocatedBytesForCurrentThread() - mechanicStart;
-                double mechanicMs = GetElapsedMs(mechanicTimestamp);
+                double mechanicMs = GetElapsedMs(mechanicTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - mechanicSleepBefore);
                 _dependencies.RecordBreakdownStage?.Invoke(PerformanceMonitor.ClickMechanicScanStageIndex, mechanicBytes, mechanicMs);
                 if (captureClickDebug)
                     _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("GroundItemsHidden",
@@ -26,12 +27,13 @@ namespace ClickIt.Features.Click.Core
 
                 long labelScanStart = GC.GetAllocatedBytesForCurrentThread();
                 long labelScanTimestamp = Stopwatch.GetTimestamp();
+                double labelScanSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
                 LabelOnGround? hiddenLabel = _dependencies.LabelSelectionScan.ResolveNextLabelCandidate(context.AllLabels);
                 string? hiddenLabelMechanicId = hiddenLabel != null
                     ? _dependencies.LabelInteractionPort.GetMechanicIdForLabel(hiddenLabel)
                     : null;
                 long labelScanBytes = GC.GetAllocatedBytesForCurrentThread() - labelScanStart;
-                double labelScanMs = GetElapsedMs(labelScanTimestamp);
+                double labelScanMs = GetElapsedMs(labelScanTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - labelScanSleepBefore);
                 _dependencies.RecordBreakdownStage?.Invoke(PerformanceMonitor.ClickLabelScanStageIndex, labelScanBytes, labelScanMs);
 
                 if (hiddenLabel != null)
@@ -51,9 +53,10 @@ namespace ClickIt.Features.Click.Core
 
             long visMechanicStart = GC.GetAllocatedBytesForCurrentThread();
             long visMechanicTimestamp = Stopwatch.GetTimestamp();
+            double visMechanicSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
             VisibleMechanicSelectionSnapshot visibleMechanicSelection = _dependencies.VisibleMechanics.GetVisibleMechanicSelectionSnapshotForLabels(context.AllLabels);
             long visMechanicBytes = GC.GetAllocatedBytesForCurrentThread() - visMechanicStart;
-            double visMechanicMs = GetElapsedMs(visMechanicTimestamp);
+            double visMechanicMs = GetElapsedMs(visMechanicTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - visMechanicSleepBefore);
             _dependencies.RecordBreakdownStage?.Invoke(PerformanceMonitor.ClickMechanicScanStageIndex, visMechanicBytes, visMechanicMs);
             if (captureClickDebug)
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("LabelSource", labelSourceSummary, null);
@@ -61,12 +64,13 @@ namespace ClickIt.Features.Click.Core
 
             long visLabelScanStart = GC.GetAllocatedBytesForCurrentThread();
             long visLabelScanTimestamp = Stopwatch.GetTimestamp();
+            double visLabelScanSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
             LabelOnGround? nextLabel = _dependencies.LabelSelectionScan.ResolveNextLabelCandidate(context.AllLabels);
             string? nextLabelMechanicId = nextLabel != null
                 ? _dependencies.LabelInteractionPort.GetMechanicIdForLabel(nextLabel)
                 : null;
             long visLabelScanBytes = GC.GetAllocatedBytesForCurrentThread() - visLabelScanStart;
-            double visLabelScanMs = GetElapsedMs(visLabelScanTimestamp);
+            double visLabelScanMs = GetElapsedMs(visLabelScanTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - visLabelScanSleepBefore);
             _dependencies.RecordBreakdownStage?.Invoke(PerformanceMonitor.ClickLabelScanStageIndex, visLabelScanBytes, visLabelScanMs);
 
             if (nextLabel != null)

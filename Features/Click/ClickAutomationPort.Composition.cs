@@ -210,6 +210,7 @@ namespace ClickIt.Features.Click
                 ClickAutomationSupport.HoldDebugTelemetryAfterSuccessfulInteraction,
                 services.ClickDebugPublisher,
                 PointIsInClickableArea,
+                _clickSuccessAnchor,
                 pos => IsBlightBuildOrUpgradeIconAt(pos));
         }
 
@@ -237,6 +238,7 @@ namespace ClickIt.Features.Click
                 _inputHandler,
                 breakdown => _performanceMonitor.RecordClickAllocation(breakdown),
                 (index, bytes, ms) => _performanceMonitor.RecordBreakdownStage(ProcessingSection.Click, index, bytes, ms),
+                _clickSuccessAnchor,
                 GetHarvestLabelToClick,
                 TryProgressBlightBuilding,
                 GetBlightPathfindTarget,

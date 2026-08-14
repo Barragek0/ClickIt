@@ -53,7 +53,8 @@ namespace ClickIt.Core.Bootstrap
                 gameController,
                 ms => performanceMonitor.RecordProcessingTiming(ProcessingSection.Label, ms),
                 bytes => performanceMonitor.RecordAllocation(ProcessingSection.Label, bytes),
-                breakdown => performanceMonitor.RecordLabelScanAllocation(breakdown));
+                breakdown => performanceMonitor.RecordLabelScanAllocation(breakdown),
+                () => performanceMonitor.MarkInterval(IntervalKind.Label));
             TimeCache<List<LabelOnGround>> cachedLabels = labelReadModelService.CachedLabels;
 
             AltarService altarService = new(owner, settings, cachedLabels,
@@ -77,7 +78,7 @@ namespace ClickIt.Core.Bootstrap
                 settings,
                 point => areaService.PointIsInClickableArea(gameController, point),
                 (ReadOnlySpan<long> bytes, ReadOnlySpan<double> ms) => performanceMonitor.RecordBreakdown(ProcessingSection.Blight, bytes, ms),
-                (bytes, ms) => performanceMonitor.RecordBreakdownStage(ProcessingSection.Blight, PerformanceMonitor.BlightExecutorStageIndex, bytes, ms),
+                (bytes, ms) => performanceMonitor.RecordBreakdownStage(ProcessingSection.Blight, PerformanceMonitor.BlightEventsStageIndex, bytes, ms),
                 (bytes, ms) => performanceMonitor.RecordBreakdownStage(ProcessingSection.Blight, PerformanceMonitor.BlightEventsStageIndex, bytes, ms));
 
             return new CoreDomainServices(

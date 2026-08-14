@@ -47,10 +47,46 @@ public class PerformanceInGameOverlayTests
         overlay.Draw(CreateContext(textQueue));
 
         string[] lines = textQueue.GetPendingTextSnapshot();
-        // The render, CR ms/f, processing, DLR and GC tables keep "Last/Avg/Max" columns, matching the timing tables (the GC table shows byte/s in those same columns).
-        lines.Count(l => l == "Last").Should().Be(5);
-        lines.Count(l => l == "Avg").Should().Be(5);
-        lines.Count(l => l == "Max").Should().Be(5);
+        // The render, CR ms/f, interval, processing, DLR and GC tables keep "Last/Avg/Max" columns, matching the timing tables (the GC table shows byte/s in those same columns).
+        lines.Count(l => l == "Last").Should().Be(6);
+        lines.Count(l => l == "Avg").Should().Be(6);
+        lines.Count(l => l == "Max").Should().Be(6);
+    }
+
+    [TestMethod]
+    public void Draw_EnqueuesTotalRow_ForEveryTimingTable()
+    {
+        var settings = new ClickItSettings();
+        var monitor = new PerformanceMonitor(settings);
+        monitor.RecordFpsSample(120);
+        monitor.RecordRenderSectionTiming(RenderSection.AltarOverlay, 1.0);
+
+        var overlay = new PerformanceInGameOverlay(() => monitor.GetDebugSnapshot());
+        var textQueue = new DeferredTextQueue();
+
+        overlay.Draw(CreateContext(textQueue));
+
+        string[] lines = textQueue.GetPendingTextSnapshot();
+        // Render, coroutine, DLR, process and GC tables each render a "Total" row in the debug-box format, plus the click-frequency block's own indented Total (the interval table has no total).
+        lines.Count(l => l == "Total").Should().Be(6);
+    }
+
+    [TestMethod]
+    public void Draw_EnqueuesIntervalTable_WhenFpsDataPresent()
+    {
+        var settings = new ClickItSettings();
+        var monitor = new PerformanceMonitor(settings);
+        monitor.RecordFpsSample(120);
+        monitor.MarkInterval(IntervalKind.Click);
+        monitor.MarkInterval(IntervalKind.Click);
+
+        var overlay = new PerformanceInGameOverlay(() => monitor.GetDebugSnapshot());
+        var textQueue = new DeferredTextQueue();
+
+        overlay.Draw(CreateContext(textQueue));
+
+        string[] lines = textQueue.GetPendingTextSnapshot();
+        lines.Should().Contain("Interval ms");
     }
 
     [TestMethod]
@@ -106,11 +142,11 @@ public class PerformanceInGameOverlayTests
         var monitor = new PerformanceMonitor(settings);
         monitor.RecordFpsSample(120);
 
-        // Blight breakdown stages: Entities/Foundations/Coverage/Events allocate, Executor (index 3) never allocates and must not appear in the GC table.
-        Span<long> bytes = stackalloc long[5];
-        Span<double> ms = stackalloc double[5];
-        bytes[0] = 4096; bytes[1] = 2048; bytes[2] = 1024; bytes[3] = 0; bytes[4] = 512;
-        ms[0] = 1; ms[1] = 2; ms[2] = 3; ms[3] = 4; ms[4] = 5;
+        // Blight breakdown stages: Scan allocates, Events never allocates and must not appear in the GC byte table (only in the process time table).
+        Span<long> bytes = stackalloc long[2];
+        Span<double> ms = stackalloc double[2];
+        bytes[0] = 4096; bytes[1] = 0;
+        ms[0] = 1; ms[1] = 4;
         monitor.RecordBreakdown(ProcessingSection.Blight, bytes, ms);
 
         var overlay = new PerformanceInGameOverlay(() => monitor.GetDebugSnapshot());
@@ -120,12 +156,10 @@ public class PerformanceInGameOverlayTests
 
         string[] lines = textQueue.GetPendingTextSnapshot();
         lines.Should().Contain("GC byte/s");
-        lines.Should().Contain("Entities");
-        lines.Should().Contain("Foundations");
-        lines.Should().Contain("Coverage");
+        lines.Should().Contain("Scan");
         lines.Should().Contain("Events");
-        // The process table keeps the Executor TIME row; the GC table must skip the 0-byte stage, so "Executor" appears exactly once instead of once per table.
-        lines.Count(l => l == "Executor").Should().Be(1);
+        // The process table keeps the Events TIME row; the GC table must skip the 0-byte stage, so "Events" appears exactly once instead of once per table.
+        lines.Count(l => l == "Events").Should().Be(1);
     }
 
     [TestMethod]

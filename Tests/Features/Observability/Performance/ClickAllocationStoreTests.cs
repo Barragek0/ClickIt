@@ -28,6 +28,29 @@ public class ClickAllocationStoreTests
     }
 
     [TestMethod]
+    public void Record_AndGetStats_ReportAltarAndOtherTimeStages()
+    {
+        var store = new ClickAllocationStore();
+
+        store.Record(new ClickAllocationBreakdown(
+            ContextBytes: 0, AcquireBytes: 0, RankBytes: 0, ExecuteBytes: 0, PostBytes: 0,
+            AltarBytes: 8 * 1024 * 1024, AltarMs: 108.0, OtherMs: 2.5));
+        store.Record(new ClickAllocationBreakdown(
+            ContextBytes: 128, AcquireBytes: 256, RankBytes: 0, ExecuteBytes: 512, PostBytes: 0,
+            OtherBytes: 64, TotalBytes: 128 + 256 + 512 + 64, OtherMs: 1.0));
+
+        ClickAllocationStats stats = store.GetStats();
+
+        stats.SampleCount.Should().Be(2);
+        stats.Altar.AvgBytesPerRun.Should().Be(4 * 1024 * 1024);
+        stats.AltarTime.AvgMs.Should().Be(54.0);
+        stats.AltarTime.LastMs.Should().Be(0, "the second run has no altar work");
+        stats.OtherTime.AvgMs.Should().Be(1.75);
+        stats.OtherTime.LastMs.Should().Be(1.0);
+        stats.Other.AvgBytesPerRun.Should().Be(32.0);
+    }
+
+    [TestMethod]
     public void GetStats_NoSamples_ReturnsEmptyStats()
     {
         var store = new ClickAllocationStore();

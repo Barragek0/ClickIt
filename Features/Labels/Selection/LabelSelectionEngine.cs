@@ -9,6 +9,11 @@ namespace ClickIt.Features.Labels.Selection
     // Distance + cursor distance for ranking. Production resolves both from a per-label cache keyed on the label address (the DLR reads behind each are the dominant Click-Acquire allocation); tests supply plain values.
     internal readonly record struct LabelRankInput(float Distance, float CursorDistance);
 
+    // Combined per-label scan entry: the candidate build + rank input come from ONE resolution so the
+    // selection pass reads the label's live distance/rect a single time (the DLR reads behind them are
+    // the dominant LabelScan cost; resolving them twice per label doubled that).
+    internal readonly record struct LabelScanEntry(LabelCandidateBuildResult Candidate, LabelRankInput Rank);
+
     internal readonly record struct LabelSelectionStats(
         int ConsideredCandidates,
         int NullOrDistanceRejected,
@@ -62,6 +67,21 @@ namespace ClickIt.Features.Labels.Selection
             Func<LabelOnGround, LabelCandidateBuildResult> candidateBuilder,
             Func<LabelOnGround, LabelRankInput> rankInputResolver,
             Func<LabelOnGround, LabelCandidateBuildResult, bool>? isAcceptable = null)
+            => SelectNextLabelByPriority(
+                allLabels,
+                startIndex,
+                endExclusive,
+                clickSettings,
+                label => new LabelScanEntry(candidateBuilder(label), rankInputResolver(label)),
+                isAcceptable);
+
+        public static LabelSelectionResult SelectNextLabelByPriority(
+            IReadOnlyList<LabelOnGround> allLabels,
+            int startIndex,
+            int endExclusive,
+            ClickSettings clickSettings,
+            Func<LabelOnGround, LabelScanEntry> scanEntryResolver,
+            Func<LabelOnGround, LabelCandidateBuildResult, bool>? isAcceptable = null)
         {
             if (allLabels.Count == 0)
                 return default;
@@ -88,7 +108,8 @@ namespace ClickIt.Features.Labels.Selection
                 LabelOnGround label = allLabels[i];
                 stats = stats.IncrementConsidered();
 
-                LabelCandidateBuildResult candidate = candidateBuilder(label);
+                LabelScanEntry entry = scanEntryResolver(label);
+                LabelCandidateBuildResult candidate = entry.Candidate;
                 if (!candidate.Success)
                 {
                     stats = stats.AddReject(candidate.RejectReason);
@@ -101,7 +122,7 @@ namespace ClickIt.Features.Labels.Selection
                 if (isAcceptable != null && !isAcceptable(label, candidate))
                     continue;
 
-                LabelRankInput rankInput = rankInputResolver(label);
+                LabelRankInput rankInput = entry.Rank;
                 MechanicCandidateRanker.CandidateRank score = MechanicCandidateRanker.Build(
                     rankInput.Distance,
                     candidate.MechanicId,

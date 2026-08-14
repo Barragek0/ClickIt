@@ -14,6 +14,7 @@ namespace ClickIt.Features.Click.Runtime
         Action<string> HoldDebugTelemetryAfterSuccess,
         ClickDebugPublicationService ClickDebugPublisher,
         Func<Vector2, string, bool> PointIsInClickableArea,
+        ClickSuccessAnchor? ClickSuccessAnchor = null,
         Func<Vector2, bool>? IsBlightBuildOrUpgradeIconAt = null,
         IOffscreenRuntimeSeam? RuntimeSeam = null);
 
@@ -122,6 +123,16 @@ namespace ClickIt.Features.Click.Runtime
             }
 
             PublishOffscreenMovementDebug(context.Target, context.TargetPath, builtPath, resolvedFromPath, true, targetScreen, walkClick, "BeforeClick", movementSkillDebug);
+
+            // Pickup-to-next-pathfinding latency at the point the first walk click actually lands: the true
+            // delay between the last successful click (item picked up) and pathfinding resuming.
+            long now = Environment.TickCount64;
+            long lastClickAtMs = _dependencies.ClickSuccessAnchor?.Value ?? 0;
+            if (lastClickAtMs > 0 && now - lastClickAtMs < 5000)
+            {
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("WalkStartLatency",
+                    $"{now - lastClickAtMs}ms since last successful click | target={context.TargetPath}", null);
+            }
 
             Vector2 clickPos = ResolveBlightIconSafeClickPosition(walkClick, targetScreen, context.TargetPath);
             bool clicked = _dependencies.LabelInteraction.PerformMechanicClick(clickPos);

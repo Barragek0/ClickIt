@@ -342,6 +342,15 @@ namespace ClickIt.Features.Click.Core
 
             if (_dependencies.Settings.WalkTowardOffscreenLabels.Value)
             {
+                // Pickup-to-next-pathfinding latency: how long after the last successful click the walk path
+                // was reached (the delay the user sees between picking up an item and walking to the next).
+                long now = Environment.TickCount64;
+                long lastClickAtMs = _dependencies.ClickSuccessAnchor?.Value ?? 0;
+                if (lastClickAtMs > 0 && now - lastClickAtMs < 5000)
+                {
+                    _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("PickupToWalkLatency",
+                        $"{now - lastClickAtMs}ms since last successful click | labels={context.AllLabels?.Count ?? 0}", null);
+                }
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("VisibleFallbackWalk",
                     $"Calling TryWalkTowardOffscreenTarget (no target) with {context.AllLabels?.Count ?? 0} labels in context", null);
                 _dependencies.OffscreenPathing.TryWalkTowardOffscreenTarget();
@@ -389,13 +398,14 @@ namespace ClickIt.Features.Click.Core
 
             long resolveStart = GC.GetAllocatedBytesForCurrentThread();
             long resolveTimestamp = Stopwatch.GetTimestamp();
+            double resolveSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
             (bool resolved, Vector2 clickPos) = _dependencies.LabelInteraction.TryResolveLabelClickPositionResult(
                 nextLabel,
                 candidates.NextLabelMechanicId,
                 context.WindowTopLeft,
                 context.AllLabels);
             long resolveBytes = GC.GetAllocatedBytesForCurrentThread() - resolveStart;
-            double resolveMs = GetElapsedMs(resolveTimestamp);
+            double resolveMs = GetElapsedMs(resolveTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - resolveSleepBefore);
             RecordStage(PerformanceMonitor.ClickResolveStageIndex, resolveBytes, resolveMs);
             if (!resolved)
                 return HandleVisibleLabelResolveFailure(context, candidates, nextLabel);
@@ -415,9 +425,12 @@ namespace ClickIt.Features.Click.Core
 
             long inputStart = GC.GetAllocatedBytesForCurrentThread();
             long inputTimestamp = Stopwatch.GetTimestamp();
+            double inputSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
             bool clicked = _dependencies.LabelInteraction.PerformResolvedLabelInteraction(clickPos, nextLabel, candidates.NextLabelMechanicId);
             long inputBytes = GC.GetAllocatedBytesForCurrentThread() - inputStart;
-            double inputMs = GetElapsedMs(inputTimestamp);
+            // Exclude the intentional hover/post-click settle sleeps inside the click dispatch so Input shows
+            // the true processing cost (the host already reports those waits as the separate Sleep row).
+            double inputMs = GetElapsedMs(inputTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - inputSleepBefore);
             RecordStage(PerformanceMonitor.ClickInputStageIndex, inputBytes, inputMs);
 
             if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
@@ -435,6 +448,7 @@ namespace ClickIt.Features.Click.Core
 
             if (clicked)
             {
+                _dependencies.ClickSuccessAnchor?.Mark();
                 string mechanicDisplay = string.IsNullOrWhiteSpace(candidates.NextLabelMechanicId)
                     ? "visible-label-click"
                     : candidates.NextLabelMechanicId;

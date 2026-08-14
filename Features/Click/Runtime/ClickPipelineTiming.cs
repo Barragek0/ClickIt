@@ -8,13 +8,20 @@ namespace ClickIt.Features.Click.Runtime
 
         internal static void Sleep(int milliseconds)
         {
-            if (milliseconds > 0)
-                s_sleepTicks += milliseconds * TimeSpan.TicksPerMillisecond;
+            if (milliseconds <= 0)
+                return;
+            s_sleepTicks += milliseconds * TimeSpan.TicksPerMillisecond;
             Thread.Sleep(milliseconds);
         }
 
         internal static void ResetSleepTime()
             => s_sleepTicks = 0;
+
+        // Read-only probe: the accumulated safety-sleep time WITHOUT resetting, so per-stage performance
+        // measurements can subtract the deliberate waits that happened inside them while the host's
+        // ConsumeSleepTimeMs() still accounts for the full total once per tick.
+        internal static double ReadSleepTimeMs()
+            => s_sleepTicks / (double)TimeSpan.TicksPerMillisecond;
 
         internal static double ConsumeSleepTimeMs()
         {

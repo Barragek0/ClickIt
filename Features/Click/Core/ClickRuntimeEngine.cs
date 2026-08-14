@@ -30,6 +30,7 @@ namespace ClickIt.Features.Click.Core
         Action<string> HoldDebugTelemetryAfterSuccess,
         Action<string> DebugLog,
         Action<int, long, double>? RecordBreakdownStage = null,
+        ClickSuccessAnchor? ClickSuccessAnchor = null,
         Func<LabelOnGround?>? GetHarvestLabelToClick = null,
         Func<BlightBuildAction>? TryProgressBlightBuilding = null,
         Func<Entity?>? GetBlightPathfindTarget = null,
@@ -56,6 +57,7 @@ namespace ClickIt.Features.Click.Core
         InputHandler InputHandler,
         Action<ClickAllocationBreakdown>? RecordAllocationBreakdown = null,
         Action<int, long, double>? RecordBreakdownStage = null,
+        ClickSuccessAnchor? ClickSuccessAnchor = null,
         Func<LabelOnGround?>? GetHarvestLabelToClick = null,
         Func<BlightBuildAction>? TryProgressBlightBuilding = null,
         Func<Entity?>? GetBlightPathfindTarget = null,
@@ -126,6 +128,7 @@ namespace ClickIt.Features.Click.Core
                 dependencies.HoldDebugTelemetryAfterSuccess,
                 dependencies.DebugLog,
                 dependencies.RecordBreakdownStage,
+                dependencies.ClickSuccessAnchor,
                 dependencies.GetHarvestLabelToClick,
                 dependencies.TryProgressBlightBuilding,
                 dependencies.GetBlightPathfindTarget,
@@ -148,6 +151,7 @@ namespace ClickIt.Features.Click.Core
         {
             LastTickWasActionable = false;
             long runStart = GC.GetAllocatedBytesForCurrentThread();
+            long runTimestamp = Stopwatch.GetTimestamp();
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("TickStart", "ProcessRegularClick entered", null);
 
             if (_dependencies.AltarAutomation.HasClickableAltars())
@@ -155,60 +159,76 @@ namespace ClickIt.Features.Click.Core
                 LastTickWasActionable = true;
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("AltarBranch", "Clickable altar detected; regular label click path skipped", null);
                 long altarStart = GC.GetAllocatedBytesForCurrentThread();
+                long altarTimestamp = Stopwatch.GetTimestamp();
+                double altarSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
                 IEnumerator altar = _dependencies.AltarAutomation.ProcessAltarClicking();
                 while (altar.MoveNext())
                     yield return altar.Current;
                 long altarBytes = GC.GetAllocatedBytesForCurrentThread() - altarStart;
+                double altarMs = GetElapsedMs(altarTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - altarSleepBefore);
                 long total = GC.GetAllocatedBytesForCurrentThread() - runStart;
+                double totalMs = GetElapsedMs(runTimestamp) - ClickPipelineTiming.ReadSleepTimeMs();
+                // The altar branch replaces the whole click path; its processing time is its own stage and the
+                // remainder (run prelude / iterator overhead) lands in Other so the click table accounts for
+                // the entire run even when an altar consumes it. Both exclude the intentional safety sleeps.
                 _dependencies.RecordAllocationBreakdown?.Invoke(new ClickAllocationBreakdown(
-                    ContextBytes: 0, AcquireBytes: 0, RankBytes: 0, ExecuteBytes: altarBytes, PostBytes: 0,
-                    OtherBytes: SystemMath.Max(0, total - altarBytes), TotalBytes: total));
+                    ContextBytes: 0, AcquireBytes: 0, RankBytes: 0, ExecuteBytes: 0, PostBytes: 0,
+                    OtherBytes: SystemMath.Max(0, total - altarBytes), TotalBytes: total,
+                    AltarBytes: altarBytes,
+                    AltarMs: altarMs,
+                    OtherMs: SystemMath.Max(0, totalMs - altarMs)));
                 yield break;
             }
 
-            IEnumerator core = RunCore(runStart);
+            IEnumerator core = RunCore(runStart, runTimestamp);
             while (core.MoveNext())
                 yield return core.Current;
         }
 
-        private IEnumerator RunCore(long runStart)
+        private IEnumerator RunCore(long runStart, long runTimestamp)
         {
             long ctxStart = GC.GetAllocatedBytesForCurrentThread();
             long ctxTimestamp = Stopwatch.GetTimestamp();
+            double ctxSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
             if (!_dependencies.TickContextFactory.TryCreateRegularClickContext(out ClickTickContext context))
             {
                 long earlyCtxBytes = GC.GetAllocatedBytesForCurrentThread() - ctxStart;
                 long earlyTotal = GC.GetAllocatedBytesForCurrentThread() - runStart;
-                double earlyCtxMs = GetElapsedMs(ctxTimestamp);
+                double earlyCtxMs = GetElapsedMs(ctxTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - ctxSleepBefore);
+                double earlyTotalMs = GetElapsedMs(runTimestamp) - ClickPipelineTiming.ReadSleepTimeMs();
                 _dependencies.RecordAllocationBreakdown?.Invoke(new ClickAllocationBreakdown(
                     earlyCtxBytes, 0, 0, 0, 0, SystemMath.Max(0, earlyTotal - earlyCtxBytes), earlyTotal,
-                    ContextMs: earlyCtxMs));
+                    ContextMs: earlyCtxMs,
+                    OtherMs: SystemMath.Max(0, earlyTotalMs - earlyCtxMs)));
                 yield break;
             }
             long ctxBytes = GC.GetAllocatedBytesForCurrentThread() - ctxStart;
-            double ctxMs = GetElapsedMs(ctxTimestamp);
+            double ctxMs = GetElapsedMs(ctxTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - ctxSleepBefore);
             RecordStage(PerformanceMonitor.ClickContextStageIndex, ctxBytes, ctxMs);
 
             long acquireStart = GC.GetAllocatedBytesForCurrentThread();
             long acquireTimestamp = Stopwatch.GetTimestamp();
+            double acquireSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
             ClickCandidates candidates = _acquisitionPhase.Collect(context);
             long acquireBytes = GC.GetAllocatedBytesForCurrentThread() - acquireStart;
-            double acquireMs = GetElapsedMs(acquireTimestamp);
+            double acquireMs = GetElapsedMs(acquireTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - acquireSleepBefore);
 
             long rankStart = GC.GetAllocatedBytesForCurrentThread();
             long rankTimestamp = Stopwatch.GetTimestamp();
+            double rankSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
             RankingResult ranking = _rankingPhase.Rank(context, candidates);
             long rankBytes = GC.GetAllocatedBytesForCurrentThread() - rankStart;
-            double rankMs = GetElapsedMs(rankTimestamp);
+            double rankMs = GetElapsedMs(rankTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - rankSleepBefore);
             RecordStage(PerformanceMonitor.ClickRankStageIndex, rankBytes, rankMs);
 
             DecisionResult decision = Gate(candidates, ranking);
 
             long executeStart = GC.GetAllocatedBytesForCurrentThread();
             long executeTimestamp = Stopwatch.GetTimestamp();
+            double executeSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
             ExecutionResult executionResult = _executionPhase.Execute(context, candidates, decision);
             long executeBytes = GC.GetAllocatedBytesForCurrentThread() - executeStart;
-            double executeMs = GetElapsedMs(executeTimestamp);
+            double executeMs = GetElapsedMs(executeTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - executeSleepBefore);
             LastTickWasActionable = executionResult.DidActionableWork;
 
             long postBytes = 0;
@@ -217,20 +237,27 @@ namespace ClickIt.Features.Click.Core
             {
                 long postStart = GC.GetAllocatedBytesForCurrentThread();
                 long postTimestamp = Stopwatch.GetTimestamp();
+                double postSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
                 IEnumerator postActions = RunPostClickActions(_dependencies.InputHandler, executionResult);
                 while (postActions.MoveNext())
                     yield return postActions.Current;
                 postBytes = GC.GetAllocatedBytesForCurrentThread() - postStart;
-                postMs = GetElapsedMs(postTimestamp);
+                postMs = GetElapsedMs(postTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - postSleepBefore);
                 RecordStage(PerformanceMonitor.ClickPostStageIndex, postBytes, postMs);
             }
 
             long total = GC.GetAllocatedBytesForCurrentThread() - runStart;
             long stageSum = ctxBytes + acquireBytes + rankBytes + executeBytes + postBytes;
+            double totalMs = GetElapsedMs(runTimestamp) - ClickPipelineTiming.ReadSleepTimeMs();
+            double stageMsSum = ctxMs + acquireMs + rankMs + executeMs + postMs;
+            // OtherMs captures the processing outside the named stages (run prelude, debug-stage publishing,
+            // iterator machinery, coroutine yields between stages) so the stage timings account for the whole
+            // run; both total and stages exclude the intentional safety sleeps.
             _dependencies.RecordAllocationBreakdown?.Invoke(new ClickAllocationBreakdown(
                 ctxBytes, acquireBytes, rankBytes, executeBytes, postBytes,
                 SystemMath.Max(0, total - stageSum), total,
-                ContextMs: ctxMs, AcquireMs: acquireMs, RankMs: rankMs, ExecuteMs: executeMs, PostMs: postMs));
+                ContextMs: ctxMs, AcquireMs: acquireMs, RankMs: rankMs, ExecuteMs: executeMs, PostMs: postMs,
+                OtherMs: SystemMath.Max(0, totalMs - stageMsSum)));
         }
 
         private static double GetElapsedMs(long startTimestamp)

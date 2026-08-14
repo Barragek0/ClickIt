@@ -64,32 +64,21 @@ namespace ClickIt.Features.Blight
         public bool IsEnabled(ClickItSettings settings)
             => settings.ClickBlightTowers.Value;
 
-        // Coroutine thread — entity refresh + foundation scanning + lane coverage, off the render thread.
+        // Coroutine thread — entity refresh + foundation scanning + lane coverage, off the render thread (reported as one Scan stage).
         public void Refresh(OverlayRefreshContext ctx)
         {
-            long entityStart = Stopwatch.GetTimestamp();
-            long entityAllocStart = GC.GetAllocatedBytesForCurrentThread();
+            long scanStart = Stopwatch.GetTimestamp();
+            long scanAllocStart = GC.GetAllocatedBytesForCurrentThread();
             _blightService.RefreshEntities(ctx.GameController);
-            double entityMs = (Stopwatch.GetTimestamp() - entityStart) * 1000.0 / Stopwatch.Frequency;
-            long entityBytes = GC.GetAllocatedBytesForCurrentThread() - entityAllocStart;
-
-            long foundationStart = Stopwatch.GetTimestamp();
-            long foundationAllocStart = GC.GetAllocatedBytesForCurrentThread();
             _blightService.ScanFoundations(ctx.Labels);
-            double foundationMs = (Stopwatch.GetTimestamp() - foundationStart) * 1000.0 / Stopwatch.Frequency;
-            long foundationBytes = GC.GetAllocatedBytesForCurrentThread() - foundationAllocStart;
-
-            long coverageStart = Stopwatch.GetTimestamp();
-            long coverageAllocStart = GC.GetAllocatedBytesForCurrentThread();
             _blightService.ComputeLaneCoverage();
-            double coverageMs = (Stopwatch.GetTimestamp() - coverageStart) * 1000.0 / Stopwatch.Frequency;
-            long coverageBytes = GC.GetAllocatedBytesForCurrentThread() - coverageAllocStart;
+            double scanMs = (Stopwatch.GetTimestamp() - scanStart) * 1000.0 / Stopwatch.Frequency;
+            long scanBytes = GC.GetAllocatedBytesForCurrentThread() - scanAllocStart;
 
-            Span<long> bytes = stackalloc long[3];
-            Span<double> ms = stackalloc double[3];
-            bytes[0] = entityBytes; ms[0] = entityMs;
-            bytes[1] = foundationBytes; ms[1] = foundationMs;
-            bytes[2] = coverageBytes; ms[2] = coverageMs;
+            Span<long> bytes = stackalloc long[1];
+            Span<double> ms = stackalloc double[1];
+            bytes[0] = scanBytes;
+            ms[0] = scanMs;
             _blightService.RecordBreakdown(bytes, ms);
         }
 

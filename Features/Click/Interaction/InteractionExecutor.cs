@@ -12,6 +12,9 @@ namespace ClickIt.Features.Click.Interaction
         private readonly ErrorHandler? _errorHandler = errorHandler;
         private long _lastClickTimestampMs;
         private long _successfulClickSequence;
+        // Safety-sleep reading taken when a click starts, so the recorded click cost excludes the deliberate
+        // hover/post-click settles that happened inside it. Click thread only.
+        private double _clickSleepStartMs;
 
         internal long GetSuccessfulClickSequence()
             => Interlocked.Read(ref _successfulClickSequence);
@@ -25,6 +28,7 @@ namespace ClickIt.Features.Click.Interaction
             bool allowWhenHotkeyInactive = false,
             bool avoidCursorMove = false)
         {
+            _clickSleepStartMs = ClickPipelineTiming.ReadSleepTimeMs();
             if (!TryPrepareClickExecution(
                 position,
                 expectedElement,
@@ -45,11 +49,16 @@ namespace ClickIt.Features.Click.Interaction
             else
                 Mouse.LeftClick();
 
+            _performanceMonitor.MarkInterval(IntervalKind.Click);
+            _performanceMonitor.RecordClickDispatch();
             ClickPipelineTiming.Sleep(10);
             RestoreCursorIfLazyMode(before, gameController);
             MarkLazyModeClickCompleted();
             Interlocked.Increment(ref _successfulClickSequence);
-            _performanceMonitor.RecordSuccessfulClickTiming(swTotal.ElapsedMilliseconds);
+            // Exclude the safety sleeps (hover settle + post-click settle) so the recorded click cost is the
+            // true processing time, not the deliberate wait time.
+            double trueMs = swTotal.ElapsedMilliseconds - (ClickPipelineTiming.ReadSleepTimeMs() - _clickSleepStartMs);
+            _performanceMonitor.RecordSuccessfulClickTiming((long)SystemMath.Max(0, trueMs));
             swTotal.Stop();
             return true;
         }
@@ -65,6 +74,7 @@ namespace ClickIt.Features.Click.Interaction
         {
             _ = holdDurationMs;
 
+            _clickSleepStartMs = ClickPipelineTiming.ReadSleepTimeMs();
             if (!TryConsumeLazyModeLimiter())
                 return false;
 
@@ -108,9 +118,12 @@ namespace ClickIt.Features.Click.Interaction
                 RestoreCursorIfLazyMode(before, gameController);
             }
 
+            _performanceMonitor.MarkInterval(IntervalKind.Click);
+            _performanceMonitor.RecordClickDispatch();
             MarkLazyModeClickCompleted();
             Interlocked.Increment(ref _successfulClickSequence);
-            _performanceMonitor.RecordSuccessfulClickTiming(swTotal.ElapsedMilliseconds);
+            double trueMs = swTotal.ElapsedMilliseconds - (ClickPipelineTiming.ReadSleepTimeMs() - _clickSleepStartMs);
+            _performanceMonitor.RecordSuccessfulClickTiming((long)SystemMath.Max(0, trueMs));
             swTotal.Stop();
             return true;
         }
