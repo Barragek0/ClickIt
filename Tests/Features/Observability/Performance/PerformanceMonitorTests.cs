@@ -538,6 +538,39 @@ namespace ClickIt.Tests.Features.Observability.Performance
         }
 
         [TestMethod]
+        public void ClickBreakdown_RecordsFineGrainedStages_ThroughMonitor()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            monitor.RecordBreakdownStage(ProcessingSection.Click, PerformanceMonitor.ClickContextStageIndex, 128, 0.1);
+            monitor.RecordBreakdownStage(ProcessingSection.Click, PerformanceMonitor.ClickMechanicScanStageIndex, 1024, 2.0);
+            monitor.RecordBreakdownStage(ProcessingSection.Click, PerformanceMonitor.ClickLabelScanStageIndex, 8192, 15.5);
+            monitor.RecordBreakdownStage(ProcessingSection.Click, PerformanceMonitor.ClickRankStageIndex, 256, 0.3);
+            monitor.RecordBreakdownStage(ProcessingSection.Click, PerformanceMonitor.ClickResolveStageIndex, 2048, 4.0);
+            monitor.RecordBreakdownStage(ProcessingSection.Click, PerformanceMonitor.ClickInputStageIndex, 512, 1.0);
+            monitor.RecordBreakdownStage(ProcessingSection.Click, PerformanceMonitor.ClickPostStageIndex, 64, 0.2);
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+            BreakdownStats stats = snapshot.Breakdowns![ProcessingSection.Click];
+            stats.Stages.Should().HaveCount(7);
+            stats.Stages[0].Name.Should().Be("Context");
+            stats.Stages[1].Name.Should().Be("MechanicScan");
+            stats.Stages[1].Allocation.AvgBytesPerRun.Should().Be(1024);
+            stats.Stages[1].Time.AvgMs.Should().Be(2.0);
+            stats.Stages[2].Name.Should().Be("LabelScan");
+            stats.Stages[2].Allocation.AvgBytesPerRun.Should().Be(8192);
+            stats.Stages[2].Time.AvgMs.Should().Be(15.5);
+            stats.Stages[3].Name.Should().Be("Rank");
+            stats.Stages[4].Name.Should().Be("Resolve");
+            stats.Stages[4].Allocation.AvgBytesPerRun.Should().Be(2048);
+            stats.Stages[4].Time.AvgMs.Should().Be(4.0);
+            stats.Stages[5].Name.Should().Be("Input");
+            stats.Stages[5].Allocation.AvgBytesPerRun.Should().Be(512);
+            stats.Stages[5].Time.AvgMs.Should().Be(1.0);
+            stats.Stages[6].Name.Should().Be("Post");
+        }
+
+        [TestMethod]
         public void CoroutinesTotal_AggregatesLastAndAverageSumsAndMaxOfMaxes_AcrossChannels()
         {
             var monitor = new PerformanceMonitor(new ClickItSettings());

@@ -236,6 +236,7 @@ namespace ClickIt.Features.Click
                 ClickAutomationSupport.DebugLog,
                 _inputHandler,
                 breakdown => _performanceMonitor.RecordClickAllocation(breakdown),
+                (index, bytes, ms) => _performanceMonitor.RecordBreakdownStage(ProcessingSection.Click, index, bytes, ms),
                 GetHarvestLabelToClick,
                 TryProgressBlightBuilding,
                 GetBlightPathfindTarget,

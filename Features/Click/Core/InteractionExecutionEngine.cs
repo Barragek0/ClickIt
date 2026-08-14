@@ -7,6 +7,9 @@ namespace ClickIt.Features.Click.Core
         // Let the game register the hover on the blight menu button before the click lands — clicking too soon after the cursor arrives can miss the element (the UIHover read is unreliable for a freshly-moved cursor).
         private const int BlightMenuClickSettleMs = 60;
 
+        private void RecordStage(int stageIndex, long bytes, double ms)
+            => _dependencies.RecordBreakdownStage?.Invoke(stageIndex, bytes, ms);
+
         public ExecutionResult Execute(ClickTickContext context, ClickCandidates candidates, DecisionResult decision)
         {
             // Ordered decision chain (mechanics → harvest → blight → label → walk).
@@ -384,11 +387,16 @@ namespace ClickIt.Features.Click.Core
                 return StopExecution(didActionableWork: true);
             }
 
+            long resolveStart = GC.GetAllocatedBytesForCurrentThread();
+            long resolveTimestamp = Stopwatch.GetTimestamp();
             (bool resolved, Vector2 clickPos) = _dependencies.LabelInteraction.TryResolveLabelClickPositionResult(
                 nextLabel,
                 candidates.NextLabelMechanicId,
                 context.WindowTopLeft,
                 context.AllLabels);
+            long resolveBytes = GC.GetAllocatedBytesForCurrentThread() - resolveStart;
+            double resolveMs = GetElapsedMs(resolveTimestamp);
+            RecordStage(PerformanceMonitor.ClickResolveStageIndex, resolveBytes, resolveMs);
             if (!resolved)
                 return HandleVisibleLabelResolveFailure(context, candidates, nextLabel);
 
@@ -405,7 +413,12 @@ namespace ClickIt.Features.Click.Core
                     true,
                     $"Label candidate selected (mechanic: {candidates.NextLabelMechanicId ?? "none"})");
 
+            long inputStart = GC.GetAllocatedBytesForCurrentThread();
+            long inputTimestamp = Stopwatch.GetTimestamp();
             bool clicked = _dependencies.LabelInteraction.PerformResolvedLabelInteraction(clickPos, nextLabel, candidates.NextLabelMechanicId);
+            long inputBytes = GC.GetAllocatedBytesForCurrentThread() - inputStart;
+            double inputMs = GetElapsedMs(inputTimestamp);
+            RecordStage(PerformanceMonitor.ClickInputStageIndex, inputBytes, inputMs);
 
             if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
             {
@@ -482,5 +495,8 @@ namespace ClickIt.Features.Click.Core
                 ? item
                 : null;
         }
+
+        private static double GetElapsedMs(long startTimestamp)
+            => (Stopwatch.GetTimestamp() - startTimestamp) * 1000.0 / Stopwatch.Frequency;
     }
 }

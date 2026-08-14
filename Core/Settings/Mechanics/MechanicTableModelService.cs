@@ -7,6 +7,7 @@ namespace ClickIt.Core.Settings.Mechanics
         private const string HeistSubgroupDoors = "Doors";
         private const string HeistSubgroupHazards = "Hazards";
         private const string LeagueChestSubgroupBlight = "Blight";
+        private const string LeagueChestSubgroupLegion = "Legion";
         private const string LeagueChestSubgroupBreach = "Breach";
         private const string LeagueChestSubgroupSynthesis = "Synthesis";
         private const string LeagueChestSubgroupAllflame = "Allflame";
@@ -80,6 +81,7 @@ namespace ClickIt.Core.Settings.Mechanics
                 new(MechanicIds.HeistSecureRepository, "Secure Repository (big chest)", settings.ClickHeistSecureRepository, "heist", true, HeistSubgroupChests),
                 new(MechanicIds.HeistHazards, "Hazards", settings.ClickHeistHazards, "heist", false, HeistSubgroupHazards),
                 new(MechanicIds.BlightCyst, "Blight Cyst", settings.ClickBlightCyst, "league-chests", true, LeagueChestSubgroupBlight),
+                new(MechanicIds.LegionChest, "Legion Chest", settings.ClickLegionChest, "league-chests", true, LeagueChestSubgroupLegion),
                 new(MechanicIds.BreachGraspingCoffers, "Grasping Coffers", settings.ClickBreachGraspingCoffers, "league-chests", true, LeagueChestSubgroupBreach),
                 new(MechanicIds.SynthesisSynthesisedStash, "Synthesised Stash", settings.ClickSynthesisSynthesisedStash, "league-chests", true, LeagueChestSubgroupSynthesis),
                 new(MechanicIds.AllflameCursedTreasure, "Cursed Treasure", settings.ClickAllflameCursedTreasure, "league-chests", true, LeagueChestSubgroupAllflame),

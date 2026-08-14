@@ -7,10 +7,10 @@ namespace ClickIt.Features.Click.Interaction
         [ThreadStatic]
         private static List<RectangleF>? s_intersectionRects;
 
-        private static List<RectangleF> GetBlockerRects()
+        internal static List<RectangleF> GetBlockerRects()
             => s_blockerRects ??= [];
 
-        private static List<RectangleF> GetIntersectionRects()
+        internal static List<RectangleF> GetIntersectionRects()
             => s_intersectionRects ??= [];
 
         internal static bool IsPointInsideRect(Vector2 point, RectangleF rect)

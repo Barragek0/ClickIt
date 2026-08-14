@@ -14,15 +14,25 @@ namespace ClickIt.Features.Click.Core
 
             if (!context.GroundItemsVisible)
             {
+                long mechanicStart = GC.GetAllocatedBytesForCurrentThread();
+                long mechanicTimestamp = Stopwatch.GetTimestamp();
                 VisibleMechanicSelectionSnapshot hiddenFallbackSelection = _dependencies.VisibleMechanics.GetHiddenFallbackSelectionSnapshot();
+                long mechanicBytes = GC.GetAllocatedBytesForCurrentThread() - mechanicStart;
+                double mechanicMs = GetElapsedMs(mechanicTimestamp);
+                _dependencies.RecordBreakdownStage?.Invoke(PerformanceMonitor.ClickMechanicScanStageIndex, mechanicBytes, mechanicMs);
                 if (captureClickDebug)
                     _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("GroundItemsHidden",
                         $"{labelSourceSummary} | hiddenFallback settlers={hiddenFallbackSelection.HasSettlers} lostShipment={hiddenFallbackSelection.HasLostShipment}", null);
 
+                long labelScanStart = GC.GetAllocatedBytesForCurrentThread();
+                long labelScanTimestamp = Stopwatch.GetTimestamp();
                 LabelOnGround? hiddenLabel = _dependencies.LabelSelectionScan.ResolveNextLabelCandidate(context.AllLabels);
                 string? hiddenLabelMechanicId = hiddenLabel != null
                     ? _dependencies.LabelInteractionPort.GetMechanicIdForLabel(hiddenLabel)
                     : null;
+                long labelScanBytes = GC.GetAllocatedBytesForCurrentThread() - labelScanStart;
+                double labelScanMs = GetElapsedMs(labelScanTimestamp);
+                _dependencies.RecordBreakdownStage?.Invoke(PerformanceMonitor.ClickLabelScanStageIndex, labelScanBytes, labelScanMs);
 
                 if (hiddenLabel != null)
                 {
@@ -39,15 +49,25 @@ namespace ClickIt.Features.Click.Core
                 return new ClickCandidates(hiddenFallbackSelection.LostShipment, hiddenFallbackSelection.Settlers, hiddenLabel, hiddenLabelMechanicId);
             }
 
+            long visMechanicStart = GC.GetAllocatedBytesForCurrentThread();
+            long visMechanicTimestamp = Stopwatch.GetTimestamp();
             VisibleMechanicSelectionSnapshot visibleMechanicSelection = _dependencies.VisibleMechanics.GetVisibleMechanicSelectionSnapshotForLabels(context.AllLabels);
+            long visMechanicBytes = GC.GetAllocatedBytesForCurrentThread() - visMechanicStart;
+            double visMechanicMs = GetElapsedMs(visMechanicTimestamp);
+            _dependencies.RecordBreakdownStage?.Invoke(PerformanceMonitor.ClickMechanicScanStageIndex, visMechanicBytes, visMechanicMs);
             if (captureClickDebug)
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("LabelSource", labelSourceSummary, null);
 
 
+            long visLabelScanStart = GC.GetAllocatedBytesForCurrentThread();
+            long visLabelScanTimestamp = Stopwatch.GetTimestamp();
             LabelOnGround? nextLabel = _dependencies.LabelSelectionScan.ResolveNextLabelCandidate(context.AllLabels);
             string? nextLabelMechanicId = nextLabel != null
                 ? _dependencies.LabelInteractionPort.GetMechanicIdForLabel(nextLabel)
                 : null;
+            long visLabelScanBytes = GC.GetAllocatedBytesForCurrentThread() - visLabelScanStart;
+            double visLabelScanMs = GetElapsedMs(visLabelScanTimestamp);
+            _dependencies.RecordBreakdownStage?.Invoke(PerformanceMonitor.ClickLabelScanStageIndex, visLabelScanBytes, visLabelScanMs);
 
             if (nextLabel != null)
             {
@@ -69,5 +89,8 @@ namespace ClickIt.Features.Click.Core
 
             return new ClickCandidates(visibleMechanicSelection.LostShipment, visibleMechanicSelection.Settlers, nextLabel, nextLabelMechanicId);
         }
+
+        private static double GetElapsedMs(long startTimestamp)
+            => (Stopwatch.GetTimestamp() - startTimestamp) * 1000.0 / Stopwatch.Frequency;
     }
 }

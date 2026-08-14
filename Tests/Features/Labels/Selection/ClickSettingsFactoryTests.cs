@@ -73,6 +73,7 @@ namespace ClickIt.Tests.Features.Labels.Selection
             settings.ClickHeistSecureLocker.Value = true;
             settings.ClickHeistSecureRepository.Value = true;
             settings.ClickHeistHazards.Value = true;
+            settings.ClickLegionChest.Value = true;
 
             IReadOnlySet<string> enabled = ClickSettingsFactory.BuildEnabledLeagueChestSpecificIds(settings, leagueChestsEnabled: true);
 
@@ -80,6 +81,7 @@ namespace ClickIt.Tests.Features.Labels.Selection
             enabled.Should().Contain(MechanicIds.HeistSecureLocker);
             enabled.Should().Contain(MechanicIds.HeistSecureRepository);
             enabled.Should().Contain(MechanicIds.HeistHazards);
+            enabled.Should().Contain(MechanicIds.LegionChest);
             enabled.Should().NotContain(MechanicIds.MirageSilverDjinnCache);
         }
 

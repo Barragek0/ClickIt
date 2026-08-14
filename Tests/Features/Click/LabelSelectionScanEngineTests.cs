@@ -193,6 +193,24 @@ namespace ClickIt.Tests.Features.Click
             public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
                 => getNextLabelToClick?.Invoke(allLabels, startIndex, maxCount);
 
+            public LabelOnGround? GetNextLabelToClick(
+                IReadOnlyList<LabelOnGround>? allLabels,
+                int startIndex,
+                int maxCount,
+                Func<LabelOnGround, LabelCandidateBuildResult, bool>? isAcceptable)
+            {
+                if (isAcceptable == null || allLabels == null)
+                    return GetNextLabelToClick(allLabels, startIndex, maxCount);
+                int limit = SystemMath.Min(allLabels.Count, startIndex + SystemMath.Max(0, maxCount));
+                for (int i = startIndex; i < limit; i++)
+                {
+                    LabelOnGround? label = getNextLabelToClick?.Invoke(allLabels, i, 1);
+                    if (label != null && isAcceptable(label, default))
+                        return label;
+                }
+                return null;
+            }
+
             public string? GetMechanicIdForLabel(LabelOnGround? label)
                 => getMechanicIdForLabel?.Invoke(label);
         }

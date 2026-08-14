@@ -4,6 +4,7 @@ namespace ClickIt.Features.Labels.Classification
     internal static class MechanicClassifier
     {
         private const string BlightCystPathMarker = "Chests/Blight";
+        private const string LegionChestPathMarker = "Chests/LegionChests";
         private const string BreachGraspingCoffersPathMarker = "Breach/BreachBoxChest";
         private const string SynthesisSynthesisedStashPathMarker = "SynthesisChests/SynthesisChest";
         private const string AllflameCursedTreasurePathMarker = "LeagueDeepwater/CursedTreasure";
@@ -24,6 +25,7 @@ namespace ClickIt.Features.Labels.Classification
             new(MechanicIds.HeistSecureLocker, static (name, _) => IsHeistSecureLockerName(name)),
             new(MechanicIds.HeistHazards, static (_, path) => IsHeistHazardsPath(path)),
             new(MechanicIds.BlightCyst, static (_, path) => IsBlightCystPath(path)),
+            new(MechanicIds.LegionChest, static (_, path) => IsLegionChestPath(path)),
             new(MechanicIds.BreachGraspingCoffers, static (_, path) => IsBreachGraspingCoffersPath(path)),
             new(MechanicIds.SynthesisSynthesisedStash, static (_, path) => IsSynthesisSynthesisedStashPath(path)),
             new(MechanicIds.AllflameCursedTreasure, static (_, path) => IsAllflameCursedTreasurePath(path)),
@@ -353,6 +355,10 @@ namespace ClickIt.Features.Labels.Classification
         private static bool IsBlightCystPath(string? path)
             => !string.IsNullOrWhiteSpace(path)
                && path.Contains(BlightCystPathMarker, StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsLegionChestPath(string? path)
+            => !string.IsNullOrWhiteSpace(path)
+               && path.Contains(LegionChestPathMarker, StringComparison.OrdinalIgnoreCase);
 
         private static bool IsSynthesisSynthesisedStashPath(string? path)
             => !string.IsNullOrWhiteSpace(path)

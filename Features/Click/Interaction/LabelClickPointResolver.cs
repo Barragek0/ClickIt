@@ -14,6 +14,16 @@ namespace ClickIt.Features.Click.Interaction
         private long _rectCacheWindowStartMs;
         private const long RectCacheWindowMs = 250;
 
+        // Spatial grid (cell -> label addresses) over on-screen label rects so overlap-blocker collection only
+        // inspects labels whose cells intersect the target, instead of scanning all N labels per examined label
+        // (O(N x K) on dense fields with K examined labels). Rebuilt when the label-set reference changes or the
+        // TTL expires; the grid stores ADDRESSES so it stays valid across list-instance churn.
+        private IReadOnlyList<LabelOnGround>? _gridLabelsRef;
+        private Dictionary<long, List<long>>? _gridCells;
+        private long _gridBuiltAtMs;
+        private const long BlockerGridWindowMs = 250;
+        private const float BlockerGridCellSize = 64f;
+
         // The click coroutine and the manual-hover coroutine share this resolver and, with CoroutineMultiThreading enabled, can run on different threads. Both caches are plain dictionaries mutated from those paths, so they are guarded by a lock (the same corruption class previously fixed in LabelReadModelService).
         private readonly Lock _cacheLock = new();
 
@@ -30,7 +40,7 @@ namespace ClickIt.Features.Click.Interaction
 
             ResolveLabelMetadataCached(label, out EntityType itemType, out string? itemPath, out string? renderName);
 
-            List<RectangleF> potentialBlockers = CollectPotentialBlockingLabelRects(label, rect, allLabels);
+            List<RectangleF> potentialBlockers = CollectPotentialBlockingLabelRectsCached(label, rect, allLabels);
             return IsLabelFullyOverlapped(rect, itemType, itemPath, renderName, potentialBlockers);
         }
 
@@ -195,8 +205,133 @@ namespace ClickIt.Features.Click.Interaction
         private List<RectangleF> CollectBlockingOverlaps(LabelOnGround targetLabel, RectangleF targetRect, IReadOnlyList<LabelOnGround>? allLabels)
             => LabelClickPointSearch.BuildIntersectionOverlaps(
                 targetRect,
-                LabelClickPointSearch.CollectPotentialBlockingLabelRects(
-                    targetLabel, targetRect, allLabels, ResolveLabelRectCached));
+                CollectPotentialBlockingLabelRectsCached(targetLabel, targetRect, allLabels));
+
+        // Grid + cached-rect blocker collection: builds the cell grid once per label set, then for the target
+        // label only inspects labels in the cells its rect spans (each rect from the address cache).
+        private List<RectangleF> CollectPotentialBlockingLabelRectsCached(
+            LabelOnGround targetLabel,
+            RectangleF targetRect,
+            IReadOnlyList<LabelOnGround>? allLabels)
+        {
+            List<RectangleF> potentialBlockers = LabelClickPointSearch.GetBlockerRects();
+            potentialBlockers.Clear();
+            if (allLabels == null || allLabels.Count == 0)
+                return potentialBlockers;
+
+            List<long> candidates = CollectPotentialBlockerAddresses(targetLabel, targetRect, allLabels);
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                (RectangleF otherRect, bool hasRect) = ResolveLabelRectByAddressCached(candidates[i]);
+                if (!hasRect)
+                    continue;
+                if (otherRect.Right <= targetRect.Left
+                    || otherRect.Left >= targetRect.Right
+                    || otherRect.Bottom <= targetRect.Top
+                    || otherRect.Top >= targetRect.Bottom)
+                    continue;
+                potentialBlockers.Add(otherRect);
+            }
+            return potentialBlockers;
+        }
+
+        private List<long> CollectPotentialBlockerAddresses(
+            LabelOnGround targetLabel,
+            RectangleF targetRect,
+            IReadOnlyList<LabelOnGround>? allLabels)
+        {
+            long targetAddress = targetLabel.Address;
+            List<long> candidates = GetBlockerAddressScratch();
+            candidates.Clear();
+
+            int minX = CellIndex(targetRect.Left);
+            int maxX = CellIndex(targetRect.Right);
+            int minY = CellIndex(targetRect.Top);
+            int maxY = CellIndex(targetRect.Bottom);
+            for (int cy = minY; cy <= maxY; cy++)
+            {
+                for (int cx = minX; cx <= maxX; cx++)
+                {
+                    if (!GetOrBuildBlockerGrid(allLabels).TryGetValue(CellKey(cx, cy), out List<long>? cell))
+                        continue;
+                    for (int i = 0; i < cell.Count; i++)
+                    {
+                        long address = cell[i];
+                        if (address != targetAddress)
+                            candidates.Add(address);
+                    }
+                }
+            }
+            return candidates;
+        }
+
+        private Dictionary<long, List<long>> GetOrBuildBlockerGrid(IReadOnlyList<LabelOnGround>? allLabels)
+        {
+            long now = Environment.TickCount64;
+            lock (_cacheLock)
+            {
+                if (_gridCells != null
+                    && ReferenceEquals(_gridLabelsRef, allLabels)
+                    && now - _gridBuiltAtMs < BlockerGridWindowMs)
+                    return _gridCells;
+
+                Dictionary<long, List<long>> cells = [];
+                if (allLabels != null)
+                {
+                    for (int i = 0; i < allLabels.Count; i++)
+                    {
+                        LabelOnGround? other = allLabels[i];
+                        if (other == null)
+                            continue;
+                        (RectangleF otherRect, bool hasRect) = ResolveLabelRectCached(other);
+                        if (!hasRect)
+                            continue;
+                        int minX = CellIndex(otherRect.Left);
+                        int maxX = CellIndex(otherRect.Right);
+                        int minY = CellIndex(otherRect.Top);
+                        int maxY = CellIndex(otherRect.Bottom);
+                        for (int cy = minY; cy <= maxY; cy++)
+                        {
+                            for (int cx = minX; cx <= maxX; cx++)
+                            {
+                                long key = CellKey(cx, cy);
+                                if (!cells.TryGetValue(key, out List<long>? cell))
+                                {
+                                    cell = [];
+                                    cells[key] = cell;
+                                }
+                                cell.Add(other.Address);
+                            }
+                        }
+                    }
+                }
+                _gridCells = cells;
+                _gridLabelsRef = allLabels;
+                _gridBuiltAtMs = now;
+                return _gridCells;
+            }
+        }
+
+        private (RectangleF Rect, bool HasRect) ResolveLabelRectByAddressCached(long address)
+        {
+            lock (_cacheLock)
+            {
+                if (_rectCache.TryGetValue(address, out (RectangleF Rect, bool HasRect) cached))
+                    return cached;
+                return (default, false);
+            }
+        }
+
+        [ThreadStatic]
+        private static List<long>? s_blockerAddressScratch;
+        private static List<long> GetBlockerAddressScratch()
+            => s_blockerAddressScratch ??= [];
+
+        private static int CellIndex(float value)
+            => (int)MathF.Floor(value / BlockerGridCellSize);
+
+        private static long CellKey(int cellX, int cellY)
+            => ((long)cellX << 32) | (uint)cellY;
 
         private (RectangleF Rect, bool HasRect) ResolveLabelRectCached(LabelOnGround label)
         {

@@ -60,7 +60,8 @@ namespace ClickIt.Features.Labels.Selection
             int endExclusive,
             ClickSettings clickSettings,
             Func<LabelOnGround, LabelCandidateBuildResult> candidateBuilder,
-            Func<LabelOnGround, LabelRankInput> rankInputResolver)
+            Func<LabelOnGround, LabelRankInput> rankInputResolver,
+            Func<LabelOnGround, LabelCandidateBuildResult, bool>? isAcceptable = null)
         {
             if (allLabels.Count == 0)
                 return default;
@@ -93,6 +94,12 @@ namespace ClickIt.Features.Labels.Selection
                     stats = stats.AddReject(candidate.RejectReason);
                     continue;
                 }
+
+                // Skip labels the caller's suppression gate rejects (overlap/locked/lever/ultimatum/blight)
+                // INLINE so one pass yields the best acceptable label - re-querying the remaining range per
+                // suppressed label was O(suppressed x n) on dense item fields.
+                if (isAcceptable != null && !isAcceptable(label, candidate))
+                    continue;
 
                 LabelRankInput rankInput = rankInputResolver(label);
                 MechanicCandidateRanker.CandidateRank score = MechanicCandidateRanker.Build(

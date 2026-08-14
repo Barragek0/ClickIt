@@ -61,6 +61,14 @@ namespace ClickIt.Shared.Diagnostics
         internal const int BlightExecutorStageIndex = 3;
         // Stage index of the Blight breakdown's "Events" stage (the entity-event background work: retained-set tracking + DLR path reads per streamed entity), recorded separately because it runs on the game's entity-event path at a different cadence than the refresh stages.
         internal const int BlightEventsStageIndex = 4;
+        // Stage indexes of the Click breakdown (sub-stages of the click coroutine run, recorded at their true source so a slow stage is attributable).
+        internal const int ClickContextStageIndex = 0;
+        internal const int ClickMechanicScanStageIndex = 1;
+        internal const int ClickLabelScanStageIndex = 2;
+        internal const int ClickRankStageIndex = 3;
+        internal const int ClickResolveStageIndex = 4;
+        internal const int ClickInputStageIndex = 5;
+        internal const int ClickPostStageIndex = 6;
         private readonly FpsTracker _fpsTracker = new();
         private readonly RenderSectionMetricsStore _renderSectionMetrics = new();
         private readonly ProcessingSectionMetricsStore _processingMetrics = new();
@@ -81,6 +89,7 @@ namespace ClickIt.Shared.Diagnostics
             [ProcessingSection.Flare] = new BreakdownStageStore(trackTiming: true, "Buffs", "Decision", "Input"),
             [ProcessingSection.Altar] = new BreakdownStageStore(trackTiming: true, "Labels", "Build"),
             [ProcessingSection.Strongbox] = new BreakdownStageStore(trackTiming: true, "Metadata", "Resolve", "Scan"),
+            [ProcessingSection.Click] = new BreakdownStageStore(trackTiming: true, "Context", "MechanicScan", "LabelScan", "Rank", "Resolve", "Input", "Post"),
         };
 
         private readonly Stopwatch _mainTimer = new();

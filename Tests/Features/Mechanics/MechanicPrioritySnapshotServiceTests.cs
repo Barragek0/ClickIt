@@ -14,6 +14,8 @@ namespace ClickIt.Tests.Features.Mechanics
                 new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase));
 
             snapshot.PriorityIndexMap[MechanicIds.HeistHazards].Should().Be(snapshot.PriorityIndexMap[MechanicIds.LeagueChests]);
+            snapshot.PriorityIndexMap[MechanicIds.BlightCyst].Should().Be(snapshot.PriorityIndexMap[MechanicIds.LeagueChests]);
+            snapshot.PriorityIndexMap[MechanicIds.LegionChest].Should().Be(snapshot.PriorityIndexMap[MechanicIds.LeagueChests]);
             snapshot.PriorityIndexMap[MechanicIds.BreachGraspingCoffers].Should().Be(snapshot.PriorityIndexMap[MechanicIds.LeagueChests]);
             snapshot.PriorityIndexMap[MechanicIds.AllflameCursedTreasure].Should().Be(snapshot.PriorityIndexMap[MechanicIds.LeagueChests]);
             snapshot.PriorityIndexMap[MechanicIds.AllflameBrinerotPlunder].Should().Be(snapshot.PriorityIndexMap[MechanicIds.LeagueChests]);
@@ -76,6 +78,7 @@ namespace ClickIt.Tests.Features.Mechanics
                 MechanicIds.HeistSecureRepository,
                 MechanicIds.HeistHazards,
                 MechanicIds.BlightCyst,
+                MechanicIds.LegionChest,
                 MechanicIds.BreachGraspingCoffers,
                 MechanicIds.SynthesisSynthesisedStash,
                 MechanicIds.AllflameCursedTreasure,

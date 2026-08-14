@@ -95,6 +95,7 @@ namespace ClickIt.Features.Mechanics
             (MechanicIds.LeagueChests, MechanicIds.HeistSecureRepository),
             (MechanicIds.LeagueChests, MechanicIds.HeistHazards),
             (MechanicIds.LeagueChests, MechanicIds.BlightCyst),
+            (MechanicIds.LeagueChests, MechanicIds.LegionChest),
             (MechanicIds.LeagueChests, MechanicIds.BreachGraspingCoffers),
             (MechanicIds.LeagueChests, MechanicIds.SynthesisSynthesisedStash),
             (MechanicIds.LeagueChests, MechanicIds.AllflameCursedTreasure),

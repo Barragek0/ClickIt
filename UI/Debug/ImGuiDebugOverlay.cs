@@ -525,12 +525,28 @@ internal sealed class ImGuiDebugOverlay(
         {
             RenderRunStageTimingRow("  Context", alloc.ContextTime, targetMs);
             RenderRunStageTimingRow("  Acquire", alloc.AcquireTime, targetMs);
+            RenderClickFineStagesTiming(perf, targetMs, PerformanceMonitor.ClickMechanicScanStageIndex, PerformanceMonitor.ClickLabelScanStageIndex);
             RenderRunStageTimingRow("  Rank", alloc.RankTime, targetMs);
             RenderRunStageTimingRow("  Execute", alloc.ExecuteTime, targetMs);
+            RenderClickFineStagesTiming(perf, targetMs, PerformanceMonitor.ClickResolveStageIndex, PerformanceMonitor.ClickInputStageIndex);
             RenderRunStageTimingRow("  Post", alloc.PostTime, targetMs);
         }
 
         RenderClickFrequencyTargetRows(perf);
+    }
+
+    // Fine-grained click sub-stages from the Click breakdown store (the stages inside Acquire/Execute), rendered only when the store has samples.
+    private static void RenderClickFineStagesTiming(PerformanceMetricsSnapshot perf, double targetMs, params int[] stageIndexes)
+    {
+        if (perf.Breakdowns == null || !perf.Breakdowns.TryGetValue(ProcessingSection.Click, out BreakdownStats stats) || stats.SampleCount == 0)
+            return;
+        foreach (int index in stageIndexes)
+        {
+            if (index < 0 || index >= stats.Stages.Count)
+                continue;
+            BreakdownStageSnapshot stage = stats.Stages[index];
+            RenderRunStageTimingRow($"    {stage.Name}", stage.Time, targetMs);
+        }
     }
 
     private static void RenderClickFrequencyTargetRows(PerformanceMetricsSnapshot perf)
@@ -670,10 +686,26 @@ internal sealed class ImGuiDebugOverlay(
         double periodMs = perf.GetAllocationSection(ProcessingSection.Click).AvgPeriodMs;
         RenderGcStageRow("Context", s.Context, periodMs);
         RenderGcStageRow("Acquire", s.Acquire, periodMs);
+        RenderClickFineStagesGc(perf, periodMs, PerformanceMonitor.ClickMechanicScanStageIndex, PerformanceMonitor.ClickLabelScanStageIndex);
         RenderGcStageRow("Rank", s.Rank, periodMs);
         RenderGcStageRow("Execute", s.Execute, periodMs);
+        RenderClickFineStagesGc(perf, periodMs, PerformanceMonitor.ClickResolveStageIndex, PerformanceMonitor.ClickInputStageIndex);
         RenderGcStageRow("Post", s.Post, periodMs);
         RenderGcStageRow("Other", s.Other, periodMs);
+    }
+
+    // Fine-grained click sub-stage ALLOCATION rows from the Click breakdown store.
+    private static void RenderClickFineStagesGc(PerformanceMetricsSnapshot perf, double periodMs, params int[] stageIndexes)
+    {
+        if (perf.Breakdowns == null || !perf.Breakdowns.TryGetValue(ProcessingSection.Click, out BreakdownStats stats) || stats.SampleCount == 0)
+            return;
+        foreach (int index in stageIndexes)
+        {
+            if (index < 0 || index >= stats.Stages.Count)
+                continue;
+            BreakdownStageSnapshot stage = stats.Stages[index];
+            RenderGcStageRow($"  {stage.Name}", stage.Allocation, periodMs);
+        }
     }
 
     // One breakdown stage as byte/s Last/Avg/Max; stages that never allocated are skipped.
@@ -1803,8 +1835,10 @@ internal sealed class ImGuiDebugOverlay(
                 sb.AppendLine("    Click breakdown:");
                 AppendGcStageLine(sb, "      Context", click.Context, clickPeriodMs);
                 AppendGcStageLine(sb, "      Acquire", click.Acquire, clickPeriodMs);
+                AppendClickFineStageGcLines(sb, perf, clickPeriodMs, PerformanceMonitor.ClickMechanicScanStageIndex, PerformanceMonitor.ClickLabelScanStageIndex);
                 AppendGcStageLine(sb, "      Rank", click.Rank, clickPeriodMs);
                 AppendGcStageLine(sb, "      Execute", click.Execute, clickPeriodMs);
+                AppendClickFineStageGcLines(sb, perf, clickPeriodMs, PerformanceMonitor.ClickResolveStageIndex, PerformanceMonitor.ClickInputStageIndex);
                 AppendGcStageLine(sb, "      Post", click.Post, clickPeriodMs);
                 AppendGcStageLine(sb, "      Other", click.Other, clickPeriodMs);
             }
@@ -1884,9 +1918,41 @@ internal sealed class ImGuiDebugOverlay(
             return;
         AppendClickTimingLine(sb, "      Context", click.ContextTime);
         AppendClickTimingLine(sb, "      Acquire", click.AcquireTime);
+        AppendClickFineStageTimingLines(sb, perf, PerformanceMonitor.ClickMechanicScanStageIndex, PerformanceMonitor.ClickLabelScanStageIndex);
         AppendClickTimingLine(sb, "      Rank", click.RankTime);
         AppendClickTimingLine(sb, "      Execute", click.ExecuteTime);
+        AppendClickFineStageTimingLines(sb, perf, PerformanceMonitor.ClickResolveStageIndex, PerformanceMonitor.ClickInputStageIndex);
         AppendClickTimingLine(sb, "      Post", click.PostTime);
+    }
+
+    // Fine-grained click sub-stage TIME lines for the dump (the stages inside Acquire/Execute).
+    private static void AppendClickFineStageTimingLines(StringBuilder sb, PerformanceMetricsSnapshot perf, params int[] stageIndexes)
+    {
+        if (perf.Breakdowns == null || !perf.Breakdowns.TryGetValue(ProcessingSection.Click, out BreakdownStats stats) || stats.SampleCount == 0)
+            return;
+        foreach (int index in stageIndexes)
+        {
+            if (index < 0 || index >= stats.Stages.Count)
+                continue;
+            BreakdownStageSnapshot stage = stats.Stages[index];
+            AppendClickTimingLine(sb, $"        {stage.Name}", stage.Time);
+        }
+    }
+
+    // Fine-grained click sub-stage ALLOCATION lines for the dump.
+    private static void AppendClickFineStageGcLines(StringBuilder sb, PerformanceMetricsSnapshot perf, double periodMs, params int[] stageIndexes)
+    {
+        if (perf.Breakdowns == null || !perf.Breakdowns.TryGetValue(ProcessingSection.Click, out BreakdownStats stats) || stats.SampleCount == 0)
+            return;
+        foreach (int index in stageIndexes)
+        {
+            if (index < 0 || index >= stats.Stages.Count)
+                continue;
+            BreakdownStageSnapshot stage = stats.Stages[index];
+            if (stage.Allocation.AvgBytesPerRun <= 0 && stage.Allocation.MaxBytesPerRun <= 0)
+                continue;
+            AppendGcStageLine(sb, $"        {stage.Name}", stage.Allocation, periodMs);
+        }
     }
 
     private static void AppendTimingLine(System.Text.StringBuilder sb, string label, TimingMetricsSnapshot stats)

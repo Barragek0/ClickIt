@@ -15,6 +15,7 @@ namespace ClickIt.Features.Mechanics
         public const string HeistHazards = "heist-hazards";
         public const string BreachGraspingCoffers = "breach-grasping-coffers";
         public const string BlightCyst = "blight-cyst";
+        public const string LegionChest = "legion-chest";
         public const string SynthesisSynthesisedStash = "synthesis-synthesised-stash";
         public const string AllflameCursedTreasure = "allflame-cursed-treasure";
         public const string AllflameBrinerotPlunder = "allflame-brinerot-plunder";

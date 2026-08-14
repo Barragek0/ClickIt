@@ -70,6 +70,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
 
         [DataTestMethod]
         [DataRow("Metadata/Chests/Blight/BlightChestObject", "Blight Cyst", MechanicIds.BlightCyst)]
+        [DataRow("Metadata/Chests/LegionChests/Warhoard", "Legion Chest", MechanicIds.LegionChest)]
         [DataRow("Metadata/Chests/Breach/BreachBoxChest02", "Grasping Coffers", MechanicIds.BreachGraspingCoffers)]
         [DataRow("Metadata/Chests/SynthesisChests/SynthesisChest", "Synthesised Stash", MechanicIds.SynthesisSynthesisedStash)]
         [DataRow("Metadata/LeagueDeepwater/CursedTreasure/Chest", "Cursed Treasure", MechanicIds.AllflameCursedTreasure)]
@@ -89,6 +90,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
                 MechanicIds.HeistSecureRepository,
                 MechanicIds.HeistHazards,
                 MechanicIds.BlightCyst,
+                MechanicIds.LegionChest,
                 MechanicIds.BreachGraspingCoffers,
                 MechanicIds.SynthesisSynthesisedStash,
                 MechanicIds.AllflameCursedTreasure,

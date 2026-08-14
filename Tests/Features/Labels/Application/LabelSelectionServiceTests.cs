@@ -209,6 +209,47 @@ namespace ClickIt.Tests.Features.Labels.Application
         }
 
         [TestMethod]
+        public void GetNextLabelToClick_GatedSelection_RerunsWhenCachedResultBecomesSuppressed()
+        {
+            // Regression: the gated (single-pass) scan caches its result under the range key, so a label that
+            // becomes suppressed (e.g. a strongbox locks) within the cache window must NOT be returned - the
+            // cached result is re-validated against the predicate and the scan re-runs for the next acceptable.
+            LabelOnGround first = CreateOpaqueLabel(address: 0x1000);
+            LabelOnGround second = CreateOpaqueLabel(address: 0x2000);
+            bool firstSuppressed = false;
+            int scanCount = 0;
+            var service = new LabelSelectionService(new LabelSelectionServiceDependencies(
+                GameController: null,
+                CreateClickSettings: _ =>
+                {
+                    scanCount++;
+                    return TestClickSettings();
+                },
+                ShouldCaptureLabelDebug: static () => false,
+                PublishLabelDebugStage: static _ => { },
+                TryBuildLabelCandidate: static (LabelOnGround candidate, ClickSettings _, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
+                {
+                    item = EntityProbeFactory.Create();
+                    mechanicId = MechanicIds.Items;
+                    rejectReason = LabelCandidateRejectReason.None;
+                    return true;
+                },
+                GetMechanicIdForLabelCore: static _ => null));
+
+            IReadOnlyList<LabelOnGround> labels = [first, second];
+            bool Accept(LabelOnGround label, LabelCandidateBuildResult _) => !(ReferenceEquals(label, first) && firstSuppressed);
+
+            service.GetNextLabelToClick(labels, 0, 10, Accept).Should().BeSameAs(first, "first is acceptable initially");
+            int scansAfterFirst = scanCount;
+
+            firstSuppressed = true;
+
+            LabelOnGround? next = service.GetNextLabelToClick(labels, 0, 10, Accept);
+            next.Should().BeSameAs(second, "the cached first label is now suppressed, so the gated scan must re-run and return the next acceptable");
+            scanCount.Should().BeGreaterThan(scansAfterFirst, "the suppression-state change must invalidate the cached gated result");
+        }
+
+        [TestMethod]
         public void GetNextLabelToClick_DifferentRange_RerunsSelectionScan()
         {
             LabelOnGround label = CreateOpaqueLabel();

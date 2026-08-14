@@ -96,6 +96,7 @@ namespace ClickIt.Features.Labels.Selection
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickHeistSecureRepository.Value, MechanicIds.HeistSecureRepository);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickHeistHazards.Value, MechanicIds.HeistHazards);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickBlightCyst.Value, MechanicIds.BlightCyst);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickLegionChest.Value, MechanicIds.LegionChest);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickBreachGraspingCoffers.Value, MechanicIds.BreachGraspingCoffers);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickSynthesisSynthesisedStash.Value, MechanicIds.SynthesisSynthesisedStash);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickAllflameCursedTreasure.Value, MechanicIds.AllflameCursedTreasure);

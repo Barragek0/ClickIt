@@ -223,33 +223,19 @@ namespace ClickIt.Features.Click.Selection
 
         private LabelOnGround? FindLabelInRange(IReadOnlyList<LabelOnGround> allLabels, int start, int endExclusive)
         {
-            int currentStart = start;
             int examined = 0;
             int leverSuppressed = 0;
             int ultimatumSuppressed = 0;
             int overlappedSuppressed = 0;
             int blightChestTransitionSuppressed = 0;
             int lockedStrongboxSuppressed = 0;
-            int indexMisses = 0;
 
-            while (currentStart < endExclusive)
+            // Suppression is applied INLINE inside the selection's single pass (O(n) even when many labels are
+            // suppressed); the old loop re-queried the remaining range per suppressed label, which was O(suppressed x n)
+            // on dense item fields and re-ran the full selection + overlap scans each time.
+            bool IsAcceptable(LabelOnGround label, LabelCandidateBuildResult _)
             {
-                LabelOnGround? label = _dependencies.LabelSelectionService.GetNextLabelToClick(allLabels, currentStart, endExclusive - currentStart);
-                if (label == null)
-                {
-                    if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
-                    {
-                        string noLabelSummary = _dependencies.LabelInteraction.BuildLabelRangeRejectionDebugSummary(allLabels, start, endExclusive, examined);
-                        _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("FindLabelNull", noLabelSummary);
-                    }
-                    if (examined > 0)
-                        _dependencies.DebugLog($"[LabelSelectDiag] range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} bt:{blightChestTransitionSuppressed} ls:{lockedStrongboxSuppressed} im:{indexMisses}");
-
-                    return null;
-                }
-
                 examined++;
-
                 bool suppressLever = _dependencies.ShouldSuppressLeverClick(label);
                 bool suppressUltimatum = _dependencies.ShouldSuppressInactiveUltimatumLabel(label);
                 bool fullyOverlapped = _dependencies.LabelClickPointResolver.IsLabelFullyOverlapped(label, allLabels);
@@ -268,37 +254,35 @@ namespace ClickIt.Features.Click.Selection
                     lockedStrongboxSuppressed++;
 
                 if (!suppressLever && !suppressUltimatum && !fullyOverlapped && !suppressBlightChestTransition && !suppressLockedStrongbox)
-                {
-                    if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
-                        _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("FindLabelMatch",
-                            $"range:{start}-{endExclusive} examined:{examined} {ClickLabelSelectionMath.DescribeLabel(label)} {ClickLabelSelectionMath.DescribeCursorPosition()} hover={DescribeHoverAddress()}");
-                    return label;
-                }
+                    return true;
 
                 if (fullyOverlapped)
                     _dependencies.DebugLog("[ProcessRegularClick] Skipping fully-overlapped label");
                 if (suppressLockedStrongbox)
                     _dependencies.DebugLog("[ProcessRegularClick] Skipping locked strongbox label");
+                return false;
+            }
 
-                int idx = ClickLabelSelectionMath.IndexOfLabelReference(allLabels, label, currentStart, endExclusive);
-                if (idx < 0)
-                {
-                    indexMisses++;
-                    if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
-                        _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("FindLabelIndexMiss", $"range:{start}-{endExclusive} examined:{examined} misses:{indexMisses}");
-                    _dependencies.DebugLog($"[LabelSelectDiag] index-miss range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} bt:{blightChestTransitionSuppressed} ls:{lockedStrongboxSuppressed} im:{indexMisses}");
-                    // A single transient index miss (duplicate reference / snapshot anomaly) must not reject every remaining label in the range — advance past it and keep scanning.
-                    currentStart++;
-                    continue;
-                }
+            LabelOnGround? label = _dependencies.LabelSelectionService.GetNextLabelToClick(
+                allLabels, start, endExclusive - start, IsAcceptable);
 
-                currentStart = idx + 1;
+            if (label != null)
+            {
+                if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
+                    _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("FindLabelMatch",
+                        $"range:{start}-{endExclusive} examined:{examined} {ClickLabelSelectionMath.DescribeLabel(label)} {ClickLabelSelectionMath.DescribeCursorPosition()} hover={DescribeHoverAddress()}");
+                return label;
             }
 
             if (examined > 0)
             {
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("FindLabelExhausted", $"range:{start}-{endExclusive} examined:{examined}");
-                _dependencies.DebugLog($"[LabelSelectDiag] exhausted range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} bt:{blightChestTransitionSuppressed} ls:{lockedStrongboxSuppressed} im:{indexMisses}");
+                _dependencies.DebugLog($"[LabelSelectDiag] exhausted range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} bt:{blightChestTransitionSuppressed} ls:{lockedStrongboxSuppressed}");
+            }
+            else if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
+            {
+                string noLabelSummary = _dependencies.LabelInteraction.BuildLabelRangeRejectionDebugSummary(allLabels, start, endExclusive, examined);
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("FindLabelNull", noLabelSummary);
             }
 
             return null;

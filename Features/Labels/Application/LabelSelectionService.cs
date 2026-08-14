@@ -35,6 +35,13 @@ namespace ClickIt.Features.Labels.Application
         private const long BuildCacheWindowMs = 1000;
 
         public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
+            => GetNextLabelToClick(allLabels, startIndex, maxCount, isAcceptable: null);
+
+        public LabelOnGround? GetNextLabelToClick(
+            IReadOnlyList<LabelOnGround>? allLabels,
+            int startIndex,
+            int maxCount,
+            Func<LabelOnGround, LabelCandidateBuildResult, bool>? isAcceptable)
         {
             long now = Environment.TickCount64;
             if (ReferenceEquals(allLabels, _selectionCacheLabelsRef))
@@ -42,7 +49,12 @@ namespace ClickIt.Features.Labels.Application
                 if (_selectionCacheByRange.TryGetValue((startIndex, maxCount), out (LabelOnGround? Selected, long AtMs) cached)
                     && now - cached.AtMs < SelectionCacheWindowMs)
                 {
-                    return cached.Selected;
+                    // A gated selection re-validates the cached label against the predicate: a lock/unlock or
+                    // overlap change within the cache window must not pin a now-suppressed label (the old
+                    // per-suppression re-query bypassed the cache by using fresh range keys; the single-pass
+                    // gated scan must re-run only when the cached result is no longer acceptable).
+                    if (isAcceptable == null || cached.Selected == null || isAcceptable(cached.Selected, default))
+                        return cached.Selected;
                 }
             }
             else
@@ -51,12 +63,16 @@ namespace ClickIt.Features.Labels.Application
                 _selectionCacheByRange.Clear();
             }
 
-            LabelOnGround? selected = SelectCore(allLabels, startIndex, maxCount);
+            LabelOnGround? selected = SelectCore(allLabels, startIndex, maxCount, isAcceptable);
             _selectionCacheByRange[(startIndex, maxCount)] = (selected, now);
             return selected;
         }
 
-        private LabelOnGround? SelectCore(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
+        private LabelOnGround? SelectCore(
+            IReadOnlyList<LabelOnGround>? allLabels,
+            int startIndex,
+            int maxCount,
+            Func<LabelOnGround, LabelCandidateBuildResult, bool>? isAcceptable)
         {
             bool captureDebug = _dependencies.ShouldCaptureLabelDebug();
 
@@ -80,7 +96,7 @@ namespace ClickIt.Features.Labels.Application
                     $"start={startIndex} maxCount={maxCount}{harvestDebug}");
             }
 
-            LabelOnGround? selected = SelectNextLabelByPriority(allLabels, start, end, clickSettings);
+            LabelOnGround? selected = SelectNextLabelByPriority(allLabels, start, end, clickSettings, isAcceptable);
             if (captureDebug)
             {
                 if (selected == null)
@@ -216,7 +232,12 @@ namespace ClickIt.Features.Labels.Application
             return SystemMath.Min(absoluteDistanceSq, clientDistanceSq);
         }
 
-        private LabelOnGround? SelectNextLabelByPriority(IReadOnlyList<LabelOnGround> allLabels, int startIndex, int endExclusive, ClickSettings clickSettings)
+        private LabelOnGround? SelectNextLabelByPriority(
+            IReadOnlyList<LabelOnGround> allLabels,
+            int startIndex,
+            int endExclusive,
+            ClickSettings clickSettings,
+            Func<LabelOnGround, LabelCandidateBuildResult, bool>? isAcceptable)
         {
             int start = SystemMath.Max(0, startIndex);
             int end = SystemMath.Min(allLabels.Count, endExclusive);
@@ -226,7 +247,8 @@ namespace ClickIt.Features.Labels.Application
                 end,
                 clickSettings,
                 label => BuildLabelCandidateCached(label, clickSettings),
-                label => ResolveRankInputCached(label, clickSettings));
+                label => ResolveRankInputCached(label, clickSettings),
+                isAcceptable);
 
             LabelOnGround? selected = selection.SelectedCandidate;
             if (_dependencies.ShouldCaptureLabelDebug())

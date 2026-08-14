@@ -7,7 +7,8 @@ namespace ClickIt.Features.Click.Core
         LabelSelectionScanEngine LabelSelectionScan,
         ClickDebugPublicationService ClickDebugPublisher,
         ClickLabelInteractionService LabelInteraction,
-        Func<bool> ShouldCaptureClickDebug);
+        Func<bool> ShouldCaptureClickDebug,
+        Action<int, long, double>? RecordBreakdownStage = null);
 
     internal readonly record struct CandidateRankingEngineDependencies(
         LabelSelectionScanEngine LabelSelectionScan,
@@ -28,6 +29,7 @@ namespace ClickIt.Features.Click.Core
         Func<bool> ShouldCaptureClickDebug,
         Action<string> HoldDebugTelemetryAfterSuccess,
         Action<string> DebugLog,
+        Action<int, long, double>? RecordBreakdownStage = null,
         Func<LabelOnGround?>? GetHarvestLabelToClick = null,
         Func<BlightBuildAction>? TryProgressBlightBuilding = null,
         Func<Entity?>? GetBlightPathfindTarget = null,
@@ -53,6 +55,7 @@ namespace ClickIt.Features.Click.Core
         Action<string> DebugLog,
         InputHandler InputHandler,
         Action<ClickAllocationBreakdown>? RecordAllocationBreakdown = null,
+        Action<int, long, double>? RecordBreakdownStage = null,
         Func<LabelOnGround?>? GetHarvestLabelToClick = null,
         Func<BlightBuildAction>? TryProgressBlightBuilding = null,
         Func<Entity?>? GetBlightPathfindTarget = null,
@@ -87,6 +90,9 @@ namespace ClickIt.Features.Click.Core
 
         internal bool LastTickWasActionable { get; private set; }
 
+        private void RecordStage(int stageIndex, long bytes, double ms)
+            => _dependencies.RecordBreakdownStage?.Invoke(stageIndex, bytes, ms);
+
         private static CandidateAcquisitionEngineDependencies CreateCandidateAcquisitionDependencies(ClickRuntimeEngineDependencies dependencies)
             => new(
                 dependencies.Settings,
@@ -95,7 +101,8 @@ namespace ClickIt.Features.Click.Core
                 dependencies.LabelSelectionScan,
                 dependencies.ClickDebugPublisher,
                 dependencies.LabelInteraction,
-                dependencies.ShouldCaptureClickDebug);
+                dependencies.ShouldCaptureClickDebug,
+                dependencies.RecordBreakdownStage);
 
         private static CandidateRankingEngineDependencies CreateCandidateRankingDependencies(ClickRuntimeEngineDependencies dependencies)
             => new(
@@ -118,6 +125,7 @@ namespace ClickIt.Features.Click.Core
                 dependencies.ShouldCaptureClickDebug,
                 dependencies.HoldDebugTelemetryAfterSuccess,
                 dependencies.DebugLog,
+                dependencies.RecordBreakdownStage,
                 dependencies.GetHarvestLabelToClick,
                 dependencies.TryProgressBlightBuilding,
                 dependencies.GetBlightPathfindTarget,
@@ -179,6 +187,7 @@ namespace ClickIt.Features.Click.Core
             }
             long ctxBytes = GC.GetAllocatedBytesForCurrentThread() - ctxStart;
             double ctxMs = GetElapsedMs(ctxTimestamp);
+            RecordStage(PerformanceMonitor.ClickContextStageIndex, ctxBytes, ctxMs);
 
             long acquireStart = GC.GetAllocatedBytesForCurrentThread();
             long acquireTimestamp = Stopwatch.GetTimestamp();
@@ -191,6 +200,7 @@ namespace ClickIt.Features.Click.Core
             RankingResult ranking = _rankingPhase.Rank(context, candidates);
             long rankBytes = GC.GetAllocatedBytesForCurrentThread() - rankStart;
             double rankMs = GetElapsedMs(rankTimestamp);
+            RecordStage(PerformanceMonitor.ClickRankStageIndex, rankBytes, rankMs);
 
             DecisionResult decision = Gate(candidates, ranking);
 
@@ -212,6 +222,7 @@ namespace ClickIt.Features.Click.Core
                     yield return postActions.Current;
                 postBytes = GC.GetAllocatedBytesForCurrentThread() - postStart;
                 postMs = GetElapsedMs(postTimestamp);
+                RecordStage(PerformanceMonitor.ClickPostStageIndex, postBytes, postMs);
             }
 
             long total = GC.GetAllocatedBytesForCurrentThread() - runStart;

@@ -56,5 +56,32 @@ namespace ClickIt.Tests.Features.Labels.Selection
 
         private static LabelOnGround CreateLabel()
             => (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
+
+        [TestMethod]
+        public void SelectNextLabelByPriority_GatedSelection_SkipsSuppressedLabels_AndPicksBestAcceptable()
+        {
+            // Regression: the scan now applies suppression INLINE in the selection pass (a single O(n) scan
+            // instead of re-querying the remaining range per suppressed label). A suppressed label must be
+            // skipped even when it would otherwise rank best, and the best ACCEPTABLE label must win.
+            LabelOnGround wouldBeBest = CreateLabel();
+            LabelOnGround nextBest = CreateLabel();
+            LabelOnGround worst = CreateLabel();
+            IReadOnlyList<LabelOnGround> labels = [wouldBeBest, nextBest, worst];
+
+            LabelSelectionResult result = LabelSelectionEngine.SelectNextLabelByPriority(
+                labels,
+                startIndex: 0,
+                endExclusive: labels.Count,
+                CreateClickSettings(),
+                static _ => CreateSuccessfulCandidate("items"),
+                label => new LabelRankInput(
+                    ReferenceEquals(label, wouldBeBest) ? 1f : ReferenceEquals(label, nextBest) ? 2f : 3f,
+                    0f),
+                (label, _) => !ReferenceEquals(label, wouldBeBest));
+
+            result.SelectedCandidate.Should().BeSameAs(nextBest,
+                "the would-be-best label is suppressed, so the next best acceptable label must be picked in the single pass");
+            result.Stats.ConsideredCandidates.Should().Be(3);
+        }
     }
 }
