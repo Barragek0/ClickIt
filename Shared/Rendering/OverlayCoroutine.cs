@@ -96,12 +96,6 @@ namespace ClickIt.Shared.Rendering
             }
         }
 
-        public void Pause()
-            => _coroutine.Pause();
-
-        public void Resume()
-            => _coroutine.Resume();
-
         public void Stop()
             => _coroutine.Done();
 
@@ -109,6 +103,6 @@ namespace ClickIt.Shared.Rendering
             => _coroutine.Done();
 
         private static double GetElapsedMs(long startTimestamp)
-            => (Stopwatch.GetTimestamp() - startTimestamp) * 1000.0 / Stopwatch.Frequency;
+            => StopwatchMath.ElapsedMs(startTimestamp);
     }
 }

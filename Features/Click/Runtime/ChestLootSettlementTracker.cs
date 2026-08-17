@@ -32,9 +32,7 @@ namespace ClickIt.Features.Click.Runtime
 
             if (!ChestLootSettlementMath.ShouldWaitForChestLootSettlement(
                 mechanicId,
-                settings.PauseAfterOpeningBasicChests?.Value == true,
-                settings.PauseAfterOpeningLeagueChests?.Value == true,
-                settings.PauseAfterOpeningHeistChests?.Value == true))
+                settings.PauseAfterOpeningBasicChests?.Value == true))
             {
                 return;
             }
@@ -111,9 +109,7 @@ namespace ClickIt.Features.Click.Runtime
         {
             ClickItSettings settings = _dependencies.Settings;
             ChestLootSettlementState state = _dependencies.State;
-            Entity? chestItem = DynamicAccess.TryGetDynamicValue(chestLabel, DynamicAccessProfiles.ItemOnGround, out object? rawChestItem)
-                ? rawChestItem as Entity
-                : null;
+            DynamicAccess.TryGetLabelItemOnGround(chestLabel, out Entity? chestItem);
 
             string? resolvedMechanicId = ChestLootSettlementMath.ResolveChestLootSettlementMechanicIdForOpenedLabel(
                 mechanicId,
@@ -126,9 +122,7 @@ namespace ClickIt.Features.Click.Runtime
 
             if (!ChestLootSettlementMath.ShouldWaitForChestLootSettlement(
                 resolvedMechanicId,
-                settings.PauseAfterOpeningBasicChests?.Value == true,
-                settings.PauseAfterOpeningLeagueChests?.Value == true,
-                settings.PauseAfterOpeningHeistChests?.Value == true))
+                settings.PauseAfterOpeningBasicChests?.Value == true))
             {
                 return;
             }

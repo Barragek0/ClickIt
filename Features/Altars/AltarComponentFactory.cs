@@ -39,20 +39,19 @@ namespace ClickIt.Features.Altars
             PrimaryAltarComponent altarComponent = new(altarType, topMods, topButton, bottomMods, bottomButton);
 
             if (topAltarAdapter != null)
-            {
-                (string negativeModType, List<string> mods) = ExtractModsFromAdapter(topAltarAdapter);
-                (List<string> upsides, List<string> downsides, bool hasUnmatched) = ProcessMods(mods, negativeModType);
-                UpdateFromAdapter(true, altarComponent, topAltarAdapter, upsides, downsides, hasUnmatched);
-            }
+                ProcessAltarAdapter(topAltarAdapter, true, altarComponent);
 
             if (bottomAltarAdapter != null)
-            {
-                (string negativeModType, List<string> mods) = ExtractModsFromAdapter(bottomAltarAdapter);
-                (List<string> upsides, List<string> downsides, bool hasUnmatched) = ProcessMods(mods, negativeModType);
-                UpdateFromAdapter(false, altarComponent, bottomAltarAdapter, upsides, downsides, hasUnmatched);
-            }
+                ProcessAltarAdapter(bottomAltarAdapter, false, altarComponent);
 
             return altarComponent;
+        }
+
+        private void ProcessAltarAdapter(IElementAdapter adapter, bool isTop, PrimaryAltarComponent altarComponent)
+        {
+            (string negativeModType, List<string> mods) = ExtractModsFromAdapter(adapter);
+            (List<string> upsides, List<string> downsides, bool hasUnmatched) = ProcessMods(mods, negativeModType);
+            UpdateFromAdapter(isTop, altarComponent, adapter, upsides, downsides, hasUnmatched);
         }
 
         internal static void UpdateFromAdapter(

@@ -24,25 +24,25 @@ namespace ClickIt.Features.Click.Application
             Element? expectedElement,
             GameController? controller,
             bool useHoldClick,
-            int holdDurationMs = 0,
             bool forceUiHoverVerification = false,
             bool allowWhenHotkeyInactive = false,
             bool avoidCursorMove = false,
-            string? outsideWindowLogMessage = null)
+            string? outsideWindowLogMessage = null,
+            IntervalKind interval = IntervalKind.Click)
         {
             return _dependencies.ExecuteInteraction(new InteractionExecutionRequest(
                 ClickPosition: clickPos,
                 ExpectedElement: expectedElement,
                 Controller: controller,
                 UseHoldClick: useHoldClick,
-                HoldDurationMs: holdDurationMs,
                 ForceUiHoverVerification: forceUiHoverVerification,
                 AllowWhenHotkeyInactive: allowWhenHotkeyInactive,
                 AvoidCursorMove: avoidCursorMove,
                 OutsideWindowLogMessage: outsideWindowLogMessage
                     ?? (useHoldClick
                         ? "[PerformLabelHoldClick] Skipping hold click - cursor outside PoE window"
-                        : "[PerformLabelClick] Skipping label click - cursor outside PoE window")));
+                        : "[PerformLabelClick] Skipping label click - cursor outside PoE window"),
+                Interval: interval));
         }
 
         private static bool ShouldSkipUiHoverVerification(string? mechanicId)
@@ -88,7 +88,6 @@ namespace ClickIt.Features.Click.Application
                         ExpectedElement: null,
                         Controller: _dependencies.GameController,
                         UseHoldClick: false,
-                        HoldDurationMs: 0,
                         ForceUiHoverVerification: false,
                         AllowWhenHotkeyInactive: false,
                         AvoidCursorMove: false,
@@ -106,7 +105,7 @@ namespace ClickIt.Features.Click.Application
             bool forceUiHoverVerification = false,
             bool allowWhenHotkeyInactive = false,
             bool avoidCursorMove = false)
-            => ExecuteInteraction(clickPos, expectedElement, controller, false, 0, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
+            => ExecuteInteraction(clickPos, expectedElement, controller, false, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
 
         internal bool PerformTrackedLabelClick(Vector2 clickPos, LabelOnGround? label, bool forceUiHoverVerification)
         {
@@ -120,8 +119,8 @@ namespace ClickIt.Features.Click.Application
                 forceUiHoverVerification);
         }
 
-        internal bool PerformMechanicClick(Vector2 clickPos)
-            => ExecuteInteraction(clickPos, null, _dependencies.GameController, false);
+        internal bool PerformMechanicClick(Vector2 clickPos, IntervalKind interval = IntervalKind.Click)
+            => ExecuteInteraction(clickPos, null, _dependencies.GameController, false, interval: interval);
 
         internal bool PerformMechanicInteraction(Vector2 clickPos, bool useHoldClick)
             => ExecuteInteraction(clickPos, null, _dependencies.GameController, useHoldClick);
@@ -155,7 +154,7 @@ namespace ClickIt.Features.Click.Application
                 && !string.Equals(mechanicId, MechanicIds.LeagueChests, StringComparison.OrdinalIgnoreCase))
                 return;
 
-            Entity? entity = TryGetLabelItemOnGround(label);
+            DynamicAccess.TryGetLabelItemOnGround(label, out Entity? entity);
             if (entity == null)
                 return;
 
@@ -193,7 +192,7 @@ namespace ClickIt.Features.Click.Application
             out Vector2 clickPos,
             string? explicitPath = null)
         {
-            Entity? item = TryGetLabelItemOnGround(label);
+            DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item);
             string path = ResolveLabelItemPath(label, explicitPath);
 
             (bool clickResolvable, Vector2 resolvedClickPos) = _dependencies.TryResolveClickPosition(
@@ -294,20 +293,12 @@ namespace ClickIt.Features.Click.Application
             return _dependencies.IsInsideWindowInEitherSpace(worldScreenAbsolute);
         }
 
-        private static Entity? TryGetLabelItemOnGround(LabelOnGround? label)
-        {
-            return DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                && rawItem is Entity item
-                ? item
-                : null;
-        }
-
         private static string ResolveLabelItemPath(LabelOnGround? label, string? explicitPath)
         {
             if (!string.IsNullOrWhiteSpace(explicitPath))
                 return explicitPath;
 
-            Entity? item = TryGetLabelItemOnGround(label);
+            DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item);
             return DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string path)
                 ? path
                 : string.Empty;
@@ -315,21 +306,13 @@ namespace ClickIt.Features.Click.Application
 
         private bool TryProjectEntityAbsolutePosition(Entity? entity, Vector2 windowTopLeft, out Vector2 absolutePosition)
         {
-            absolutePosition = default;
-
-            if (!DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.PosNum, out object? rawPosition)
-                || rawPosition is not System.Numerics.Vector3 position
-                || !DynamicAccess.TryGetDynamicValue(_dependencies.GameController, DynamicAccessProfiles.Game, out object? rawGame)
-                || !DynamicAccess.TryGetDynamicValue(rawGame, DynamicAccessProfiles.IngameState, out object? rawIngameState)
-                || !DynamicAccess.TryGetDynamicValue(rawIngameState, DynamicAccessProfiles.Camera, out object? rawCamera)
-                || !DynamicAccess.TryProjectWorldToScreen(rawCamera, position, out object? rawProjected)
-                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.X, out float projectedX)
-                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.Y, out float projectedY))
+            if (!EntityScreenProjection.TryProjectEntityScreen(_dependencies.GameController, entity, out Vector2 screenPosition))
             {
+                absolutePosition = default;
                 return false;
             }
 
-            absolutePosition = new(projectedX + windowTopLeft.X, projectedY + windowTopLeft.Y);
+            absolutePosition = new(screenPosition.X + windowTopLeft.X, screenPosition.Y + windowTopLeft.Y);
             return true;
         }
     }

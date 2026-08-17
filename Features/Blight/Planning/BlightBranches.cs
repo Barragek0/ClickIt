@@ -1,3 +1,5 @@
+using static ClickIt.Features.Blight.Planning.BlightGeometry;
+
 namespace ClickIt.Features.Blight.Planning;
 
 internal readonly record struct PumpBranch(int CoverageSegment, NumVector2 Anchor);
@@ -7,15 +9,6 @@ internal static class BlightBranches
     internal const float PumpBranchMaxDistanceSq = 30f * 30f;
 
     internal const float BranchMergeRadiusSq = 40f * 40f;
-
-    internal static float Sq(float v) => v * v;
-
-    internal static float SqDist(NumVector2 a, NumVector2 b)
-    {
-        float dx = a.X - b.X;
-        float dy = a.Y - b.Y;
-        return (dx * dx) + (dy * dy);
-    }
 
     // Shared placement metric for coverage and fill tiers: how desirable a foundation is for a rule.  NearestPump prefers pump proximity, NearExistingTowers prefers clustering beside an already-assigned tower, and everything else falls back to the caller's metric.
     internal static float PlacementMetric(
@@ -30,7 +23,7 @@ internal static class BlightBranches
         return placement switch
         {
             BlightPlacementPreference.NearestPump when pumpPosition.HasValue
-                => (p - pumpPosition.Value).LengthSquared(),
+                => SqDist(p, pumpPosition.Value),
             BlightPlacementPreference.NearExistingTowers
                 => DistanceToNearestAssignedTowerSq(knownTowers, assignedIndices, candidateIdx),
             _ => fallbackMetric,
@@ -47,7 +40,7 @@ internal static class BlightBranches
         foreach (int i in assignedIndices)
         {
             if (i == candidateIdx) continue;
-            float d = (knownTowers[i].WorldPosition - p).LengthSquared();
+            float d = SqDist(knownTowers[i].WorldPosition, p);
             if (d < best) best = d;
         }
         return best;

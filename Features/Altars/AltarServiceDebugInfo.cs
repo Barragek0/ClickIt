@@ -15,6 +15,14 @@ namespace ClickIt.Features.Altars
         public DateTime LastScanTime { get; set; } = DateTime.MinValue;
         public List<string> RecentUnmatchedMods { get; set; } = [];
 
+        // Recent scan/decision/click stages so the debug box + dump show exactly what happened to each altar (which option was chosen and why), instead of only the aggregate counters. Deduped so a hot path collapses to one accumulating entry.
+        private readonly DedupEventBuffer _stages = new(64);
+
+        public IReadOnlyList<string> RecentStages => _stages.Events;
+
+        internal void AddDebugStage(string message)
+            => _stages.Add(message);
+
         internal void ResetForScan(DateTime scanTime)
         {
             LastScanTime = scanTime;

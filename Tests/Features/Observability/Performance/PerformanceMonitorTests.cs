@@ -419,10 +419,10 @@ namespace ClickIt.Tests.Features.Observability.Performance
         public void SampleDlrReadRate_ComputesReadsPerSecondAndFailPercent()
         {
             var monitor = new PerformanceMonitor(new ClickItSettings());
-            DynamicAccess.ResetStats();
 
-            // Baseline 1000ms window with no reads -> idle sample of 0.
+            // First window closes the monitor's delta baseline; its sample is whatever preceded this test.
             monitor.SampleDlrReadRate(nowMs: 1000);
+            double baselineReadsPerSec = monitor.GetDebugSnapshot().Memory.DlrReadsLastPerSec;
 
             for (int index = 0; index < 10; index++)
                 DynamicAccess.TryGetDynamicValue(123, static o => o, out _);
@@ -434,9 +434,9 @@ namespace ClickIt.Tests.Features.Observability.Performance
 
             PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
             snapshot.Memory.DlrReadsLastPerSec.Should().BeApproximately(14, 0.01);
-            snapshot.Memory.DlrReadsMaxPerSec.Should().BeApproximately(14, 0.01);
-            // Live-window samples are [0, 14], averaged over the last 10.
-            snapshot.Memory.DlrReadsAvgPerSec.Should().BeApproximately(7, 0.01);
+            snapshot.Memory.DlrReadsMaxPerSec.Should().BeApproximately(SystemMath.Max(baselineReadsPerSec, 14), 0.01);
+            // Live-window samples are [baseline, 14], averaged over the last 10.
+            snapshot.Memory.DlrReadsAvgPerSec.Should().BeApproximately((baselineReadsPerSec + 14) / 2, 0.01);
             snapshot.Memory.DlrFailPercent.Should().BeApproximately(4 * 100.0 / 14, 0.01);
             // The 14 reads actually executed, so their accumulated wall time is positive.
             snapshot.Memory.DlrReadsMsLastPerSec.Should().BeGreaterThan(0);
@@ -447,10 +447,10 @@ namespace ClickIt.Tests.Features.Observability.Performance
         public void SampleDlrReadRate_AttributesReadsToActiveSection()
         {
             var monitor = new PerformanceMonitor(new ClickItSettings());
-            DynamicAccess.ResetStats();
 
-            // Baseline 1000ms window with no reads -> idle sample of 0.
+            // First window closes the monitor's delta baseline; its sample is whatever preceded this test.
             monitor.SampleDlrReadRate(nowMs: 1000);
+            double baselineBlightReads = monitor.GetDebugSnapshot().Memory.DlrSections![(int)ProcessingSection.Blight].ReadsLastPerSec;
 
             // Reads issued inside a DlrReadScope must be charged to that feature's section.
             using (new DlrReadScope(ProcessingSection.Blight))
@@ -465,7 +465,7 @@ namespace ClickIt.Tests.Features.Observability.Performance
             PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
             DlrSectionSnapshot blight = snapshot.Memory.DlrSections![(int)ProcessingSection.Blight];
             blight.ReadsLastPerSec.Should().BeApproximately(8, 0.01);
-            blight.ReadsMaxPerSec.Should().BeApproximately(8, 0.01);
+            blight.ReadsMaxPerSec.Should().BeApproximately(SystemMath.Max(baselineBlightReads, 8), 0.01);
             blight.MsAvgPerSec.Should().BeGreaterThan(0);
             // Sections that never had an active scope stay at zero.
             snapshot.Memory.DlrSections[(int)ProcessingSection.Altar].ReadsLastPerSec.Should().Be(0);

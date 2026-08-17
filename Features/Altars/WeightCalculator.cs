@@ -44,7 +44,6 @@ namespace ClickIt.Features.Altars
             result.BottomUpsideWeight = bottomUpsideWeight;
             result.BottomDownsideWeight = bottomDownsideWeight;
 
-            // Safe division: avoid divide-by-zero
             result.TopWeight = (int)SystemMath.Round(topDownsideWeight == 0 ? 0 : topUpsideWeight / topDownsideWeight * 100, 2);
             result.BottomWeight = (int)SystemMath.Round(bottomDownsideWeight == 0 ? 0 : bottomUpsideWeight / bottomDownsideWeight * 100, 2);
             return result;
@@ -118,7 +117,6 @@ namespace ClickIt.Features.Altars
         private decimal[] _topUpsideWeights;
         private decimal[] _bottomUpsideWeights;
 
-        // Thread safety lock for weight array operations
         private readonly object _weightsLock = new();
 
         public AltarWeights()

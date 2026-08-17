@@ -34,8 +34,11 @@ namespace ClickIt.Features.Labels.Application
         private long _buildCacheWindowStartMs;
         private const long BuildCacheWindowMs = 1000;
 
-        public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
-            => GetNextLabelToClick(allLabels, startIndex, maxCount, isAcceptable: null);
+        // Per-label rect cache: the on-screen rect element-tree walk is the dominant per-label DLR cost of the scan, but a label's rect only changes as the player moves, so a short window cuts the walk to ~once per window. The interaction path re-reads the chosen label's rect fresh before clicking, so a briefly stale ranking rect is safe.
+        private readonly record struct CachedLabelRectEntry(RectangleF Rect, bool HasRect);
+        private readonly Dictionary<long, CachedLabelRectEntry> _rectCache = [];
+        private long _rectCacheWindowStartMs;
+        private const long RectCacheWindowMs = 250;
 
         public LabelOnGround? GetNextLabelToClick(
             IReadOnlyList<LabelOnGround>? allLabels,
@@ -49,10 +52,7 @@ namespace ClickIt.Features.Labels.Application
                 if (_selectionCacheByRange.TryGetValue((startIndex, maxCount), out (LabelOnGround? Selected, long AtMs) cached)
                     && now - cached.AtMs < SelectionCacheWindowMs)
                 {
-                    // A gated selection re-validates the cached label against the predicate: a lock/unlock or
-                    // overlap change within the cache window must not pin a now-suppressed label (the old
-                    // per-suppression re-query bypassed the cache by using fresh range keys; the single-pass
-                    // gated scan must re-run only when the cached result is no longer acceptable).
+                    // A gated selection re-validates the cached label against the predicate: a lock/unlock or overlap change within the cache window must not pin a now-suppressed label (the old per-suppression re-query bypassed the cache by using fresh range keys; the single-pass gated scan must re-run only when the cached result is no longer acceptable).
                     if (isAcceptable == null || cached.Selected == null || isAcceptable(cached.Selected, default))
                         return cached.Selected;
                 }
@@ -174,6 +174,17 @@ namespace ClickIt.Features.Labels.Application
                 _buildCache[address] = candidate;
             }
 
+            // Mutable per-tick state (targetable/hidden/strongbox lock) must not be pinned by the build cache: re-read fresh so an unlock or targetable change advances the scan immediately instead of serving a stale rejection for the rest of the window.
+            if (!candidate.Success
+                && (candidate.RejectReason == LabelCandidateRejectReason.Untargetable
+                    || candidate.RejectReason == LabelCandidateRejectReason.LockedChest))
+            {
+                candidate = _dependencies.TryBuildLabelCandidate(label, clickSettings, out Entity? freshItem, out string? freshMechanicId, out LabelCandidateRejectReason freshRejectReason)
+                    ? new LabelCandidateBuildResult(true, freshItem, freshMechanicId, LabelCandidateRejectReason.None)
+                    : new LabelCandidateBuildResult(false, freshItem, freshMechanicId, freshRejectReason);
+                _buildCache[address] = candidate;
+            }
+
             // Fresh per scan: the on-screen rect and distance change as the player moves, so they are read live instead of being cached alongside the (static) build result.
             Entity? buildItem = candidate.Item;
             float distance = buildItem != null
@@ -195,29 +206,59 @@ namespace ClickIt.Features.Labels.Application
                     : distance;
             }
 
-            bool hasRect = LabelGeometry.TryGetLabelRect(label, out RectangleF rect);
+            bool hasRect = TryGetCachedLabelRect(label, out RectangleF rect);
 
             return new CachedLabelScanEntry(candidate, distance, rect, hasRect);
         }
 
-        private float ComputeCursorDistance(RectangleF rect, bool hasRect)
+        private bool TryGetCachedLabelRect(LabelOnGround label, out RectangleF rect)
         {
-            if (!hasRect || _dependencies.GameController?.Window == null)
-                return float.MaxValue;
+            long address = label.Address;
+            long now = Environment.TickCount64;
+            if (now - _rectCacheWindowStartMs >= RectCacheWindowMs)
+            {
+                _rectCache.Clear();
+                _rectCacheWindowStartMs = now;
+            }
 
-            Vector2 center = rect.Center;
+            if (_rectCache.TryGetValue(address, out CachedLabelRectEntry cached))
+            {
+                rect = cached.Rect;
+                return cached.HasRect;
+            }
+
+            bool hasRect = LabelGeometry.TryGetLabelRect(label, out rect);
+            _rectCache[address] = new CachedLabelRectEntry(rect, hasRect);
+            return hasRect;
+        }
+
+        // Cursor + window rect are stable within a single scan; resolving them once per scan instead of per label avoids a GetCursorPos syscall per scanned label.
+        private readonly record struct CursorRankContext(Vector2 Absolute, Vector2 Client, bool HasWindow);
+
+        private CursorRankContext ResolveCursorRankContext()
+        {
+            if (_dependencies.GameController?.Window == null)
+                return default;
+
             RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
             SystemDrawingPoint cursor = Mouse.GetCursorPosition();
             Vector2 cursorAbsolute = new(cursor.X, cursor.Y);
-            Vector2 cursorClient = cursorAbsolute - windowTopLeft;
+            return new CursorRankContext(cursorAbsolute, cursorAbsolute - windowTopLeft, true);
+        }
 
-            float absDx = cursorAbsolute.X - center.X;
-            float absDy = cursorAbsolute.Y - center.Y;
+        private float ComputeCursorDistance(RectangleF rect, bool hasRect, in CursorRankContext context)
+        {
+            if (!hasRect || !context.HasWindow)
+                return float.MaxValue;
+
+            Vector2 center = rect.Center;
+            float absDx = context.Absolute.X - center.X;
+            float absDy = context.Absolute.Y - center.Y;
             float absoluteDistanceSq = (absDx * absDx) + (absDy * absDy);
 
-            float clientDx = cursorClient.X - center.X;
-            float clientDy = cursorClient.Y - center.Y;
+            float clientDx = context.Client.X - center.X;
+            float clientDy = context.Client.Y - center.Y;
             float clientDistanceSq = (clientDx * clientDx) + (clientDy * clientDy);
 
             return SystemMath.Min(absoluteDistanceSq, clientDistanceSq);
@@ -232,8 +273,8 @@ namespace ClickIt.Features.Labels.Application
         {
             int start = SystemMath.Max(0, startIndex);
             int end = SystemMath.Min(allLabels.Count, endExclusive);
-            // One GetOrBuildScanEntry per label (candidate + rank together) halves the per-label live DLR reads
-            // (distance + label rect) that dominate the LabelScan stage.
+            // One GetOrBuildScanEntry per label (candidate + rank together) halves the per-label live DLR reads (distance + label rect) that dominate the LabelScan stage.
+            CursorRankContext cursorContext = ResolveCursorRankContext();
             LabelSelectionResult selection = LabelSelectionEngine.SelectNextLabelByPriority(
                 allLabels,
                 start,
@@ -244,7 +285,7 @@ namespace ClickIt.Features.Labels.Application
                     CachedLabelScanEntry entry = GetOrBuildScanEntry(label, clickSettings);
                     return new LabelScanEntry(
                         entry.Candidate,
-                        new LabelRankInput(entry.Distance, ComputeCursorDistance(entry.Rect, entry.HasRect)));
+                        new LabelRankInput(entry.Distance, ComputeCursorDistance(entry.Rect, entry.HasRect, cursorContext)));
                 },
                 isAcceptable);
 

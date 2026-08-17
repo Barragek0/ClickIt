@@ -27,16 +27,6 @@ namespace ClickIt.Tests.Features.Click
         [DataTestMethod]
         [DataRow(false, false, false)]
         [DataRow(false, true, false)]
-        [DataRow(true, false, false)]
-        [DataRow(true, true, true)]
-        public void ShouldAttemptManualCursorAltarClick_ReturnsExpected(bool isAltarLabel, bool hasClickableAltars, bool expected)
-        {
-            ManualCursorSelectionMath.ShouldAttemptManualCursorAltarClick(isAltarLabel, hasClickableAltars).Should().Be(expected);
-        }
-
-        [DataTestMethod]
-        [DataRow(false, false, false)]
-        [DataRow(false, true, false)]
         [DataRow(true, false, true)]
         [DataRow(true, true, false)]
         public void ShouldUseManualGroundProjectionForCandidate_ReturnsExpected(bool hasBackingEntity, bool isWorldItem, bool expected)
@@ -77,21 +67,12 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void ShouldPreferHoveredEssenceLabel_PrefersOverlappingOrEssenceFallback()
+        public void ShouldPreferHoveredLabel_PrefersOverlappingOrTargetFallback()
         {
-            ManualCursorSelectionMath.ShouldPreferHoveredEssenceLabel(true, true, false, true).Should().BeTrue();
-            ManualCursorSelectionMath.ShouldPreferHoveredEssenceLabel(true, false, true, true).Should().BeTrue();
-            ManualCursorSelectionMath.ShouldPreferHoveredEssenceLabel(true, false, false, true).Should().BeFalse();
-            ManualCursorSelectionMath.ShouldPreferHoveredEssenceLabel(false, true, true, true).Should().BeFalse();
-        }
-
-        [TestMethod]
-        public void ShouldPreferHoveredStrongboxLabel_PrefersOverlappingOrStrongboxFallback()
-        {
-            ManualCursorSelectionMath.ShouldPreferHoveredStrongboxLabel(true, true, false, true).Should().BeTrue();
-            ManualCursorSelectionMath.ShouldPreferHoveredStrongboxLabel(true, false, true, true).Should().BeTrue();
-            ManualCursorSelectionMath.ShouldPreferHoveredStrongboxLabel(true, false, false, true).Should().BeFalse();
-            ManualCursorSelectionMath.ShouldPreferHoveredStrongboxLabel(false, true, true, true).Should().BeFalse();
+            ManualCursorSelectionMath.ShouldPreferHoveredLabel(true, true, false, true).Should().BeTrue();
+            ManualCursorSelectionMath.ShouldPreferHoveredLabel(true, false, true, true).Should().BeTrue();
+            ManualCursorSelectionMath.ShouldPreferHoveredLabel(true, false, false, true).Should().BeFalse();
+            ManualCursorSelectionMath.ShouldPreferHoveredLabel(false, true, true, true).Should().BeFalse();
         }
     }
 }

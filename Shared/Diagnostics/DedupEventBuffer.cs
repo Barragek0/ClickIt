@@ -76,14 +76,5 @@ internal sealed class DedupEventBuffer
     }
 
     private static int ExtractDedupCount(string formatted)
-    {
-        ReadOnlySpan<char> span = formatted.AsSpan(StripTimestamp(formatted));
-        if (TryFindDedupSuffix(span, out int parenIdx))
-        {
-            ReadOnlySpan<char> numPart = span[(parenIdx + 3)..^1];
-            if (int.TryParse(numPart, out int count))
-                return count;
-        }
-        return 1;
-    }
+        => DedupSuffix.TryGetCount(formatted, out int count) ? count : 1;
 }

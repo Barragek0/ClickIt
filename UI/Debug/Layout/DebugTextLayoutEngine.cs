@@ -42,47 +42,6 @@ namespace ClickIt.UI.Debug.Layout
             return lines;
         }
 
-        internal static List<string> WrapDebugText(string text, int maxCharsPerLine)
-        {
-            List<string> lines = new(8);
-            if (string.IsNullOrEmpty(text))
-            {
-                lines.Add(string.Empty);
-                return lines;
-            }
-
-            int safeWrap = SystemMath.Max(20, maxCharsPerLine);
-            int leadingSpaces = 0;
-            while (leadingSpaces < text.Length && text[leadingSpaces] == ' ')
-                leadingSpaces++;
-
-            string indentation = new(' ', leadingSpaces);
-            string content = text[leadingSpaces..];
-            int contentLength = content.Length;
-            int startIndex = 0;
-
-            while (startIndex < contentLength)
-            {
-                int endIndex = SystemMath.Min(startIndex + safeWrap, contentLength);
-                if (endIndex < contentLength)
-                {
-                    string segment = content[startIndex..endIndex];
-                    int lastSpaceOffset = segment.LastIndexOf(' ');
-                    if (lastSpaceOffset > 0)
-                        endIndex = startIndex + lastSpaceOffset;
-                }
-
-                string line = content[startIndex..endIndex].TrimEnd();
-                lines.Add(indentation + line);
-
-                startIndex = endIndex;
-                if (startIndex < contentLength && content[startIndex] == ' ')
-                    startIndex++;
-            }
-
-            return lines;
-        }
-
         private static int FindWrapIndex(string value, int start, int maxLength)
         {
             int hardStop = SystemMath.Min(start + maxLength, value.Length);

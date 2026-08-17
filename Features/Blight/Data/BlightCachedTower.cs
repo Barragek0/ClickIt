@@ -6,7 +6,6 @@ internal sealed class BlightCachedTower
     public BlightTowerType TowerType { get; set; }
     public BlightTowerType PlannedTowerType { get; set; }
     public int UpgradeLevel { get; set; }
-    public Element? LabelElement { get; set; }
     public Entity? FoundationEntity { get; set; }
 
     // WorldPos3 (PosNum) is used by in-world helpers and WorldToScreen; WorldPosition (grid) by map helpers. Null only for foundations restored from saved state after their entity streamed out.

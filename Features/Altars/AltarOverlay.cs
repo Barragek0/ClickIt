@@ -8,7 +8,6 @@ namespace ClickIt.Features.Altars
     /// </summary>
     public sealed class AltarOverlay : IOverlay
     {
-        // Common offsets used for text positioning (avoid constructing every frame)
         private static readonly Vector2 Offset120_Minus60 = new(120, -80);
         private static readonly Vector2 Offset120_Minus25 = new(120, -25);
         private static readonly Vector2 Offset5_Minus32 = new(5, -32);
@@ -58,11 +57,11 @@ namespace ClickIt.Features.Altars
 
             foreach (PrimaryAltarComponent altar in altarSnapshot)
             {
-                RenderSingleAltar(ctx.TextQueue, ctx.FrameQueue, altar);
+                RenderSingleAltar(ctx.DrawQueue, ctx.WindowArea, altar);
             }
         }
 
-        private void RenderSingleAltar(DeferredTextQueue textQueue, DeferredFrameQueue frameQueue, PrimaryAltarComponent altar)
+        private void RenderSingleAltar(DeferredDrawQueue drawQueue, RectangleF windowArea, PrimaryAltarComponent altar)
         {
             if (!altar.IsValidCached())
             {
@@ -79,7 +78,14 @@ namespace ClickIt.Features.Altars
             RectangleF topModsRect = altar.GetTopModsRect();
             RectangleF bottomModsRect = altar.GetBottomModsRect();
 
-            if (!IsValidRectangles(topModsRect, bottomModsRect))
+            if (!AltarChoiceEvaluator.IsValidRectangles(topModsRect, bottomModsRect))
+            {
+                return;
+            }
+
+            // Skip altars whose mods have left the window: the stale element rect would otherwise draw a box near a screen corner.
+            if (!LabelGeometry.IsRectOnScreen(topModsRect, windowArea)
+                && !LabelGeometry.IsRectOnScreen(bottomModsRect, windowArea))
             {
                 return;
             }
@@ -88,21 +94,9 @@ namespace ClickIt.Features.Altars
             Vector2 bottomModsTopLeft = bottomModsRect.TopLeft;
 
             AltarChoiceEvaluation evaluation = _altarChoiceEvaluator.EvaluateChoice(altar, altarWeights.Value, topModsRect, bottomModsRect);
-            RenderChoiceEvaluation(textQueue, frameQueue, evaluation, topModsRect, bottomModsRect, topModsTopLeft);
+            RenderChoiceEvaluation(drawQueue, evaluation, topModsRect, bottomModsRect, topModsTopLeft);
 
-            DrawWeightTexts(textQueue, altarWeights.Value, topModsTopLeft, bottomModsTopLeft);
-        }
-
-        private static bool IsValidRectangle(RectangleF rect)
-        {
-            return rect.Width > 0 && rect.Height > 0 &&
-                   !float.IsNaN(rect.X) && !float.IsNaN(rect.Y) &&
-                   !float.IsInfinity(rect.X) && !float.IsInfinity(rect.Y);
-        }
-
-        private static bool IsValidRectangles(RectangleF first, RectangleF second)
-        {
-            return IsValidRectangle(first) && IsValidRectangle(second);
+            DrawWeightTexts(drawQueue, altarWeights.Value, topModsTopLeft, bottomModsTopLeft);
         }
 
         private static Color GetWeightColor(decimal weight1, decimal weight2, Color winColor, Color loseColor, Color tieColor)
@@ -112,19 +106,19 @@ namespace ClickIt.Features.Altars
             return tieColor;
         }
 
-        private void DrawWeightTexts(DeferredTextQueue textQueue, AltarWeights weights, Vector2 topModsTopLeft, Vector2 bottomModsTopLeft)
+        private void DrawWeightTexts(DeferredDrawQueue drawQueue, AltarWeights weights, Vector2 topModsTopLeft, Vector2 bottomModsTopLeft)
         {
-            textQueue.Enqueue($"Upside: {weights.TopUpsideWeight}", topModsTopLeft + Offset5_Minus32, WeightWinColor, 14);
-            textQueue.Enqueue($"Downside: {weights.TopDownsideWeight}", topModsTopLeft + Offset5_Minus20, WeightLoseColor, 14);
-            textQueue.Enqueue($"Upside: {weights.BottomUpsideWeight}", bottomModsTopLeft + Offset10_Minus32, WeightWinColor, 14);
-            textQueue.Enqueue($"Downside: {weights.BottomDownsideWeight}", bottomModsTopLeft + Offset10_Minus20, WeightLoseColor, 14);
+            drawQueue.EnqueueText($"Upside: {weights.TopUpsideWeight}", topModsTopLeft + Offset5_Minus32, WeightWinColor, 14);
+            drawQueue.EnqueueText($"Downside: {weights.TopDownsideWeight}", topModsTopLeft + Offset5_Minus20, WeightLoseColor, 14);
+            drawQueue.EnqueueText($"Upside: {weights.BottomUpsideWeight}", bottomModsTopLeft + Offset10_Minus32, WeightWinColor, 14);
+            drawQueue.EnqueueText($"Downside: {weights.BottomDownsideWeight}", bottomModsTopLeft + Offset10_Minus20, WeightLoseColor, 14);
             Color topWeightColor = GetWeightColor(weights.TopWeight, weights.BottomWeight, WeightWinColor, WeightLoseColor, WeightTieColor);
             Color bottomWeightColor = GetWeightColor(weights.BottomWeight, weights.TopWeight, WeightWinColor, WeightLoseColor, WeightTieColor);
-            textQueue.Enqueue($"{weights.TopWeight}", topModsTopLeft + Offset10_5, topWeightColor, 18);
-            textQueue.Enqueue($"{weights.BottomWeight}", bottomModsTopLeft + Offset10_5, bottomWeightColor, 18);
+            drawQueue.EnqueueText($"{weights.TopWeight}", topModsTopLeft + Offset10_5, topWeightColor, 18);
+            drawQueue.EnqueueText($"{weights.BottomWeight}", bottomModsTopLeft + Offset10_5, bottomWeightColor, 18);
         }
 
-        private void RenderChoiceEvaluation(DeferredTextQueue textQueue, DeferredFrameQueue frameQueue, AltarChoiceEvaluation evaluation, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 topModsTopLeft)
+        private void RenderChoiceEvaluation(DeferredDrawQueue drawQueue, AltarChoiceEvaluation evaluation, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 topModsTopLeft)
         {
             Vector2 textPos1 = topModsTopLeft + Offset120_Minus60;
             Vector2 textPos2 = topModsTopLeft + Offset120_Minus25;
@@ -132,91 +126,91 @@ namespace ClickIt.Features.Altars
             switch (evaluation.Outcome)
             {
                 case AltarChoiceOutcome.InvalidRectangles:
-                    textQueue.Enqueue("Invalid altar rectangles detected", textPos1, Color.Red, 30);
+                    drawQueue.EnqueueText("Invalid altar rectangles detected", textPos1, Color.Red, 30);
                     break;
                 case AltarChoiceOutcome.UnmatchedMods:
-                    DrawFailedToMatchModText(textQueue, textPos1);
-                    DrawRedFrames(frameQueue, topModsRect, bottomModsRect);
+                    DrawFailedToMatchModText(drawQueue, textPos1);
+                    DrawRedFrames(drawQueue, topModsRect, bottomModsRect);
                     break;
                 case AltarChoiceOutcome.UnrecognizedTopUpside:
                 case AltarChoiceOutcome.UnrecognizedTopDownside:
                 case AltarChoiceOutcome.UnrecognizedBottomUpside:
                 case AltarChoiceOutcome.UnrecognizedBottomDownside:
-                    DrawUnrecognizedWeightText(textQueue, evaluation.UnrecognizedWeightType ?? string.Empty, evaluation.UnrecognizedMods ?? [], textPos1);
-                    DrawYellowFrames(frameQueue, topModsRect, bottomModsRect);
+                    DrawUnrecognizedWeightText(drawQueue, evaluation.UnrecognizedWeightType ?? string.Empty, evaluation.UnrecognizedMods ?? [], textPos1);
+                    DrawYellowFrames(drawQueue, topModsRect, bottomModsRect);
                     break;
                 case AltarChoiceOutcome.HighValueTopChosen:
-                    textQueue.Enqueue($"Weighting has been overridden\n\nTop has been chosen because one of the top upsides has a weight of {evaluation.Threshold}+", textPos1, Color.LawnGreen, 30);
-                    frameQueue.Enqueue(topModsRect, Color.LawnGreen, 3);
-                    frameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 2);
+                    drawQueue.EnqueueText($"Weighting has been overridden\n\nTop has been chosen because one of the top upsides has a weight of {evaluation.Threshold}+", textPos1, Color.LawnGreen, 30);
+                    drawQueue.EnqueueFrame(topModsRect, Color.LawnGreen, 3);
+                    drawQueue.EnqueueFrame(bottomModsRect, Color.OrangeRed, 2);
                     break;
                 case AltarChoiceOutcome.HighValueBottomChosen:
-                    textQueue.Enqueue($"Weighting has been overridden\n\nBottom has been chosen because one of the bottom upsides has a weight of {evaluation.Threshold}+", textPos1, Color.LawnGreen, 30);
-                    frameQueue.Enqueue(topModsRect, Color.OrangeRed, 2);
-                    frameQueue.Enqueue(bottomModsRect, Color.LawnGreen, 3);
+                    drawQueue.EnqueueText($"Weighting has been overridden\n\nBottom has been chosen because one of the bottom upsides has a weight of {evaluation.Threshold}+", textPos1, Color.LawnGreen, 30);
+                    drawQueue.EnqueueFrame(topModsRect, Color.OrangeRed, 2);
+                    drawQueue.EnqueueFrame(bottomModsRect, Color.LawnGreen, 3);
                     break;
                 case AltarChoiceOutcome.BothDangerousManual:
-                    textQueue.Enqueue($"Weighting has been overridden\n\nBoth options have downsides with a weight of {evaluation.Threshold}+ that may brick your build.", textPos1, Color.Orange, 30);
-                    frameQueue.Enqueue(topModsRect, Color.OrangeRed, 2);
-                    frameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 2);
+                    drawQueue.EnqueueText($"Weighting has been overridden\n\nBoth options have downsides with a weight of {evaluation.Threshold}+ that may brick your build.", textPos1, Color.Orange, 30);
+                    drawQueue.EnqueueFrame(topModsRect, Color.OrangeRed, 2);
+                    drawQueue.EnqueueFrame(bottomModsRect, Color.OrangeRed, 2);
                     _logMessage("[RenderChoiceEvaluation] BOTH DANGEROUS CASE - both sides >= threshold", 10);
                     break;
                 case AltarChoiceOutcome.DangerousTopChooseBottom:
-                    textQueue.Enqueue($"Weighting overridden\n\nBottom chosen due to top downside {evaluation.Threshold}+", textPos1, Color.LawnGreen, 30);
-                    frameQueue.Enqueue(topModsRect, Color.OrangeRed, 3);
-                    frameQueue.Enqueue(bottomModsRect, Color.LawnGreen, 2);
+                    drawQueue.EnqueueText($"Weighting overridden\n\nBottom chosen due to top downside {evaluation.Threshold}+", textPos1, Color.LawnGreen, 30);
+                    drawQueue.EnqueueFrame(topModsRect, Color.OrangeRed, 3);
+                    drawQueue.EnqueueFrame(bottomModsRect, Color.LawnGreen, 2);
                     break;
                 case AltarChoiceOutcome.DangerousBottomChooseTop:
-                    textQueue.Enqueue($"Weighting overridden\n\nTop chosen due to bottom downside {evaluation.Threshold}+", textPos1, Color.LawnGreen, 30);
-                    frameQueue.Enqueue(topModsRect, Color.LawnGreen, 2);
-                    frameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 3);
+                    drawQueue.EnqueueText($"Weighting overridden\n\nTop chosen due to bottom downside {evaluation.Threshold}+", textPos1, Color.LawnGreen, 30);
+                    drawQueue.EnqueueFrame(topModsRect, Color.LawnGreen, 2);
+                    drawQueue.EnqueueFrame(bottomModsRect, Color.OrangeRed, 3);
                     break;
                 case AltarChoiceOutcome.BothLowValueManual:
-                    textQueue.Enqueue($"Both options have low value modifiers (weight <= {evaluation.Threshold}), you should choose.", textPos1, Color.Orange, 30);
-                    DrawYellowFrames(frameQueue, topModsRect, bottomModsRect);
+                    drawQueue.EnqueueText($"Both options have low value modifiers (weight <= {evaluation.Threshold}), you should choose.", textPos1, Color.Orange, 30);
+                    DrawYellowFrames(drawQueue, topModsRect, bottomModsRect);
                     break;
                 case AltarChoiceOutcome.TopLowValueChooseBottom:
-                    textQueue.Enqueue($"Weighting has been overridden\n\nBottom has been chosen because top has a modifier with weight <= {evaluation.Threshold}", textPos1, Color.Yellow, 30);
-                    frameQueue.Enqueue(topModsRect, Color.OrangeRed, 3);
-                    frameQueue.Enqueue(bottomModsRect, Color.LawnGreen, 2);
+                    drawQueue.EnqueueText($"Weighting has been overridden\n\nBottom has been chosen because top has a modifier with weight <= {evaluation.Threshold}", textPos1, Color.Yellow, 30);
+                    drawQueue.EnqueueFrame(topModsRect, Color.OrangeRed, 3);
+                    drawQueue.EnqueueFrame(bottomModsRect, Color.LawnGreen, 2);
                     break;
                 case AltarChoiceOutcome.BottomLowValueChooseTop:
-                    textQueue.Enqueue($"Weighting has been overridden\n\nTop has been chosen because bottom has a modifier with weight <= {evaluation.Threshold}", textPos1, Color.Yellow, 30);
-                    frameQueue.Enqueue(topModsRect, Color.LawnGreen, 2);
-                    frameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 3);
+                    drawQueue.EnqueueText($"Weighting has been overridden\n\nTop has been chosen because bottom has a modifier with weight <= {evaluation.Threshold}", textPos1, Color.Yellow, 30);
+                    drawQueue.EnqueueFrame(topModsRect, Color.LawnGreen, 2);
+                    drawQueue.EnqueueFrame(bottomModsRect, Color.OrangeRed, 3);
                     break;
                 case AltarChoiceOutcome.BothBelowMinimumManual:
-                    textQueue.Enqueue($"Both options have final weights below the minimum threshold ({evaluation.Threshold}) - please choose manually.", textPos1, Color.Orange, 30);
-                    DrawYellowFrames(frameQueue, topModsRect, bottomModsRect);
+                    drawQueue.EnqueueText($"Both options have final weights below the minimum threshold ({evaluation.Threshold}) - please choose manually.", textPos1, Color.Orange, 30);
+                    DrawYellowFrames(drawQueue, topModsRect, bottomModsRect);
                     break;
                 case AltarChoiceOutcome.TopBelowMinimumChooseBottom:
-                    textQueue.Enqueue($"Weighting has been overridden\n\nBottom has been chosen because top weight ({evaluation.TopWeight}) is below minimum {evaluation.Threshold}", textPos1, Color.Yellow, 30);
-                    frameQueue.Enqueue(topModsRect, Color.OrangeRed, 3);
-                    frameQueue.Enqueue(bottomModsRect, Color.LawnGreen, 2);
+                    drawQueue.EnqueueText($"Weighting has been overridden\n\nBottom has been chosen because top weight ({evaluation.TopWeight}) is below minimum {evaluation.Threshold}", textPos1, Color.Yellow, 30);
+                    drawQueue.EnqueueFrame(topModsRect, Color.OrangeRed, 3);
+                    drawQueue.EnqueueFrame(bottomModsRect, Color.LawnGreen, 2);
                     break;
                 case AltarChoiceOutcome.BottomBelowMinimumChooseTop:
-                    textQueue.Enqueue($"Weighting has been overridden\n\nTop has been chosen because bottom weight ({evaluation.BottomWeight}) is below minimum {evaluation.Threshold}", textPos1, Color.Yellow, 30);
-                    frameQueue.Enqueue(topModsRect, Color.LawnGreen, 2);
-                    frameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 3);
+                    drawQueue.EnqueueText($"Weighting has been overridden\n\nTop has been chosen because bottom weight ({evaluation.BottomWeight}) is below minimum {evaluation.Threshold}", textPos1, Color.Yellow, 30);
+                    drawQueue.EnqueueFrame(topModsRect, Color.LawnGreen, 2);
+                    drawQueue.EnqueueFrame(bottomModsRect, Color.OrangeRed, 3);
                     break;
                 case AltarChoiceOutcome.TopWeightHigher:
-                    frameQueue.Enqueue(topModsRect, Color.LawnGreen, 3);
-                    frameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 2);
+                    drawQueue.EnqueueFrame(topModsRect, Color.LawnGreen, 3);
+                    drawQueue.EnqueueFrame(bottomModsRect, Color.OrangeRed, 2);
                     break;
                 case AltarChoiceOutcome.BottomWeightHigher:
-                    frameQueue.Enqueue(topModsRect, Color.OrangeRed, 2);
-                    frameQueue.Enqueue(bottomModsRect, Color.LawnGreen, 3);
+                    drawQueue.EnqueueFrame(topModsRect, Color.OrangeRed, 2);
+                    drawQueue.EnqueueFrame(bottomModsRect, Color.LawnGreen, 3);
                     break;
                 case AltarChoiceOutcome.EqualWeightsManual:
-                    textQueue.Enqueue("Mods have equal weight, you should choose.", textPos2, Color.Orange, 30);
-                    DrawYellowFrames(frameQueue, topModsRect, bottomModsRect);
+                    drawQueue.EnqueueText("Mods have equal weight, you should choose.", textPos2, Color.Orange, 30);
+                    DrawYellowFrames(drawQueue, topModsRect, bottomModsRect);
                     break;
                 default:
                     break;
             }
         }
 
-        private void DrawUnrecognizedWeightText(DeferredTextQueue textQueue, string weightType, string[] mods, Vector2 position)
+        private void DrawUnrecognizedWeightText(DeferredDrawQueue drawQueue, string weightType, string[] mods, Vector2 position)
         {
             if (mods == null || mods.Length == 0) return;
 
@@ -234,27 +228,27 @@ namespace ClickIt.Features.Altars
 
             if (modsText.Length > 0)
             {
-                textQueue.Enqueue($"{weightType} weights couldn't be recognised\n{modsText}\nPlease report this as a bug on github", position, Color.Orange, 30);
+                drawQueue.EnqueueText($"{weightType} weights couldn't be recognised\n{modsText}\nPlease report this as a bug on github", position, Color.Orange, 30);
             }
         }
 
-        private void DrawFailedToMatchModText(DeferredTextQueue textQueue, Vector2 position)
+        private void DrawFailedToMatchModText(DeferredDrawQueue drawQueue, Vector2 position)
         {
-            textQueue.Enqueue("Failed to match mod - unable to determine best choice.\nPlease report this as a bug on github", position, Color.Red, 30);
+            drawQueue.EnqueueText("Failed to match mod - unable to determine best choice.\nPlease report this as a bug on github", position, Color.Red, 30);
         }
 
-        private void DrawRedFrames(DeferredFrameQueue frameQueue, RectangleF topModsRect, RectangleF bottomModsRect)
+        private void DrawRedFrames(DeferredDrawQueue drawQueue, RectangleF topModsRect, RectangleF bottomModsRect)
         {
-            if (!IsValidRectangles(topModsRect, bottomModsRect)) return;
-            frameQueue.Enqueue(topModsRect, Color.Red, 2);
-            frameQueue.Enqueue(bottomModsRect, Color.Red, 2);
+            if (!AltarChoiceEvaluator.IsValidRectangles(topModsRect, bottomModsRect)) return;
+            drawQueue.EnqueueFrame(topModsRect, Color.Red, 2);
+            drawQueue.EnqueueFrame(bottomModsRect, Color.Red, 2);
         }
 
-        private void DrawYellowFrames(DeferredFrameQueue frameQueue, RectangleF topModsRect, RectangleF bottomModsRect)
+        private void DrawYellowFrames(DeferredDrawQueue drawQueue, RectangleF topModsRect, RectangleF bottomModsRect)
         {
-            if (!IsValidRectangles(topModsRect, bottomModsRect)) return;
-            frameQueue.Enqueue(topModsRect, Color.Yellow, 2);
-            frameQueue.Enqueue(bottomModsRect, Color.Yellow, 2);
+            if (!AltarChoiceEvaluator.IsValidRectangles(topModsRect, bottomModsRect)) return;
+            drawQueue.EnqueueFrame(topModsRect, Color.Yellow, 2);
+            drawQueue.EnqueueFrame(bottomModsRect, Color.Yellow, 2);
         }
     }
 }

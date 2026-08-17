@@ -45,32 +45,6 @@ namespace ClickIt.Features.Click.Selection
                     && VisibleMechanicSelectionPolicy.IsFirstCandidateCloserToCursor(candidateClickPosition, bestClickPosition, cursorAbsolute, windowTopLeft));
         }
 
-        internal static bool TryPromoteLostShipmentCandidate(
-            ref LostShipmentCandidate? best,
-            in LostShipmentCandidate candidate,
-            Vector2 cursorAbsolute,
-            Vector2 windowTopLeft)
-            => TryPromoteClickableCandidate(
-                ref best,
-                candidate,
-                cursorAbsolute,
-                windowTopLeft,
-                static value => value.Distance,
-                static value => value.ClickPosition);
-
-        internal static bool TryPromoteSettlersCandidate(
-            ref SettlersOreCandidate? best,
-            in SettlersOreCandidate candidate,
-            Vector2 cursorAbsolute,
-            Vector2 windowTopLeft)
-            => TryPromoteClickableCandidate(
-                ref best,
-                candidate,
-                cursorAbsolute,
-                windowTopLeft,
-                static value => value.Distance,
-                static value => value.ClickPosition);
-
         internal static bool TryPromoteOffscreenCandidate(
             ref Entity? best,
             ref string? bestMechanicId,

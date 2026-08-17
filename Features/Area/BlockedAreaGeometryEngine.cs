@@ -82,10 +82,5 @@ namespace ClickIt.Features.Area
                 && point.Y >= rect.Y
                 && point.Y <= bottom;
         }
-
-        internal static bool PointInUiRectangleAnyRepresentation(Vector2 point, RectangleF rect)
-        {
-            return PointInUiRectangle(point, rect);
-        }
     }
 }

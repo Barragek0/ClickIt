@@ -14,7 +14,8 @@ namespace ClickIt.Tests.Core.Runtime
                     settings,
                     gameController: null,
                     graphics: null,
-                    debugClipboardService: CreateOpaqueDebugClipboardService()))
+                    debugClipboardService: CreateOpaqueDebugClipboardService(),
+                    drawStartupSetupFlow: static () => { }))
                 .Should().NotThrow();
         }
 
@@ -28,7 +29,7 @@ namespace ClickIt.Tests.Core.Runtime
 
             settings.DebugMode.Value = true;
             settings.RenderDebug.Value = true;
-            state.Rendering.DeferredTextQueue = new DeferredTextQueue();
+            state.Rendering.DeferredDrawQueue = new DeferredDrawQueue();
             debugClipboardService.RequestAdditionalDebugInfoCopy();
 
             PluginRenderHost.Render(
@@ -36,7 +37,8 @@ namespace ClickIt.Tests.Core.Runtime
                 settings,
                 gameController: null,
                 graphics: null,
-                debugClipboardService);
+                debugClipboardService,
+                drawStartupSetupFlow: static () => { });
 
             debugClipboardService.HasPendingAdditionalDebugInfoCopyRequest.Should().BeFalse();
         }
@@ -58,7 +60,8 @@ namespace ClickIt.Tests.Core.Runtime
                 settings,
                 gameController: null,
                 graphics: null,
-                debugClipboardService);
+                debugClipboardService,
+                drawStartupSetupFlow: static () => { });
 
             // The copy button must be consumed regardless of the debug-render gate — leaving it latched would flush a stale backlog whenever debug rendering is later enabled.
             debugClipboardService.HasPendingAdditionalDebugInfoCopyRequest.Should().BeFalse();

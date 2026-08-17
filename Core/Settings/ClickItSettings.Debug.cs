@@ -24,18 +24,9 @@ namespace ClickIt
         [IgnoreMenu]
         public ButtonNode CopyAdditionalDebugInfoButton { get; set; } = new ButtonNode();
 
-        [IgnoreMenu]
-        public ToggleNode DebugShowClick { get; set; } = new ToggleNode(true);
-
 
         [IgnoreMenu]
         public ToggleNode DebugShowStatus { get; set; } = new ToggleNode(true);
-
-        [IgnoreMenu]
-        public ToggleNode DebugShowGameState { get; set; } = new ToggleNode(true);
-
-        [IgnoreMenu]
-        public ToggleNode DebugShowWindowDebug { get; set; } = new ToggleNode(true);
 
         [IgnoreMenu]
         public ToggleNode DebugShowPerformance { get; set; } = new ToggleNode(true);
@@ -45,9 +36,6 @@ namespace ClickIt
 
         [IgnoreMenu]
         public ToggleNode OnlyShowPerformanceInGameWhileInMap { get; set; } = new ToggleNode(true);
-
-        [IgnoreMenu]
-        public ToggleNode DebugShowClickFrequencyTarget { get; set; } = new ToggleNode(true);
 
         [IgnoreMenu]
         public ToggleNode DebugShowAltarDetection { get; set; } = new ToggleNode(true);
@@ -72,9 +60,6 @@ namespace ClickIt
 
         [IgnoreMenu]
         public ToggleNode DebugShowClicking { get; set; } = new ToggleNode(false);
-
-        [IgnoreMenu]
-        public ToggleNode DebugShowRuntimeDebugLogOverlay { get; set; } = new ToggleNode(false);
 
         [IgnoreMenu]
         public ToggleNode DebugShowRecentErrors { get; set; } = new ToggleNode(true);

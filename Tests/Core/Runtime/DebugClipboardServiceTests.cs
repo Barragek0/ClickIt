@@ -76,13 +76,11 @@ namespace ClickIt.Tests.Core.Runtime
         private static DebugClipboardService CreateService(
             PluginContext? state = null,
             ClickIt? owner = null,
-            Func<ClickItSettings?>? getSettings = null,
             Func<GameController?>? getGameController = null)
         {
             return new DebugClipboardService(new DebugClipboardServiceDependencies(
                 state ?? new PluginContext(),
                 owner ?? new ClickIt(),
-                getSettings ?? (() => new ClickItSettings()),
                 getGameController ?? (() => null)));
         }
 

@@ -27,7 +27,6 @@ namespace ClickIt.Tests.Core.Bootstrap
             core.AreaService.Should().NotBeNull();
             core.LabelReadModelService.Should().NotBeNull();
             core.CachedLabels.Should().NotBeNull();
-            core.Camera.Should().BeSameAs(camera);
             core.AltarService.Should().NotBeNull();
             core.LabelFilterPort.Should().NotBeNull();
             core.LabelDebugService.Should().NotBeNull();
@@ -38,8 +37,6 @@ namespace ClickIt.Tests.Core.Bootstrap
             core.InputHandler.Should().NotBeNull();
             core.PathfindingService.Should().NotBeNull();
             core.WeightCalculator.Should().NotBeNull();
-            core.DeferredTextQueue.Should().NotBeNull();
-            core.DeferredFrameQueue.Should().NotBeNull();
             core.AreaService.FullScreenRectangle.Should().Be(new RectangleF(windowRect.X, windowRect.Y, windowRect.Width, windowRect.Height));
         }
 
@@ -112,7 +109,6 @@ namespace ClickIt.Tests.Core.Bootstrap
                 AreaService: new AreaService(),
                 LabelReadModelService: CreateOpaque<LabelReadModelService>(),
                 CachedLabels: new TimeCache<List<LabelOnGround>>(() => [], 50),
-                Camera: CreateOpaque<Camera>(),
                 AltarService: CreateOpaque<AltarService>(),
                 LabelFilterPort: CreateOpaque<LabelFilterPort>(),
                 LabelDebugService: CreateOpaque<LabelDebugService>(),
@@ -123,8 +119,6 @@ namespace ClickIt.Tests.Core.Bootstrap
                 InputHandler: new InputHandler(settings),
                 PathfindingService: CreateOpaque<PathfindingService>(),
                 WeightCalculator: CreateOpaque<WeightCalculator>(),
-                DeferredTextQueue: new DeferredTextQueue(),
-                DeferredFrameQueue: new DeferredFrameQueue(),
                 HarvestService: new HarvestService(settings),
                 BlightService: new BlightService(settings),
                 DeferredDrawQueue: new DeferredDrawQueue());

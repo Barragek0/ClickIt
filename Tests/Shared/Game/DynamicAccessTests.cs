@@ -69,59 +69,63 @@ namespace ClickIt.Tests.Shared.Game
 
         public sealed class TestThingComponent;
 
-        [TestInitialize]
-        public void ResetStats()
-        {
-            DynamicAccess.ResetStats();
-        }
-
         [TestMethod]
         public void TryGetDynamicValue_TracksSuccessAndNullFailures()
         {
+            DynamicAccessStats baseline = DynamicAccess.GetStats();
+
             DynamicAccess.TryGetDynamicValue(null, static s => s.Value, out _).Should().BeFalse();
             DynamicAccess.TryGetDynamicValue(new PublicDynamicAccessorFixture { Value = 42 }, static s => s.Value, out object? value).Should().BeTrue();
 
             value.Should().Be(42);
 
             DynamicAccessStats stats = DynamicAccess.GetStats();
-            stats.TryGetCalls.Should().Be(2);
-            stats.TryGetSuccesses.Should().Be(1);
-            stats.NullSourceFailures.Should().Be(1);
+            stats.TryGetCalls.Should().Be(baseline.TryGetCalls + 2);
+            stats.TryGetSuccesses.Should().Be(baseline.TryGetSuccesses + 1);
+            stats.NullSourceFailures.Should().Be(baseline.NullSourceFailures + 1);
         }
 
         [TestMethod]
         public void TryGetDynamicValue_TracksRuntimeBinderFailures()
         {
+            DynamicAccessStats baseline = DynamicAccess.GetStats();
+
             DynamicAccess.TryGetDynamicValue(new PublicDynamicAccessorFixture { Value = 42 }, static s => s.MissingMember, out _).Should().BeFalse();
 
-            DynamicAccess.GetStats().RuntimeBinderFailures.Should().Be(1);
+            DynamicAccess.GetStats().RuntimeBinderFailures.Should().Be(baseline.RuntimeBinderFailures + 1);
         }
 
         [TestMethod]
         public void TryReadBoolAndInt_TrackConversionFailures()
         {
+            DynamicAccessStats baseline = DynamicAccess.GetStats();
+
             DynamicAccess.TryReadBool(new PublicDynamicInvalidValueFixture { Value = "not-a-bool" }, static s => s.Value, out _).Should().BeFalse();
             DynamicAccess.TryReadInt(new PublicDynamicProfileFixture { Path = "Metadata/Test" }, static s => s.Path, out _).Should().BeFalse();
 
             DynamicAccessStats stats = DynamicAccess.GetStats();
-            stats.BoolConversionFailures.Should().Be(1);
-            stats.IntConversionFailures.Should().Be(1);
+            stats.BoolConversionFailures.Should().Be(baseline.BoolConversionFailures + 1);
+            stats.IntConversionFailures.Should().Be(baseline.IntConversionFailures + 1);
         }
 
         [TestMethod]
         public void TryReadFloat_TracksConversionFailures()
         {
+            DynamicAccessStats baseline = DynamicAccess.GetStats();
+
             DynamicAccess.TryReadFloat(new PublicDynamicInvalidValueFixture { Value = "not-a-float" }, static s => s.Value, out _).Should().BeFalse();
 
-            DynamicAccess.GetStats().FloatConversionFailures.Should().Be(1);
+            DynamicAccess.GetStats().FloatConversionFailures.Should().Be(baseline.FloatConversionFailures + 1);
         }
 
         [TestMethod]
         public void TryReadString_TracksEmptyStringFailures()
         {
+            DynamicAccessStats baseline = DynamicAccess.GetStats();
+
             DynamicAccess.TryReadString(new PublicDynamicProfileFixture { Path = "   " }, static s => s.Path, out _).Should().BeFalse();
 
-            DynamicAccess.GetStats().EmptyStringFailures.Should().Be(1);
+            DynamicAccess.GetStats().EmptyStringFailures.Should().Be(baseline.EmptyStringFailures + 1);
         }
 
         [TestMethod]
@@ -171,6 +175,34 @@ namespace ClickIt.Tests.Shared.Game
             opaqueComponent.Should().BeOfType<PublicOpaqueThingComponent>();
             hasComponent.Should().BeTrue();
             rawClientRect.Should().Be(new RectangleF(1f, 2f, 3f, 4f));
+        }
+
+        [TestMethod]
+        public void TryGetLabelItemOnGround_ReturnsEntity_WhenLabelHasItem()
+        {
+            Entity entity = EntityProbeFactory.Create(address: 42, type: EntityType.WorldItem);
+            LabelProbe label = new() { ItemOnGround = entity };
+
+            DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item).Should().BeTrue();
+            item.Should().BeSameAs(entity);
+        }
+
+        [TestMethod]
+        public void TryGetLabelItemOnGround_ReturnsFalse_WhenLabelHasNoItem()
+        {
+            LabelProbe label = new();
+
+            DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item).Should().BeFalse();
+            item.Should().BeNull();
+        }
+
+        [TestMethod]
+        public void TryReadEntityAddress_ReturnsAddress_WhenEntityHasOne()
+        {
+            Entity entity = EntityProbeFactory.Create(address: 123456);
+
+            DynamicAccess.TryReadEntityAddress(entity, out long address).Should().BeTrue();
+            address.Should().Be(123456);
         }
 
         public sealed class PublicOpaqueThingComponent;

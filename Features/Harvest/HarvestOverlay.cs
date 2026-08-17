@@ -55,13 +55,17 @@ namespace ClickIt.Features.Harvest
                 if (labelBounds == RectangleF.Empty || labelBounds.IsEmpty)
                     continue;
 
+                // Skip plots whose labels have left the window: the stale element rect would otherwise draw a box near a screen corner.
+                if (!LabelGeometry.IsRectOnScreen(labelBounds, ctx.WindowArea))
+                    continue;
+
                 bool isEqual = _harvestService.CurrentDecision.Outcome == HarvestDecisionOutcome.EqualEstimatesNoClick;
                 bool isChosen = !isEqual && chosenLabel != null && ReferenceEquals(estimate.Label, chosenLabel);
 
                 Color highlightColor = isEqual
                     ? EqualEstimateHighlightColor
                     : isChosen ? ChosenHighlightColor : NotChosenHighlightColor;
-                ctx.FrameQueue.Enqueue(
+                ctx.DrawQueue.EnqueueFrame(
                     new RectangleF(
                         labelBounds.X,
                         labelBounds.Y,
@@ -75,14 +79,14 @@ namespace ClickIt.Features.Harvest
                 string estimateText = $"{estimate.EstimatedLifeforce:F1}";
                 Color textColor = highlightColor;
 
-                ctx.TextQueue.Enqueue(estimateText, new Vector2(textX, textY), textColor, 14, FontAlign.Left);
+                ctx.DrawQueue.EnqueueText(estimateText, new Vector2(textX, textY), textColor, 14, FontAlign.Left);
 
                 if (debug)
-                    DrawDebugInfo(ctx.TextQueue, estimate, textX, textY + 18f);
+                    DrawDebugInfo(ctx.DrawQueue, estimate, textX, textY + 18f);
             }
         }
 
-        private void DrawDebugInfo(DeferredTextQueue textQueue, HarvestPlotEstimate estimate, float startX, float startY)
+        private void DrawDebugInfo(DeferredDrawQueue drawQueue, HarvestPlotEstimate estimate, float startX, float startY)
         {
             float y = startY;
             Color debugColor = new(220, 220, 220, 255);
@@ -96,7 +100,7 @@ namespace ClickIt.Features.Harvest
 
                 string debugLine = $"[T{(int)row.Tier + 1}] {text}  (R={row.ColorR} G={row.ColorG} B={row.ColorB})";
 
-                textQueue.Enqueue(debugLine, new Vector2(startX, y + 1f), debugColor, 12, FontAlign.Left);
+                drawQueue.EnqueueText(debugLine, new Vector2(startX, y + 1f), debugColor, 12, FontAlign.Left);
                 y += 15f;
             }
         }

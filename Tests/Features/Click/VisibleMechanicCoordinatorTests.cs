@@ -172,7 +172,8 @@ namespace ClickIt.Tests.Features.Click
 
             SeedLatestPath(pathfindingService);
 
-            coordinator.HandleSuccessfulMechanicEntityClick("Metadata/TestMechanic", isStickyTarget: true);
+            Entity entity = EntityProbeFactory.Create(path: "Metadata/TestMechanic", address: 42);
+            coordinator.HandleSuccessfulMechanicEntityClick(entity);
 
             telemetryReasons.Should().Equal("Successful mechanic click: Metadata/TestMechanic");
             runtimeState.StickyOffscreenTargetAddress.Should().Be(0);
@@ -190,7 +191,8 @@ namespace ClickIt.Tests.Features.Click
                 new ClickRuntimeState(),
                 holdDebugTelemetryAfterSuccess: telemetryReasons.Add);
 
-            coordinator.HandleSuccessfulMechanicEntityClick(string.Empty, isStickyTarget: false);
+            Entity entity = EntityProbeFactory.Create(path: string.Empty, address: 0);
+            coordinator.HandleSuccessfulMechanicEntityClick(entity);
 
             telemetryReasons.Should().Equal("Successful mechanic click");
         }

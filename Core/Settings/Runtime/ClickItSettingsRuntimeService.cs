@@ -14,89 +14,50 @@ namespace ClickIt.Core.Settings.Runtime
         internal static bool IsOtherUltimatumClickEnabled(ClickItSettings settings)
             => settings.ClickUltimatumChoices?.Value == true;
 
-        internal static bool IsAnyUltimatumClickEnabled(ClickItSettings settings)
-            => IsInitialUltimatumClickEnabled(settings) || IsOtherUltimatumClickEnabled(settings);
-
         internal static bool IsUltimatumTakeRewardButtonClickEnabled(ClickItSettings settings)
             => settings.ClickUltimatumTakeRewardButton?.Value != false;
 
-        internal static bool IsAnyDetailedDebugSectionEnabled(ClickItSettings settings)
-        {
-            return settings.DebugShowStatus
-                || settings.DebugShowGameState
-                || settings.DebugShowWindowDebug
-                || settings.DebugShowPerformance
-                || settings.DebugShowClickFrequencyTarget
-                || settings.DebugShowAltarDetection
-                || settings.DebugShowAltarService
-                || settings.DebugShowLabels
-                || settings.DebugShowInventoryPickup
-                || settings.DebugShowHoveredItemMetadata
-                || settings.DebugShowPathfinding
-                || settings.DebugShowUltimatum
-                || settings.DebugShowClicking
-                || settings.DebugShowRuntimeDebugLogOverlay
-                || settings.DebugShowRecentErrors
-                || settings.DebugShowBlight;
-        }
-
-        internal static bool IsOnlyPathfindingDetailedDebugSectionEnabled(ClickItSettings settings)
-        {
-            return settings.DebugShowPathfinding
-                && !settings.DebugShowStatus
-                && !settings.DebugShowGameState
-                && !settings.DebugShowWindowDebug
-                && !settings.DebugShowPerformance
-                && !settings.DebugShowClickFrequencyTarget
-                && !settings.DebugShowAltarDetection
-                && !settings.DebugShowAltarService
-                && !settings.DebugShowLabels
-                && !settings.DebugShowInventoryPickup
-                && !settings.DebugShowHoveredItemMetadata
-                && !settings.DebugShowUltimatum
-                && !settings.DebugShowClicking
-                && !settings.DebugShowRuntimeDebugLogOverlay
-                && !settings.DebugShowRecentErrors;
-        }
-
         internal static IReadOnlyList<string> GetMechanicPriorityOrder(ClickItSettings settings)
         {
-            SettingsDefaultsService.EnsureMechanicPrioritiesInitialized(settings);
             ClickItSettingsRuntimeCacheState runtimeCache = settings.TransientState.RuntimeCache;
 
-            if (HasMatchingMechanicPrioritySnapshot(settings))
+            // Cache-first: skip the full sanitize on the steady-state hot path; it only runs when the settings changed (snapshot mismatch).
+            if (settings.MechanicPriorityOrder != null && HasMatchingMechanicPrioritySnapshot(settings))
             {
                 return runtimeCache.MechanicPrioritySnapshot;
             }
 
+            SettingsDefaultsService.EnsureMechanicPrioritiesInitialized(settings);
             runtimeCache.MechanicPrioritySnapshot = [.. settings.MechanicPriorityOrder];
             return runtimeCache.MechanicPrioritySnapshot;
         }
 
         internal static IReadOnlyCollection<string> GetMechanicPriorityIgnoreDistanceIds(ClickItSettings settings)
         {
-            SettingsDefaultsService.EnsureMechanicPrioritiesInitialized(settings);
             ClickItSettingsRuntimeCacheState runtimeCache = settings.TransientState.RuntimeCache;
 
-            if (HasMatchingMechanicIgnoreDistanceSnapshot(settings))
+            // Cache-first: skip the full sanitize on the steady-state hot path; it only runs when the settings changed (snapshot mismatch).
+            if (settings.MechanicPriorityIgnoreDistanceIds != null && HasMatchingMechanicIgnoreDistanceSnapshot(settings))
             {
                 return runtimeCache.MechanicIgnoreDistanceSnapshot;
             }
 
+            SettingsDefaultsService.EnsureMechanicPrioritiesInitialized(settings);
             runtimeCache.MechanicIgnoreDistanceSnapshot = [.. settings.MechanicPriorityIgnoreDistanceIds.OrderBy(static x => x, ClickItSettings.PriorityComparer)];
             return runtimeCache.MechanicIgnoreDistanceSnapshot;
         }
 
         internal static IReadOnlyDictionary<string, int> GetMechanicPriorityIgnoreDistanceWithinById(ClickItSettings settings)
         {
-            SettingsDefaultsService.EnsureMechanicPrioritiesInitialized(settings);
             ClickItSettingsRuntimeCacheState runtimeCache = settings.TransientState.RuntimeCache;
 
-            if (HasMatchingMechanicIgnoreDistanceWithinSnapshot(settings))
+            // Cache-first: skip the full sanitize on the steady-state hot path; it only runs when the settings changed (snapshot mismatch).
+            if (settings.MechanicPriorityIgnoreDistanceWithinById != null && HasMatchingMechanicIgnoreDistanceWithinSnapshot(settings))
             {
                 return runtimeCache.MechanicIgnoreDistanceWithinMapSnapshot;
             }
 
+            SettingsDefaultsService.EnsureMechanicPrioritiesInitialized(settings);
             runtimeCache.MechanicIgnoreDistanceWithinSnapshot = [.. settings.MechanicPriorityIgnoreDistanceWithinById.OrderBy(static x => x.Key, ClickItSettings.PriorityComparer)];
             runtimeCache.MechanicIgnoreDistanceWithinMapSnapshot = new Dictionary<string, int>(
                 runtimeCache.MechanicIgnoreDistanceWithinSnapshot.ToDictionary(static x => x.Key, static x => x.Value, ClickItSettings.PriorityComparer),
@@ -125,20 +86,10 @@ namespace ClickIt.Core.Settings.Runtime
             if (snapshot.Length != settings.MechanicPriorityIgnoreDistanceIds.Count)
                 return false;
 
-            // The cached snapshot is the sorted form of the settings set; verify containment directly instead of materializing a fresh ordered copy on the cache-hit path.
-            foreach (string id in settings.MechanicPriorityIgnoreDistanceIds)
+            // The cached snapshot is the sorted form of the settings set; verify each entry against the settings' own HashSet (O(n), no per-entry scans) instead of materializing a fresh ordered copy on the cache-hit path.
+            foreach (string id in snapshot)
             {
-                bool found = false;
-                for (int i = 0; i < snapshot.Length; i++)
-                {
-                    if (string.Equals(id, snapshot[i], StringComparison.OrdinalIgnoreCase))
-                    {
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (!found)
+                if (!settings.MechanicPriorityIgnoreDistanceIds.Contains(id))
                     return false;
             }
 
@@ -151,22 +102,14 @@ namespace ClickIt.Core.Settings.Runtime
             if (snapshot.Length != settings.MechanicPriorityIgnoreDistanceWithinById.Count)
                 return false;
 
-            // The cached snapshot is the sorted form of the settings map; verify containment directly instead of materializing a fresh ordered copy on the cache-hit path.
-            foreach (KeyValuePair<string, int> entry in settings.MechanicPriorityIgnoreDistanceWithinById)
+            // The cached snapshot is the sorted form of the settings map; verify each entry against the settings' own Dictionary (O(n) lookups) instead of per-entry scans on the cache-hit path.
+            foreach (KeyValuePair<string, int> entry in snapshot)
             {
-                bool found = false;
-                for (int i = 0; i < snapshot.Length; i++)
+                if (!settings.MechanicPriorityIgnoreDistanceWithinById.TryGetValue(entry.Key, out int value)
+                    || value != entry.Value)
                 {
-                    if (string.Equals(entry.Key, snapshot[i].Key, StringComparison.OrdinalIgnoreCase)
-                        && entry.Value == snapshot[i].Value)
-                    {
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (!found)
                     return false;
+                }
             }
 
             return true;

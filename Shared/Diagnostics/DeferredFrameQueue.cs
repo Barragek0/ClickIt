@@ -105,7 +105,7 @@ namespace ClickIt.Shared.Diagnostics
         }
 
         private static double GetElapsedMs(long startTimestamp)
-            => (Stopwatch.GetTimestamp() - startTimestamp) * 1000.0 / Stopwatch.Frequency;
+            => StopwatchMath.ElapsedMs(startTimestamp);
 
         public int GetPendingCount()
         {

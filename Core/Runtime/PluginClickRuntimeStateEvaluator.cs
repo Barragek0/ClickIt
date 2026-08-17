@@ -27,11 +27,6 @@ namespace ClickIt.Core.Runtime
             => !ReadyByTime || !CanClick;
     }
 
-    internal readonly record struct PluginManualUiHoverModeDecision(
-        bool ShouldRunCoroutine)
-    {
-    }
-
     internal readonly record struct PluginClickFrequencyTargetDecision(
         double ClickTargetMs,
         double LazyModeTargetMs,
@@ -43,6 +38,10 @@ namespace ClickIt.Core.Runtime
 
     internal static class PluginClickRuntimeStateEvaluator
     {
+        // Cached per-service restricted-items delegate so the per-frame hotkey check does not allocate a closure on every call. The service reference is stable for a plugin lifetime; the cache re-keys when it changes (tests).
+        private static LazyModeBlockerService? _hotkeyRestrictedService;
+        private static Func<IReadOnlyList<LabelOnGround>?, bool>? _hotkeyRestrictedLookup;
+
         internal static bool ResolveHotkeyActive(PluginServices services)
             => ResolveHotkeyActive(services.InputHandler, services.CachedLabels, services.LazyModeBlockerService);
 
@@ -50,9 +49,18 @@ namespace ClickIt.Core.Runtime
             InputHandler? inputHandler,
             TimeCache<List<LabelOnGround>>? cachedLabels,
             LazyModeBlockerService? lazyModeBlockerService)
-            => inputHandler?.IsClickHotkeyPressed(
-                cachedLabels,
-                labels => ResolveHasLazyModeRestrictedItems(lazyModeBlockerService, labels)) ?? false;
+            => inputHandler?.IsClickHotkeyPressed(cachedLabels, ResolveRestrictedLookup(lazyModeBlockerService)) ?? false;
+
+        private static Func<IReadOnlyList<LabelOnGround>?, bool> ResolveRestrictedLookup(LazyModeBlockerService? lazyModeBlockerService)
+        {
+            if (ReferenceEquals(lazyModeBlockerService, _hotkeyRestrictedService) && _hotkeyRestrictedLookup != null)
+                return _hotkeyRestrictedLookup;
+
+            Func<IReadOnlyList<LabelOnGround>?, bool> lookup = labels => ResolveHasLazyModeRestrictedItems(lazyModeBlockerService, labels);
+            _hotkeyRestrictedService = lazyModeBlockerService;
+            _hotkeyRestrictedLookup = lookup;
+            return lookup;
+        }
 
         internal static bool ResolveHasLazyModeRestrictedItems(
             LazyModeBlockerService? lazyModeBlockerService,
@@ -73,19 +81,6 @@ namespace ClickIt.Core.Runtime
                 return false;
             }
         }
-
-        internal static PluginClickRuntimeStateSnapshot ResolveSnapshot(
-            ClickItSettings? settings,
-            InputHandler? inputHandler,
-            LazyModeBlockerService? lazyModeBlockerService,
-            GameController? gameController,
-            TimeCache<List<LabelOnGround>>? cachedLabels)
-            => ResolveSnapshot(
-                settings,
-                inputHandler,
-                lazyModeBlockerService,
-                gameController,
-                cachedLabels?.Value);
 
         internal static PluginClickRuntimeStateSnapshot ResolveSnapshot(
             ClickItSettings? settings,
@@ -146,9 +141,6 @@ namespace ClickIt.Core.Runtime
             bool isRitualActive)
             => lazyModeEnabled && !hasLazyModeRestrictedItems && !isRitualActive;
 
-        internal static bool ShouldRestartClickTimerAfterSuccessfulClick(long clickSequenceBefore, long clickSequenceAfter)
-            => clickSequenceAfter > clickSequenceBefore;
-
         internal static bool ShouldCancelOffscreenPathingForInputRelease(bool lazyModeEnabled, bool clickHotkeyHeld)
             => !lazyModeEnabled && !clickHotkeyHeld;
 
@@ -161,24 +153,17 @@ namespace ClickIt.Core.Runtime
         internal static bool ShouldRunManualUiHoverCoroutine(bool manualUiHoverEnabled, bool lazyModeEnabled)
             => manualUiHoverEnabled && !lazyModeEnabled;
 
-        internal static bool ShouldRunManualUiHoverCoroutine(bool manualUiHoverEnabled, bool lazyModeEnabled, bool clickHotkeyActive)
-            => ResolveManualUiHoverMode(manualUiHoverEnabled, lazyModeEnabled, clickHotkeyActive).ShouldRunCoroutine;
-
-        internal static PluginManualUiHoverModeDecision ResolveManualUiHoverMode(ClickItSettings? settings, bool clickHotkeyActive)
+        internal static bool ResolveManualUiHoverMode(ClickItSettings? settings, bool clickHotkeyActive)
             => ResolveManualUiHoverMode(
                 settings?.ClickOnManualUiHoverOnly?.Value == true,
                 settings?.LazyMode?.Value == true,
                 clickHotkeyActive);
 
-        internal static PluginManualUiHoverModeDecision ResolveManualUiHoverMode(
+        internal static bool ResolveManualUiHoverMode(
             bool manualUiHoverEnabled,
             bool lazyModeEnabled,
             bool clickHotkeyActive)
-        {
-            bool shouldRunCoroutine = ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled, lazyModeEnabled)
-                && !clickHotkeyActive;
-            return new PluginManualUiHoverModeDecision(shouldRunCoroutine);
-        }
+            => ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled, lazyModeEnabled) && !clickHotkeyActive;
 
         internal static bool ResolveShowLazyModeTarget(
             bool useLazyModeTiming,

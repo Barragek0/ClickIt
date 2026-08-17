@@ -22,30 +22,12 @@ namespace ClickIt.Features.Click.Ranking
             internal int PriorityDistancePenalty { get; }
         }
 
-        internal readonly struct CandidateRank
-        {
-            internal CandidateRank(bool ignored, int priorityIndex, float weightedDistance, float rawDistance, float cursorDistance)
-            {
-                Ignored = ignored;
-                PriorityIndex = priorityIndex;
-                WeightedDistance = weightedDistance;
-                RawDistance = rawDistance;
-                CursorDistance = cursorDistance;
-            }
-
-            internal bool Ignored { get; }
-            internal int PriorityIndex { get; }
-            internal float WeightedDistance { get; }
-            internal float RawDistance { get; }
-            internal float CursorDistance { get; }
-        }
-
-        internal static CandidateRank Build(float distance, string? mechanicId, float cursorDistance, in RankContext context)
+        internal static MechanicRank Build(float distance, string? mechanicId, float cursorDistance, in RankContext context)
         {
             int priorityIndex = ResolvePriorityIndex(mechanicId, context.PriorityIndexMap);
             bool ignored = IsIgnoreDistanceActive(mechanicId, distance, context.IgnoreDistanceSet, context.IgnoreDistanceWithinByMechanicId);
             float weightedDistance = CalculateWeightedDistance(distance, priorityIndex, context.PriorityDistancePenalty);
-            return new CandidateRank(ignored, priorityIndex, weightedDistance, distance, cursorDistance);
+            return new MechanicRank(ignored, priorityIndex, weightedDistance, distance, cursorDistance);
         }
 
         internal static int ResolvePriorityIndex(string? mechanicId, IReadOnlyDictionary<string, int> priorityIndexMap)
@@ -79,7 +61,7 @@ namespace ClickIt.Features.Click.Ranking
                 ? float.MaxValue
                 : distance + (priorityIndex * SystemMath.Max(0, penalty));
 
-        internal static int Compare(CandidateRank left, CandidateRank right)
+        internal static int Compare(MechanicRank left, MechanicRank right)
         {
             if (left.Ignored && right.Ignored)
             {

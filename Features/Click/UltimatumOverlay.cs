@@ -54,7 +54,7 @@ namespace ClickIt.Features.Click
                 RectangleF rect = preview.Element.GetClientRect();
                 if (rect.Width <= 0 || rect.Height <= 0)
                     rect = preview.Rect;
-                ctx.FrameQueue.Enqueue(rect, color, thickness);
+                ctx.DrawQueue.EnqueueFrame(rect, color, thickness);
             }
         }
 

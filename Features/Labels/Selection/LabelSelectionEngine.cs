@@ -9,9 +9,7 @@ namespace ClickIt.Features.Labels.Selection
     // Distance + cursor distance for ranking. Production resolves both from a per-label cache keyed on the label address (the DLR reads behind each are the dominant Click-Acquire allocation); tests supply plain values.
     internal readonly record struct LabelRankInput(float Distance, float CursorDistance);
 
-    // Combined per-label scan entry: the candidate build + rank input come from ONE resolution so the
-    // selection pass reads the label's live distance/rect a single time (the DLR reads behind them are
-    // the dominant LabelScan cost; resolving them twice per label doubled that).
+    // Combined per-label scan entry: the candidate build + rank input come from ONE resolution so the selection pass reads the label's live distance/rect a single time (the DLR reads behind them are the dominant LabelScan cost; resolving them twice per label doubled that).
     internal readonly record struct LabelScanEntry(LabelCandidateBuildResult Candidate, LabelRankInput Rank);
 
     internal readonly record struct LabelSelectionStats(
@@ -64,22 +62,6 @@ namespace ClickIt.Features.Labels.Selection
             int startIndex,
             int endExclusive,
             ClickSettings clickSettings,
-            Func<LabelOnGround, LabelCandidateBuildResult> candidateBuilder,
-            Func<LabelOnGround, LabelRankInput> rankInputResolver,
-            Func<LabelOnGround, LabelCandidateBuildResult, bool>? isAcceptable = null)
-            => SelectNextLabelByPriority(
-                allLabels,
-                startIndex,
-                endExclusive,
-                clickSettings,
-                label => new LabelScanEntry(candidateBuilder(label), rankInputResolver(label)),
-                isAcceptable);
-
-        public static LabelSelectionResult SelectNextLabelByPriority(
-            IReadOnlyList<LabelOnGround> allLabels,
-            int startIndex,
-            int endExclusive,
-            ClickSettings clickSettings,
             Func<LabelOnGround, LabelScanEntry> scanEntryResolver,
             Func<LabelOnGround, LabelCandidateBuildResult, bool>? isAcceptable = null)
         {
@@ -99,7 +81,7 @@ namespace ClickIt.Features.Labels.Selection
 
             LabelSelectionStats stats = default;
             LabelOnGround? bestCandidate = null;
-            MechanicCandidateRanker.CandidateRank bestScore = default;
+            MechanicRank bestScore = default;
             bool hasBestScore = false;
             string? bestMechanicId = null;
 
@@ -116,14 +98,12 @@ namespace ClickIt.Features.Labels.Selection
                     continue;
                 }
 
-                // Skip labels the caller's suppression gate rejects (overlap/locked/lever/ultimatum/blight)
-                // INLINE so one pass yields the best acceptable label - re-querying the remaining range per
-                // suppressed label was O(suppressed x n) on dense item fields.
+                // Skip labels the caller's suppression gate rejects (overlap/locked/lever/ultimatum/blight) INLINE so one pass yields the best acceptable label.
                 if (isAcceptable != null && !isAcceptable(label, candidate))
                     continue;
 
                 LabelRankInput rankInput = entry.Rank;
-                MechanicCandidateRanker.CandidateRank score = MechanicCandidateRanker.Build(
+                MechanicRank score = MechanicCandidateRanker.Build(
                     rankInput.Distance,
                     candidate.MechanicId,
                     rankInput.CursorDistance,

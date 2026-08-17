@@ -45,8 +45,9 @@ namespace ClickIt.Tests.Features.Click.Interaction
             RectangleF rect = new(10, 20, 80, 20);
             Vector2 windowTopLeft = new(100, 200);
 
-            Vector2 clickPosition = resolver.CalculateClickPosition(rect, EntityType.WorldItem, "Metadata/TestLabel", "Test Label", windowTopLeft, [], avoidOverlapsEnabled: false);
+            bool resolved = resolver.TryCalculateClickPosition(rect, EntityType.WorldItem, "Metadata/TestLabel", "Test Label", windowTopLeft, [], isClickableArea: null, out Vector2 clickPosition, avoidOverlapsEnabled: false);
 
+            resolved.Should().BeTrue();
             clickPosition.X.Should().BeGreaterThanOrEqualTo(rect.Left + windowTopLeft.X);
             clickPosition.X.Should().BeLessThanOrEqualTo(rect.Right + windowTopLeft.X);
             clickPosition.Y.Should().BeGreaterThanOrEqualTo(rect.Top + windowTopLeft.Y);
@@ -60,8 +61,9 @@ namespace ClickIt.Tests.Features.Click.Interaction
             RectangleF rect = new(10, 20, 80, 20);
             RectangleF blocker = new(40, 20, 40, 20);
 
-            Vector2 clickPosition = resolver.CalculateClickPosition(rect, EntityType.WorldItem, "Metadata/TestLabel", "Test Label", windowTopLeft: Vector2.Zero, [blocker]);
+            bool resolved = resolver.TryCalculateClickPosition(rect, EntityType.WorldItem, "Metadata/TestLabel", "Test Label", windowTopLeft: Vector2.Zero, [blocker], isClickableArea: null, out Vector2 clickPosition);
 
+            resolved.Should().BeTrue();
             clickPosition.X.Should().NotBeInRange(40f, 80f);
             clickPosition.Y.Should().BeGreaterThanOrEqualTo(rect.Top);
             clickPosition.Y.Should().BeLessThanOrEqualTo(rect.Bottom);

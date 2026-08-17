@@ -8,7 +8,6 @@ namespace ClickIt.Tests.Core
         {
             var state = new PluginContext();
 
-            state.Random.Should().NotBeNull();
             state.Services.Should().NotBeNull();
             state.Runtime.Should().NotBeNull();
             state.Rendering.Should().NotBeNull();
@@ -16,11 +15,9 @@ namespace ClickIt.Tests.Core
             state.Runtime.LastTickTimer.Should().NotBeNull();
             state.Runtime.Timer.Should().NotBeNull();
             state.Runtime.SecondTimer.Should().NotBeNull();
-            state.Runtime.LastHotkeyState.Should().BeFalse();
             state.Runtime.WorkFinished.Should().BeFalse();
             state.Services.PerformanceMonitor.Should().BeNull();
             state.Services.AreaService.Should().BeNull();
-            state.Services.Camera.Should().BeNull();
         }
 
         [TestMethod]
@@ -28,10 +25,9 @@ namespace ClickIt.Tests.Core
         {
             var state = new PluginContext
             {
-                Runtime = { LastHotkeyState = true, WorkFinished = true }
+                Runtime = { WorkFinished = true }
             };
 
-            state.Runtime.LastHotkeyState.Should().BeTrue();
             state.Runtime.WorkFinished.Should().BeTrue();
         }
 
@@ -49,11 +45,6 @@ namespace ClickIt.Tests.Core
                     ClickAutomationPort = (ClickAutomationPort)RuntimeHelpers.GetUninitializedObject(typeof(ClickAutomationPort)),
                     PathfindingService = (PathfindingService)RuntimeHelpers.GetUninitializedObject(typeof(PathfindingService)),
                     AlertService = (AlertService)RuntimeHelpers.GetUninitializedObject(typeof(AlertService))
-                },
-                Rendering =
-                {
-                    DeferredTextQueue = new DeferredTextQueue(),
-                    DeferredFrameQueue = new DeferredFrameQueue()
                 }
             };
 
@@ -66,8 +57,6 @@ namespace ClickIt.Tests.Core
             state.Services.ClickAutomationPort.Should().BeNull();
             state.Services.PathfindingService.Should().BeNull();
             state.Services.AlertService.Should().BeNull();
-            state.Rendering.DeferredTextQueue.Should().BeNull();
-            state.Rendering.DeferredFrameQueue.Should().BeNull();
         }
 
         [TestMethod]

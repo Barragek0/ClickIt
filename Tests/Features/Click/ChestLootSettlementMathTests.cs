@@ -31,19 +31,23 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void ShouldWaitForChestLootSettlement_UsesIndependentWaitToggleByCategory()
+        public void ShouldWaitForChestLootSettlement_UsesSingleSharedWaitToggle_ForAllChestCategories()
         {
-            ChestLootSettlementMath.ShouldWaitForChestLootSettlement("basic-chests", waitAfterOpeningBasicChests: true, waitAfterOpeningLeagueChests: false, waitAfterOpeningHeistChests: false)
+            ChestLootSettlementMath.ShouldWaitForChestLootSettlement("basic-chests", waitAfterOpeningChests: true)
                 .Should()
                 .BeTrue();
 
-            ChestLootSettlementMath.ShouldWaitForChestLootSettlement("league-chests", waitAfterOpeningBasicChests: true, waitAfterOpeningLeagueChests: false, waitAfterOpeningHeistChests: true)
+            ChestLootSettlementMath.ShouldWaitForChestLootSettlement("league-chests", waitAfterOpeningChests: true)
+                .Should()
+                .BeTrue();
+
+            ChestLootSettlementMath.ShouldWaitForChestLootSettlement(ChestLootSettlementMath.HeistChestSettleMechanicId, waitAfterOpeningChests: false)
                 .Should()
                 .BeFalse();
 
-            ChestLootSettlementMath.ShouldWaitForChestLootSettlement(ChestLootSettlementMath.HeistChestSettleMechanicId, waitAfterOpeningBasicChests: false, waitAfterOpeningLeagueChests: true, waitAfterOpeningHeistChests: true)
+            ChestLootSettlementMath.ShouldWaitForChestLootSettlement("other", waitAfterOpeningChests: true)
                 .Should()
-                .BeTrue();
+                .BeFalse();
         }
 
         [TestMethod]

@@ -92,7 +92,6 @@ namespace ClickIt.Tests.Features.Click
                 OnscreenMechanicPathingBlocker: blocker,
                 TraversalTargetResolver: null!,
                 StickyTargetHandler: stickyHandler,
-                TargetResolver: null!,
                 MovementSkills: null!,
                 LabelInteraction: null!,
                 DebugLog: static _ => { },
@@ -348,7 +347,6 @@ namespace ClickIt.Tests.Features.Click
                     PathfindingLabelSuppression: new PathfindingLabelSuppressionEvaluator(new PathfindingLabelSuppressionEvaluatorDependencies(settings, runtimeState)),
                     LabelInteractionPort: ClickTestServiceFactory.CreateNoOpLabelInteractionPort(),
                     HoldDebugTelemetryAfterSuccess: static _ => { })),
-                TargetResolver: null!,
                 MovementSkills: null!,
                 LabelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(),
                 DebugLog: static _ => { },
@@ -426,7 +424,14 @@ namespace ClickIt.Tests.Features.Click
 
             walked.Should().BeFalse();
             resolvedFromPath.Should().BeFalse();
-            targetScreen.Should().Be(new Vector2(980f, 480f));
+            // Projected point is not clickable, so the resolver falls back to a fixed-radius grid-direction point toward the target.
+            OffscreenPathingMath.TryComputeGridDirectionPoint(
+                OffscreenPathingMath.GetWindowCenter(new RectangleF(100f, 200f, 1280f, 720f)),
+                deltaGridX: 4f,
+                deltaGridY: 1f,
+                radius: MathF.Min(1280f, 720f) * 0.30f,
+                out Vector2 expectedTargetScreen).Should().BeTrue();
+            targetScreen.Should().Be(expectedTargetScreen);
             walkClick.Should().Be(Vector2.Zero);
             runtimeState.StickyOffscreenTargetAddress.Should().Be(51);
         }
@@ -471,11 +476,316 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
+        public void GetRemainingOffscreenPathNodeCount_ReturnsRemainingCount_WhenRuntimeSeamProvidesPlayer()
+        {
+            PathfindingService pathfindingService = new();
+            pathfindingService.RuntimeState.SetLatestPathState(
+            [
+                new PathfindingService.GridPoint(0, 0),
+                new PathfindingService.GridPoint(1, 0),
+                new PathfindingService.GridPoint(2, 0),
+                new PathfindingService.GridPoint(3, 0)
+            ],
+                screenPath: null,
+                targetPath: "Metadata/TestTarget");
+            Entity player = EntityProbeFactory.Create(address: 1, gridX: 1, gridY: 0, type: EntityType.Monster);
+            OffscreenPathingCoordinator coordinator = CreateCoordinator(
+                new ClickRuntimeState(),
+                pathfindingService: pathfindingService,
+                runtimeSeam: new StubOffscreenRuntimeSeam
+                {
+                    Player = player,
+                    PlayerGrid = new Vector2(1f, 0f)
+                });
+
+            int remaining = coordinator.GetRemainingOffscreenPathNodeCount();
+
+            remaining.Should().Be(2);
+        }
+
+        [TestMethod]
+        public void GetRemainingOffscreenPathNodeCount_ReturnsZero_WhenRuntimeSeamProvidesNoPlayer()
+        {
+            PathfindingService pathfindingService = new();
+            pathfindingService.RuntimeState.SetLatestPathState(
+            [
+                new PathfindingService.GridPoint(0, 0),
+                new PathfindingService.GridPoint(1, 0)
+            ],
+                screenPath: null,
+                targetPath: "Metadata/TestTarget");
+            OffscreenPathingCoordinator coordinator = CreateCoordinator(
+                new ClickRuntimeState(),
+                pathfindingService: pathfindingService,
+                runtimeSeam: new StubOffscreenRuntimeSeam());
+
+            int remaining = coordinator.GetRemainingOffscreenPathNodeCount();
+
+            remaining.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void GetRemainingOffscreenPathNodeCount_ReturnsZero_WhenRuntimeSeamCannotResolvePlayerGrid()
+        {
+            PathfindingService pathfindingService = new();
+            pathfindingService.RuntimeState.SetLatestPathState(
+            [
+                new PathfindingService.GridPoint(0, 0),
+                new PathfindingService.GridPoint(1, 0)
+            ],
+                screenPath: null,
+                targetPath: "Metadata/TestTarget");
+            Entity player = EntityProbeFactory.Create(address: 1, gridX: 0, gridY: 0, type: EntityType.Monster);
+            OffscreenPathingCoordinator coordinator = CreateCoordinator(
+                new ClickRuntimeState(),
+                pathfindingService: pathfindingService,
+                runtimeSeam: new StubOffscreenRuntimeSeam
+                {
+                    Player = player,
+                    PlayerGrid = Vector2.Zero,
+                    CanResolvePlayerGrid = false
+                });
+
+            int remaining = coordinator.GetRemainingOffscreenPathNodeCount();
+
+            remaining.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void TryResolveOffscreenTargetScreenPointFromPath_ReturnsTrue_WhenRuntimeSeamProvidesPlayerAndWindow()
+        {
+            PathfindingService pathfindingService = new();
+            pathfindingService.RuntimeState.SetLatestPathState(
+            [
+                new PathfindingService.GridPoint(0, 0),
+                new PathfindingService.GridPoint(2, 0),
+                new PathfindingService.GridPoint(4, 0)
+            ],
+                screenPath: null,
+                targetPath: "Metadata/TestTarget");
+            Entity player = EntityProbeFactory.Create(address: 1, gridX: 0, gridY: 0, type: EntityType.Monster);
+            RectangleF window = new(100f, 200f, 1280f, 720f);
+            OffscreenPathingCoordinator coordinator = CreateCoordinator(
+                new ClickRuntimeState(),
+                pathfindingService: pathfindingService,
+                runtimeSeam: new StubOffscreenRuntimeSeam
+                {
+                    Player = player,
+                    PlayerGrid = Vector2.Zero,
+                    Window = window
+                });
+
+            bool resolved = InvokeTryResolveOffscreenTargetScreenPointFromPath(coordinator, out Vector2 targetScreen);
+
+            resolved.Should().BeTrue();
+            OffscreenPathingMath.IsInsideWindow(window, targetScreen).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void TryResolveOffscreenTargetScreenPointFromPath_ReturnsFalse_WhenPathIsTooShort()
+        {
+            PathfindingService pathfindingService = new();
+            pathfindingService.RuntimeState.SetLatestPathState(
+            [
+                new PathfindingService.GridPoint(0, 0)
+            ],
+                screenPath: null,
+                targetPath: "Metadata/TestTarget");
+            Entity player = EntityProbeFactory.Create(address: 1, gridX: 0, gridY: 0, type: EntityType.Monster);
+            OffscreenPathingCoordinator coordinator = CreateCoordinator(
+                new ClickRuntimeState(),
+                pathfindingService: pathfindingService,
+                runtimeSeam: new StubOffscreenRuntimeSeam
+                {
+                    Player = player,
+                    PlayerGrid = Vector2.Zero
+                });
+
+            bool resolved = InvokeTryResolveOffscreenTargetScreenPointFromPath(coordinator, out Vector2 targetScreen);
+
+            resolved.Should().BeFalse();
+            targetScreen.Should().Be(Vector2.Zero);
+        }
+
+        [TestMethod]
+        public void TryResolveOffscreenTargetScreenPoint_ReturnsProjectedPoint_WhenRuntimeSeamProvidesFiniteProjection()
+        {
+            RectangleF window = new(100f, 200f, 1280f, 720f);
+            Entity player = EntityProbeFactory.Create(address: 1, gridX: 0, gridY: 0, type: EntityType.Monster);
+            Entity target = EntityProbeFactory.Create(address: 2, gridX: 3, gridY: 2, type: EntityType.Monster);
+            OffscreenPathingCoordinator coordinator = CreateCoordinator(
+                new ClickRuntimeState(),
+                runtimeSeam: new StubOffscreenRuntimeSeam
+                {
+                    Player = player,
+                    PlayerGrid = Vector2.Zero,
+                    TargetGrid = new Vector2(3f, 2f),
+                    Window = window,
+                    ProjectedPoint = new Vector2(900f, 500f),
+                    ProjectWorldToScreen = true
+                });
+
+            bool resolved = InvokeTryResolveOffscreenTargetScreenPoint(coordinator, target, out Vector2 targetScreen);
+
+            resolved.Should().BeTrue();
+            targetScreen.Should().Be(new Vector2(900f, 500f));
+        }
+
+        [TestMethod]
+        public void TryResolveOffscreenTargetScreenPoint_FallsBackToGridDirection_WhenProjectedPointIsNearCorner()
+        {
+            RectangleF window = new(100f, 200f, 1280f, 720f);
+            Entity player = EntityProbeFactory.Create(address: 1, gridX: 0, gridY: 0, type: EntityType.Monster);
+            Entity target = EntityProbeFactory.Create(address: 2, gridX: 5, gridY: 1, type: EntityType.Monster);
+            OffscreenPathingCoordinator coordinator = CreateCoordinator(
+                new ClickRuntimeState(),
+                runtimeSeam: new StubOffscreenRuntimeSeam
+                {
+                    Player = player,
+                    PlayerGrid = Vector2.Zero,
+                    TargetGrid = new Vector2(5f, 1f),
+                    Window = window,
+                    ProjectedPoint = new Vector2(window.Left + 5f, window.Top + 5f),
+                    ProjectWorldToScreen = true
+                });
+
+            bool resolved = InvokeTryResolveOffscreenTargetScreenPoint(coordinator, target, out Vector2 targetScreen);
+
+            resolved.Should().BeTrue();
+            targetScreen.Should().NotBe(new Vector2(window.Left + 5f, window.Top + 5f));
+            OffscreenPathingMath.IsInsideWindow(window, targetScreen).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void TryResolveOffscreenTargetScreenPoint_ReturnsFalse_WhenProjectionAndGridFallbackBothFail()
+        {
+            RectangleF window = new(100f, 200f, 1280f, 720f);
+            Entity player = EntityProbeFactory.Create(address: 1, gridX: 0, gridY: 0, type: EntityType.Monster);
+            Entity target = EntityProbeFactory.Create(address: 2, gridX: 5, gridY: 1, type: EntityType.Monster);
+            OffscreenPathingCoordinator coordinator = CreateCoordinator(
+                new ClickRuntimeState(),
+                runtimeSeam: new StubOffscreenRuntimeSeam
+                {
+                    Player = player,
+                    PlayerGrid = Vector2.Zero,
+                    TargetGrid = Vector2.Zero,
+                    Window = window,
+                    ProjectWorldToScreen = false
+                });
+
+            bool resolved = InvokeTryResolveOffscreenTargetScreenPoint(coordinator, target, out Vector2 targetScreen);
+
+            resolved.Should().BeFalse();
+            targetScreen.Should().Be(Vector2.Zero);
+        }
+
+        [TestMethod]
+        public void TryResolveOnScreenTargetScreenPoint_ReturnsProjection_WhenOnScreenAndClickable()
+        {
+            RectangleF window = new(100f, 200f, 1280f, 720f);
+            Entity target = EntityProbeFactory.Create(address: 2, gridX: 3, gridY: 2, type: EntityType.Monster);
+            OffscreenPathingCoordinator coordinator = CreateCoordinator(
+                new ClickRuntimeState(),
+                runtimeSeam: new StubOffscreenRuntimeSeam
+                {
+                    Window = window,
+                    ProjectedPoint = new Vector2(900f, 500f),
+                    ProjectWorldToScreen = true
+                });
+
+            bool resolved = InvokeTryResolveOnScreenTargetScreenPoint(coordinator, target, out Vector2 targetScreen);
+
+            resolved.Should().BeTrue();
+            targetScreen.Should().Be(new Vector2(900f, 500f));
+        }
+
+        [TestMethod]
+        public void TryResolveOnScreenTargetScreenPoint_ReturnsFalse_WhenProjectionIsOutsideWindow()
+        {
+            RectangleF window = new(100f, 200f, 1280f, 720f);
+            Entity target = EntityProbeFactory.Create(address: 2, gridX: 3, gridY: 2, type: EntityType.Monster);
+            OffscreenPathingCoordinator coordinator = CreateCoordinator(
+                new ClickRuntimeState(),
+                runtimeSeam: new StubOffscreenRuntimeSeam
+                {
+                    Window = window,
+                    ProjectedPoint = new Vector2(50f, 400f),
+                    ProjectWorldToScreen = true
+                });
+
+            bool resolved = InvokeTryResolveOnScreenTargetScreenPoint(coordinator, target, out Vector2 targetScreen);
+
+            resolved.Should().BeFalse();
+            targetScreen.Should().Be(Vector2.Zero);
+        }
+
+        [TestMethod]
+        public void TryResolveOnScreenTargetScreenPoint_ReturnsFalse_WhenProjectionIsNearCorner()
+        {
+            RectangleF window = new(100f, 200f, 1280f, 720f);
+            Entity target = EntityProbeFactory.Create(address: 2, gridX: 3, gridY: 2, type: EntityType.Monster);
+            OffscreenPathingCoordinator coordinator = CreateCoordinator(
+                new ClickRuntimeState(),
+                runtimeSeam: new StubOffscreenRuntimeSeam
+                {
+                    Window = window,
+                    ProjectedPoint = new Vector2(120f, 220f),
+                    ProjectWorldToScreen = true
+                });
+
+            bool resolved = InvokeTryResolveOnScreenTargetScreenPoint(coordinator, target, out Vector2 targetScreen);
+
+            resolved.Should().BeFalse();
+            targetScreen.Should().Be(Vector2.Zero);
+        }
+
+        [TestMethod]
+        public void TryResolveOnScreenTargetScreenPoint_ReturnsFalse_WhenProjectionIsNotClickable()
+        {
+            RectangleF window = new(100f, 200f, 1280f, 720f);
+            Entity target = EntityProbeFactory.Create(address: 2, gridX: 3, gridY: 2, type: EntityType.Monster);
+            OffscreenPathingCoordinator coordinator = CreateCoordinator(
+                new ClickRuntimeState(),
+                pointIsInClickableArea: static (_, _) => false,
+                runtimeSeam: new StubOffscreenRuntimeSeam
+                {
+                    Window = window,
+                    ProjectedPoint = new Vector2(900f, 500f),
+                    ProjectWorldToScreen = true
+                });
+
+            bool resolved = InvokeTryResolveOnScreenTargetScreenPoint(coordinator, target, out Vector2 targetScreen);
+
+            resolved.Should().BeFalse();
+            targetScreen.Should().Be(Vector2.Zero);
+        }
+
+        [TestMethod]
+        public void TryResolveOnScreenTargetScreenPoint_ReturnsFalse_WhenProjectionFails()
+        {
+            RectangleF window = new(100f, 200f, 1280f, 720f);
+            Entity target = EntityProbeFactory.Create(address: 2, gridX: 3, gridY: 2, type: EntityType.Monster);
+            OffscreenPathingCoordinator coordinator = CreateCoordinator(
+                new ClickRuntimeState(),
+                runtimeSeam: new StubOffscreenRuntimeSeam
+                {
+                    Window = window,
+                    ProjectWorldToScreen = false
+                });
+
+            bool resolved = InvokeTryResolveOnScreenTargetScreenPoint(coordinator, target, out Vector2 targetScreen);
+
+            resolved.Should().BeFalse();
+            targetScreen.Should().Be(Vector2.Zero);
+        }
+
+        [TestMethod]
         public void HandleSuccessfulTraversalMovementSkill_ReturnsTrue_AndPublishesSuccessTelemetry()
         {
             ClickItSettings settings = new()
             {
-                WalkTowardOffscreenLabels = new ToggleNode(true)
+                WalkTowardOffscreenLabels = new ToggleNode(true),
+                DebugMode = new ToggleNode(true)
             };
             ClickRuntimeState runtimeState = new();
             Entity preferredTarget = OffscreenStickyTargetGraphShaper.CreateActiveStickyEntity(address: 61, path: "Metadata/Monsters/MovementSkillSuccess");
@@ -522,7 +832,8 @@ namespace ClickIt.Tests.Features.Click
         {
             ClickItSettings settings = new()
             {
-                WalkTowardOffscreenLabels = new ToggleNode(true)
+                WalkTowardOffscreenLabels = new ToggleNode(true),
+                DebugMode = new ToggleNode(true)
             };
             ClickRuntimeState runtimeState = new();
             Entity preferredTarget = OffscreenStickyTargetGraphShaper.CreateActiveStickyEntity(address: 62, path: "Metadata/Monsters/ClickRejected");
@@ -570,7 +881,8 @@ namespace ClickIt.Tests.Features.Click
         {
             ClickItSettings settings = new()
             {
-                WalkTowardOffscreenLabels = new ToggleNode(true)
+                WalkTowardOffscreenLabels = new ToggleNode(true),
+                DebugMode = new ToggleNode(true)
             };
             ClickRuntimeState runtimeState = new();
             Entity preferredTarget = OffscreenStickyTargetGraphShaper.CreateActiveStickyEntity(address: 63, path: "Metadata/Monsters/ClickSucceeded");
@@ -594,7 +906,6 @@ namespace ClickIt.Tests.Features.Click
                 OnscreenMechanicPathingBlocker: null!,
                 TraversalTargetResolver: null!,
                 StickyTargetHandler: stickyHandler,
-                TargetResolver: null!,
                 MovementSkills: null!,
                 LabelInteraction: null!,
                 DebugLog: debugLogs.Add,
@@ -628,7 +939,6 @@ namespace ClickIt.Tests.Features.Click
             snapshot.Stage.Should().Be("Clicked");
             snapshot.TargetPath.Should().Be("Metadata/Monsters/ClickSucceeded");
             snapshot.ClickScreen.Should().Be(new Vector2(770f, 450f));
-            pathfindingService.GetDebugSnapshot().LastFailureReason.Should().Be("GameController/target unavailable.");
         }
 
         [TestMethod]
@@ -637,7 +947,8 @@ namespace ClickIt.Tests.Features.Click
             ClickItSettings settings = new()
             {
                 WalkTowardOffscreenLabels = new ToggleNode(true),
-                UseMovementSkillsForOffscreenPathfinding = new ToggleNode(true)
+                UseMovementSkillsForOffscreenPathfinding = new ToggleNode(true),
+                DebugMode = new ToggleNode(true)
             };
             ClickRuntimeState runtimeState = new();
             Entity preferredTarget = OffscreenStickyTargetGraphShaper.CreateActiveStickyEntity(address: 64, path: "Metadata/Monsters/PublicTraversalSuccess");
@@ -654,24 +965,12 @@ namespace ClickIt.Tests.Features.Click
                 executeInteraction: static _ => true,
                 isClickableInEitherSpace: pointIsInClickableArea,
                 isInsideWindowInEitherSpace: static _ => true);
-            OffscreenTargetResolver targetResolver = new(
-                interactionController,
-                pathfindingService,
-                new StubOffscreenRuntimeSeam
-                {
-                    Player = EntityProbeFactory.Create(address: 1, gridX: 0, gridY: 0, type: EntityType.Monster),
-                    PlayerGrid = Vector2.Zero,
-                    TargetGrid = new Vector2(6f, 1f),
-                    Window = new RectangleF(100f, 200f, 1280f, 720f),
-                    ProjectedPoint = new Vector2(980f, 480f),
-                    ProjectWorldToScreen = true
-                });
             MovementSkillCoordinator movementSkills = new(new MovementSkillCoordinatorDependencies(
                 Settings: settings,
                 GameController: interactionController,
                 RuntimeState: runtimeState,
                 PerformanceMonitor: new PerformanceMonitor(settings),
-                GetRemainingOffscreenPathNodeCount: targetResolver.GetRemainingOffscreenPathNodeCount,
+                GetRemainingOffscreenPathNodeCount: () => 0,
                 EnsureCursorInsideGameWindowForClick: static _ => true,
                 PointIsInClickableArea: pointIsInClickableArea,
                 DebugLog: debugLogs.Add));
@@ -696,7 +995,6 @@ namespace ClickIt.Tests.Features.Click
                     ClickDebugPublisher: clickDebugPublisher)),
                 TraversalTargetResolver: null!,
                 StickyTargetHandler: stickyHandler,
-                TargetResolver: targetResolver,
                 MovementSkills: movementSkills,
                 LabelInteraction: labelInteraction,
                 DebugLog: debugLogs.Add,
@@ -821,13 +1119,12 @@ namespace ClickIt.Tests.Features.Click
                 isClickableInEitherSpace: pointIsInClickableArea,
                 isInsideWindowInEitherSpace: static _ => true);
             var chestLootSettlement = CreateChestLootSettlementTracker(settings, clickDebugPublisher, labelInteraction);
-            var targetResolver = new OffscreenTargetResolver(gameController, pathfindingService, runtimeSeam);
             var movementSkills = new MovementSkillCoordinator(new MovementSkillCoordinatorDependencies(
                 Settings: settings,
                 GameController: gameController,
                 RuntimeState: runtimeState,
                 PerformanceMonitor: new PerformanceMonitor(settings),
-                GetRemainingOffscreenPathNodeCount: targetResolver.GetRemainingOffscreenPathNodeCount,
+                GetRemainingOffscreenPathNodeCount: () => 0,
                 EnsureCursorInsideGameWindowForClick: static _ => true,
                 PointIsInClickableArea: pointIsInClickableArea,
                 DebugLog: debugLog));
@@ -865,7 +1162,6 @@ namespace ClickIt.Tests.Features.Click
                     ClickDebugPublisher: clickDebugPublisher)),
                 TraversalTargetResolver: traversalTargetResolver,
                 StickyTargetHandler: stickyHandler,
-                TargetResolver: targetResolver,
                 MovementSkills: movementSkills,
                 LabelInteraction: labelInteraction,
                 DebugLog: debugLog,
@@ -905,24 +1201,12 @@ namespace ClickIt.Tests.Features.Click
                 },
                 isClickableInEitherSpace: pointIsInClickableArea,
                 isInsideWindowInEitherSpace: static _ => true);
-            OffscreenTargetResolver targetResolver = new(
-                interactionController,
-                pathfindingService,
-                new StubOffscreenRuntimeSeam
-                {
-                    Player = EntityProbeFactory.Create(address: 1, gridX: 0, gridY: 0, type: EntityType.Monster),
-                    PlayerGrid = Vector2.Zero,
-                    TargetGrid = new Vector2(6f, 1f),
-                    Window = new RectangleF(100f, 200f, 1280f, 720f),
-                    ProjectedPoint = new Vector2(980f, 480f),
-                    ProjectWorldToScreen = true
-                });
             MovementSkillCoordinator movementSkills = new(new MovementSkillCoordinatorDependencies(
                 Settings: settings,
                 GameController: interactionController,
                 RuntimeState: runtimeState,
                 PerformanceMonitor: new PerformanceMonitor(settings),
-                GetRemainingOffscreenPathNodeCount: targetResolver.GetRemainingOffscreenPathNodeCount,
+                GetRemainingOffscreenPathNodeCount: () => 0,
                 EnsureCursorInsideGameWindowForClick: static _ => true,
                 PointIsInClickableArea: pointIsInClickableArea,
                 DebugLog: logs.Add));
@@ -947,7 +1231,6 @@ namespace ClickIt.Tests.Features.Click
                     ClickDebugPublisher: clickDebugPublisher)),
                 TraversalTargetResolver: null!,
                 StickyTargetHandler: stickyHandler,
-                TargetResolver: targetResolver,
                 MovementSkills: movementSkills,
                 LabelInteraction: labelInteraction,
                 DebugLog: logs.Add,
@@ -1106,6 +1389,39 @@ namespace ClickIt.Tests.Features.Click
             return result;
         }
 
+        private static bool InvokeTryResolveOffscreenTargetScreenPointFromPath(OffscreenPathingCoordinator coordinator, out Vector2 targetScreen)
+        {
+            object?[] args = [null];
+            MethodInfo method = typeof(OffscreenPathingCoordinator).GetMethod("TryResolveOffscreenTargetScreenPointFromPath", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("TryResolveOffscreenTargetScreenPointFromPath method was not found.");
+
+            bool result = (bool)method.Invoke(coordinator, args)!;
+            targetScreen = (Vector2)args[0]!;
+            return result;
+        }
+
+        private static bool InvokeTryResolveOffscreenTargetScreenPoint(OffscreenPathingCoordinator coordinator, Entity target, out Vector2 targetScreen)
+        {
+            object?[] args = [target, null];
+            MethodInfo method = typeof(OffscreenPathingCoordinator).GetMethod("TryResolveOffscreenTargetScreenPoint", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("TryResolveOffscreenTargetScreenPoint method was not found.");
+
+            bool result = (bool)method.Invoke(coordinator, args)!;
+            targetScreen = (Vector2)args[1]!;
+            return result;
+        }
+
+        private static bool InvokeTryResolveOnScreenTargetScreenPoint(OffscreenPathingCoordinator coordinator, Entity target, out Vector2 targetScreen)
+        {
+            object?[] args = [target, null];
+            MethodInfo method = typeof(OffscreenPathingCoordinator).GetMethod("TryResolveOnScreenTargetScreenPoint", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("TryResolveOnScreenTargetScreenPoint method was not found.");
+
+            bool result = (bool)method.Invoke(coordinator, args)!;
+            targetScreen = (Vector2)args[1]!;
+            return result;
+        }
+
         private static bool InvokeHandleSuccessfulTraversalMovementSkill(
             OffscreenPathingCoordinator coordinator,
             object context,
@@ -1149,6 +1465,8 @@ namespace ClickIt.Tests.Features.Click
 
             public Vector2 PlayerGrid { get; init; }
 
+            public bool CanResolvePlayerGrid { get; init; } = true;
+
             public Vector2 TargetGrid { get; init; }
 
             public RectangleF Window { get; init; } = new(100f, 200f, 1280f, 720f);
@@ -1165,7 +1483,7 @@ namespace ClickIt.Tests.Features.Click
                 if (ReferenceEquals(entity, Player))
                 {
                     gridPosition = PlayerGrid;
-                    return true;
+                    return CanResolvePlayerGrid;
                 }
 
                 gridPosition = TargetGrid;

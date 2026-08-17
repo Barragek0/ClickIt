@@ -4,8 +4,6 @@ namespace ClickIt.Shared.Input
     {
         private const int KEYEVENTF_EXTENDEDKEY = 0x0001;
         private const int KEYEVENTF_KEYUP = 0x0002;
-        private const int KEY_PRESSED = 0x8000;
-        private const int KEY_TOGGLED = 0x0001;
         [DllImport("user32.dll")]
         private static extern uint keybd_event(byte bVk, byte bScan, int dwFlags, int dwExtraInfo);
         [DllImport("user32.dll")]
@@ -18,12 +16,6 @@ namespace ClickIt.Shared.Input
         {
             _ = keybd_event((byte)key, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0);
         }
-        public static void KeyPress(Keys key)
-        {
-            KeyDown(key);
-            Thread.Sleep(50);
-            KeyUp(key);
-        }
         public static void KeyPress(Keys key, int delay)
         {
             KeyDown(key);
@@ -33,14 +25,6 @@ namespace ClickIt.Shared.Input
         public static bool IsKeyDown(Keys key)
         {
             return GetKeyState((int)key) < 0;
-        }
-        public static bool IsKeyPressed(Keys key)
-        {
-            return Convert.ToBoolean(GetKeyState((int)key) & KEY_PRESSED);
-        }
-        public static bool IsKeyToggled(Keys key)
-        {
-            return Convert.ToBoolean(GetKeyState((int)key) & KEY_TOGGLED);
         }
     }
 }

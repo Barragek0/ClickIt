@@ -54,24 +54,36 @@ namespace ClickIt.Tests.Features.Click
                 clickDebugPublisher: debugPublisher));
 
             return new ClickRuntimeEngine(new ClickRuntimeEngineDependencies(
-                TickContextFactory: tickContextFactory,
-                AltarAutomation: ClickTestServiceFactory.CreateAltarAutomationService(resolvedSettings),
-                ClickDebugPublisher: debugPublisher,
-                Settings: resolvedSettings,
-                LabelInteractionPort: ClickTestServiceFactory.CreateNoOpLabelInteractionPort(),
-                VisibleMechanics: resolvedVisibleMechanics,
-                LabelSelectionScan: null!,
-                SpecialLabelInteraction: null!,
-                LabelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(),
-                ShouldCaptureClickDebug: static () => true,
-                PointIsInClickableArea: static (_, _) => true,
-                PathfindingService: null!,
-                PathfindingLabelSuppression: null!,
-                ChestLootSettlement: CreateChestLootSettlementTracker(),
-                OffscreenPathing: null!,
-                HoldDebugTelemetryAfterSuccess: static _ => { },
-                DebugLog: static _ => { },
-                InputHandler: new InputHandler(resolvedSettings)));
+                Telemetry: new ClickTelemetryDependencies(
+                    ClickDebugPublisher: debugPublisher,
+                    ShouldCaptureClickDebug: static () => true,
+                    HoldDebugTelemetryAfterSuccess: static _ => { },
+                    DebugLog: static _ => { },
+                    RecordAllocationBreakdown: null,
+                    RecordBreakdownStage: null),
+                Policy: new ClickPolicyDependencies(
+                    Settings: resolvedSettings,
+                    InputHandler: new InputHandler(resolvedSettings),
+                    PointIsInClickableArea: static (_, _) => true,
+                    ClickSuccessAnchor: null),
+                Selection: new ClickSelectionDependencies(
+                    TickContextFactory: tickContextFactory,
+                    LabelInteractionPort: ClickTestServiceFactory.CreateNoOpLabelInteractionPort(),
+                    VisibleMechanics: resolvedVisibleMechanics,
+                    LabelSelectionScan: null!,
+                    SpecialLabelInteraction: null!,
+                    LabelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(),
+                    ChestLootSettlement: CreateChestLootSettlementTracker()),
+                Pathing: new ClickPathingDependencies(
+                    PathfindingService: null!,
+                    PathfindingLabelSuppression: null!,
+                    OffscreenPathing: null!),
+                Mechanics: new ClickMechanicDependencies(
+                    AltarAutomation: ClickTestServiceFactory.CreateAltarAutomationService(resolvedSettings),
+                    GetHarvestLabelToClick: null,
+                    TryProgressBlightBuilding: null,
+                    GetBlightPathfindTarget: null,
+                    IsBlightEncounterActive: null)));
         }
 
         private static MovementSkillCoordinator CreateMovementSkillCoordinator()

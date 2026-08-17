@@ -151,6 +151,44 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
+        public void GetUltimatumPanelModifierNames_PrefersChoicesPanelModifiers_OverPanelModifiers()
+        {
+            var panel = new ReflectionFriendlyPanel
+            {
+                ChoicesPanel = new ReflectionFriendlyChoicePanel
+                {
+                    Modifiers = new object?[] { "Choking Miasma", new ModifierNameProbe("Stalking Ruin III") }
+                },
+                Modifiers = new object?[] { "panel-level should lose" }
+            };
+
+            IReadOnlyList<string> names = UltimatumUiTreeResolver.GetUltimatumPanelModifierNames(panel);
+
+            names.Should().Equal("Choking Miasma", "Stalking Ruin III");
+        }
+
+        [TestMethod]
+        public void GetUltimatumPanelModifierNames_FallsBackToPanelModifiers_WhenChoicesPanelMissing()
+        {
+            var panel = new ReflectionFriendlyPanel
+            {
+                ChoicesPanel = null,
+                Modifiers = new object?[] { "Ruin II" }
+            };
+
+            IReadOnlyList<string> names = UltimatumUiTreeResolver.GetUltimatumPanelModifierNames(panel);
+
+            names.Should().Equal("Ruin II");
+        }
+
+        [TestMethod]
+        public void GetUltimatumPanelModifierNames_ReturnsEmpty_WhenNothingReadable()
+        {
+            UltimatumUiTreeResolver.GetUltimatumPanelModifierNames(null).Should().BeEmpty();
+            UltimatumUiTreeResolver.GetUltimatumPanelModifierNames(new ReflectionFriendlyPanel()).Should().BeEmpty();
+        }
+
+        [TestMethod]
         public void TryResolveChoicePanelObject_ReturnsVisibleReflectionFriendlyPanel()
         {
             List<string> diagnostics = [];
@@ -863,6 +901,13 @@ namespace ClickIt.Tests.Features.Click
         private sealed class ModifierNameProbe(string value)
         {
             public override string ToString() => value;
+        }
+
+        public sealed class ReflectionFriendlyPanel
+        {
+            public object? ChoicesPanel { get; set; }
+
+            public object? Modifiers { get; set; }
         }
 
         public sealed class ReflectionFriendlyChoicePanel

@@ -65,7 +65,8 @@ namespace ClickIt.Features.Labels
             bool lazyModeDisableHeld = _inputHandler.IsLazyModeDisableActiveForCurrentInputState();
             bool lazyModeDisableToggleMode = ctx.Settings.IsLazyModeDisableHotkeyToggleModeEnabled();
             bool isRitualActive = EntityHelpers.IsRitualActive(ctx.GameController);
-            bool canActuallyClick = _inputHandler?.CanClick(ctx.GameController, false, isRitualActive) ?? false;
+            string? clickFailureReason = null;
+            bool canActuallyClick = _inputHandler?.TryGetClickFailureReason(ctx.GameController, false, isRitualActive, out clickFailureReason) ?? false;
 
             (Color textColor, string? line1, string? line2, string? line3) = ComposeLazyModeStatus(
                 hasRestrictedItems,
@@ -76,13 +77,13 @@ namespace ClickIt.Features.Labels
                 mouseButtonBlocks,
                 leftClickBlocks,
                 rightClickBlocks,
-                ctx.GameController,
                 clickLabelKey,
                 ctx.Settings.LazyModeDisableKeyBinding,
                 isRitualActive,
-                canActuallyClick);
+                canActuallyClick,
+                clickFailureReason);
 
-            RenderLazyModeText(ctx.TextQueue, centerX, topY, textColor, line1, line2, line3);
+            RenderLazyModeText(ctx.DrawQueue, centerX, topY, textColor, line1, line2, line3);
         }
 
         private (Color color, string line1, string line2, string line3) ComposeLazyModeStatus(
@@ -94,11 +95,11 @@ namespace ClickIt.Features.Labels
             bool mouseButtonBlocks,
             bool leftClickBlocks,
             bool rightClickBlocks,
-            GameController? gameController,
             Keys clickLabelKey,
             Keys lazyModeDisableKeyBinding,
             bool isRitualActive,
-            bool canActuallyClick)
+            bool canActuallyClick,
+            string? clickFailureReason)
         {
             if (hasRestrictedItems)
             {
@@ -130,7 +131,7 @@ namespace ClickIt.Features.Labels
 
             if (!canActuallyClick)
             {
-                return (Color.Red, _inputHandler?.GetCanClickFailureReason(gameController) ?? "Clicking disabled.", string.Empty, string.Empty);
+                return (Color.Red, clickFailureReason ?? "Clicking disabled.", string.Empty, string.Empty);
             }
 
             return (Color.LawnGreen, string.Empty, string.Empty, string.Empty);
@@ -183,9 +184,9 @@ namespace ClickIt.Features.Labels
             return leftClickBlocks ? "Left mouse button" : "Right mouse button";
         }
 
-        internal void RenderLazyModeText(DeferredTextQueue textQueue, float centerX, float topY, Color color, string? line1, string? line2, string? line3)
+        internal void RenderLazyModeText(DeferredDrawQueue drawQueue, float centerX, float topY, Color color, string? line1, string? line2, string? line3)
         {
-            textQueue.Enqueue(LazyModeTitle, new Vector2(centerX, topY), color, 36, FontAlign.Center);
+            drawQueue.EnqueueText(LazyModeTitle, new Vector2(centerX, topY), color, 36, FontAlign.Center);
 
             List<string> wrappedLines = [];
             wrappedLines.AddRange(WrapOverlayText(line1, OverlayLineLengthLimit));
@@ -199,7 +200,7 @@ namespace ClickIt.Features.Labels
             for (int i = 0; i < wrappedLines.Count; i++)
             {
                 float y = topY + ((i + 1) * lineHeight);
-                textQueue.Enqueue(wrappedLines[i], new Vector2(centerX, y), color, BodyFontSize, FontAlign.Center);
+                drawQueue.EnqueueText(wrappedLines[i], new Vector2(centerX, y), color, BodyFontSize, FontAlign.Center);
             }
         }
     }

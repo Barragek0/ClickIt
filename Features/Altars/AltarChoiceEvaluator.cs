@@ -42,8 +42,28 @@ namespace ClickIt.Features.Altars
         private readonly ClickItSettings _settings = settings;
         private readonly Action<string, int> _logMessage = logMessage ?? ((_, _) => { });
 
-        internal Element? DetermineChoiceElement(PrimaryAltarComponent altar, AltarWeights weights, RectangleF topModsRect, RectangleF bottomModsRect)
-            => EvaluateChoice(altar, weights, topModsRect, bottomModsRect).ChosenElement;
+        internal Element? DetermineChoiceElement(PrimaryAltarComponent altar, AltarWeights weights, RectangleF topModsRect, RectangleF bottomModsRect, Action<string>? recordStage = null)
+        {
+            AltarChoiceEvaluation evaluation = EvaluateChoice(altar, weights, topModsRect, bottomModsRect);
+            recordStage?.Invoke(BuildAltarDecisionStage(altar, evaluation));
+            return evaluation.ChosenElement;
+        }
+
+        // One-line decision summary for the altar Recent Stages trail: the outcome, both weights, and which option (if any) was chosen.
+        private static string BuildAltarDecisionStage(PrimaryAltarComponent altar, AltarChoiceEvaluation evaluation)
+        {
+            string chosen = "none";
+            if (evaluation.ChosenElement != null)
+            {
+                if (ReferenceEquals(evaluation.ChosenElement, altar.TopButton?.Element))
+                    chosen = "Top";
+                else if (ReferenceEquals(evaluation.ChosenElement, altar.BottomButton?.Element))
+                    chosen = "Bottom";
+            }
+
+            return $"AltarDecision: {evaluation.Outcome} top={evaluation.TopWeight} bottom={evaluation.BottomWeight} chose={chosen}"
+                + (string.IsNullOrEmpty(evaluation.UnrecognizedWeightType) ? string.Empty : $" unrecognized={evaluation.UnrecognizedWeightType}");
+        }
 
         internal AltarChoiceEvaluation EvaluateChoice(PrimaryAltarComponent altar, AltarWeights weights, RectangleF topModsRect, RectangleF bottomModsRect)
         {
@@ -160,7 +180,7 @@ namespace ClickIt.Features.Altars
             return element;
         }
 
-        private static bool IsValidRectangle(RectangleF rect)
+        internal static bool IsValidRectangle(RectangleF rect)
             => rect.Width > 0
                 && rect.Height > 0
                 && !float.IsNaN(rect.X)
@@ -168,7 +188,7 @@ namespace ClickIt.Features.Altars
                 && !float.IsInfinity(rect.X)
                 && !float.IsInfinity(rect.Y);
 
-        private static bool IsValidRectangles(RectangleF first, RectangleF second)
+        internal static bool IsValidRectangles(RectangleF first, RectangleF second)
             => IsValidRectangle(first) && IsValidRectangle(second);
 
         private static bool HasAnyWeightOverThreshold(AltarWeights weights, bool isTop, bool isUpside, int threshold)

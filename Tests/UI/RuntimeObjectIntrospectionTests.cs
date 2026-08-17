@@ -4,27 +4,6 @@ namespace ClickIt.Tests.UI
     public class RuntimeObjectIntrospectionTests
     {
         [TestMethod]
-        public void GetFileNameForProfile_ReturnsExpectedNames()
-        {
-            RuntimeObjectIntrospection.GetFileNameForProfile(IntrospectionProfile.Default).Should().Be("memory.dat");
-            RuntimeObjectIntrospection.GetFileNameForProfile(IntrospectionProfile.StructureFirst).Should().Be("structure.dat");
-            RuntimeObjectIntrospection.GetFileNameForProfile(IntrospectionProfile.Full).Should().Be("full.dat");
-        }
-
-        [TestMethod]
-        public void GetOptionsForProfile_ReturnsExpectedOptionShapes()
-        {
-            var defaultOptions = RuntimeObjectIntrospection.GetOptionsForProfile(IntrospectionProfile.Default);
-            var structureOptions = RuntimeObjectIntrospection.GetOptionsForProfile(IntrospectionProfile.StructureFirst);
-            var fullOptions = RuntimeObjectIntrospection.GetOptionsForProfile(IntrospectionProfile.Full);
-
-            defaultOptions.Title.Should().Be("Runtime Object Introspection");
-            structureOptions.Title.Should().Be("Structure-First Memory Dump");
-            fullOptions.Title.Should().Be("Full Game Memory Dump");
-            fullOptions.MaxTotalNodes.Should().BeGreaterThan(defaultOptions.MaxTotalNodes);
-        }
-
-        [TestMethod]
         public void BuildReport_ReturnsUnavailable_WhenRootIsNull()
         {
             string report = RuntimeObjectIntrospection.BuildReport(null, RuntimeObjectIntrospectionOptions.Default);
@@ -160,64 +139,6 @@ namespace ClickIt.Tests.UI
                 string text = File.ReadAllText(full);
                 text.Should().Contain("Root.A");
                 text.Should().Contain("Root.B");
-            }
-            finally
-            {
-                SafeDelete(path);
-            }
-        }
-
-        [TestMethod]
-        public void WriteMemorySnapshotToFile_UsesProfileOptions()
-        {
-            string path = GetTempFilePath();
-            try
-            {
-                string full = RuntimeObjectIntrospection.WriteMemorySnapshotToFile(
-                    new { A = 1 },
-                    path,
-                    IntrospectionProfile.StructureFirst);
-
-                File.Exists(full).Should().BeTrue();
-                File.ReadAllText(full).Should().Contain("Structure-First Memory Dump");
-            }
-            finally
-            {
-                SafeDelete(path);
-            }
-        }
-
-        [TestMethod]
-        public void WriteMemorySnapshotCoroutine_CompletesAndReportsProgress_ForNullRoot()
-        {
-            string path = GetTempFilePath();
-            var progress = new List<int>();
-            string? completionPath = null;
-            string? completionError = null;
-
-            try
-            {
-                IEnumerator routine = RuntimeObjectIntrospection.WriteMemorySnapshotCoroutine(
-                    null,
-                    path,
-                    IntrospectionProfile.Default,
-                    (p, e) =>
-                    {
-                        completionPath = p;
-                        completionError = e;
-                    },
-                    p => progress.Add(p),
-                    nodeBudgetPerYield: 3);
-
-                while (routine.MoveNext())
-                {
-                }
-
-                completionError.Should().BeNull();
-                completionPath.Should().NotBeNullOrWhiteSpace();
-                progress.Should().Contain(0);
-                progress.Should().Contain(100);
-                File.ReadAllText(path).Should().Contain("Root: unavailable");
             }
             finally
             {

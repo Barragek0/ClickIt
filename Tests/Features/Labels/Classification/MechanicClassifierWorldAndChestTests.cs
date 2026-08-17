@@ -102,6 +102,67 @@ namespace ClickIt.Tests.Features.Labels.Classification
         }
 
         [TestMethod]
+        public void BrinerotPlunderChest_ClickableWhenUnopened_NotClickableWhenOpened()
+        {
+            HashSet<string> enabled = [MechanicIds.AllflameBrinerotPlunder];
+
+            MechanicClassifier.GetChestMechanicIdFromConfiguredRules(
+                clickBasicChests: false,
+                clickLeagueChests: true,
+                clickLeagueChestsOther: false,
+                enabledSpecificLeagueChestIds: enabled,
+                type: EntityType.Chest,
+                path: "Metadata/LeagueDeepwater/BrinerotStores/Chest",
+                renderName: "Brinerot Plunder",
+                brinerotPlunderOpened: false).Should().Be(MechanicIds.AllflameBrinerotPlunder);
+
+            MechanicClassifier.GetChestMechanicIdFromConfiguredRules(
+                clickBasicChests: false,
+                clickLeagueChests: true,
+                clickLeagueChestsOther: false,
+                enabledSpecificLeagueChestIds: enabled,
+                type: EntityType.Chest,
+                path: "Metadata/LeagueDeepwater/BrinerotStores/Chest",
+                renderName: "Brinerot Plunder",
+                brinerotPlunderOpened: true).Should().BeNull();
+
+            MechanicClassifier.GetChestMechanicIdFromConfiguredRules(
+                clickBasicChests: false,
+                clickLeagueChests: true,
+                clickLeagueChestsOther: false,
+                enabledSpecificLeagueChestIds: new HashSet<string> { MechanicIds.AllflameCoralNest },
+                type: EntityType.Chest,
+                path: "Metadata/LeagueDeepwater/GiantCoralChest",
+                renderName: "Coral Nest",
+                brinerotPlunderOpened: true).Should().Be(MechanicIds.AllflameCoralNest);
+        }
+
+        [TestMethod]
+        public void IsBrinerotPlunderChestOpened_ReadsChestIsOpened()
+        {
+            var notOpened = new ChestItemProbe { ChestComponent = new OpenedChestProbe { IsOpened = false } };
+            MechanicClassifier.IsBrinerotPlunderChestOpened(notOpened).Should().BeFalse();
+
+            var opened = new ChestItemProbe { ChestComponent = new OpenedChestProbe { IsOpened = true } };
+            MechanicClassifier.IsBrinerotPlunderChestOpened(opened).Should().BeTrue();
+
+            MechanicClassifier.IsBrinerotPlunderChestOpened(null).Should().BeFalse();
+        }
+
+        // Public so the DynamicAccess DLR binder (running from the product assembly) can resolve GetComponent<T>()/IsOpened; private nested types fail the binder accessibility check and are swallowed as read failures.
+        public sealed class ChestItemProbe
+        {
+            public object? ChestComponent { get; set; }
+
+            public object? GetComponent<T>() => ChestComponent;
+        }
+
+        public sealed class OpenedChestProbe
+        {
+            public bool IsOpened { get; set; }
+        }
+
+        [TestMethod]
         public void GetChestMechanicIdFromConfiguredRules_ReturnsNull_ForNonChestStrongboxAndDisabledLeagueCases()
         {
             InvokeChestMechanicFromConfiguredRules(

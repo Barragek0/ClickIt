@@ -9,6 +9,9 @@ namespace ClickIt.Shared.Game
     {
         private readonly Func<dynamic, object?> _accessor = accessor;
 
+        internal Func<dynamic, object?> Accessor
+            => _accessor;
+
         public object? Read(dynamic source)
             => _accessor(source);
     }

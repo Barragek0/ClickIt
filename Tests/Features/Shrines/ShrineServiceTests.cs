@@ -6,57 +6,18 @@ namespace ClickIt.Tests.Features.Shrines
         [TestCleanup]
         public void Cleanup()
         {
-            ShrineService.ResetThreadLocalStorage();
-        }
-
-        [TestMethod]
-        public void AreShrinesPresent_UsesFreshCache_WhenNotExpired()
-        {
-            var service = CreateService();
-
-            service.SeedCacheWithSingleNullEntry(0);
-            service.EnsureCacheTimerStarted();
-            service.SeedCacheWithSingleNullEntry(service.GetCacheElapsedMilliseconds());
-
-            service.AreShrinesPresent().Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void AreShrinesPresent_RefreshesCache_WhenExpired()
-        {
-            var service = CreateService();
-
-            service.SeedCacheWithSingleNullEntry(0);
-            service.EnsureCacheTimerStarted();
-            service.SeedCacheWithSingleNullEntry(-1000L);
-
-            service.AreShrinesPresent().Should().BeFalse();
+            ShrineService.ClearThreadLocalStorageForCurrentThread();
         }
 
         [TestMethod]
         public void InvalidateCache_ClearsCachedShrines()
         {
             var service = CreateService();
-            service.SeedCacheWithSingleNullEntry(123L);
+            SeedNullShrineCache(service, cacheTimestampMs: 123);
 
             service.InvalidateCache();
 
-            service.HasCachedShrines().Should().BeFalse();
-            service.GetLastShrineCacheTime().Should().Be(0);
-        }
-
-        [TestMethod]
-        public void AreShrinesPresentInClickableArea_ReturnsFalse_WhenCacheContainsOnlyNullEntries()
-        {
-            var service = CreateService();
-
-            service.SeedCacheWithSingleNullEntry(0);
-            service.EnsureCacheTimerStarted();
-            service.SeedCacheWithSingleNullEntry(service.GetCacheElapsedMilliseconds());
-
-            bool result = service.AreShrinesPresentInClickableArea(_ => true);
-
-            result.Should().BeFalse();
+            service.GetNearestShrineInRange(100).Should().BeNull();
         }
 
         [TestMethod]
@@ -64,9 +25,7 @@ namespace ClickIt.Tests.Features.Shrines
         {
             var service = CreateService();
 
-            service.SeedCacheWithSingleNullEntry(0);
-            service.EnsureCacheTimerStarted();
-            service.SeedCacheWithSingleNullEntry(service.GetCacheElapsedMilliseconds());
+            SeedNullShrineCache(service, cacheTimestampMs: 0);
 
             var nearest = service.GetNearestShrineInRange(100);
 
@@ -94,6 +53,14 @@ namespace ClickIt.Tests.Features.Shrines
             var gc = (GameController)RuntimeHelpers.GetUninitializedObject(typeof(GameController));
             var camera = (Camera)RuntimeHelpers.GetUninitializedObject(typeof(Camera));
             return new ShrineService(gc, camera);
+        }
+
+        private static void SeedNullShrineCache(ShrineService service, long cacheTimestampMs)
+        {
+            var cache = new TimedValueCache<int, List<Entity>>(200);
+            cache.SetValue(0, cacheTimestampMs, [null!]);
+            RuntimeMemberAccessor.SetRequiredMember(service, "_shrineCache", cache);
+            RuntimeMemberAccessor.SetRequiredMember(service, "_shrineCacheTimer", new Stopwatch());
         }
     }
 }

@@ -4,17 +4,6 @@ namespace ClickIt.Tests.Features.Click.Interaction
     public class InteractionExecutorTests
     {
         [TestMethod]
-        public void PerformClick_ReturnsWithoutIncrementingSequence_WhenHotkeyInactiveAndNotLazy()
-        {
-            var settings = new ClickItSettings();
-            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => false);
-
-            executor.PerformClick(new Vector2(10f, 20f));
-
-            executor.GetSuccessfulClickSequence().Should().Be(0);
-        }
-
-        [TestMethod]
         public void PerformClick_MarksClickInterval_WhenClickIsDispatched()
         {
             var settings = new ClickItSettings();
@@ -28,6 +17,35 @@ namespace ClickIt.Tests.Features.Click.Interaction
             snapshot.Intervals.Should().NotBeNull();
             snapshot.Intervals.Should().ContainKey(IntervalKind.Click);
             snapshot.Intervals![IntervalKind.Click].SampleCount.Should().Be(1);
+        }
+
+        [TestMethod]
+        public void PerformClick_MarksWalkInterval_WhenWalkInterval()
+        {
+            var settings = new ClickItSettings();
+            var monitor = new PerformanceMonitor(settings);
+            var executor = new InteractionExecutor(settings, monitor, () => true);
+
+            executor.PerformClick(new Vector2(50f, 50f), interval: IntervalKind.Walk);
+            executor.PerformClick(new Vector2(50f, 50f), interval: IntervalKind.Walk);
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+            snapshot.Intervals.Should().NotBeNull();
+            snapshot.Intervals.Should().ContainKey(IntervalKind.Walk);
+            snapshot.Intervals![IntervalKind.Walk].SampleCount.Should().Be(1);
+            snapshot.Intervals.Should().NotContainKey(IntervalKind.Click);
+        }
+
+        [TestMethod]
+        public void PerformClick_DoesNotMarkWalkInterval_WhenWalkClickIsRejected()
+        {
+            var settings = new ClickItSettings();
+            var monitor = new PerformanceMonitor(settings);
+            var executor = new InteractionExecutor(settings, monitor, () => false);
+
+            executor.PerformClick(new Vector2(50f, 50f), interval: IntervalKind.Walk);
+
+            monitor.GetDebugSnapshot().Intervals.Should().NotContainKey(IntervalKind.Walk);
         }
 
         [TestMethod]
@@ -61,7 +79,6 @@ namespace ClickIt.Tests.Features.Click.Interaction
 
             executor.PerformClick(new Vector2(10f, 20f));
 
-            executor.GetSuccessfulClickSequence().Should().Be(0);
             messages.Should().ContainSingle(message => message.Contains("LazyMode limiter", StringComparison.Ordinal));
         }
 
@@ -80,37 +97,8 @@ namespace ClickIt.Tests.Features.Click.Interaction
 
             executor.PerformClick(new Vector2(-5000f, -5000f));
 
-            executor.GetSuccessfulClickSequence().Should().Be(0);
             messages.Should().ContainSingle(message => message.Contains("Skipping click at", StringComparison.Ordinal)
                 && message.Contains("outside virtual screen bounds", StringComparison.Ordinal));
-        }
-
-        [TestMethod]
-        public void PerformClickAndHold_ReturnsWithoutIncrementingSequence_WhenKeyBindingIsNone()
-        {
-            var settings = new ClickItSettings
-            {
-                ClickLabelKey = new HotkeyNodeV2(Keys.None)
-            };
-            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => true);
-
-            executor.PerformClickAndHold(new Vector2(10f, 20f), holdDurationMs: 100);
-
-            executor.GetSuccessfulClickSequence().Should().Be(0);
-        }
-
-        [TestMethod]
-        public void PerformClickAndHold_ReturnsWithoutIncrementingSequence_WhenHotkeyInactiveAndNotLazy()
-        {
-            var settings = new ClickItSettings
-            {
-                ClickLabelKey = new HotkeyNodeV2(Keys.F)
-            };
-            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => false);
-
-            executor.PerformClickAndHold(new Vector2(10f, 20f), holdDurationMs: 100);
-
-            executor.GetSuccessfulClickSequence().Should().Be(0);
         }
 
         [TestMethod]
@@ -133,9 +121,8 @@ namespace ClickIt.Tests.Features.Click.Interaction
 
             RuntimeMemberAccessor.SetRequiredMember(executor, "_lastClickTimestampMs", Environment.TickCount64);
 
-            executor.PerformClickAndHold(new Vector2(10f, 20f), holdDurationMs: 100);
+            executor.PerformClickAndHold(new Vector2(10f, 20f));
 
-            executor.GetSuccessfulClickSequence().Should().Be(0);
             messages.Should().ContainSingle(message => message.Contains("LazyMode limiter", StringComparison.Ordinal));
         }
 
@@ -155,9 +142,8 @@ namespace ClickIt.Tests.Features.Click.Interaction
                 () => true,
                 new ErrorHandler(settings, static (_, _) => { }, (message, _) => messages.Add(message)));
 
-            executor.PerformClickAndHold(new Vector2(-5000f, -5000f), holdDurationMs: 100);
+            executor.PerformClickAndHold(new Vector2(-5000f, -5000f));
 
-            executor.GetSuccessfulClickSequence().Should().Be(0);
             messages.Should().ContainSingle(message => message.Contains("Skipping hold click at", StringComparison.Ordinal)
                 && message.Contains("outside virtual screen bounds", StringComparison.Ordinal));
         }
@@ -177,7 +163,6 @@ namespace ClickIt.Tests.Features.Click.Interaction
 
             executor.PerformClick(new Vector2(-5000f, -5000f), allowWhenHotkeyInactive: true);
 
-            executor.GetSuccessfulClickSequence().Should().Be(0);
             messages.Should().ContainSingle(message => message.Contains("Skipping click at", StringComparison.Ordinal)
                 && message.Contains("outside virtual screen bounds", StringComparison.Ordinal));
         }
@@ -198,34 +183,10 @@ namespace ClickIt.Tests.Features.Click.Interaction
                 () => false,
                 new ErrorHandler(settings, static (_, _) => { }, (message, _) => messages.Add(message)));
 
-            executor.PerformClickAndHold(new Vector2(-5000f, -5000f), holdDurationMs: 100, allowWhenHotkeyInactive: true);
+            executor.PerformClickAndHold(new Vector2(-5000f, -5000f), allowWhenHotkeyInactive: true);
 
-            executor.GetSuccessfulClickSequence().Should().Be(0);
             messages.Should().ContainSingle(message => message.Contains("Skipping hold click at", StringComparison.Ordinal)
                 && message.Contains("outside virtual screen bounds", StringComparison.Ordinal));
-        }
-
-        [TestMethod]
-        public void HoverAndGetUIHover_ReturnsNull_WhenPointIsOutsideVirtualScreen()
-        {
-            var settings = new ClickItSettings();
-            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => true);
-            GameController gameController = ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindow(new RectangleF(100f, 200f, 1280f, 720f));
-
-            Element? hover = executor.HoverAndGetUIHover(new Vector2(-5000f, -5000f), gameController);
-
-            hover.Should().BeNull();
-        }
-
-        [TestMethod]
-        public void HoverAndGetUIHover_ReturnsNull_WhenGameControllerIsNull()
-        {
-            var settings = new ClickItSettings();
-            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => true);
-
-            Element? hover = executor.HoverAndGetUIHover(new Vector2(100f, 200f), null);
-
-            hover.Should().BeNull();
         }
 
         [DataTestMethod]

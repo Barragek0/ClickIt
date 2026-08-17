@@ -8,7 +8,7 @@ namespace ClickIt.Shared.Diagnostics
         Func<TSnapshot, string>? dedupKeyExtractor = null)
     {
         private readonly Lock _lock = new();
-        private readonly List<string> _trail = [];     // stores formatted entries
+        private readonly List<string> _trail = [];
         private readonly List<string> _dedupKeys = []; // parallel to _trail; the dedup key per entry (empty when dedup is off)
         private readonly int _trailCapacity = SystemMath.Max(1, trailCapacity);
         private readonly Func<TSnapshot, long, TSnapshot> _withSequence = withSequence ?? throw new ArgumentNullException(nameof(withSequence));
@@ -37,19 +37,6 @@ namespace ClickIt.Shared.Diagnostics
             }
         }
 
-        /// <summary>
-        /// Returns the internal trail list directly without allocation.
-        /// The caller must not modify the returned list. Use this on hot
-        /// render paths where the small allocation of GetTrail() adds up.
-        /// </summary>
-        internal List<string> GetTrailUnsafe()
-        {
-            lock (_lock)
-            {
-                return _trail;
-            }
-        }
-
         public void SetLatest(TSnapshot snapshot)
         {
             lock (_lock)
@@ -70,8 +57,8 @@ namespace ClickIt.Shared.Diagnostics
                     if (existingIdx >= 0)
                     {
                         string existing = _trail[existingIdx];
-                        // A suffix-less entry represents count 1 (the first occurrence); ExtractCount returns 0 for it, so the first repeat must yield x2, not x1.
-                        int count = SystemMath.Max(1, ExtractCount(existing)) + 1;
+                        // A suffix-less entry represents count 1 (the first occurrence); DedupSuffix returns 0 for it, so the first repeat must yield x2, not x1.
+                        int count = SystemMath.Max(1, DedupSuffix.TryGetCount(existing, out int existingCount) ? existingCount : 0) + 1;
                         _trail.RemoveAt(existingIdx);
                         _dedupKeys.RemoveAt(existingIdx);
                         formatted = $"{formatted} (x{count})";
@@ -97,23 +84,6 @@ namespace ClickIt.Shared.Diagnostics
                     return i;
             }
             return -1;
-        }
-
-        private static int ExtractCount(string formatted)
-        {
-            int parenIdx = formatted.LastIndexOf(" (x", StringComparison.Ordinal);
-            if (parenIdx > 0)
-            {
-                int closeParen = formatted.IndexOf(')', parenIdx);
-                if (closeParen == formatted.Length - 1)
-                {
-                    int start = parenIdx + 3;
-                    string numPart = formatted[start..closeParen];
-                    if (int.TryParse(numPart, out int count))
-                        return count;
-                }
-            }
-            return 0;
         }
     }
 }

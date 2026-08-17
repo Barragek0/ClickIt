@@ -131,8 +131,7 @@ namespace ClickIt.Features.Blight
             IReadOnlyList<BlightCachedTower> ordered = _blightService.KnownTowers;
             IBlightTowerStrategy strategy = _blightService.CurrentStrategy;
 
-            BlightPlan? plan = _blightService.CurrentPlan;
-            int cursor = _blightService.CurrentPlanCursor;
+            (BlightPlan? plan, int cursor) = _blightService.GetPlanSnapshot();
 
             for (int order = 0; order < ordered.Count; order++)
             {
@@ -222,8 +221,8 @@ namespace ClickIt.Features.Blight
 
         private static void DrawTextWithShadow(DeferredDrawQueue queue, string text, NumVector2 pos, Color color, FontAlign align)
         {
-            queue.EnqueueText(text, new NumVector2(pos.X + 1f, pos.Y + 1f), Color.Black, align);
-            queue.EnqueueText(text, pos, color, align);
+            queue.EnqueueText(text, new Vector2(pos.X + 1f, pos.Y + 1f), Color.Black, 0, align);
+            queue.EnqueueText(text, new Vector2(pos.X, pos.Y), color, 0, align);
         }
 
         private static NumVector2 ProjectGridToLargeMap(NumVector2 playerGrid, NumVector2 mapCenter, float mapScale, NumVector2 gridPos)
@@ -536,9 +535,9 @@ namespace ClickIt.Features.Blight
         // Lane labels use a light fill with a dark 2-way shadow to stay readable over the lane colours.
         private static void DrawLaneLabel(DeferredDrawQueue queue, string text, NumVector2 pos, Color color)
         {
-            queue.EnqueueText(text, new NumVector2(pos.X - 1f, pos.Y - 1f), Color.Black, FontAlign.Center);
-            queue.EnqueueText(text, new NumVector2(pos.X + 1f, pos.Y + 1f), Color.Black, FontAlign.Center);
-            queue.EnqueueText(text, pos, color, FontAlign.Center);
+            queue.EnqueueText(text, new Vector2(pos.X - 1f, pos.Y - 1f), Color.Black, 0, FontAlign.Center);
+            queue.EnqueueText(text, new Vector2(pos.X + 1f, pos.Y + 1f), Color.Black, 0, FontAlign.Center);
+            queue.EnqueueText(text, new Vector2(pos.X, pos.Y), color, 0, FontAlign.Center);
         }
 
         private static void LabelLanes(BlightLaneNode lane, string?[] labelFor)

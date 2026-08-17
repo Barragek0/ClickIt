@@ -13,7 +13,6 @@ namespace ClickIt
         internal ClickItSettingsUiState UiState => TransientState.UiState;
 
         public ToggleNode Enable { get; set; } = new ToggleNode(true);
-        public int SettingsVersion { get; set; } = ClickItSettingsMigrationService.CurrentVersion;
 
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public List<string> MechanicPriorityOrder { get; set; } = [];
@@ -77,16 +76,6 @@ namespace ClickIt
         public ToggleNode AllowNearbyMechanicsWhileWaitingForChestDropsToSettle { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public RangeNode<int> AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance { get; set; } = new RangeNode<int>(20, 1, 100);
-        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
-        public ToggleNode PauseAfterOpeningLeagueChests { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
-        public ToggleNode PauseAfterOpeningHeistChests { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
-        public RangeNode<int> PauseAfterOpeningLeagueChestsInitialDelayMs { get; set; } = new RangeNode<int>(500, 100, 1500);
-        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
-        public RangeNode<int> PauseAfterOpeningLeagueChestsPollIntervalMs { get; set; } = new RangeNode<int>(100, 50, 500);
-        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
-        public RangeNode<int> PauseAfterOpeningLeagueChestsQuietWindowMs { get; set; } = new RangeNode<int>(500, 100, 2000);
         [Menu("Shrines", "Click shrines", 3, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickShrines { get; set; } = new ToggleNode(true);

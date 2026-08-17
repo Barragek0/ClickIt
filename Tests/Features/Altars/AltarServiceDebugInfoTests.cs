@@ -35,5 +35,20 @@ namespace ClickIt.Tests.Features.Altars
             debugInfo.RecentUnmatchedMods[0].Should().StartWith("b ");
             debugInfo.RecentUnmatchedMods[4].Should().StartWith("f ");
         }
+
+        [TestMethod]
+        public void AddDebugStage_CollapsesRepeatedMessages_IntoDedupedEntry()
+        {
+            var debugInfo = new AltarServiceDebugInfo();
+
+            debugInfo.AddDebugStage("AltarScan: 2 altar label(s) found");
+            debugInfo.AddDebugStage("AltarScan: 2 altar label(s) found");
+            debugInfo.AddDebugStage("AltarDecision: TopWeightHigher top=50 bottom=10 chose=Top");
+
+            debugInfo.RecentStages.Should().HaveCount(2);
+            debugInfo.RecentStages[0].Should().Contain("AltarScan: 2 altar label(s) found");
+            debugInfo.RecentStages[0].Should().Contain("(x2)");
+            debugInfo.RecentStages[1].Should().Contain("AltarDecision");
+        }
     }
 }

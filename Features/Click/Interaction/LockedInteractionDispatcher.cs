@@ -6,26 +6,23 @@ namespace ClickIt.Features.Click.Interaction
 
         internal object ElementLock { get; } = new();
 
-        internal long GetSuccessfulClickSequence()
-            => _interactionExecutor.GetSuccessfulClickSequence();
-
         internal bool PerformClick(
             Vector2 clickPos,
             Element? expectedElement,
             GameController? controller,
             bool forceUiHoverVerification = false,
             bool allowWhenHotkeyInactive = false,
-            bool avoidCursorMove = false)
+            bool avoidCursorMove = false,
+            IntervalKind interval = IntervalKind.Click)
         {
             using (LockManager.AcquireStatic(ElementLock))
             {
-                return _interactionExecutor.PerformClick(clickPos, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
+                return _interactionExecutor.PerformClick(clickPos, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove, interval);
             }
         }
 
         internal bool PerformHoldClick(
             Vector2 clickPos,
-            int holdDurationMs,
             Element? expectedElement,
             GameController? controller,
             bool forceUiHoverVerification = false,
@@ -34,7 +31,7 @@ namespace ClickIt.Features.Click.Interaction
         {
             using (LockManager.AcquireStatic(ElementLock))
             {
-                return _interactionExecutor.PerformClickAndHold(clickPos, holdDurationMs, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
+                return _interactionExecutor.PerformClickAndHold(clickPos, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
             }
         }
     }

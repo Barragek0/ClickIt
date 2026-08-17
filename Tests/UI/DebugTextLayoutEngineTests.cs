@@ -14,15 +14,6 @@ namespace ClickIt.Tests.UI
         }
 
         [TestMethod]
-        public void WrapDebugText_PreservesLeadingIndentationAcrossWrappedLines()
-        {
-            var lines = DebugTextLayoutEngine.WrapDebugText("  this debug text should wrap across multiple rows", 20);
-
-            lines.Should().HaveCountGreaterThan(1);
-            lines.Should().OnlyContain(x => x.StartsWith("  "));
-        }
-
-        [TestMethod]
         public void WrapOverlayText_DoesNotThrow_WhenMaxLengthIsZeroOrNegative()
         {
             var lines = DebugTextLayoutEngine.WrapOverlayText("this text must not crash", 0);

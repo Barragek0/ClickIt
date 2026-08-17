@@ -6,9 +6,7 @@ public class ClickPipelineTimingTests
     [TestMethod]
     public void ReadSleepTimeMs_ReturnsAccumulatedSleep_WithoutConsuming()
     {
-        // ReadSleepTimeMs is the probe used by per-stage performance measurements to subtract the safety
-        // sleeps that happened inside a stage; it must NOT reset the accumulator, so the host's
-        // ConsumeSleepTimeMs() still accounts for the full per-tick total afterwards.
+        // ReadSleepTimeMs must NOT reset the accumulator so the host's ConsumeSleepTimeMs() sees the full per-tick total.
         ClickPipelineTiming.ResetSleepTime();
 
         ClickPipelineTiming.Sleep(15);

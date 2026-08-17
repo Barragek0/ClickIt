@@ -1,6 +1,10 @@
 using static ClickIt.Features.Blight.Planning.BlightBranches;
+using static ClickIt.Features.Blight.Planning.BlightGeometry;
 
 namespace ClickIt.Features.Blight.Planning;
+
+// A ranked fill candidate: the foundation index plus its placement metric, ordered by metric before assignment.
+internal readonly record struct FillCandidate(int Index, float Metric);
 
 internal static class BlightFillPlanner
 {
@@ -40,7 +44,6 @@ internal static class BlightFillPlanner
         List<TowerBuildRule> tierRules,
         IReadOnlyList<BlightCachedTower> knownTowers,
         LaneCoverageResult[] coverage,
-        HashSet<NumVector2> failedPositions,
         HashSet<int> assignedIndices,
         Dictionary<NumVector2, (BlightTowerType Type, int MaxLevel)> assignments,
         List<NumVector2> orderedFillPositions,
@@ -62,7 +65,7 @@ internal static class BlightFillPlanner
             {
                 (int fIdx, _) = FindFoundationNearUncoveredLane(
                     knownTowers, coverage, maxRadiusSq,
-                    failedPositions, assignedIndices, pumpPosition, playerPosition);
+                    assignedIndices, pumpPosition, playerPosition);
                 if (fIdx < 0)
                     break;
                 assignments[knownTowers[fIdx].WorldPosition]
@@ -77,14 +80,13 @@ internal static class BlightFillPlanner
         BlightPlacementPreference placement = BlightPlacementPreference.Default;
         for (int r = 0; r < tierRules.Count && placement == BlightPlacementPreference.Default; r++)
             placement = tierRules[r].Placement;
-        List<(int Index, float Metric)> candidates = [];
+        List<FillCandidate> candidates = [];
         for (int i = 0; i < knownTowers.Count; i++)
         {
             if (assignedIndices.Contains(i)) continue;
-            if (failedPositions.Contains(knownTowers[i].WorldPosition)) continue;
-            candidates.Add((i, PlacementMetric(knownTowers, assignedIndices, i, i, placement, pumpPosition)));
+            candidates.Add(new FillCandidate(i, PlacementMetric(knownTowers, assignedIndices, i, i, placement, pumpPosition)));
         }
-        candidates.Sort((a, b) => a.Metric.CompareTo(b.Metric));
+        candidates.Sort(static (a, b) => a.Metric.CompareTo(b.Metric));
 
         bool[] ruleDone = new bool[tierRules.Count];
 
@@ -110,7 +112,7 @@ internal static class BlightFillPlanner
             {
                 int empowerIdx = FindBestEmpowerFoundation(
                     rule, knownTowers, assignments,
-                    assignedIndices, failedPositions, pumpPosition);
+                    assignedIndices, pumpPosition);
                 if (empowerIdx < 0)
                 {
                     ruleDone[ruleIdx] = true;
@@ -138,7 +140,6 @@ internal static class BlightFillPlanner
         IReadOnlyList<BlightCachedTower> knownTowers,
         Dictionary<NumVector2, (BlightTowerType Type, int MaxLevel)> assignments,
         HashSet<int> assignedIndices,
-        HashSet<NumVector2> failedPositions,
         NumVector2? pumpPosition)
     {
         // Target towers: built or planned towers of the types this rule must empower.
@@ -190,7 +191,6 @@ internal static class BlightFillPlanner
         for (int i = 0; i < knownTowers.Count; i++)
         {
             if (assignedIndices.Contains(i)) continue;
-            if (failedPositions.Contains(knownTowers[i].WorldPosition)) continue;
             NumVector2 pos = knownTowers[i].WorldPosition;
 
             int newly = 0;
@@ -224,7 +224,6 @@ internal static class BlightFillPlanner
         IReadOnlyList<BlightCachedTower> knownTowers,
         LaneCoverageResult[] coverage,
         float radiusSq,
-        HashSet<NumVector2> failedPositions,
         HashSet<int> assignedIndices,
         NumVector2? pumpPosition,
         NumVector2? playerPosition)
@@ -245,16 +244,15 @@ internal static class BlightFillPlanner
             for (int i = 0; i < knownTowers.Count; i++)
             {
                 if (assignedIndices.Contains(i)) continue;
-                if (failedPositions.Contains(knownTowers[i].WorldPosition)) continue;
 
                 float distSq = SqDist(knownTowers[i].WorldPosition, coverage[s].Midpoint);
                 if (distSq > radiusSq)
                     continue;
 
                 float metric = playerPosition.HasValue
-                    ? (knownTowers[i].WorldPosition - playerPosition.Value).LengthSquared()
+                    ? SqDist(knownTowers[i].WorldPosition, playerPosition.Value)
                     : pumpPosition.HasValue
-                        ? (knownTowers[i].WorldPosition - pumpPosition.Value).LengthSquared()
+                        ? SqDist(knownTowers[i].WorldPosition, pumpPosition.Value)
                         : distSq;
                 if (metric < bestMetric)
                 {

@@ -1,6 +1,25 @@
 
 namespace ClickIt.Features.Click
 {
+    internal readonly record struct ClickAutomationPortDependencies(
+        ClickItSettings Settings,
+        GameController GameController,
+        ErrorHandler ErrorHandler,
+        AltarService AltarService,
+        WeightCalculator WeightCalculator,
+        AltarChoiceEvaluator AltarChoiceEvaluator,
+        Func<Vector2, string, bool> PointIsInClickableArea,
+        Func<Vector2, string, bool> ForceRefreshPointIsInClickableArea,
+        InputHandler InputHandler,
+        ILabelInteractionPort LabelInteractionPort,
+        ILabelSelectionService LabelSelectionService,
+        ShrineService ShrineService,
+        PathfindingService PathfindingService,
+        Func<bool> GroundItemsVisible,
+        TimeCache<List<LabelOnGround>> CachedLabels,
+        PerformanceMonitor PerformanceMonitor,
+        Action<string, int>? FreezeDebugTelemetrySnapshot);
+
     public sealed partial class ClickAutomationPort
     {
         // Keep the constructor eager only for the small set of always-on host dependencies; heavier mechanic/runtime owners stay lazy.
@@ -42,42 +61,26 @@ namespace ClickIt.Features.Click
 
 
 
-        internal ClickAutomationPort(
-            ClickItSettings settings,
-            GameController gameController,
-            ErrorHandler errorHandler,
-            AltarService altarService,
-            WeightCalculator weightCalculator,
-            AltarChoiceEvaluator altarChoiceEvaluator,
-            Func<Vector2, string, bool> pointIsInClickableArea,
-            Func<Vector2, string, bool> forceRefreshPointIsInClickableArea,
-            InputHandler inputHandler,
-            ILabelInteractionPort labelInteractionPort,
-            ILabelSelectionService labelSelectionService,
-            ShrineService shrineService,
-            PathfindingService pathfindingService,
-            Func<bool> groundItemsVisible,
-            TimeCache<List<LabelOnGround>> cachedLabels,
-            PerformanceMonitor performanceMonitor,
-            Action<string, int>? freezeDebugTelemetrySnapshot)
+        internal ClickAutomationPort(ClickAutomationPortDependencies dependencies)
         {
-            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-            _gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
-            _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
-            _altarService = altarService ?? throw new ArgumentNullException(nameof(altarService));
-            _weightCalculator = weightCalculator ?? throw new ArgumentNullException(nameof(weightCalculator));
-            _altarChoiceEvaluator = altarChoiceEvaluator ?? throw new ArgumentNullException(nameof(altarChoiceEvaluator));
-            PointIsInClickableArea = pointIsInClickableArea ?? throw new ArgumentNullException(nameof(pointIsInClickableArea));
-            ForceRefreshPointIsInClickableArea = forceRefreshPointIsInClickableArea ?? throw new ArgumentNullException(nameof(forceRefreshPointIsInClickableArea));
-            _inputHandler = inputHandler ?? throw new ArgumentNullException(nameof(inputHandler));
-            _labelInteractionPort = labelInteractionPort ?? throw new ArgumentNullException(nameof(labelInteractionPort));
-            _labelSelectionService = labelSelectionService ?? throw new ArgumentNullException(nameof(labelSelectionService));
+            ClickItSettings settings = _settings = dependencies.Settings ?? throw new ArgumentNullException(nameof(dependencies.Settings));
+            _gameController = dependencies.GameController ?? throw new ArgumentNullException(nameof(dependencies.GameController));
+            ErrorHandler errorHandler = _errorHandler = dependencies.ErrorHandler ?? throw new ArgumentNullException(nameof(dependencies.ErrorHandler));
+            _altarService = dependencies.AltarService ?? throw new ArgumentNullException(nameof(dependencies.AltarService));
+            _weightCalculator = dependencies.WeightCalculator ?? throw new ArgumentNullException(nameof(dependencies.WeightCalculator));
+            _altarChoiceEvaluator = dependencies.AltarChoiceEvaluator ?? throw new ArgumentNullException(nameof(dependencies.AltarChoiceEvaluator));
+            Func<Vector2, string, bool> pointIsInClickableArea = PointIsInClickableArea = dependencies.PointIsInClickableArea ?? throw new ArgumentNullException(nameof(dependencies.PointIsInClickableArea));
+            ForceRefreshPointIsInClickableArea = dependencies.ForceRefreshPointIsInClickableArea ?? throw new ArgumentNullException(nameof(dependencies.ForceRefreshPointIsInClickableArea));
+            InputHandler inputHandler = _inputHandler = dependencies.InputHandler ?? throw new ArgumentNullException(nameof(dependencies.InputHandler));
+            _labelInteractionPort = dependencies.LabelInteractionPort ?? throw new ArgumentNullException(nameof(dependencies.LabelInteractionPort));
+            _labelSelectionService = dependencies.LabelSelectionService ?? throw new ArgumentNullException(nameof(dependencies.LabelSelectionService));
             _labelClickPointResolver = new LabelClickPointResolver(settings);
-            _shrineService = shrineService ?? throw new ArgumentNullException(nameof(shrineService));
-            _pathfindingService = pathfindingService ?? throw new ArgumentNullException(nameof(pathfindingService));
-            _groundItemsVisible = groundItemsVisible ?? throw new ArgumentNullException(nameof(groundItemsVisible));
-            _cachedLabels = cachedLabels;
-            _performanceMonitor = performanceMonitor ?? throw new ArgumentNullException(nameof(performanceMonitor));
+            _shrineService = dependencies.ShrineService ?? throw new ArgumentNullException(nameof(dependencies.ShrineService));
+            _pathfindingService = dependencies.PathfindingService ?? throw new ArgumentNullException(nameof(dependencies.PathfindingService));
+            _groundItemsVisible = dependencies.GroundItemsVisible ?? throw new ArgumentNullException(nameof(dependencies.GroundItemsVisible));
+            _cachedLabels = dependencies.CachedLabels;
+            PerformanceMonitor performanceMonitor = _performanceMonitor = dependencies.PerformanceMonitor ?? throw new ArgumentNullException(nameof(dependencies.PerformanceMonitor));
+            Action<string, int>? freezeDebugTelemetrySnapshot = dependencies.FreezeDebugTelemetrySnapshot;
             ClickAutomationSupport = new ClickAutomationSupport(new ClickAutomationSupportDependencies(
                 Settings: settings,
                 TelemetryStore: new ClickTelemetryStore(settings),
@@ -125,13 +128,9 @@ namespace ClickIt.Features.Click
             return ManualCursorVisibleMechanics.TryClick(cursorAbsolute, windowTopLeft);
         }
 
-        internal bool LastClickTickWasActionable { get; private set; }
-
         internal IEnumerator ProcessRegularClick()
         {
-            LastClickTickWasActionable = false;
             yield return RegularClick.Run();
-            LastClickTickWasActionable = RegularClick.LastTickWasActionable;
         }
 
         internal bool TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)

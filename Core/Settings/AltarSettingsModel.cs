@@ -8,9 +8,6 @@ namespace ClickIt
         internal static string BuildCompositeKey(string type, string id)
             => AltarWeightSettingsService.BuildCompositeKey(type, id);
 
-        internal void EnsureAllModsHaveWeights()
-            => AltarWeightSettingsService.EnsureAllModsHaveWeights(this);
-
         internal int GetModTier(string modId)
             => AltarWeightSettingsService.GetModTier(this, modId);
 

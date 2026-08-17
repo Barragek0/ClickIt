@@ -47,8 +47,7 @@ namespace ClickIt.Shared.Game
         public static bool IsBasicLabelValid(LabelOnGround label)
         {
             return label != null
-                && TryGetLabelItem(label, out object? item)
-                && item != null
+                && DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item)
                 && DynamicAccess.TryReadBool(item, DynamicAccessProfiles.IsValid, out bool itemIsValid)
                 && itemIsValid
                 && DynamicAccess.TryReadBool(label, DynamicAccessProfiles.IsVisible, out bool isVisible)
@@ -59,7 +58,7 @@ namespace ClickIt.Shared.Game
         public static bool IsValidClickableLabel(LabelOnGround label, Func<Vector2, bool> pointIsInClickableArea)
         {
             if (label == null
-                || !TryGetLabelItem(label, out object? item)
+                || !DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item)
                 || !DynamicAccess.TryReadBool(label, DynamicAccessProfiles.IsVisible, out bool isVisible)
                 || !isVisible
                 || !IsLabelElementValid(label))
@@ -127,7 +126,7 @@ namespace ClickIt.Shared.Game
         }
 
         public static bool HasEssenceImprisonmentText(LabelOnGround label)
-            => TryGetLabelAdapter(label, out IElementAdapter? adapter)
+            => LabelElementSearch.TryGetLabelAdapter(label, out IElementAdapter? adapter)
                 && LabelElementSearch.GetElementByStringCore(adapter, "The monster is imprisoned by powerful Essences.") != null;
 
         public static bool IsLabelElementValid(LabelOnGround label)
@@ -200,32 +199,10 @@ namespace ClickIt.Shared.Game
                 && DynamicAccess.TryReadBool(rawChild, DynamicAccessProfiles.IsVisible, out bool isVisible)
                 && isVisible;
 
-        private static bool TryGetLabelItem(LabelOnGround? label, out object? item)
-        {
-            return DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out item)
-                && item != null;
-        }
-
         private static bool TryGetLabelRoot(LabelOnGround? label, out object? root)
         {
             return DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out root)
                 && root != null;
-        }
-
-        private static bool TryGetLabelAdapter(LabelOnGround? label, out IElementAdapter? adapter)
-        {
-            adapter = null;
-            if (!TryGetLabelRoot(label, out object? root) || root == null)
-                return false;
-
-            adapter = root switch
-            {
-                IElementAdapter existingAdapter => existingAdapter,
-                Element element => new ElementAdapter(element),
-                _ => null,
-            };
-
-            return adapter != null;
         }
 
         private static EntityType ResolveEntityType(object? item)

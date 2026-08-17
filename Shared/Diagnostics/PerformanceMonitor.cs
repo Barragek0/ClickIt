@@ -57,7 +57,8 @@ namespace ClickIt.Shared.Diagnostics
         Label = 3,
         Area = 4,
         Ultimatum = 5,
-        Flare = 6
+        Flare = 6,
+        Walk = 7
     }
 
     /// <summary>

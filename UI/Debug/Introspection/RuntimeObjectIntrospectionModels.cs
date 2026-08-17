@@ -1,12 +1,5 @@
 namespace ClickIt.UI.Debug.Introspection
 {
-    internal enum IntrospectionProfile
-    {
-        Default,
-        StructureFirst,
-        Full
-    }
-
     internal readonly record struct RuntimeObjectIntrospectionOptions(
         string Title,
         int MaxDepth,

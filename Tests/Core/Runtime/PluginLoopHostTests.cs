@@ -208,7 +208,7 @@ namespace ClickIt.Tests.Core.Runtime
             var host = new PluginLoopHost(ctx, settings, gc, eh);
             SetSafeLazyModeContextCache(host, settings, labels);
 
-            ctx.Runtime.Timer.Reset();
+            perf.RecordClickDispatch();
 
             IEnumerator enumerator = InvokePrivateCoroutine(host, "ProcessManualUiHoverClick");
 
@@ -232,14 +232,12 @@ namespace ClickIt.Tests.Core.Runtime
 
             IEnumerator enumerator = InvokePrivateCoroutine(host, "MainClickLabelCoroutine");
 
-            // First iteration: the guarded click step (idle — gate blocked, yields nothing).
+            // First iteration: the guarded click step (gate blocked by CanClick) paces itself with a WaitTime instead of spinning.
             enumerator.MoveNext().Should().BeTrue();
             enumerator.Current.Should().BeAssignableTo<IEnumerator>();
-            ((IEnumerator)enumerator.Current).MoveNext().Should().BeFalse();
-
-            // Idle iteration → the coroutine paces itself with a WaitTime instead of spinning.
-            enumerator.MoveNext().Should().BeTrue();
-            enumerator.Current.Should().BeOfType<WaitTime>();
+            IEnumerator guardedStep = (IEnumerator)enumerator.Current;
+            guardedStep.MoveNext().Should().BeTrue();
+            guardedStep.Current.Should().BeOfType<WaitTime>();
         }
 
         [TestMethod]
@@ -264,198 +262,39 @@ namespace ClickIt.Tests.Core.Runtime
 
             var enumerator = host.ClickLabel();
 
-            enumerator.MoveNext().Should().BeFalse();
+            enumerator.MoveNext().Should().BeTrue();
+            enumerator.Current.Should().BeOfType<WaitTime>();
             ctx.Runtime.WorkFinished.Should().BeTrue();
             messages.Should().ContainSingle(message => message.Contains("[ClickLogic] blocked:", StringComparison.Ordinal)
                 && message.Contains("reason='", StringComparison.Ordinal));
         }
 
         [TestMethod]
-        public void PrivateGetSuccessfulClickSequence_ReturnsDispatcherSequence_WhenDispatcherPresent()
+        public void ResolveClickTargetTime_SubtractsAverageTimeToClick()
         {
             var settings = new ClickItSettings();
             var ctx = new PluginContext();
-            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => true);
-            RuntimeMemberAccessor.SetRequiredMember(executor, "_successfulClickSequence", 7L);
-            ctx.Services.LockedInteractionDispatcher = new LockedInteractionDispatcher(executor);
+            var perf = new PerformanceMonitor(settings);
+            ctx.Services.PerformanceMonitor = perf;
 
             var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
             var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
             var host = new PluginLoopHost(ctx, settings, gc!, eh);
 
-            long result = InvokePrivate<long>(host, "GetSuccessfulClickSequence");
+            // No click-timing samples yet -> the target is the frequency target itself.
+            double fresh = InvokePrivate<double>(host, "ResolveClickTargetTime", 80d);
 
-            result.Should().Be(7L);
-        }
+            fresh.Should().Be(80);
 
-        [TestMethod]
-        public void RestartClickTimerAfterSuccessfulInteraction_RestartsTimer_WhenSequenceAdvances()
-        {
-            var settings = new ClickItSettings();
-            var ctx = new PluginContext();
-            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => true);
-            RuntimeMemberAccessor.SetRequiredMember(executor, "_successfulClickSequence", 4L);
-            ctx.Services.LockedInteractionDispatcher = new LockedInteractionDispatcher(executor);
+            // After a click that took measurable time to dispatch, the target backs off by that average so the next click still lands ~target apart.
+            perf.MarkClickRunStart();
+            Thread.Sleep(10);
+            perf.RecordClickDispatch();
 
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
-            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
-            var host = new PluginLoopHost(ctx, settings, gc!, eh);
+            double compensated = InvokePrivate<double>(host, "ResolveClickTargetTime", 80d);
 
-            ctx.Runtime.Timer.Start();
-            Thread.Sleep(20);
-            InvokePrivate(host, "RestartClickTimerAfterSuccessfulInteraction", 3L, true);
-
-            ctx.Runtime.Timer.ElapsedMilliseconds.Should().BeLessThan(20L);
-        }
-
-        [TestMethod]
-        public void RestartClickTimerAfterSuccessfulInteraction_DoesNotRestartTimer_WhenSequenceDoesNotAdvance()
-        {
-            var settings = new ClickItSettings();
-            var ctx = new PluginContext();
-            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => true);
-            RuntimeMemberAccessor.SetRequiredMember(executor, "_successfulClickSequence", 3L);
-            ctx.Services.LockedInteractionDispatcher = new LockedInteractionDispatcher(executor);
-
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
-            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
-            var host = new PluginLoopHost(ctx, settings, gc!, eh);
-
-            ctx.Runtime.Timer.Start();
-            Thread.Sleep(20);
-            long elapsedBefore = ctx.Runtime.Timer.ElapsedMilliseconds;
-
-            InvokePrivate(host, "RestartClickTimerAfterSuccessfulInteraction", 3L, true);
-
-            ctx.Runtime.Timer.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(elapsedBefore);
-        }
-
-        [TestMethod]
-        public void RestartClickTimerAfterSuccessfulInteraction_DoesNotRestartTimer_WhenInteractionDidNotSucceed()
-        {
-            var settings = new ClickItSettings();
-            var ctx = new PluginContext();
-            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => true);
-            RuntimeMemberAccessor.SetRequiredMember(executor, "_successfulClickSequence", 8L);
-            ctx.Services.LockedInteractionDispatcher = new LockedInteractionDispatcher(executor);
-
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
-            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
-            var host = new PluginLoopHost(ctx, settings, gc!, eh);
-
-            ctx.Runtime.Timer.Start();
-            Thread.Sleep(20);
-            long elapsedBefore = ctx.Runtime.Timer.ElapsedMilliseconds;
-
-            InvokePrivate(host, "RestartClickTimerAfterSuccessfulInteraction", 3L, false);
-
-            ctx.Runtime.Timer.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(elapsedBefore);
-        }
-
-        [TestMethod]
-        public void RestartClickTimerAfterSuccessfulInteraction_MarksTimerRestart_WhenSequenceAdvances()
-        {
-            var settings = new ClickItSettings();
-            var ctx = new PluginContext();
-            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => true);
-            RuntimeMemberAccessor.SetRequiredMember(executor, "_successfulClickSequence", 7L);
-            ctx.Services.LockedInteractionDispatcher = new LockedInteractionDispatcher(executor);
-
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
-            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
-            var host = new PluginLoopHost(ctx, settings, gc!, eh);
-
-            InvokePrivate(host, "RestartClickTimerAfterSuccessfulInteraction", 6L, true);
-
-            GetPrivateField<bool>(host, "_lastClickTimerRestarted").Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void RestartClickTimerAfterSuccessfulInteraction_DoesNotMarkTimerRestart_WhenSequenceDoesNotAdvance()
-        {
-            var settings = new ClickItSettings();
-            var ctx = new PluginContext();
-            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => true);
-            RuntimeMemberAccessor.SetRequiredMember(executor, "_successfulClickSequence", 7L);
-            ctx.Services.LockedInteractionDispatcher = new LockedInteractionDispatcher(executor);
-
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
-            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
-            var host = new PluginLoopHost(ctx, settings, gc!, eh);
-
-            InvokePrivate(host, "RestartClickTimerAfterSuccessfulInteraction", 7L, true);
-
-            GetPrivateField<bool>(host, "_lastClickTimerRestarted").Should().BeFalse();
-        }
-
-        [TestMethod]
-        public void RecordClickStartDelay_IncreasesCorrection_WhenStartDelayed()
-        {
-            var settings = new ClickItSettings();
-            var ctx = new PluginContext();
-            ctx.Services.PerformanceMonitor = new PerformanceMonitor(settings);
-
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
-            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
-            var host = new PluginLoopHost(ctx, settings, gc!, eh);
-
-            // No click timing samples yet → desired delay = frequency target (80 ms).
-            InvokePrivate(host, "RecordClickStartDelay", 100L, 80d);
-
-            GetPrivateField<double>(host, "_clickTargetTimeCorrectionMs").Should().Be(10d);
-        }
-
-        [TestMethod]
-        public void RecordClickStartDelay_DecreasesCorrection_WhenStartEarly()
-        {
-            var settings = new ClickItSettings();
-            var ctx = new PluginContext();
-            ctx.Services.PerformanceMonitor = new PerformanceMonitor(settings);
-
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
-            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
-            var host = new PluginLoopHost(ctx, settings, gc!, eh);
-
-            RuntimeMemberAccessor.SetRequiredMember(host, "_clickTargetTimeCorrectionMs", 10d);
-            InvokePrivate(host, "RecordClickStartDelay", 60L, 80d);
-
-            GetPrivateField<double>(host, "_clickTargetTimeCorrectionMs").Should().Be(0d);
-        }
-
-        [TestMethod]
-        public void RecordClickStartDelay_ClampsCorrection_ToKeepTargetPositive()
-        {
-            var settings = new ClickItSettings();
-            var ctx = new PluginContext();
-            ctx.Services.PerformanceMonitor = new PerformanceMonitor(settings);
-
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
-            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
-            var host = new PluginLoopHost(ctx, settings, gc!, eh);
-
-            // A stale huge elapsed would otherwise push the target below 1 ms.
-            InvokePrivate(host, "RecordClickStartDelay", 1000L, 80d);
-
-            GetPrivateField<double>(host, "_clickTargetTimeCorrectionMs").Should().Be(79d);
-        }
-
-        [TestMethod]
-        public void ResolveClickTargetTime_AppliesFeedbackCorrection()
-        {
-            var settings = new ClickItSettings();
-            var ctx = new PluginContext();
-            ctx.Services.PerformanceMonitor = new PerformanceMonitor(settings);
-
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
-            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
-            var host = new PluginLoopHost(ctx, settings, gc!, eh);
-
-            RuntimeMemberAccessor.SetRequiredMember(host, "_clickTargetTimeCorrectionMs", 10d);
-
-            // 80 - avg(0) + jitter(0..5) - 10 → [70, 75].
-            double result = InvokePrivate<double>(host, "ResolveClickTargetTime", 80d);
-
-            result.Should().BeInRange(70, 75);
+            compensated.Should().BeLessThan(80);
+            compensated.Should().BeGreaterThanOrEqualTo(1);
         }
 
         private static IEnumerator InvokePrivateCoroutine(PluginLoopHost host, string methodName)
@@ -464,22 +303,10 @@ namespace ClickIt.Tests.Core.Runtime
             return (IEnumerator)method.Invoke(host, null)!;
         }
 
-        private static void InvokePrivate(PluginLoopHost host, string methodName, params object[] arguments)
-        {
-            MethodInfo method = typeof(PluginLoopHost).GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)!;
-            method.Invoke(host, arguments);
-        }
-
         private static T InvokePrivate<T>(PluginLoopHost host, string methodName, params object[] arguments)
         {
             MethodInfo method = typeof(PluginLoopHost).GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)!;
             return (T)method.Invoke(host, arguments)!;
-        }
-
-        private static T GetPrivateField<T>(PluginLoopHost host, string fieldName)
-        {
-            FieldInfo field = typeof(PluginLoopHost).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)!;
-            return (T)field.GetValue(host)!;
         }
 
         private static void SetSafeLazyModeContextCache(PluginLoopHost host, ClickItSettings settings, IReadOnlyList<LabelOnGround> labels)

@@ -21,8 +21,6 @@ namespace ClickIt
         public PluginRuntimeState Runtime { get; } = new();
         public PluginRenderingState Rendering { get; }
 
-        public Random Random { get; } = new Random();
-
         internal DebugTelemetrySnapshot GetDebugTelemetrySnapshot()
             => DebugTelemetry.GetSnapshot();
 
@@ -75,7 +73,7 @@ namespace ClickIt
         }
 
         private PluginDebugTelemetryService CreateDebugTelemetryService()
-            => new(
+            => new(new PluginDebugTelemetryProjectionSources(
                 () => Services.ClickAutomationPort,
                 () => Services.ClickAutomationSupport,
                 () => Services.LabelDebugService,
@@ -89,7 +87,7 @@ namespace ClickIt
                 () => Services.InputHandler,
                 () => _getSettings(),
                 () => Services.CachedLabels,
-                () => Services.ErrorHandler);
+                () => Services.ErrorHandler));
 
         internal void InitializeCompositionRoot(ClickIt owner, ClickItSettings settings)
             => PluginCompositionBootstrapper.InitializeCompositionRoot(this, owner, settings);

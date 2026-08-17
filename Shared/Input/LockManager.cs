@@ -29,24 +29,12 @@ namespace ClickIt.Shared.Input
             return new Releaser(lockObj);
         }
 
-        private static bool ShouldNoop(object? lockObj, bool requireInstance)
+        private static bool ShouldNoop(object? lockObj)
         {
             if (lockObj == null)
                 return true;
 
-            return requireInstance && Instance == null;
-        }
-
-        /// <summary>
-        /// Instance Acquire method â€” use via instance: using(var d = lm.Acquire(obj)) { ... }
-        /// Always performs a Monitor.Enter for non-null objects to enforce thread-safety.
-        /// </summary>
-        public static IDisposable Acquire(object? lockObj)
-        {
-            if (ShouldNoop(lockObj, requireInstance: false))
-                return NoopReleaser.Value;
-
-            return AcquireEntered(lockObj!);
+            return Instance == null;
         }
 
         /// <summary>
@@ -55,22 +43,12 @@ namespace ClickIt.Shared.Input
         /// </summary>
         public static IDisposable AcquireStatic(object? lockObj)
         {
-            if (ShouldNoop(lockObj, requireInstance: true))
+            if (ShouldNoop(lockObj))
                 return NoopReleaser.Value;
 
             return AcquireEntered(lockObj!);
         }
 
-
         public static LockManager? Instance { get; set; }
-    }
-
-    public static class GlobalLockManager
-    {
-        public static LockManager? Instance
-        {
-            get => LockManager.Instance;
-            set => LockManager.Instance = value;
-        }
     }
 }

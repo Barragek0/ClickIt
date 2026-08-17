@@ -66,6 +66,11 @@ namespace ClickIt.Shared.Game
             return TryProjectOnScreen(elementRect, windowArea, out rect);
         }
 
+        // Culls offscreen labels/rects: an element that left the window reports a stale client rect
+        // that would render as a box near a screen corner, so overlays must skip it until it is visible again.
+        internal static bool IsRectOnScreen(RectangleF rect, RectangleF windowArea)
+            => TryProjectOnScreen(rect, windowArea, out _);
+
         private static bool TryProjectOnScreen(RectangleF rect, RectangleF windowArea, out RectangleF result)
         {
             if (windowArea.Width > 0 && windowArea.Height > 0)
@@ -82,6 +87,7 @@ namespace ClickIt.Shared.Game
             return true;
         }
 
+        // Single distance-sort algorithm: distances are precomputed once into a span (stackalloc for typical counts) and the list is sorted against the cached values with parallel swaps. Insertion sort up to 50 items, quicksort above.
         internal static void SortByDistance<T>(List<T> items, Func<T, float> getDistance)
         {
             ArgumentNullException.ThrowIfNull(items);
@@ -91,83 +97,50 @@ namespace ClickIt.Shared.Game
             if (count <= 1)
                 return;
 
-            if (count <= 50)
-            {
-                for (int i = 1; i < count; i++)
-                {
-                    T key = items[i];
-                    float keyDistance = getDistance(key);
-                    int j = i - 1;
-                    while (j >= 0 && getDistance(items[j]) > keyDistance)
-                    {
-                        items[j + 1] = items[j];
-                        j--;
-                    }
-
-                    items[j + 1] = key;
-                }
-
-                return;
-            }
-
-            QuickSortGeneric(items, 0, count - 1, getDistance);
-        }
-
-        public static void SortLabelsByDistance(List<LabelOnGround> labels)
-            => SortLabelsByDistance(labels, GetLabelDistance);
-
-        // Sort against caller-supplied distances so callers that already hold cached per-label distances (the 50ms label scan) avoid re-reading DistancePlayer during the sort.
-        public static void SortLabelsByDistance(List<LabelOnGround> labels, Func<LabelOnGround, float> getDistance)
-        {
-            int count = labels.Count;
-            if (count <= 1)
-                return;
-
-            // DistancePlayer is a dynamic game-memory read, so a per-comparison sort would multiply the cost. Precompute the distances once (stack span for typical counts) and sort the label list against the cached values instead.
             Span<float> distances = count <= 256 ? stackalloc float[count] : new float[count];
             for (int i = 0; i < count; i++)
-                distances[i] = getDistance(labels[i]);
+                distances[i] = getDistance(items[i]);
 
             if (count <= 50)
             {
-                InsertionSortByDistance(labels, distances, count);
+                InsertionSortByDistance(items, distances, count);
                 return;
             }
 
-            QuickSortByDistance(labels, distances, 0, count - 1);
+            QuickSortByDistance(items, distances, 0, count - 1);
         }
 
-        internal static void InsertionSortByDistance(List<LabelOnGround> labels, Span<float> distances, int count)
+        internal static void InsertionSortByDistance<T>(List<T> items, Span<float> distances, int count)
         {
             for (int i = 1; i < count; i++)
             {
-                LabelOnGround key = labels[i];
+                T key = items[i];
                 float keyDistance = distances[i];
                 int j = i - 1;
 
                 while (j >= 0 && distances[j] > keyDistance)
                 {
-                    labels[j + 1] = labels[j];
+                    items[j + 1] = items[j];
                     distances[j + 1] = distances[j];
                     j--;
                 }
 
-                labels[j + 1] = key;
+                items[j + 1] = key;
                 distances[j + 1] = keyDistance;
             }
         }
 
-        internal static void QuickSortByDistance(List<LabelOnGround> labels, Span<float> distances, int low, int high)
+        internal static void QuickSortByDistance<T>(List<T> items, Span<float> distances, int low, int high)
         {
             if (low < high)
             {
-                int pivotIndex = PartitionByDistance(labels, distances, low, high);
-                QuickSortByDistance(labels, distances, low, pivotIndex - 1);
-                QuickSortByDistance(labels, distances, pivotIndex + 1, high);
+                int pivotIndex = PartitionByDistance(items, distances, low, high);
+                QuickSortByDistance(items, distances, low, pivotIndex - 1);
+                QuickSortByDistance(items, distances, pivotIndex + 1, high);
             }
         }
 
-        internal static int PartitionByDistance(List<LabelOnGround> labels, Span<float> distances, int low, int high)
+        internal static int PartitionByDistance<T>(List<T> items, Span<float> distances, int low, int high)
         {
             float pivotDistance = distances[high];
             int i = low - 1;
@@ -176,57 +149,14 @@ namespace ClickIt.Shared.Game
                 if (distances[j] <= pivotDistance)
                 {
                     i++;
-                    SwapLabels(labels, i, j);
+                    (items[i], items[j]) = (items[j], items[i]);
                     (distances[i], distances[j]) = (distances[j], distances[i]);
                 }
 
 
-            SwapLabels(labels, i + 1, high);
+            (items[i + 1], items[high]) = (items[high], items[i + 1]);
             (distances[i + 1], distances[high]) = (distances[high], distances[i + 1]);
             return i + 1;
-        }
-
-        internal static void SwapLabels(List<LabelOnGround> labels, int i, int j)
-        {
-            if (i == j)
-                return;
-
-            (labels[i], labels[j]) = (labels[j], labels[i]);
-        }
-
-        private static void QuickSortGeneric<T>(List<T> items, int low, int high, Func<T, float> getDistance)
-        {
-            if (low < high)
-            {
-                int pivot = PartitionGeneric(items, low, high, getDistance);
-                QuickSortGeneric(items, low, pivot - 1, getDistance);
-                QuickSortGeneric(items, pivot + 1, high, getDistance);
-            }
-        }
-
-        private static int PartitionGeneric<T>(List<T> items, int low, int high, Func<T, float> getDistance)
-        {
-            float pivotValue = getDistance(items[high]);
-            int i = low - 1;
-            for (int j = low; j < high; j++)
-                if (getDistance(items[j]) <= pivotValue)
-                {
-                    i++;
-                    (items[i], items[j]) = (items[j], items[i]);
-                }
-
-
-            (items[i + 1], items[high]) = (items[high], items[i + 1]);
-            return i + 1;
-        }
-
-        private static float GetLabelDistance(LabelOnGround? label)
-        {
-            if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                || !DynamicAccess.TryReadFloat(rawItem, DynamicAccessProfiles.DistancePlayer, out float distance))
-                return float.MaxValue;
-
-            return distance;
         }
     }
 }

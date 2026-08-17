@@ -26,7 +26,7 @@ namespace ClickIt.Core.Bootstrap
         {
             LockManager.Instance = new LockManager(settings);
 
-            ClickAutomationPort port = new(
+            ClickAutomationPort port = new(new ClickAutomationPortDependencies(
                 settings,
                 gameController,
                 core.ErrorHandler,
@@ -43,7 +43,7 @@ namespace ClickIt.Core.Bootstrap
                 new Func<bool>(core.LabelReadModelService.GroundItemsVisible),
                 core.CachedLabels,
                 core.PerformanceMonitor,
-                freezeDebugTelemetrySnapshot)
+                freezeDebugTelemetrySnapshot))
             {
                 BlightChestDebug = core.BlightService.BlightChestDebug
             };

@@ -71,27 +71,21 @@ internal enum TowerSpecialization
 {
     None = -1,
 
-    // Fireball
     Meteor = 0,
     Flamethrower = 1,
 
-    // Chilling
     GlacialCage = 0,
     Freezebolt = 1,
 
-    // ShockNova
     ArcTower = 0,
     LightningStorm = 1,
 
-    // Empowering
     Weaken = 0,
     BuffPlayers = 1,
 
-    // Seismic
     StoneGaze = 0,
     Temporal = 1,
 
-    // Summoning
     ScoutMinion = 0,
     TankMinion = 1,
 }

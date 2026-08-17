@@ -51,7 +51,6 @@ namespace ClickIt.Tests.Shared.Game
             bool hit = cache.TryGetValue(7, 1_001, out _);
 
             hit.Should().BeFalse();
-            cache.HasCachedValue.Should().BeFalse();
         }
 
         [TestMethod]

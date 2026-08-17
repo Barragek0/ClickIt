@@ -57,7 +57,7 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                 inputHandler,
                 lazyModeBlockerService,
                 gameController,
-                cachedLabels);
+                cachedLabels?.Value);
 
             PluginClickFrequencyTargetDecision frequencyTarget = PluginClickRuntimeStateEvaluator.ResolveFrequencyTargetDecision(
                 settings,

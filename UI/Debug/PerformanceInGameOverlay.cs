@@ -18,6 +18,11 @@ namespace ClickIt.UI.Debug
         private readonly Func<PerformanceMetricsSnapshot> _getSnapshot = getSnapshot ?? throw new ArgumentNullException(nameof(getSnapshot));
         private readonly Func<bool>? _isInMapProvider = isInMapProvider;
 
+        // Rebuild the performance snapshot at most every 200ms (the buffers it aggregates only change at that cadence) so the per-frame draw does not reallocate snapshot arrays/dictionaries on the render thread.
+        private const long SnapshotCacheIntervalMs = 200;
+        private PerformanceMetricsSnapshot? _cachedSnapshot;
+        private long _lastSnapshotAtMs;
+
         public string Name => "Performance";
 
         public RenderSection Section => RenderSection.PerformanceOverlay;
@@ -38,7 +43,14 @@ namespace ClickIt.UI.Debug
 
         public void Draw(OverlayRenderContext ctx)
         {
-            PerformanceMetricsSnapshot perf = _getSnapshot();
+            long now = Environment.TickCount64;
+            PerformanceMetricsSnapshot perf = _cachedSnapshot ??= _getSnapshot();
+            if (now - _lastSnapshotAtMs >= SnapshotCacheIntervalMs)
+            {
+                perf = _getSnapshot();
+                _cachedSnapshot = perf;
+                _lastSnapshotAtMs = now;
+            }
             if (perf.Fps.Max <= 0)
                 return;
 
@@ -46,8 +58,8 @@ namespace ClickIt.UI.Debug
             const float originX = 5f;
             const float originY = 100f;
             const float colWidth = 400f;
-            TextBlock left = new(ctx.TextQueue, originX, originY, lineHeight);
-            TextBlock center = new(ctx.TextQueue, originX + colWidth, originY, lineHeight);
+            TextBlock left = new(ctx.DrawQueue, originX, originY, lineHeight);
+            TextBlock center = new(ctx.DrawQueue, originX + colWidth, originY, lineHeight);
 
             // Column 1: render + coroutine + DLR + interval + memory.
             left.TitleHeader(FourCol, "Render ms/f", "Last", "Avg", "Max");
@@ -92,18 +104,8 @@ namespace ClickIt.UI.Debug
                 $"{m.DlrReadsMsLastPerSec / fps:F2}",
                 $"{m.DlrReadsMsAvgPerSec / fps:F2}",
                 $"{m.DlrReadsMsMaxPerSec / fps:F2}");
-            DlrRow(b, "Altar", m.DlrSections[(int)ProcessingSection.Altar], fps);
-            DlrRow(b, "Area.Blocked", m.DlrSections[(int)ProcessingSection.AreaBlockedUi], fps);
-            DlrRow(b, "Blight", m.DlrSections[(int)ProcessingSection.Blight], fps);
-            DlrRow(b, "Click", m.DlrSections[(int)ProcessingSection.Click], fps);
-            DlrRow(b, "Dump", m.DlrSections[(int)ProcessingSection.GameStateDump], fps);
-            DlrRow(b, "Flare", m.DlrSections[(int)ProcessingSection.Flare], fps);
-            DlrRow(b, "Harvest", m.DlrSections[(int)ProcessingSection.Harvest], fps);
-            DlrRow(b, "Label Scan", m.DlrSections[(int)ProcessingSection.Label], fps);
-            DlrRow(b, "Manual Hover", m.DlrSections[(int)ProcessingSection.ManualUiHover], fps);
-            DlrRow(b, "Pathfinding", m.DlrSections[(int)ProcessingSection.Pathfinding], fps);
-            DlrRow(b, "Strongbox", m.DlrSections[(int)ProcessingSection.Strongbox], fps);
-            DlrRow(b, "Ultimatum", m.DlrSections[(int)ProcessingSection.Ultimatum], fps);
+            foreach ((string label, ProcessingSection section) in PerformanceTableRows.Dlr)
+                DlrRow(b, label, m.DlrSections[(int)section], fps);
         }
 
         private static void DlrRow(TextBlock b, string label, DlrSectionSnapshot s, double fps)
@@ -122,20 +124,8 @@ namespace ClickIt.UI.Debug
 
         private static void RenderRenderTable(TextBlock b, PerformanceMetricsSnapshot perf)
         {
-            TimingRow(b, "Altar", perf.GetRenderSection(RenderSection.AltarOverlay));
-            TimingRow(b, "Blight", perf.GetRenderSection(RenderSection.BlightOverlay));
-            TimingRow(b, "Click.Hotkey", perf.GetRenderSection(RenderSection.ClickHotkeyToggle));
-            TimingRow(b, "Debug", perf.GetRenderSection(RenderSection.DebugOverlay));
-            TimingRow(b, "Flush.Frame", perf.GetRenderSection(RenderSection.FrameFlush));
-            TimingRow(b, "Flush.Text", perf.GetRenderSection(RenderSection.TextFlush));
-            TimingRow(b, "Harvest", perf.GetRenderSection(RenderSection.HarvestOverlay));
-            TimingRow(b, "Inv.Full", perf.GetRenderSection(RenderSection.InventoryFullWarning));
-            TimingRow(b, "Lazy", perf.GetRenderSection(RenderSection.LazyMode));
-            TimingRow(b, "Pathfinding", perf.GetRenderSection(RenderSection.PathfindingOverlay));
-            TimingRow(b, "Perf.Overlay", perf.GetRenderSection(RenderSection.PerformanceOverlay));
-            TimingRow(b, "Strongbox", perf.GetRenderSection(RenderSection.StrongboxOverlay));
-            TimingRow(b, "UI.Rect", perf.GetRenderSection(RenderSection.UiRegionRectangle));
-            TimingRow(b, "Ultimatum", perf.GetRenderSection(RenderSection.UltimatumOverlay));
+            foreach ((string label, Func<PerformanceMetricsSnapshot, TimingMetricsSnapshot> get) in PerformanceTableRows.Render)
+                TimingRow(b, label, get(perf));
         }
 
         private static void TimingRow(TextBlock b, string label, TimingMetricsSnapshot s)
@@ -148,18 +138,16 @@ namespace ClickIt.UI.Debug
         private static void RenderFrameTable(TextBlock b, PerformanceMetricsSnapshot perf)
         {
             double fps = perf.Fps.Current;
-            FrameRow(b, "Altar", perf.AltarCoroutine, fps);
-            FrameRow(b, "Blight", perf.BlightCoroutine, fps);
-            FrameRow(b, "Click", perf.ClickCoroutine, fps);
             double clickScale = perf.ClickCoroutine.PerFrameScale(fps);
-            if (clickScale > 0)
+            foreach ((string label, Func<PerformanceMetricsSnapshot, TimingMetricsSnapshot> get, bool isSub) in PerformanceTableRows.Coroutine)
             {
-                FrameSubRow(b, "  Processing", perf.GetProcessingSection(ProcessingSection.Click), clickScale);
-                FrameSubRow(b, "  Sleep", perf.ClickSleepTiming, clickScale);
+                TimingMetricsSnapshot s = get(perf);
+                if (isSub)
+                {
+                    if (clickScale > 0) FrameSubRow(b, $"  {label}", s, clickScale);
+                }
+                else FrameRow(b, label, s, fps);
             }
-            FrameRow(b, "Flare", perf.FlareCoroutine, fps);
-            FrameRow(b, "Label Overlay", perf.LabelOverlayCoroutine, fps);
-            FrameRow(b, "Ultimatum", perf.UltimatumCoroutine, fps);
         }
 
         private static void FrameSubRow(TextBlock b, string label, TimingMetricsSnapshot s, double scale)
@@ -188,12 +176,8 @@ namespace ClickIt.UI.Debug
         private static void RenderIntervalTable(TextBlock b, PerformanceMetricsSnapshot perf)
         {
             b.TitleHeader(FourCol, "Interval ms", "Last", "Avg", "Max");
-            IntervalRow(b, "Click", perf, IntervalKind.Click, perf.ClickTargetIntervalMs);
-            IntervalRow(b, "Blight", perf, IntervalKind.Blight, 200);
-            IntervalRow(b, "Label", perf, IntervalKind.Label, 50);
-            IntervalRow(b, "Area.Blocked", perf, IntervalKind.Area, 250);
-            IntervalRow(b, "Ultimatum", perf, IntervalKind.Ultimatum, 50);
-            IntervalRow(b, "Flare", perf, IntervalKind.Flare, 100);
+            foreach ((string label, IntervalKind kind, Func<PerformanceMetricsSnapshot, double> expected) in PerformanceTableRows.Interval)
+                IntervalRow(b, label, perf, kind, expected(perf));
         }
 
         private static void IntervalRow(TextBlock b, string label, PerformanceMetricsSnapshot perf, IntervalKind kind, double expectedMs)
@@ -224,20 +208,17 @@ namespace ClickIt.UI.Debug
         private static void RenderProcessingTable(TextBlock b, PerformanceMetricsSnapshot perf)
         {
             double targetMs = perf.ClickTargetIntervalMs;
-            RunRow(b, "Area.Blocked", perf.GetProcessingSection(ProcessingSection.AreaBlockedUi), targetMs);
-            RunRow(b, "Blight", perf.GetProcessingSection(ProcessingSection.Blight), targetMs);
-            RenderBreakdownTiming(b, perf, ProcessingSection.Blight, targetMs);
-            RenderClickProcessingRows(b, perf);
-            RunRow(b, "Dump", perf.GetProcessingSection(ProcessingSection.GameStateDump), targetMs);
-            RunRow(b, "Flare", perf.GetProcessingSection(ProcessingSection.Flare), targetMs);
-            RunRow(b, "Harvest", perf.GetProcessingSection(ProcessingSection.Harvest), targetMs);
-            RunRow(b, "Label Scan", perf.GetProcessingSection(ProcessingSection.Label), targetMs);
-            RunRow(b, "Manual Hover", perf.GetProcessingSection(ProcessingSection.ManualUiHover), targetMs);
-            RunRow(b, "Pathfinding", perf.GetProcessingSection(ProcessingSection.Pathfinding), targetMs);
-            RenderBreakdownTiming(b, perf, ProcessingSection.Pathfinding, targetMs);
-            RunRow(b, "Strongbox", perf.GetProcessingSection(ProcessingSection.Strongbox), targetMs);
-            RenderBreakdownTiming(b, perf, ProcessingSection.Strongbox, targetMs);
-            RunRow(b, "Ultimatum", perf.GetProcessingSection(ProcessingSection.Ultimatum), targetMs);
+            foreach ((string label, ProcessingSection section, PerfBreakdownKind breakdown) in PerformanceTableRows.Processing)
+            {
+                if (breakdown == PerfBreakdownKind.Click)
+                {
+                    RenderClickProcessingRows(b, perf);
+                    continue;
+                }
+                RunRow(b, label, perf.GetProcessingSection(section), targetMs);
+                if (breakdown == PerfBreakdownKind.Generic)
+                    RenderBreakdownTiming(b, perf, section, targetMs);
+            }
         }
 
         private static void RunRow(TextBlock b, string label, TimingMetricsSnapshot s, double targetMs)
@@ -336,25 +317,17 @@ namespace ClickIt.UI.Debug
             b.TitleHeader(FourCol, "GC byte/s", "Last", "Avg", "Max");
             b.TotalRow3(FourCol, "Total",
                 GcTotalColor(totalLast), GcTotalColor(totalAvg), GcTotalColor(totalMax),
-                FormatBytes(totalLast), FormatBytes(totalAvg), FormatBytes(totalMax));
-            GcRow(b, "Altar", m.GcSections[(int)ProcessingSection.Altar]);
-            RenderBreakdown(b, perf, ProcessingSection.Altar);
-            GcRow(b, "Area.Blocked", m.GcSections[(int)ProcessingSection.AreaBlockedUi]);
-            GcRow(b, "Blight", m.GcSections[(int)ProcessingSection.Blight]);
-            RenderBreakdown(b, perf, ProcessingSection.Blight);
-            GcRow(b, "Click", m.GcSections[(int)ProcessingSection.Click]);
-            RenderClickBreakdown(b, perf);
-            GcRow(b, "Dump", m.GcSections[(int)ProcessingSection.GameStateDump]);
-            GcRow(b, "Flare", m.GcSections[(int)ProcessingSection.Flare]);
-            GcRow(b, "Harvest", m.GcSections[(int)ProcessingSection.Harvest]);
-            GcRow(b, "Label Scan", m.GcSections[(int)ProcessingSection.Label]);
-            RenderLabelScanBreakdown(b, perf);
-            GcRow(b, "Manual Hover", m.GcSections[(int)ProcessingSection.ManualUiHover]);
-            GcRow(b, "Pathfinding", m.GcSections[(int)ProcessingSection.Pathfinding]);
-            RenderBreakdown(b, perf, ProcessingSection.Pathfinding);
-            GcRow(b, "Strongbox", m.GcSections[(int)ProcessingSection.Strongbox]);
-            RenderBreakdown(b, perf, ProcessingSection.Strongbox);
-            GcRow(b, "Ultimatum", m.GcSections[(int)ProcessingSection.Ultimatum]);
+                ImGuiDebugOverlay.FormatBytes(totalLast), ImGuiDebugOverlay.FormatBytes(totalAvg), ImGuiDebugOverlay.FormatBytes(totalMax));
+            foreach ((string label, ProcessingSection section, PerfBreakdownKind breakdown) in PerformanceTableRows.Gc)
+            {
+                GcRow(b, label, m.GcSections[(int)section]);
+                switch (breakdown)
+                {
+                    case PerfBreakdownKind.Generic: RenderBreakdown(b, perf, section); break;
+                    case PerfBreakdownKind.Click: RenderClickBreakdown(b, perf); break;
+                    case PerfBreakdownKind.LabelScan: RenderLabelScanBreakdown(b, perf); break;
+                }
+            }
         }
 
         private static void RenderBreakdown(TextBlock b, PerformanceMetricsSnapshot perf, ProcessingSection section)
@@ -402,9 +375,9 @@ namespace ClickIt.UI.Debug
                 return;
             b.SubRow3(FourCol, label,
                 GcColor(lastPerSecond), GcColor(avgPerSecond), GcColor(maxPerSecond),
-                FormatBytes(lastPerSecond),
-                FormatBytes(avgPerSecond),
-                FormatBytes(maxPerSecond));
+                ImGuiDebugOverlay.FormatBytes(lastPerSecond),
+                ImGuiDebugOverlay.FormatBytes(avgPerSecond),
+                ImGuiDebugOverlay.FormatBytes(maxPerSecond));
         }
 
         private static void GcRow(TextBlock b, string label, GcSectionSnapshot s)
@@ -416,17 +389,17 @@ namespace ClickIt.UI.Debug
             }
             b.Row3(FourCol, label,
                 GcColor(s.BytesLastPerSec), GcColor(s.BytesAvgPerSec), GcColor(s.BytesMaxPerSec),
-                FormatBytes(s.BytesLastPerSec),
-                FormatBytes(s.BytesAvgPerSec),
-                FormatBytes(s.BytesMaxPerSec));
+                ImGuiDebugOverlay.FormatBytes(s.BytesLastPerSec),
+                ImGuiDebugOverlay.FormatBytes(s.BytesAvgPerSec),
+                ImGuiDebugOverlay.FormatBytes(s.BytesMaxPerSec));
         }
 
         private static void RenderMemoryTable(TextBlock b, PerformanceMetricsSnapshot perf)
         {
             MemoryMetricsSnapshot m = perf.Memory;
-            b.Row(TwoCol, SizeColor(m.ProcessWorkingSetMb), "Process", FormatMemoryMb(m.ProcessWorkingSetMb));
-            b.Row(TwoCol, SizeColor(m.ManagedHeapMb), "Managed", FormatMemoryMb(m.ManagedHeapMb));
-            b.Row(TwoCol, FragmentationColor(m.FragmentedMb), "Frag", FormatMemoryMb(m.FragmentedMb));
+            b.Row(TwoCol, SizeColor(m.ProcessWorkingSetMb), "Process", ImGuiDebugOverlay.FormatMemoryMb(m.ProcessWorkingSetMb));
+            b.Row(TwoCol, SizeColor(m.ManagedHeapMb), "Managed", ImGuiDebugOverlay.FormatMemoryMb(m.ManagedHeapMb));
+            b.Row(TwoCol, FragmentationColor(m.FragmentedMb), "Frag", ImGuiDebugOverlay.FormatMemoryMb(m.FragmentedMb));
             b.Row(TwoCol, GcPauseColor(m.GcPauseMaxMs),
                 "GC Pause",
                 $"{m.GcPauseLastMs:F0}/{m.GcPauseAvgMs:F0}/{m.GcPauseMaxMs:F0} ms");
@@ -460,38 +433,26 @@ namespace ClickIt.UI.Debug
         private static Color GcPauseColor(double maxPauseMs)
             => maxPauseMs > 100 ? Color.Red : maxPauseMs > 16 ? Color.Yellow : Color.LightGreen;
 
-        private static string FormatBytes(double bytes)
-        {
-            if (bytes >= 1024.0 * 1024.0)
-                return $"{bytes / (1024.0 * 1024.0):F0} MB";
-            if (bytes >= 1024.0)
-                return $"{bytes / 1024.0:F0} KB";
-            return $"{bytes:F0} B";
-        }
-
-        private static string FormatMemoryMb(double mb)
-            => mb >= 1024.0 ? $"{mb / 1024.0:F1} GB" : $"{mb:F0} MB";
-
         // Renders one aligned row of text: the label at the block's base X and each value at a fixed per-column X, so the proportional game font does not break the table alignment.
-        private sealed class TextBlock(DeferredTextQueue queue, float baseX, float startY, float lineHeight)
+        private sealed class TextBlock(DeferredDrawQueue queue, float baseX, float startY, float lineHeight)
         {
-            private readonly DeferredTextQueue _queue = queue;
+            private readonly DeferredDrawQueue _queue = queue;
             private readonly float _baseX = baseX;
             private readonly float _lineHeight = lineHeight;
             private float _y = startY;
 
             public void Header(string text)
             {
-                _queue.Enqueue(text, new Vector2(_baseX, _y), HeaderColor, 14, shadow: true);
+                _queue.EnqueueText(text, new Vector2(_baseX, _y), HeaderColor, 14, shadow: true);
                 _y += _lineHeight;
             }
 
             // Table title (orange) with the Last/Avg/Max column headers on the SAME line, matching the debug-box header row.
             public void TitleHeader(float[] colX, string title, params string[] columnHeaders)
             {
-                _queue.Enqueue(title, new Vector2(_baseX, _y), HeaderColor, 14, shadow: true);
+                _queue.EnqueueText(title, new Vector2(_baseX, _y), HeaderColor, 14, shadow: true);
                 for (int i = 0; i < columnHeaders.Length; i++)
-                    _queue.Enqueue(columnHeaders[i], new Vector2(_baseX + colX[i], _y), LabelColor, 14, shadow: true);
+                    _queue.EnqueueText(columnHeaders[i], new Vector2(_baseX + colX[i], _y), LabelColor, 14, shadow: true);
                 _y += _lineHeight;
             }
 
@@ -500,48 +461,39 @@ namespace ClickIt.UI.Debug
 
             public void Row(float[] colX, Color color, string label, params string[] values)
             {
-                _queue.Enqueue(label, new Vector2(_baseX, _y), LabelColor, 14, shadow: true);
+                _queue.EnqueueText(label, new Vector2(_baseX, _y), LabelColor, 14, shadow: true);
                 for (int i = 0; i < values.Length; i++)
-                    _queue.Enqueue(values[i], new Vector2(_baseX + colX[i], _y), color, 14, shadow: true);
+                    _queue.EnqueueText(values[i], new Vector2(_baseX + colX[i], _y), color, 14, shadow: true);
                 _y += _lineHeight;
             }
 
             // Aligned row with a distinct color per value column (ms/f and GC tables color each of the Last/Avg/Max columns by its own value).
             public void Row3(float[] colX, string label, Color c1, Color c2, Color c3, string v1, string v2, string v3)
             {
-                _queue.Enqueue(label, new Vector2(_baseX, _y), LabelColor, 14, shadow: true);
-                _queue.Enqueue(v1, new Vector2(_baseX + colX[0], _y), c1, 14, shadow: true);
-                _queue.Enqueue(v2, new Vector2(_baseX + colX[1], _y), c2, 14, shadow: true);
-                _queue.Enqueue(v3, new Vector2(_baseX + colX[2], _y), c3, 14, shadow: true);
+                _queue.EnqueueText(label, new Vector2(_baseX, _y), LabelColor, 14, shadow: true);
+                _queue.EnqueueText(v1, new Vector2(_baseX + colX[0], _y), c1, 14, shadow: true);
+                _queue.EnqueueText(v2, new Vector2(_baseX + colX[1], _y), c2, 14, shadow: true);
+                _queue.EnqueueText(v3, new Vector2(_baseX + colX[2], _y), c3, 14, shadow: true);
                 _y += _lineHeight;
             }
 
             // Aligned Total row with a yellow label so the table-wide total stands out from the child rows.
             public void TotalRow3(float[] colX, string label, Color c1, Color c2, Color c3, string v1, string v2, string v3)
             {
-                _queue.Enqueue(label, new Vector2(_baseX, _y), Color.Yellow, 14, shadow: true);
-                _queue.Enqueue(v1, new Vector2(_baseX + colX[0], _y), c1, 14, shadow: true);
-                _queue.Enqueue(v2, new Vector2(_baseX + colX[1], _y), c2, 14, shadow: true);
-                _queue.Enqueue(v3, new Vector2(_baseX + colX[2], _y), c3, 14, shadow: true);
-                _y += _lineHeight;
-            }
-
-            // Indented sub-table row (indented label + fixed per-column values) for breakdowns nested under a table row, e.g. the per-stage label-scan allocation breakdown.
-            public void SubRow(float[] colX, Color color, string label, params string[] values)
-            {
-                _queue.Enqueue(label, new Vector2(_baseX + 10f, _y), LabelColor, 14, shadow: true);
-                for (int i = 0; i < values.Length; i++)
-                    _queue.Enqueue(values[i], new Vector2(_baseX + colX[i], _y), color, 14, shadow: true);
+                _queue.EnqueueText(label, new Vector2(_baseX, _y), Color.Yellow, 14, shadow: true);
+                _queue.EnqueueText(v1, new Vector2(_baseX + colX[0], _y), c1, 14, shadow: true);
+                _queue.EnqueueText(v2, new Vector2(_baseX + colX[1], _y), c2, 14, shadow: true);
+                _queue.EnqueueText(v3, new Vector2(_baseX + colX[2], _y), c3, 14, shadow: true);
                 _y += _lineHeight;
             }
 
             // Indented three-value variant with a distinct color per value (GC stage breakdowns).
             public void SubRow3(float[] colX, string label, Color c1, Color c2, Color c3, string v1, string v2, string v3)
             {
-                _queue.Enqueue(label, new Vector2(_baseX + 10f, _y), LabelColor, 14, shadow: true);
-                _queue.Enqueue(v1, new Vector2(_baseX + colX[0], _y), c1, 14, shadow: true);
-                _queue.Enqueue(v2, new Vector2(_baseX + colX[1], _y), c2, 14, shadow: true);
-                _queue.Enqueue(v3, new Vector2(_baseX + colX[2], _y), c3, 14, shadow: true);
+                _queue.EnqueueText(label, new Vector2(_baseX + 10f, _y), LabelColor, 14, shadow: true);
+                _queue.EnqueueText(v1, new Vector2(_baseX + colX[0], _y), c1, 14, shadow: true);
+                _queue.EnqueueText(v2, new Vector2(_baseX + colX[1], _y), c2, 14, shadow: true);
+                _queue.EnqueueText(v3, new Vector2(_baseX + colX[2], _y), c3, 14, shadow: true);
                 _y += _lineHeight;
             }
         }

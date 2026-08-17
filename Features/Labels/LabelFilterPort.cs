@@ -19,9 +19,6 @@ namespace ClickIt.Features.Labels
             _gameController = gameController;
         }
 
-        internal (bool LabelsAvailable, int TotalVisibleLabels, int ValidVisibleLabels) GetVisibleLabelCounts()
-            => LabelDebugService.GetVisibleLabelCounts();
-
         public SelectionDebugSummary GetSelectionDebugSummary(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
             => LabelDebugService.GetSelectionDebugSummary(allLabels, startIndex, maxCount);
 

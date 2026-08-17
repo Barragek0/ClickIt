@@ -5,9 +5,6 @@ namespace ClickIt.Features.Click.Runtime
         internal const float TargetSnapDistancePx = 34f;
         internal const float GroundProjectionSnapDistancePx = 44f;
 
-        internal static bool ShouldAttemptManualCursorAltarClick(bool isAltarLabel, bool hasClickableAltars)
-            => isAltarLabel && hasClickableAltars;
-
         internal static bool ShouldUseManualGroundProjectionForCandidate(bool hasBackingEntity, bool isWorldItem)
             => hasBackingEntity && !isWorldItem;
 
@@ -60,40 +57,22 @@ namespace ClickIt.Features.Click.Runtime
             return GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, rect.Center, windowTopLeft);
         }
 
-        internal static bool ShouldPreferHoveredEssenceLabel(
-            bool hoveredIsEssence,
-            bool hoveredHasOverlappingEssence,
-            bool nextIsEssence,
+        internal static bool ShouldPreferHoveredLabel(
+            bool hoveredIsTarget,
+            bool hoveredHasOverlappingTarget,
+            bool nextIsTarget,
             bool hoveredDiffersFromNext)
         {
-            if (!hoveredIsEssence)
+            if (!hoveredIsTarget)
                 return false;
 
             if (!hoveredDiffersFromNext)
                 return false;
 
-            if (hoveredHasOverlappingEssence)
+            if (hoveredHasOverlappingTarget)
                 return true;
 
-            return nextIsEssence;
-        }
-
-        internal static bool ShouldPreferHoveredStrongboxLabel(
-            bool hoveredIsStrongbox,
-            bool hoveredHasOverlappingStrongbox,
-            bool nextIsStrongbox,
-            bool hoveredDiffersFromNext)
-        {
-            if (!hoveredIsStrongbox)
-                return false;
-
-            if (!hoveredDiffersFromNext)
-                return false;
-
-            if (hoveredHasOverlappingStrongbox)
-                return true;
-
-            return nextIsStrongbox;
+            return nextIsTarget;
         }
     }
 }

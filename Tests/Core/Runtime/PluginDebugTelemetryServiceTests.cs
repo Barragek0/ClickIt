@@ -6,7 +6,7 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void GetSnapshot_ReturnsEmpty_WhenNoPortsAreAvailable()
         {
-            var service = new PluginDebugTelemetryService(
+            var service = new PluginDebugTelemetryService(new PluginDebugTelemetryProjectionSources(
                 () => null,
                 () => null,
                 () => null,
@@ -20,7 +20,7 @@ namespace ClickIt.Tests.Core.Runtime
                 () => null,
                 () => null,
                 () => null,
-                () => null);
+                () => null));
 
             DebugTelemetrySnapshot snapshot = service.GetSnapshot();
 
@@ -31,7 +31,7 @@ namespace ClickIt.Tests.Core.Runtime
         public void GetSnapshot_UsesFrozenSnapshot_WithoutReevaluatingProviders()
         {
             bool shouldThrow = false;
-            var service = new PluginDebugTelemetryService(
+            var service = new PluginDebugTelemetryService(new PluginDebugTelemetryProjectionSources(
                 () => shouldThrow ? throw new InvalidOperationException("click provider should not run while frozen") : null,
                 () => shouldThrow ? throw new InvalidOperationException("click support provider should not run while frozen") : null,
                 () => shouldThrow ? throw new InvalidOperationException("label debug provider should not run while frozen") : null,
@@ -45,7 +45,7 @@ namespace ClickIt.Tests.Core.Runtime
                 () => shouldThrow ? throw new InvalidOperationException("input provider should not run while frozen") : null,
                 () => shouldThrow ? throw new InvalidOperationException("settings provider should not run while frozen") : null,
                 () => shouldThrow ? throw new InvalidOperationException("cached labels provider should not run while frozen") : null,
-                () => shouldThrow ? throw new InvalidOperationException("error provider should not run while frozen") : null);
+                () => shouldThrow ? throw new InvalidOperationException("error provider should not run while frozen") : null));
 
             service.FreezeSnapshot("hold", holdDurationMs: 100);
             shouldThrow = true;
@@ -62,7 +62,7 @@ namespace ClickIt.Tests.Core.Runtime
         public void Clear_RemovesFrozenSnapshot_AndAllowsFreshProviderEvaluation()
         {
             bool shouldThrow = false;
-            var service = new PluginDebugTelemetryService(
+            var service = new PluginDebugTelemetryService(new PluginDebugTelemetryProjectionSources(
                 () => shouldThrow ? throw new InvalidOperationException("click provider should run after clear") : null,
                 () => shouldThrow ? throw new InvalidOperationException("click support provider should run after clear") : null,
                 () => shouldThrow ? throw new InvalidOperationException("label debug provider should run after clear") : null,
@@ -76,7 +76,7 @@ namespace ClickIt.Tests.Core.Runtime
                 () => shouldThrow ? throw new InvalidOperationException("input provider should run after clear") : null,
                 () => shouldThrow ? throw new InvalidOperationException("settings provider should run after clear") : null,
                 () => shouldThrow ? throw new InvalidOperationException("cached labels provider should run after clear") : null,
-                () => shouldThrow ? throw new InvalidOperationException("error provider should run after clear") : null);
+                () => shouldThrow ? throw new InvalidOperationException("error provider should run after clear") : null));
 
             service.FreezeSnapshot("hold", holdDurationMs: 100);
             shouldThrow = true;
@@ -101,7 +101,7 @@ namespace ClickIt.Tests.Core.Runtime
             errorHandler.LogError("first error");
             errorHandler.LogError("second error");
 
-            var service = new PluginDebugTelemetryService(
+            var service = new PluginDebugTelemetryService(new PluginDebugTelemetryProjectionSources(
                 () => null,
                 () => null,
                 () => null,
@@ -115,7 +115,7 @@ namespace ClickIt.Tests.Core.Runtime
                 () => null,
                 () => null,
                 () => cachedLabels,
-                () => errorHandler);
+                () => errorHandler));
 
             DebugTelemetrySnapshot snapshot = service.GetSnapshot();
 
@@ -134,7 +134,7 @@ namespace ClickIt.Tests.Core.Runtime
             settings.ClickFrequencyTarget.Value = 123;
             settings.LazyModeClickLimiting.Value = 456;
 
-            var service = new PluginDebugTelemetryService(
+            var service = new PluginDebugTelemetryService(new PluginDebugTelemetryProjectionSources(
                 () => null,
                 () => null,
                 () => null,
@@ -148,7 +148,7 @@ namespace ClickIt.Tests.Core.Runtime
                 () => null,
                 () => settings,
                 () => null,
-                () => null);
+                () => null));
 
             DebugTelemetrySnapshot snapshot = service.GetSnapshot();
 
@@ -170,7 +170,7 @@ namespace ClickIt.Tests.Core.Runtime
             settings.ClickInitialUltimatum.Value = true;
             settings.ClickUltimatumChoices.Value = false;
 
-            var service = new PluginDebugTelemetryService(
+            var service = new PluginDebugTelemetryService(new PluginDebugTelemetryProjectionSources(
                 () => null,
                 () => null,
                 () => null,
@@ -184,7 +184,7 @@ namespace ClickIt.Tests.Core.Runtime
                 () => null,
                 () => settings,
                 () => null,
-                () => null);
+                () => null));
 
             DebugTelemetrySnapshot snapshot = service.GetSnapshot();
 
@@ -200,12 +200,11 @@ namespace ClickIt.Tests.Core.Runtime
         public void GetSnapshot_ProjectsRenderingQueueDepths_WhenRenderingStateAvailable()
         {
             var rendering = new PluginContext().Rendering;
-            rendering.DeferredTextQueue = new DeferredTextQueue();
-            rendering.DeferredFrameQueue = new DeferredFrameQueue();
-            rendering.DeferredTextQueue.Enqueue("queued", new Vector2(1, 2), Color.White, 14);
-            rendering.DeferredFrameQueue.Enqueue(new RectangleF(1, 2, 3, 4), Color.White, 1);
+            rendering.DeferredDrawQueue = new DeferredDrawQueue();
+            rendering.DeferredDrawQueue.EnqueueText("queued", new Vector2(1, 2), Color.White, 14);
+            rendering.DeferredDrawQueue.EnqueueFrame(new RectangleF(1, 2, 3, 4), Color.White, 1);
 
-            var service = new PluginDebugTelemetryService(
+            var service = new PluginDebugTelemetryService(new PluginDebugTelemetryProjectionSources(
                 () => null,
                 () => null,
                 () => null,
@@ -219,13 +218,13 @@ namespace ClickIt.Tests.Core.Runtime
                 () => null,
                 () => null,
                 () => null,
-                () => null);
+                () => null));
 
             DebugTelemetrySnapshot snapshot = service.GetSnapshot();
 
             snapshot.Rendering.ServiceAvailable.Should().BeTrue();
-            snapshot.Rendering.PendingTextCount.Should().Be(1);
-            snapshot.Rendering.PendingFrameCount.Should().Be(1);
+            snapshot.Rendering.PendingTextCount.Should().Be(2);
+            snapshot.Rendering.PendingFrameCount.Should().Be(2);
         }
 
         [TestMethod]
@@ -240,7 +239,7 @@ namespace ClickIt.Tests.Core.Runtime
                 lastScanEaterLabels: 4,
                 lastProcessedAltarType: "EaterOfWorlds");
 
-            var service = new PluginDebugTelemetryService(
+            var service = new PluginDebugTelemetryService(new PluginDebugTelemetryProjectionSources(
                 () => null,
                 () => null,
                 () => null,
@@ -254,7 +253,7 @@ namespace ClickIt.Tests.Core.Runtime
                 () => null,
                 () => null,
                 () => null,
-                () => null);
+                () => null));
 
             DebugTelemetrySnapshot snapshot = service.GetSnapshot();
 
@@ -282,7 +281,7 @@ namespace ClickIt.Tests.Core.Runtime
                 lastScanEaterLabels: 2,
                 lastProcessedAltarType: "SearingExarch");
 
-            var service = new PluginDebugTelemetryService(
+            var service = new PluginDebugTelemetryService(new PluginDebugTelemetryProjectionSources(
                 () => null,
                 () => null,
                 () => null,
@@ -296,7 +295,7 @@ namespace ClickIt.Tests.Core.Runtime
                 () => null,
                 () => null,
                 () => null,
-                () => null);
+                () => null));
 
             service.FreezeSnapshot("hold", holdDurationMs: 100);
 

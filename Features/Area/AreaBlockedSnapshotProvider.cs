@@ -141,15 +141,15 @@ namespace ClickIt.Features.Area
 
             RefreshQuestTrackerAreas(gameController, now);
 
-            _blockedState.ChatPanelBlockedRectangle = AreaBlockedRectangleResolver.ResolveChatPanelBlockedRectangle(gameController);
+            _blockedState.ChatPanelBlockedRectangle = AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.ChatPanel);
             _blockedState.MapPanelBlockedRectangle = ShouldUpdateMapPanelBlockedRectangle(IsInTownOrHideout(gameController))
-                ? AreaBlockedRectangleResolver.ResolveMapPanelBlockedRectangle(gameController)
+                ? AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.MapPanel)
                 : RectangleF.Empty;
-            _blockedState.XpBarBlockedRectangle = AreaBlockedRectangleResolver.ResolveXpBarBlockedRectangle(gameController);
-            _blockedState.MirageBlockedRectangle = AreaBlockedRectangleResolver.ResolveMirageBlockedRectangle(gameController);
-            _blockedState.AltarBlockedRectangle = AreaBlockedRectangleResolver.ResolveAltarBlockedRectangle(gameController);
-            _blockedState.RitualBlockedRectangle = AreaBlockedRectangleResolver.ResolveRitualBlockedRectangle(gameController);
-            _blockedState.SentinelBlockedRectangle = AreaBlockedRectangleResolver.ResolveSentinelBlockedRectangle(gameController);
+            _blockedState.XpBarBlockedRectangle = AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.XpBar);
+            _blockedState.MirageBlockedRectangle = AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.Mirage);
+            _blockedState.AltarBlockedRectangle = AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.Altar);
+            _blockedState.RitualBlockedRectangle = AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.Ritual);
+            _blockedState.SentinelBlockedRectangle = AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.Sentinel);
         }
 
         internal static (RectangleF fullScreen, RectangleF leftCombined, RectangleF rightCombined) ResolveMainUiRegions(RectangleF winRect)

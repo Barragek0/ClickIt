@@ -10,7 +10,5 @@ namespace ClickIt.Shared.Rendering
         Graphics? Graphics,
         RectangleF WindowArea,
         IReadOnlyList<LabelOnGround>? Labels,
-        DeferredTextQueue TextQueue,
-        DeferredFrameQueue FrameQueue,
         DeferredDrawQueue DrawQueue);
 }

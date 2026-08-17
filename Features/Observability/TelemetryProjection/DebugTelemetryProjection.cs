@@ -83,8 +83,8 @@ namespace ClickIt.Features.Observability.TelemetryProjection
 
             return new RenderingTelemetrySnapshot(
                 ServiceAvailable: true,
-                PendingTextCount: renderingState.DeferredTextQueue?.GetPendingCount() ?? 0,
-                PendingFrameCount: renderingState.DeferredFrameQueue?.GetPendingCount() ?? 0);
+                PendingTextCount: renderingState.DeferredDrawQueue?.GetPendingCount() ?? 0,
+                PendingFrameCount: renderingState.DeferredDrawQueue?.GetPendingCount() ?? 0);
         }
     }
 }

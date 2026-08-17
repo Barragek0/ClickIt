@@ -1,6 +1,6 @@
 namespace ClickIt.Core.Settings.Normalization
 {
-    internal sealed class SettingsNormalizationService : ISettingsNormalizationService
+    internal sealed class SettingsNormalizationService
     {
         private const int LazyModeNearbyMonsterCountMin = 0;
         private const int LazyModeNearbyMonsterCountMax = 200;

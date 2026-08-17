@@ -15,7 +15,6 @@ public class BlightIconPathwayTests
     [TestMethod]
     public void ComputePathwayLinks_ChainsConsecutiveSegments()
     {
-        // Next points TOWARD the pump: the far segment chains to the next one, the pump-end stub terminates with -1 (its start position is where the beam of the next pump-ward segment would end — which does not exist).
         BlightPathwayIcon[] icons =
         [
             Icon(0, 0f, 0f, 10f, 0f),    // pump end (stub)
@@ -33,7 +32,6 @@ public class BlightIconPathwayTests
     [TestMethod]
     public void ComputePathwayLinks_SharedPumpStub_YieldsSeparateLanes()
     {
-        // Two lanes whose pump stubs occupy the SAME start position (485 and 563 in the plaza dump) must not cross-link: each chains only within its own lane and both stubs terminate at -1.
         BlightPathwayIcon[] icons =
         [
             Icon(484, 6212f, 14044f, 6125f, 14125f),
@@ -63,7 +61,6 @@ public class BlightIconPathwayTests
     [TestMethod]
     public void ComputePathwayLinks_ForkWithSharedEnd_ResolvesToOneArmWithoutLoop()
     {
-        // A fork where two arms' starts coincide: both arms chain back to the shared segment and never form a cycle. The co-located twin merge keeps the first arm as the fork node and makes the second a zero-length child (the fork's second arm), so the chain stays acyclic.
         BlightPathwayIcon[] icons =
         [
             Icon(0, 30f, 30f, 50f, 50f),
@@ -81,7 +78,6 @@ public class BlightIconPathwayTests
     [TestMethod]
     public void ComputePathwayLinks_GapCloseLinksNearlyMatchingBeamEnd()
     {
-        // Beam endpoints the game rounds slightly differently (sub-0.1 drift) miss the exact round-key match; the gap-close fallback still chains them so coverage propagates.
         BlightPathwayIcon[] icons =
         [
             Icon(0, 0f, 0f, 10f, 0f),
@@ -99,7 +95,6 @@ public class BlightIconPathwayTests
     [TestMethod]
     public void DedupePathwayIcons_RemovesExactDuplicates_KeepsSharedPumpStubs()
     {
-        // Two identical pathway entities (same spot, same beam) collapse to one icon; shared pump stubs with the same spot but different beams both stay.
         List<BlightPathwayIcon> icons =
         [
             Icon(1, 0f, 0f, 10f, 0f),
@@ -117,7 +112,6 @@ public class BlightIconPathwayTests
     [TestMethod]
     public void DedupePathwayIcons_PrefersActiveIcon_WhenDeadDuplicateCollides()
     {
-        // The game spawns duplicate lane entities at the same spot; a dead (inactive) duplicate must not hide the live lane, so the active icon wins the dedupe even when persisted first.
         List<BlightPathwayIcon> icons =
         [
             Icon(1, 0f, 0f, 10f, 0f, visual: 3),
@@ -134,7 +128,6 @@ public class BlightIconPathwayTests
     [TestMethod]
     public void ComputePathwayLinks_CoLocatedTwin_WithSameParent_MergesIntoNode()
     {
-        // A fork node emitted once per arm: icons 2 and 3 share the position and the same parent (1). The later twin becomes a zero-length child of the first so the shared incoming edge is only drawn once instead of stacked on top of itself.
         BlightPathwayIcon[] icons =
         [
             Icon(0, 0f, 0f, 10f, 0f),
@@ -154,7 +147,6 @@ public class BlightIconPathwayTests
     [TestMethod]
     public void ComputePathwayParents_ConvergenceJunction_KeepsEveryIncomingBeam()
     {
-        // The reported bug: B.19 (0) and C.11 (1) BOTH end at (1483.5,989.5) — the exact start of B.20 (2), a convergence junction where two lanes join into one. The old single-slot map kept only ONE incoming edge per junction point, silently dropping C.11 -> B.20. The web must keep every real beam parent so the overlay draws both connections.
         BlightPathwayIcon[] icons =
         [
             Icon(795, 1475.1f, 999.4f, 1483.5f, 989.5f),  // B.19 -> ends at junction
@@ -182,7 +174,6 @@ public class BlightIconPathwayTests
     [TestMethod]
     public void ComputePathwayLinks_ConvergenceJunction_PrimaryIsFirstIncomingBeam()
     {
-        // The tree/primary parent at a convergence junction is the first beam that matched (higher id first in the snapshot), so propagation and branch naming are unchanged; the extra beam is only an additional drawing/coverage edge.
         BlightPathwayIcon[] icons =
         [
             Icon(795, 1475.1f, 999.4f, 1483.5f, 989.5f),  // B.19
@@ -198,7 +189,6 @@ public class BlightIconPathwayTests
     [TestMethod]
     public void ComputePathwayParents_BreaksCycle_ByConnectingToRootedSecondaryParent()
     {
-        // Two overlapping routes between the same lane junctions wrap the beam parent chain into a cycle (1->3->2->1). Node 2 also has a second parent R that leads to a rooted tree; the cycle-break re-points node 2's primary to R so the whole loop connects to the rooted tree instead of staying an un-rooted cycle (the stranded-lane bug).
         BlightPathwayIcon[] icons =
         [
             Icon(1, 10f, 0f, 30f, 0f),   // cycle: ends at 2's start
@@ -219,7 +209,6 @@ public class BlightIconPathwayTests
     [TestMethod]
     public void ComputePathwayParents_OrphansClosingNode_WhenCycleHasNoRootedEscape()
     {
-        // A standalone loop with no connection to any rooted tree: the cycle-break orphans the node whose parent closes the loop, so the loop becomes a single rooted tree instead of an un-rooted cycle (which no branch could ever claim).
         BlightPathwayIcon[] icons =
         [
             Icon(1, 10f, 0f, 30f, 0f),
@@ -243,7 +232,6 @@ public class BlightIconPathwayTests
     [TestMethod]
     public void ComputePathwayParents_AcyclicTree_IsLeftUnchanged()
     {
-        // A normal lane tree with no overlapping routes has no cycle, so the cycle-break must not re-point anything.
         BlightPathwayIcon[] icons =
         [
             Icon(1, 0f, 0f, 10f, 0f),   // root

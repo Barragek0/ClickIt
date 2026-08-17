@@ -59,6 +59,7 @@ namespace ClickIt.Features.Labels.Classification
             {
                 if (!worldItemMetadataPolicy.ShouldAllowWorldItemByMetadata(
                         settings,
+                        path,
                         item,
                         gameController,
                         label,
@@ -119,7 +120,8 @@ namespace ClickIt.Features.Labels.Classification
             IReadOnlySet<string>? enabledSpecificLeagueChestIds,
             EntityType type,
             string? path,
-            string renderName)
+            string renderName,
+            bool brinerotPlunderOpened = false)
         {
             if (IsHeistHazardsPath(path))
             {
@@ -144,7 +146,7 @@ namespace ClickIt.Features.Labels.Classification
             if (!clickLeagueChests || isBasic)
                 return null;
 
-            if (TryResolveConfiguredLeagueChestMechanicId(renderName, path, enabledSpecificLeagueChestIds, out string? configuredMechanicId))
+            if (TryResolveConfiguredLeagueChestMechanicId(renderName, path, enabledSpecificLeagueChestIds, brinerotPlunderOpened, out string? configuredMechanicId))
                 return configuredMechanicId;
 
             if (clickLeagueChestsOther)
@@ -204,17 +206,22 @@ namespace ClickIt.Features.Labels.Classification
 
         private static string? ResolveFallbackMechanicId(ClickSettings settings, EntityType type, string path, LabelOnGround label)
         {
+            LabelItemMetadata metadata = ResolveLabelItemMetadata(label);
+
+            bool brinerotPlunderOpened = IsAllflameBrinerotPlunderPath(path)
+                && DynamicAccess.TryGetLabelItemOnGround(label, out Entity? brinerotItem)
+                && IsBrinerotPlunderChestOpened(brinerotItem);
             string? chest = GetChestMechanicId(
                 settings.ClickBasicChests,
                 settings.ClickLeagueChests,
                 settings.ClickLeagueChestsOther,
                 settings.EnabledLeagueChestSpecificIds,
                 type,
-                label);
+                metadata,
+                brinerotPlunderOpened);
             if (!string.IsNullOrWhiteSpace(chest))
                 return chest;
 
-            LabelItemMetadata metadata = ResolveLabelItemMetadata(label);
             string? named = GetNamedInteractableMechanicId(
                 settings.ClickDoors,
                 settings.ClickHeistDoors,
@@ -233,9 +240,9 @@ namespace ClickIt.Features.Labels.Classification
             bool clickLeagueChestsOther,
             IReadOnlySet<string>? enabledSpecificLeagueChestIds,
             EntityType type,
-            LabelOnGround label)
+            LabelItemMetadata metadata,
+            bool brinerotPlunderOpened = false)
         {
-            LabelItemMetadata metadata = ResolveLabelItemMetadata(label);
             return GetChestMechanicIdFromConfiguredRules(
                 clickBasicChests,
                 clickLeagueChests,
@@ -243,21 +250,20 @@ namespace ClickIt.Features.Labels.Classification
                 enabledSpecificLeagueChestIds,
                 type,
                 metadata.Path,
-                metadata.RenderName);
+                metadata.RenderName,
+                brinerotPlunderOpened);
         }
 
         private readonly record struct LabelItemMetadata(string Path, string RenderName);
 
         private static LabelItemMetadata ResolveLabelItemMetadata(LabelOnGround? label)
         {
-            object? rawItem = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? itemValue)
-                ? itemValue
-                : null;
+            DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item);
 
-            string path = DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out string resolvedPath)
+            string path = DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
                 ? resolvedPath
                 : string.Empty;
-            string renderName = DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.RenderName, out string resolvedRenderName)
+            string renderName = DynamicAccess.TryReadString(item, DynamicAccessProfiles.RenderName, out string resolvedRenderName)
                 ? resolvedRenderName
                 : string.Empty;
             return new LabelItemMetadata(path, renderName);
@@ -267,6 +273,7 @@ namespace ClickIt.Features.Labels.Classification
             string? renderName,
             string? path,
             IReadOnlySet<string>? enabledSpecificLeagueChestIds,
+            bool brinerotPlunderOpened,
             out string? mechanicId)
         {
             if (TryResolveHeistSecureChestMechanicId(renderName, path, enabledSpecificLeagueChestIds, out mechanicId))
@@ -277,6 +284,13 @@ namespace ClickIt.Features.Labels.Classification
                 LeagueChestRule rule = LeagueChestRules[i];
                 if (!rule.Matches(renderName, path))
                     continue;
+
+                if (brinerotPlunderOpened
+                    && string.Equals(rule.SpecificId, MechanicIds.AllflameBrinerotPlunder, StringComparison.Ordinal))
+                {
+                    mechanicId = null;
+                    return true;
+                }
 
                 mechanicId = IsLeagueChestSpecificRuleEnabled(enabledSpecificLeagueChestIds, rule.SpecificId)
                     ? rule.SpecificId
@@ -524,25 +538,8 @@ namespace ClickIt.Features.Labels.Classification
 
         private static bool LabelContainsText(LabelOnGround? label, string text)
         {
-            return TryGetLabelAdapter(label, out IElementAdapter? adapter)
+            return LabelElementSearch.TryGetLabelAdapter(label, out IElementAdapter? adapter)
                 && LabelElementSearch.GetElementByStringCore(adapter, text) != null;
-        }
-
-        private static bool TryGetLabelAdapter(LabelOnGround? label, out IElementAdapter? adapter)
-        {
-            adapter = null;
-            if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
-                || rawLabel == null)
-                return false;
-
-            adapter = rawLabel switch
-            {
-                IElementAdapter existingAdapter => existingAdapter,
-                Element element => new ElementAdapter(element),
-                _ => null,
-            };
-
-            return adapter != null;
         }
 
         private static bool TryGetLabelItem(LabelOnGround? label, out object? item)
@@ -564,6 +561,17 @@ namespace ClickIt.Features.Labels.Classification
         // A chest that reports IsLocked (the strongbox overlay's red-frame condition) cannot be opened, so it is excluded from every click path regardless of its mechanic resolution.
         internal static bool IsLockedChest(object item)
             => TryGetChestLocked(item, out bool isLocked) && isLocked;
+
+        // Brinerot Plunder chests have a broken IsLocked (game bug); the click decision uses IsOpened instead: an unopened chest (IsOpened=false) is clickable to open, an already-opened chest (IsOpened=true) is skipped. IsLocked is never consulted for this chest type.
+        internal static bool IsBrinerotPlunderChestOpened(object? item)
+        {
+            if (item == null
+                || !DynamicAccess.TryGetComponent<Chest>(item, out object? rawChest)
+                || rawChest == null)
+                return false;
+
+            return DynamicAccess.TryReadBool(rawChest, DynamicAccessProfiles.IsOpened, out bool isOpened) && isOpened;
+        }
 
         // Locked strongboxes (the overlay's red frame) are excluded from the clickable scope in non-lazy mode; lazy mode has its own strongbox restrictions.
         internal static bool IsLockedStrongbox(object item)
@@ -712,6 +720,7 @@ namespace ClickIt.Features.Labels.Classification
         string GetWorldItemMetadataPath(Entity item);
         string GetWorldItemBaseName(Entity item);
         bool ShouldAllowWorldItemByMetadata(ClickSettings settings, Entity item, GameController? gameController, LabelOnGround? label, Func<Entity, GameController?, bool> shouldAllowWhenInventoryFull);
+        bool ShouldAllowWorldItemByMetadata(ClickSettings settings, string metadataPath, Entity item, GameController? gameController, LabelOnGround? label, Func<Entity, GameController?, bool> shouldAllowWhenInventoryFull);
     }
 
     internal sealed class WorldItemMetadataPolicy : IWorldItemMetadataPolicy
@@ -738,8 +747,11 @@ namespace ClickIt.Features.Labels.Classification
         }
 
         public bool ShouldAllowWorldItemByMetadata(ClickSettings settings, Entity item, GameController? gameController, LabelOnGround? label, Func<Entity, GameController?, bool> shouldAllowWhenInventoryFull)
+            => ShouldAllowWorldItemByMetadata(settings, GetWorldItemMetadataPath(item), item, gameController, label, shouldAllowWhenInventoryFull);
+
+        public bool ShouldAllowWorldItemByMetadata(ClickSettings settings, string metadataPath, Entity item, GameController? gameController, LabelOnGround? label, Func<Entity, GameController?, bool> shouldAllowWhenInventoryFull)
         {
-            string metadata = GetWorldItemMetadataPath(item);
+            string metadata = metadataPath;
             string itemName = ResolveWorldItemBaseName(item);
             string labelText = GetWorldItemLabelText(label);
 

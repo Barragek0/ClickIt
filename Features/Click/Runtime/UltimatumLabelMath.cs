@@ -9,11 +9,10 @@ namespace ClickIt.Features.Click.Runtime
         {
             path = string.Empty;
 
-            if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                || rawItem == null)
+            if (!DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item))
                 return false;
 
-            return DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out path);
+            return DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out path);
         }
 
         internal static bool TryGetLabelRoot(LabelOnGround? label, out object? root)

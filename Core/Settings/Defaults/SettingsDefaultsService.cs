@@ -1,6 +1,6 @@
 namespace ClickIt.Core.Settings.Defaults
 {
-    internal sealed class SettingsDefaultsService : ISettingsDefaultsService
+    internal sealed class SettingsDefaultsService
     {
         public void Apply(ClickItSettings settings)
         {

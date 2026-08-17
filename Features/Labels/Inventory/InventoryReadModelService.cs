@@ -11,7 +11,7 @@ namespace ClickIt.Features.Labels.Inventory
         Func<int, int, bool> IsInventoryCellUsageFull,
         Func<object, (bool Success, IReadOnlyList<Entity> Entities)> TryEnumeratePrimaryInventoryItemEntitiesFast);
 
-    internal sealed class InventoryReadModelService(InventorySnapshotProviderDependencies dependencies) : IInventorySnapshotProvider
+    internal sealed class InventoryReadModelService(InventorySnapshotProviderDependencies dependencies)
     {
         private readonly InventorySnapshotProviderDependencies _dependencies = dependencies;
 

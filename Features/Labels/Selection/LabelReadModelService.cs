@@ -100,7 +100,7 @@ namespace ClickIt.Features.Labels.Selection
                 long validityBytes = GC.GetAllocatedBytesForCurrentThread() - validityStart;
 
                 long sortStart = GC.GetAllocatedBytesForCurrentThread();
-                LabelGeometry.SortLabelsByDistance(validLabels, ResolveCachedLabelDistance);
+                LabelGeometry.SortByDistance(validLabels, ResolveCachedLabelDistance);
                 long sortBytes = GC.GetAllocatedBytesForCurrentThread() - sortStart;
 
                 long totalBytes = readBytes + listAllocBytes + validityBytes + sortBytes;
@@ -119,8 +119,8 @@ namespace ClickIt.Features.Labels.Selection
 
         private static float ResolveLabelDistance(LabelOnGround label)
         {
-            if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                || !DynamicAccess.TryReadFloat(rawItem, DynamicAccessProfiles.DistancePlayer, out float distance))
+            if (!DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item)
+                || !DynamicAccess.TryReadFloat(item, DynamicAccessProfiles.DistancePlayer, out float distance))
                 return float.MaxValue;
 
             return distance;

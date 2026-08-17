@@ -351,6 +351,50 @@ namespace ClickIt.Tests.Features.Altars
         }
 
         [TestMethod]
+        public void DetermineChoiceElement_RecordsDecisionStage_WhenRecorderProvided()
+        {
+            var settings = CreateWeightOnlySettings();
+            List<string> stages = [];
+            var evaluator = new AltarChoiceEvaluator(settings);
+            var altar = TestBuilders.BuildPrimary();
+            var weights = TestBuilders.BuildAltarWeights(
+                topDown: [10m],
+                bottomDown: [10m],
+                topUp: [10m],
+                bottomUp: [10m],
+                topWeight: 80,
+                bottomWeight: 30);
+
+            Element? chosen = evaluator.DetermineChoiceElement(altar, weights, ValidRect, ValidRect, stages.Add);
+
+            stages.Should().ContainSingle();
+            stages[0].Should().Contain("AltarDecision:");
+            stages[0].Should().Contain("TopWeightHigher");
+            stages[0].Should().Contain("top=80");
+            stages[0].Should().Contain("bottom=30");
+            chosen.Should().Be(altar.TopButton?.Element);
+        }
+
+        [TestMethod]
+        public void DetermineChoiceElement_DoesNotRecord_WhenNoRecorderProvided()
+        {
+            var settings = CreateWeightOnlySettings();
+            var evaluator = new AltarChoiceEvaluator(settings);
+            var altar = TestBuilders.BuildPrimary();
+            var weights = TestBuilders.BuildAltarWeights(
+                topDown: [10m],
+                bottomDown: [10m],
+                topUp: [10m],
+                bottomUp: [10m],
+                topWeight: 80,
+                bottomWeight: 30);
+
+            Element? chosen = evaluator.DetermineChoiceElement(altar, weights, ValidRect, ValidRect);
+
+            chosen.Should().Be(altar.TopButton?.Element);
+        }
+
+        [TestMethod]
         public void EvaluateChoice_LogsCriticalAndReturnsNullChosenElement_WhenPreferredButtonElementIsMissing()
         {
             var settings = CreateWeightOnlySettings();

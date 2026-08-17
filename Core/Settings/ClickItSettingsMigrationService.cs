@@ -2,7 +2,6 @@ namespace ClickIt
 {
     internal static class ClickItSettingsMigrationService
     {
-        internal const int CurrentVersion = 1;
         private static readonly SettingsDefaultsService DefaultsService = new();
         private static readonly SettingsNormalizationService NormalizationService = new();
 
@@ -12,7 +11,6 @@ namespace ClickIt
 
             DefaultsService.Apply(settings);
             NormalizationService.Apply(settings);
-            settings.SettingsVersion = CurrentVersion;
         }
     }
 

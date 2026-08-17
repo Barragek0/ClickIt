@@ -49,8 +49,6 @@ namespace ClickIt.Tests.Core
             plugin.State.Services.PerformanceMonitor = new PerformanceMonitor(settings);
             plugin.State.Services.ErrorHandler = new ErrorHandler(settings, static (_, _) => { }, static (_, _) => { });
             plugin.State.Services.AreaService = new AreaService();
-            plugin.State.Rendering.DeferredTextQueue = new DeferredTextQueue();
-            plugin.State.Rendering.DeferredFrameQueue = new DeferredFrameQueue();
             plugin.State.Rendering.OverlayRenderHost = new OverlayRenderHost();
             LockManager.Instance = new LockManager(settings);
 
@@ -61,8 +59,6 @@ namespace ClickIt.Tests.Core
             plugin.State.Services.PerformanceMonitor.Should().BeNull();
             plugin.State.Services.ErrorHandler.Should().BeNull();
             plugin.State.Services.AreaService.Should().BeNull();
-            plugin.State.Rendering.DeferredTextQueue.Should().BeNull();
-            plugin.State.Rendering.DeferredFrameQueue.Should().BeNull();
             plugin.State.Rendering.OverlayRenderHost.Should().BeNull();
             plugin.State.Runtime.IsShuttingDown.Should().BeTrue();
             LockManager.Instance.Should().BeNull();

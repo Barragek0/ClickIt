@@ -3,13 +3,15 @@ namespace ClickIt.Features.Blight;
 // Encounter is ACTIVE while the pump is present, valid, and not completed (StateMachine not in "success"/"fail"), and pathway entities have spawned. When the pump streams out (absent or invalid) its StateMachine is unreadable, so liveness falls back to the lanes' own StateMachines — the same data the game uses to render the encounter: flowing lanes (pending > 0) prove the encounter is still running, while a ran-then-stopped web means it has ended. A never-started (build-phase) encounter stays alive until the pump is readable again. A pump last seen completed (success/fail/pending==0) ends the encounter even after it streams out.
 internal sealed class BlightEncounter
 {
-    private bool _sawRunning;
-    private bool _pumpCompleted;
+    private volatile bool _sawRunning;
+    private volatile bool _pumpCompleted;
 
     // Latched once the encounter positively ends (pump completed, or ran-then-stopped). Retained lanes/pathways and a streamed-out pump must NEVER re-activate the encounter in the same area (the game re-renders the web when the player walks far from the pump, which would otherwise flip the state back to active and resume a stale build plan). Only Reset() - fired on area change / explicit clear - clears the latch so a NEW encounter can start.
-    private bool _ended;
+    private volatile bool _ended;
+    private volatile bool _isActive;
 
-    internal bool IsActive { get; private set; }
+    // Written by the scan thread (Update), read by the click pipeline (IsEncounterActive) - volatile so the click thread never observes a stale activation/end.
+    internal bool IsActive { get => _isActive; private set => _isActive = value; }
 
     internal bool Update(Entity? pump, int pathwayCount, int activePathwayCount, bool pumpCompleted)
     {
@@ -138,6 +140,19 @@ internal sealed class BlightEncounter
 
     internal static bool IsPumpCompleted(Entity pump)
     {
+        // A single named-state read per check: the shared walk returns the numeric value of the state with the given name (success/fail/pending), or null when unreadable.
+        if (TryReadPumpState(pump, "success") == 1)
+            return true;
+        if (TryReadPumpState(pump, "fail") == 1)
+            return true;
+
+        // The pump's own pending==0 is the encounter-done signal (same rule as the lanes), so a completed pump is detected even when the success/fail state read is flaky.
+        return TryReadPumpState(pump, "pending") == 0;
+    }
+
+    // Shared StateMachine walk: reads the numeric value of the named state off the pump's StateMachine, or null when the machine/states are unreadable.
+    internal static long? TryReadPumpState(Entity pump, string stateName)
+    {
         try
         {
             if (DynamicAccess.TryGetComponent<StateMachine>(pump, out object? rawStateMachine)
@@ -149,19 +164,8 @@ internal sealed class BlightEncounter
                 {
                     foreach (dynamic state in states)
                     {
-                        string? name = state.Name as string;
-                        long value = BlightHelpers.TryReadStateValue(state);
-                        if (name == "success" || name == "fail")
-                        {
-                            if (value == 1)
-                                return true;
-                        }
-                        else if (name == "pending")
-                        {
-                            // The pump's own pending==0 is the encounter-done signal (same rule as the lanes), so a completed pump is detected even when the success/fail state read is flaky.
-                            if (value == 0)
-                                return true;
-                        }
+                        if ((state.Name as string) == stateName)
+                            return BlightHelpers.TryReadStateValue(state);
                     }
                 }
             }
@@ -170,6 +174,6 @@ internal sealed class BlightEncounter
         {
         }
 
-        return false;
+        return null;
     }
 }

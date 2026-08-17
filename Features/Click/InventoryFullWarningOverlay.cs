@@ -70,15 +70,15 @@ namespace ClickIt.Features.Click
             Vector2? playerFeetScreen = TryResolvePlayerFeetWarningPosition(ctx.GameController);
             Vector2 pos = ResolveInventoryFullWarningPosition(windowRect, leftTertiary, rightTertiary, playerFeetScreen);
 
-            EnqueueBoldWarningText(ctx.TextQueue, pos);
+            EnqueueBoldWarningText(ctx.DrawQueue, pos);
         }
 
-        private void EnqueueBoldWarningText(DeferredTextQueue textQueue, Vector2 centerPosition)
+        private void EnqueueBoldWarningText(DeferredDrawQueue drawQueue, Vector2 centerPosition)
         {
             for (int i = 0; i < BoldTextOffsets.Length; i++)
             {
                 Vector2 offsetPosition = centerPosition + BoldTextOffsets[i];
-                textQueue.Enqueue(
+                drawQueue.EnqueueText(
                     InventoryFullWarningText,
                     offsetPosition,
                     Color.Black,
@@ -86,7 +86,7 @@ namespace ClickIt.Features.Click
                     FontAlign.Center);
             }
 
-            textQueue.Enqueue(
+            drawQueue.EnqueueText(
                 InventoryFullWarningText,
                 centerPosition,
                 Color.OrangeRed,

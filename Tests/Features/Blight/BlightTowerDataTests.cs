@@ -24,7 +24,6 @@ public class BlightTowerDataTests
     [TestMethod]
     public void EverySpecializationTower_IsRepresentedAndCapturedInDat()
     {
-        // Every specialization tower from the game's BlightTowerDat must be reachable through the type/specialization system AND present in the captured dat catalog.  Guards against a specialization being dropped from the enum or mappings (e.g. Lightning Storm, Imbuing).
         (BlightTowerType Type, TowerSpecialization Spec, string Id)[] all =
         [
             (BlightTowerType.Fireball, TowerSpecialization.Meteor, "MeteorTower"),
@@ -66,7 +65,6 @@ public class BlightTowerDataTests
     [TestMethod]
     public void GetSpecializationTowerId_Meteor_MapsToMeteorTowerNotFlamethrower()
     {
-        // Regression guard for the reported bug: clicking the "Meteor" specialization produced a Flamethrower tower because the menu order was assumed from the enum.  The ID-based resolution must target the actual MeteorTower, never the Flamethrower button.
         BlightTowerData.GetSpecializationTowerId(BlightTowerType.Fireball, TowerSpecialization.Meteor)
             .Should().Be("MeteorTower");
         BlightTowerData.GetSpecializationTowerId(BlightTowerType.Fireball, TowerSpecialization.Meteor)
@@ -109,7 +107,6 @@ public class BlightTowerDataTests
     [TestMethod]
     public void GetSpecializationMenuChildIndex_FireballMenuOrder_MatchesDatOrder()
     {
-        // User-confirmed in-game (2026-08-11): the Fireball 3→4 upgrade panel's two specialization buttons are DIRECT siblings of Child[0].Child[3] with Flamethrower at index 0 and Meteor at index 1 — the same order as the BlightTowerDat file (FlamethrowerTower is declared before MeteorTower), NOT the TowerSpecialization enum order. A plan step of 'SPECIAL Meteor' must click index 1, never index 0 (index 0 is Flamethrower — the reported bug).
         BlightTowerData.GetSpecializationMenuChildIndex(BlightTowerType.Fireball, TowerSpecialization.Meteor)
             .Should().Be(1, "Meteor is the second button in the Fireball upgrade panel");
         BlightTowerData.GetSpecializationMenuChildIndex(BlightTowerType.Fireball, TowerSpecialization.Flamethrower)
@@ -117,7 +114,6 @@ public class BlightTowerDataTests
     }
 
     [TestMethod]
-    // Menu indices follow the BlightTowerDat file order (user-confirmed for Fireball: Flamethrower=0, Meteor=1); the same dat-order pattern applies to every base type. Summoning already matched.
     [DataRow((int)BlightTowerType.Fireball, (int)TowerSpecialization.Meteor, 1)]
     [DataRow((int)BlightTowerType.Fireball, (int)TowerSpecialization.Flamethrower, 0)]
     [DataRow((int)BlightTowerType.Chilling, (int)TowerSpecialization.GlacialCage, 1)]
@@ -139,7 +135,6 @@ public class BlightTowerDataTests
     [TestMethod]
     public void RuleWithoutSpecialization_DefaultsToNone_SoPlainUpgradesSkipSpecialization()
     {
-        // Regression guard: a rule that never calls SetSpecialization (e.g. Chilling/Seismic coverage towers) must report NO specialization, or the executor enters the specialization-selection path for plain upgrades (1→2, 2→3) and looks for a non-existent specialization button (e.g. 'IcePrisonTower'), failing 3x and stalling the plan.
         TowerBuildRule rule = TowerStrategyBuilder.CreateRule()
             .SetTower(BlightTowerType.Seismic)
             .SetPriority(TowerBuildPriority.Critical)
@@ -192,7 +187,6 @@ public class BlightTowerDataTests
     [TestMethod]
     public void RadiusForLevel_FireballRank4_IsMeteorRadius()
     {
-        // The plan upgrades Fireball to rank 4, which is the Meteor specialization in-game; the strategies that plan Fireball always pick Meteor, so rank 4 must use Meteor's radius (100), not the rank-3 FlameTower radius (75).
         BlightTowerData.RadiusForLevel(BlightTowerType.Fireball, 4).Should().Be(100);
         BlightTowerData.RadiusForLevel(BlightTowerType.Fireball, 4).Should().NotBe(75);
     }
@@ -200,7 +194,6 @@ public class BlightTowerDataTests
     [TestMethod]
     public void FindRadius_MatchesCapturedDatIds()
     {
-        // Exact-id lookups mirror the dat dump so the runtime cache can resolve known tower ids even when the game's dat file is not loaded.
         BlightTowerData.FindRadius("ChillingTower1").Should().Be(35);
         BlightTowerData.FindRadius("ChillingTower3").Should().Be(35);
         BlightTowerData.FindRadius("StunningTower2").Should().Be(45);
@@ -222,7 +215,6 @@ public class BlightTowerDataTests
     [TestMethod]
     public void Catalog_ContainsAllCapturedTowers()
     {
-        // 31 entries exactly as dumped from BlightTowerDat (2026-08-02) — every tower at every level plus the specialization entries.  Guarded so the table can never silently lose a row.
         BlightTowerData.Catalog.Should().HaveCount(31);
         BlightTowerData.Catalog.Should().Contain(e => e.DatId == "ChillingTower1" && e.Radius == 35);
         BlightTowerData.Catalog.Should().Contain(e => e.DatId == "FlameTower3" && e.Radius == 75);
@@ -232,7 +224,6 @@ public class BlightTowerDataTests
     [TestMethod]
     public void BlightTowerId_EnumAndCatalog_AreAligned()
     {
-        // The Catalog array is indexed by the enum value, so every member must sit at its own index.
         BlightTowerId[] values = Enum.GetValues<BlightTowerId>();
         values.Length.Should().Be(BlightTowerData.Catalog.Length);
         foreach (BlightTowerId id in values)
@@ -242,7 +233,6 @@ public class BlightTowerDataTests
     [TestMethod]
     public void MapTowerIdToType_CoversEveryDatTowerId()
     {
-        // Every real tower id (all but the EmptyNode foundation placeholder) maps to its own type.
         foreach (BlightTowerInfo e in BlightTowerData.Catalog)
         {
             if (e.Id == BlightTowerId.EmptyNode)
@@ -257,7 +247,6 @@ public class BlightTowerDataTests
     [TestMethod]
     public void MapFoundationSuffix_ResolvesAllBaseTypes()
     {
-        // Foundation paths carry the base-type word ("…/BlightFoundationChilling"), including the @-suffixed runtime form.
         BlightTowerData.MapFoundationSuffix("Chilling").Should().Be(BlightTowerType.Chilling);
         BlightTowerData.MapFoundationSuffix("Stunning").Should().Be(BlightTowerType.Seismic);
         BlightTowerData.MapFoundationSuffix("Flame").Should().Be(BlightTowerType.Fireball);
@@ -284,13 +273,10 @@ public class BlightTowerDataTests
     [TestMethod]
     public void GetCoverageRadiusForLevel_ReducesEveryLevelByTheMargin()
     {
-        // Chilling radius is constant across ranks (35), so every level's effective radius is 30.
         BlightService.GetCoverageRadiusForLevel(BlightTowerType.Chilling, 1).Should().Be(30);
         BlightService.GetCoverageRadiusForLevel(BlightTowerType.Chilling, 3).Should().Be(30);
-        // Fireball grows with rank: 45/60/75/100 → 40/55/70/95.
         BlightService.GetCoverageRadiusForLevel(BlightTowerType.Fireball, 1).Should().Be(40);
         BlightService.GetCoverageRadiusForLevel(BlightTowerType.Fireball, 4).Should().Be(95);
-        // The margin must never produce a negative reach.
         BlightService.GetCoverageRadiusForLevel(BlightTowerType.Fireball, 1).Should().BeGreaterThan(0);
     }
 }

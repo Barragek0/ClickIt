@@ -75,69 +75,16 @@ namespace ClickIt.Shared.Game
                 Interlocked.Read(ref _tryGetTicks));
         }
 
-        internal static void ResetStats()
-        {
-            _ = Interlocked.Exchange(ref _tryGetCalls, 0);
-            _ = Interlocked.Exchange(ref _tryGetSuccesses, 0);
-            _ = Interlocked.Exchange(ref _nullSourceFailures, 0);
-            _ = Interlocked.Exchange(ref _runtimeBinderFailures, 0);
-            _ = Interlocked.Exchange(ref _otherFailures, 0);
-            _ = Interlocked.Exchange(ref _boolConversionFailures, 0);
-            _ = Interlocked.Exchange(ref _floatConversionFailures, 0);
-            _ = Interlocked.Exchange(ref _intConversionFailures, 0);
-            _ = Interlocked.Exchange(ref _emptyStringFailures, 0);
-            _ = Interlocked.Exchange(ref _tryGetTicks, 0);
-            for (int i = 0; i < DlrSectionCount; i++)
-            {
-                _ = Interlocked.Exchange(ref _sectionDlrCalls[i], 0);
-                _ = Interlocked.Exchange(ref _sectionDlrTicks[i], 0);
-            }
-        }
-
         public static bool TryGetDynamicValue(object? source, Func<dynamic, object?> accessor, out object? value)
-        {
-            value = null;
-            long start = Stopwatch.GetTimestamp();
-            int section = CurrentDlrSection;
-            try
-            {
-                Interlocked.Increment(ref _tryGetCalls);
-                if (section != 0)
-                    _ = Interlocked.Increment(ref _sectionDlrCalls[section]);
-
-                if (source == null)
-                {
-                    Interlocked.Increment(ref _nullSourceFailures);
-                    return false;
-                }
-
-                try
-                {
-                    value = accessor((dynamic)source);
-                    Interlocked.Increment(ref _tryGetSuccesses);
-                    return true;
-                }
-                catch (RuntimeBinderException)
-                {
-                    Interlocked.Increment(ref _runtimeBinderFailures);
-                    return false;
-                }
-                catch
-                {
-                    Interlocked.Increment(ref _otherFailures);
-                    return false;
-                }
-            }
-            finally
-            {
-                long elapsed = Stopwatch.GetTimestamp() - start;
-                _ = Interlocked.Add(ref _tryGetTicks, elapsed);
-                if (section != 0)
-                    _ = Interlocked.Add(ref _sectionDlrTicks[section], elapsed);
-            }
-        }
+            => TryGetDynamicValueCore(source, accessor, out value);
 
         public static bool TryGetDynamicValue(object? source, IDynamicMemberReaderProfile profile, out object? value)
+            => TryGetDynamicValueCore(source, ResolveAccessor(profile), out value);
+
+        private static Func<dynamic, object?> ResolveAccessor(IDynamicMemberReaderProfile profile)
+            => profile is DynamicMemberReaderProfile p ? p.Accessor : profile.Read;
+
+        private static bool TryGetDynamicValueCore(object? source, Func<dynamic, object?> reader, out object? value)
         {
             value = null;
             long start = Stopwatch.GetTimestamp();
@@ -156,7 +103,7 @@ namespace ClickIt.Shared.Game
 
                 try
                 {
-                    value = profile.Read((dynamic)source);
+                    value = reader((dynamic)source);
                     Interlocked.Increment(ref _tryGetSuccesses);
                     return true;
                 }
@@ -235,38 +182,15 @@ namespace ClickIt.Shared.Game
             => TryReadBool(source, static current => current.HasComponent<TComponent>(), out value);
 
         public static bool TryReadBool(object? source, Func<dynamic, object?> accessor, out bool value)
+            => TryReadBoolCore(source, accessor, out value);
+
+        public static bool TryReadBool(object? source, IDynamicMemberReaderProfile profile, out bool value)
+            => TryReadBoolCore(source, ResolveAccessor(profile), out value);
+
+        private static bool TryReadBoolCore(object? source, Func<dynamic, object?> accessor, out bool value)
         {
             value = false;
             if (!TryGetDynamicValue(source, accessor, out object? raw))
-                return false;
-
-
-            if (raw is bool boolValue)
-            {
-                value = boolValue;
-                return true;
-            }
-
-            if (raw == null)
-                return false;
-
-
-            try
-            {
-                value = Convert.ToBoolean(raw, CultureInfo.InvariantCulture);
-                return true;
-            }
-            catch
-            {
-                _ = Interlocked.Increment(ref _boolConversionFailures);
-                return false;
-            }
-        }
-
-        public static bool TryReadBool(object? source, IDynamicMemberReaderProfile profile, out bool value)
-        {
-            value = false;
-            if (!TryGetDynamicValue(source, profile, out object? raw))
                 return false;
 
             if (raw is bool boolValue)
@@ -291,38 +215,15 @@ namespace ClickIt.Shared.Game
         }
 
         public static bool TryReadInt(object? source, Func<dynamic, object?> accessor, out int value)
+            => TryReadIntCore(source, accessor, out value);
+
+        public static bool TryReadInt(object? source, IDynamicMemberReaderProfile profile, out int value)
+            => TryReadIntCore(source, ResolveAccessor(profile), out value);
+
+        private static bool TryReadIntCore(object? source, Func<dynamic, object?> accessor, out int value)
         {
             value = 0;
             if (!TryGetDynamicValue(source, accessor, out object? raw))
-                return false;
-
-
-            if (raw is int intValue)
-            {
-                value = intValue;
-                return true;
-            }
-
-            if (raw == null)
-                return false;
-
-
-            try
-            {
-                value = Convert.ToInt32(raw, CultureInfo.InvariantCulture);
-                return true;
-            }
-            catch
-            {
-                _ = Interlocked.Increment(ref _intConversionFailures);
-                return false;
-            }
-        }
-
-        public static bool TryReadInt(object? source, IDynamicMemberReaderProfile profile, out int value)
-        {
-            value = 0;
-            if (!TryGetDynamicValue(source, profile, out object? raw))
                 return false;
 
             if (raw is int intValue)
@@ -347,38 +248,15 @@ namespace ClickIt.Shared.Game
         }
 
         public static bool TryReadFloat(object? source, Func<dynamic, object?> accessor, out float value)
+            => TryReadFloatCore(source, accessor, out value);
+
+        public static bool TryReadFloat(object? source, IDynamicMemberReaderProfile profile, out float value)
+            => TryReadFloatCore(source, ResolveAccessor(profile), out value);
+
+        private static bool TryReadFloatCore(object? source, Func<dynamic, object?> accessor, out float value)
         {
             value = 0;
             if (!TryGetDynamicValue(source, accessor, out object? raw))
-                return false;
-
-
-            if (raw is float floatValue)
-            {
-                value = floatValue;
-                return true;
-            }
-
-            if (raw == null)
-                return false;
-
-
-            try
-            {
-                value = Convert.ToSingle(raw, CultureInfo.InvariantCulture);
-                return true;
-            }
-            catch
-            {
-                _ = Interlocked.Increment(ref _floatConversionFailures);
-                return false;
-            }
-        }
-
-        public static bool TryReadFloat(object? source, IDynamicMemberReaderProfile profile, out float value)
-        {
-            value = 0;
-            if (!TryGetDynamicValue(source, profile, out object? raw))
                 return false;
 
             if (raw is float floatValue)
@@ -403,11 +281,16 @@ namespace ClickIt.Shared.Game
         }
 
         public static bool TryReadString(object? source, Func<dynamic, object?> accessor, out string value)
+            => TryReadStringCore(source, accessor, out value);
+
+        public static bool TryReadString(object? source, IDynamicMemberReaderProfile profile, out string value)
+            => TryReadStringCore(source, ResolveAccessor(profile), out value);
+
+        private static bool TryReadStringCore(object? source, Func<dynamic, object?> accessor, out string value)
         {
             value = string.Empty;
             if (!TryGetDynamicValue(source, accessor, out object? raw) || raw == null)
                 return false;
-
 
             string? text = raw.ToString();
             if (string.IsNullOrWhiteSpace(text))
@@ -420,21 +303,47 @@ namespace ClickIt.Shared.Game
             return true;
         }
 
-        public static bool TryReadString(object? source, IDynamicMemberReaderProfile profile, out string value)
+        // Shared item-on-ground read: the label's entity resolved through the dynamic-access layer so it works on any label wrapper (this pattern was hand-duplicated at ~25 sites).
+        public static bool TryGetLabelItemOnGround(LabelOnGround? label, out Entity? item)
         {
-            value = string.Empty;
-            if (!TryGetDynamicValue(source, profile, out object? raw) || raw == null)
+            item = null;
+            return TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? raw)
+                && (item = raw as Entity) != null;
+        }
+
+        // Shared entity-address read with type widening (address can be long/int/uint/short/ushort/byte/sbyte depending on the runtime), defaulting to 0 on failure.
+        public static bool TryReadEntityAddress(Entity? entity, out long address)
+        {
+            address = 0;
+            if (!TryGetDynamicValue(entity, DynamicAccessProfiles.Address, out object? rawAddress) || rawAddress == null)
                 return false;
 
-            string? text = raw.ToString();
-            if (string.IsNullOrWhiteSpace(text))
+            switch (rawAddress)
             {
-                _ = Interlocked.Increment(ref _emptyStringFailures);
-                return false;
+                case long longAddress:
+                    address = longAddress;
+                    return true;
+                case int intAddress:
+                    address = intAddress;
+                    return true;
+                case uint uintAddress:
+                    address = uintAddress;
+                    return true;
+                case short shortAddress:
+                    address = shortAddress;
+                    return true;
+                case ushort ushortAddress:
+                    address = ushortAddress;
+                    return true;
+                case byte byteAddress:
+                    address = byteAddress;
+                    return true;
+                case sbyte sbyteAddress:
+                    address = sbyteAddress;
+                    return true;
+                default:
+                    return false;
             }
-
-            value = text.Trim();
-            return true;
         }
     }
 }

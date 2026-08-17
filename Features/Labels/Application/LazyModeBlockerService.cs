@@ -75,17 +75,20 @@ namespace ClickIt.Features.Labels.Application
                 NearbyMonsterRestrictionCacheDurationMs,
                 settings: new TimedValueCacheSettings(RequireNonNegativeAge: true));
         private long _lastLazyModeRestrictionLogTimestampMs = long.MinValue;
-        private string _lastLazyModeRestrictionLogReason = string.Empty;
+        private volatile string _lastLazyModeRestrictionLogReason = string.Empty;
         // Locked-chest scan cache. The label-list reference does NOT change while the visible label addresses are stable (StableLabelSetCache returns the same instance), so a reference-equality gate would never re-run the scan while the player walks — yet DistancePlayer <= ClickDistance changes with movement. A time-based cache (mirroring the nearby-monster cache) re-scans on a short cadence instead. Thread-safe: called from the render thread (LazyModeOverlay.Draw) and the click coroutine.
         private const long LockedChestScanCacheWindowMs = 200;
         private readonly TimedValueCache<IReadOnlyList<LabelOnGround>, LazyModeRestrictionResult> _lockedChestRestrictionCache
             = new(LockedChestScanCacheWindowMs);
-        public string? LastRestrictionReason { get; private set; }
+        private volatile string? _lastRestrictionReason;
+
+        public string? LastRestrictionReason
+            => _lastRestrictionReason;
 
         public bool HasRestrictedItemsOnScreen(IReadOnlyList<LabelOnGround>? allLabels)
         {
             LazyModeRestrictionResult restriction = ResolveRestriction(allLabels);
-            LastRestrictionReason = restriction.Blocked
+            _lastRestrictionReason = restriction.Blocked
                 ? restriction.EffectiveReason
                 : null;
             if (!restriction.Blocked)
@@ -98,13 +101,13 @@ namespace ClickIt.Features.Labels.Application
         private void TryLogLazyModeRestriction(string reason)
         {
             long now = _nowProvider();
-            if (now - _lastLazyModeRestrictionLogTimestampMs < LazyModeRestrictionLogThrottleMs
+            if (now - Volatile.Read(ref _lastLazyModeRestrictionLogTimestampMs) < LazyModeRestrictionLogThrottleMs
                 && string.Equals(_lastLazyModeRestrictionLogReason, reason, StringComparison.Ordinal))
             {
                 return;
             }
 
-            _lastLazyModeRestrictionLogTimestampMs = now;
+            Volatile.Write(ref _lastLazyModeRestrictionLogTimestampMs, now);
             _lastLazyModeRestrictionLogReason = reason;
             _logRestriction(reason);
         }
@@ -184,9 +187,7 @@ namespace ClickIt.Features.Labels.Application
         {
             foreach (LabelOnGround label in labels)
             {
-                Entity? item = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                    ? rawItem as Entity
-                    : null;
+                DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item);
                 if (item == null
                     || !DynamicAccess.TryReadFloat(item, DynamicAccessProfiles.DistancePlayer, out float distance)
                     || distance > clickDistance)

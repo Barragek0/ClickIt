@@ -6,10 +6,7 @@ namespace ClickIt.Features.Click.Selection
         internal static bool ShouldSuppress(LabelOnGround? label)
         {
             // Read via DynamicAccess (like TryGetLabelItemOnGround) so the fresh lock-state check works on any label wrapper, not just live game labels.
-            Entity? item = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                ? rawItem as Entity
-                : null;
-            if (item == null)
+            if (!DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item))
                 return false;
 
             if (!DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string path)

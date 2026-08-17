@@ -2,21 +2,6 @@ namespace ClickIt.Shared.Game
 {
     public static class EntityHelpers
     {
-        internal static bool IsRitualActive(IEnumerable<string?>? paths)
-        {
-            if (paths == null)
-                return false;
-
-
-            foreach (string? p in paths)
-                if (p?.Contains("RitualBlocker", StringComparison.Ordinal) == true)
-                    return true;
-
-
-
-            return false;
-        }
-
         // Ritual state is queried per frame (LazyModeOverlay) and per click tick (offscreen pathing + runtime state); the shared EntityEventHub retains RitualBlocker entities with ONE subscription and ONE path read per event. Streamed-out blockers fail the live IsValid check, so the result still means "a currently-valid RitualBlocker exists".
         public static bool IsRitualActive(GameController? gameController)
         {

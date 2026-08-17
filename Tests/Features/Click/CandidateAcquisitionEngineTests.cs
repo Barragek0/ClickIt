@@ -75,21 +75,44 @@ namespace ClickIt.Tests.Features.Click
         private static CandidateAcquisitionEngine CreateEngine(
             ClickItSettings? settings = null,
             ILabelInteractionPort? labelInteractionPort = null,
-            IVisibleMechanicQueryPort? visibleMechanics = null,
+            IVisibleMechanicRuntimePort? visibleMechanics = null,
             LabelSelectionScanEngine? labelSelectionScan = null,
             ClickDebugPublicationService? clickDebugPublisher = null)
         {
             ClickItSettings resolvedSettings = settings ?? new ClickItSettings();
             ILabelInteractionPort resolvedPort = labelInteractionPort ?? new FakeLabelInteractionPort();
 
-            return new CandidateAcquisitionEngine(new CandidateAcquisitionEngineDependencies(
-                Settings: resolvedSettings,
-                LabelInteractionPort: resolvedPort,
-                VisibleMechanics: visibleMechanics ?? new StubVisibleMechanicSelectionSource(),
-                LabelSelectionScan: labelSelectionScan ?? CreateLabelSelectionScanEngine(resolvedSettings, resolvedPort),
-                ClickDebugPublisher: clickDebugPublisher ?? ClickTestDebugPublisherFactory.Create(),
-                LabelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(labelInteractionPort: resolvedPort),
-                ShouldCaptureClickDebug: static () => false));
+            return new CandidateAcquisitionEngine(new ClickRuntimeEngineDependencies(
+                Telemetry: new ClickTelemetryDependencies(
+                    ClickDebugPublisher: clickDebugPublisher ?? ClickTestDebugPublisherFactory.Create(),
+                    ShouldCaptureClickDebug: static () => false,
+                    HoldDebugTelemetryAfterSuccess: static _ => { },
+                    DebugLog: static _ => { },
+                    RecordAllocationBreakdown: null,
+                    RecordBreakdownStage: null),
+                Policy: new ClickPolicyDependencies(
+                    Settings: resolvedSettings,
+                    InputHandler: null!,
+                    PointIsInClickableArea: static (_, _) => true,
+                    ClickSuccessAnchor: null),
+                Selection: new ClickSelectionDependencies(
+                    TickContextFactory: null!,
+                    LabelInteractionPort: resolvedPort,
+                    VisibleMechanics: visibleMechanics ?? new StubVisibleMechanicSelectionSource(),
+                    LabelSelectionScan: labelSelectionScan ?? CreateLabelSelectionScanEngine(resolvedSettings, resolvedPort),
+                    SpecialLabelInteraction: null!,
+                    LabelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(labelInteractionPort: resolvedPort),
+                    ChestLootSettlement: null!),
+                Pathing: new ClickPathingDependencies(
+                    PathfindingService: null!,
+                    PathfindingLabelSuppression: null!,
+                    OffscreenPathing: null!),
+                Mechanics: new ClickMechanicDependencies(
+                    AltarAutomation: null!,
+                    GetHarvestLabelToClick: null,
+                    TryProgressBlightBuilding: null,
+                    GetBlightPathfindTarget: null,
+                    IsBlightEncounterActive: null)));
         }
 
         private static LabelSelectionScanEngine CreateLabelSelectionScanEngine(ClickItSettings settings, ILabelInteractionPort labelInteractionPort)
@@ -152,7 +175,7 @@ namespace ClickIt.Tests.Features.Click
             LostShipmentCandidate? visibleLostShipment = null,
             SettlersOreCandidate? visibleSettlers = null,
             LostShipmentCandidate? hiddenLostShipment = null,
-            SettlersOreCandidate? hiddenSettlers = null) : IVisibleMechanicQueryPort
+            SettlersOreCandidate? hiddenSettlers = null) : IVisibleMechanicRuntimePort
         {
             public int HiddenFallbackCalls { get; private set; }
             public int VisibleCandidateCalls { get; private set; }
@@ -178,6 +201,23 @@ namespace ClickIt.Tests.Features.Click
                 HiddenFallbackCalls++;
                 lostShipmentCandidate = hiddenLostShipment;
                 settlersOreCandidate = hiddenSettlers;
+            }
+
+            public bool TryClickSettlersOre(SettlersOreCandidate candidate)
+                => false;
+
+            public bool TryClickLostShipmentInteraction(LostShipmentCandidate candidate)
+                => false;
+
+            public bool TryClickShrineInteraction(Entity shrine)
+                => false;
+
+            public void HandleSuccessfulMechanicEntityClick(Entity? entity)
+            {
+            }
+
+            public void HandleSuccessfulShrineClick(Entity? shrine)
+            {
             }
         }
 

@@ -26,7 +26,7 @@ namespace ClickIt.Features.Observability
             string line2 = string.Join("  ", new[]
             {
                 $"Walk:wO={F(settings.WalkTowardOffscreenLabels.Value)} pO={F(settings.PrioritizeOnscreenClickableMechanicsOverPathfinding.Value)} pB={settings.OffscreenPathfindingSearchBudget.Value}",
-                $"Chest:bC={F(settings.PauseAfterOpeningBasicChests.Value)} lC={F(settings.PauseAfterOpeningLeagueChests.Value)} hC={F(settings.PauseAfterOpeningHeistChests.Value)} aN={F(settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettle.Value)} nD={settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance.Value}"
+                $"Chest:bC={F(settings.PauseAfterOpeningBasicChests.Value)} aN={F(settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettle.Value)} nD={settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance.Value}"
             });
 
             return new ClickSettingsTelemetrySnapshot(

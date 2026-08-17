@@ -12,12 +12,8 @@ namespace ClickIt.Features.Click.Interaction
         private readonly ErrorHandler? _errorHandler = errorHandler;
         private long _lastClickTimestampMs;
         private long _successfulClickSequence;
-        // Safety-sleep reading taken when a click starts, so the recorded click cost excludes the deliberate
-        // hover/post-click settles that happened inside it. Click thread only.
+        // Safety-sleep reading taken when a click starts, so the recorded click cost excludes the deliberate hover/post-click settles that happened inside it. Click thread only.
         private double _clickSleepStartMs;
-
-        internal long GetSuccessfulClickSequence()
-            => Interlocked.Read(ref _successfulClickSequence);
 
         // Returns true only when the click was actually sent to the OS. Internal rejections (lazy limiter, hotkey inactive, UIHover mismatch, invalid point) return false so callers do not run the success aftermath (path/sticky clearing, pending-chest arming, lever cooldowns).
         internal bool PerformClick(
@@ -26,7 +22,8 @@ namespace ClickIt.Features.Click.Interaction
             GameController? gameController = null,
             bool forceUiHoverVerification = false,
             bool allowWhenHotkeyInactive = false,
-            bool avoidCursorMove = false)
+            bool avoidCursorMove = false,
+            IntervalKind interval = IntervalKind.Click)
         {
             _clickSleepStartMs = ClickPipelineTiming.ReadSleepTimeMs();
             if (!TryPrepareClickExecution(
@@ -49,14 +46,13 @@ namespace ClickIt.Features.Click.Interaction
             else
                 Mouse.LeftClick();
 
-            _performanceMonitor.MarkInterval(IntervalKind.Click);
+            _performanceMonitor.MarkInterval(interval);
             _performanceMonitor.RecordClickDispatch();
             ClickPipelineTiming.Sleep(10);
             RestoreCursorIfLazyMode(before, gameController);
             MarkLazyModeClickCompleted();
             Interlocked.Increment(ref _successfulClickSequence);
-            // Exclude the safety sleeps (hover settle + post-click settle) so the recorded click cost is the
-            // true processing time, not the deliberate wait time.
+            // Exclude the safety sleeps (hover settle + post-click settle) so the recorded click cost is the true processing time, not the deliberate wait time.
             double trueMs = swTotal.ElapsedMilliseconds - (ClickPipelineTiming.ReadSleepTimeMs() - _clickSleepStartMs);
             _performanceMonitor.RecordSuccessfulClickTiming((long)SystemMath.Max(0, trueMs));
             swTotal.Stop();
@@ -65,15 +61,12 @@ namespace ClickIt.Features.Click.Interaction
 
         internal bool PerformClickAndHold(
             Vector2 position,
-            int holdDurationMs,
             Element? expectedElement = null,
             GameController? gameController = null,
             bool forceUiHoverVerification = false,
             bool allowWhenHotkeyInactive = false,
             bool avoidCursorMove = false)
         {
-            _ = holdDurationMs;
-
             _clickSleepStartMs = ClickPipelineTiming.ReadSleepTimeMs();
             if (!TryConsumeLazyModeLimiter())
                 return false;
@@ -126,30 +119,6 @@ namespace ClickIt.Features.Click.Interaction
             _performanceMonitor.RecordSuccessfulClickTiming((long)SystemMath.Max(0, trueMs));
             swTotal.Stop();
             return true;
-        }
-
-        internal Element? HoverAndGetUIHover(Vector2 screenPoint, GameController? gameController, int delayMs = -1)
-        {
-            if (gameController == null)
-                return null;
-
-            if (!LabelClickPointSearch.TryValidateAutomationScreenPoint(screenPoint, gameController, out _))
-                return null;
-
-            int sleepMs = delayMs > 0 ? delayMs : _settings?.LazyModeUIHoverSleep?.Value ?? 20;
-
-            try
-            {
-                if (!Mouse.DisableNativeInput)
-                    Input.SetCursorPos(new NumVector2(screenPoint.X, screenPoint.Y));
-
-                ClickPipelineTiming.Sleep(sleepMs);
-                return gameController.IngameState?.UIHoverElement;
-            }
-            catch
-            {
-                return null;
-            }
         }
 
         internal static bool ShouldSkipClickWhenNotLazyAndHotkeyInactive(bool lazyModeEnabled, bool clickHotkeyActive, bool allowWhenHotkeyInactive = false)

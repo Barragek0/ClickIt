@@ -26,8 +26,7 @@ namespace ClickIt.Features.Essence
             Element? corruptElement = TryResolveCorruptionElement(label);
             if (corruptElement == null)
                 return null;
-            Random random = new();
-            Vector2 offset = new(random.Next(0, 2), random.Next(0, 2));
+            Vector2 offset = new(Random.Shared.Next(0, 2), Random.Shared.Next(0, 2));
             return corruptElement.GetClientRect().Center + windowTopLeft + offset;
         }
 

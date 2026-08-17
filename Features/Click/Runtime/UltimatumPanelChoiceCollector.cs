@@ -15,7 +15,7 @@ namespace ClickIt.Features.Click.Runtime
             if (!TryGetChoiceElements(panelObj, logFailures, debugLog, out object? choiceElementsObj))
                 return false;
 
-            IReadOnlyList<string> modifierNamesByIndex = UltimatumUiTreeResolver.ExtractUltimatumModifierNames(panelObj.Modifiers);
+            IReadOnlyList<string> modifierNamesByIndex = UltimatumUiTreeResolver.GetUltimatumPanelModifierNames(panelObj);
 
             int seen = 0;
             foreach (object? choiceObj in UltimatumUiTreeResolver.EnumerateObjects(choiceElementsObj))

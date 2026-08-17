@@ -4,15 +4,12 @@ namespace ClickIt.UI.Settings.Panels
     {
         private readonly ClickItSettings _settings = settings;
 
-        public void DrawPanel(bool embedded = false)
+        public void DrawPanel()
         {
             SettingsDefaultsService.EnsureItemTypeFiltersInitialized(_settings);
 
-            if (!embedded)
-            {
-                SettingsUiRenderHelpers.DrawInstructionText("Table rows with [v] next to them can be clicked to open subtype filter options.");
-                ImGui.Spacing();
-            }
+            SettingsUiRenderHelpers.DrawInstructionText("Table rows with [v] next to them can be clicked to open subtype filter options.");
+            ImGui.Spacing();
 
             SettingsUiRenderHelpers.DrawSearchBar("##ItemTypeSearch", "Clear##ItemTypeClear", ref _settings.UiState.ItemTypeSearchFilter);
             if (SettingsUiRenderHelpers.DrawResetDefaultsButton("Reset Defaults##ItemTypeDefaults"))

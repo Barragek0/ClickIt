@@ -18,7 +18,6 @@ namespace ClickIt.Tests.Features.Labels
                 mouseButtonBlocks: false,
                 leftClickBlocks: false,
                 rightClickBlocks: false,
-                gameController: null,
                 clickLabelKey: Keys.T,
                 isRitualActive: false,
                 canActuallyClick: true);
@@ -43,7 +42,6 @@ namespace ClickIt.Tests.Features.Labels
                 mouseButtonBlocks: false,
                 leftClickBlocks: false,
                 rightClickBlocks: false,
-                gameController: null,
                 clickLabelKey: Keys.T,
                 isRitualActive: false,
                 canActuallyClick: true);
@@ -71,7 +69,6 @@ namespace ClickIt.Tests.Features.Labels
                 mouseButtonBlocks: false,
                 leftClickBlocks: false,
                 rightClickBlocks: false,
-                gameController: null,
                 clickLabelKey: Keys.T,
                 lazyModeDisableKeyBinding: settings.LazyModeDisableKeyBinding,
                 isRitualActive: false,
@@ -98,7 +95,6 @@ namespace ClickIt.Tests.Features.Labels
                 mouseButtonBlocks: false,
                 leftClickBlocks: false,
                 rightClickBlocks: false,
-                gameController: null,
                 clickLabelKey: Keys.T,
                 isRitualActive: false,
                 canActuallyClick: true);
@@ -124,7 +120,6 @@ namespace ClickIt.Tests.Features.Labels
                 mouseButtonBlocks: true,
                 leftClickBlocks: true,
                 rightClickBlocks: false,
-                gameController: null,
                 clickLabelKey: Keys.T,
                 isRitualActive: false,
                 canActuallyClick: true);
@@ -150,7 +145,6 @@ namespace ClickIt.Tests.Features.Labels
                 mouseButtonBlocks: true,
                 leftClickBlocks: true,
                 rightClickBlocks: true,
-                gameController: null,
                 clickLabelKey: Keys.T,
                 isRitualActive: false,
                 canActuallyClick: true);
@@ -176,7 +170,6 @@ namespace ClickIt.Tests.Features.Labels
                 mouseButtonBlocks: false,
                 leftClickBlocks: false,
                 rightClickBlocks: false,
-                gameController: null,
                 clickLabelKey: Keys.T,
                 isRitualActive: true,
                 canActuallyClick: true);
@@ -202,7 +195,6 @@ namespace ClickIt.Tests.Features.Labels
                 mouseButtonBlocks: false,
                 leftClickBlocks: false,
                 rightClickBlocks: false,
-                gameController: null,
                 clickLabelKey: Keys.T,
                 isRitualActive: true,
                 canActuallyClick: true);
@@ -228,10 +220,10 @@ namespace ClickIt.Tests.Features.Labels
                 mouseButtonBlocks: false,
                 leftClickBlocks: false,
                 rightClickBlocks: false,
-                gameController: null,
                 clickLabelKey: Keys.T,
                 isRitualActive: false,
-                canActuallyClick: false);
+                canActuallyClick: false,
+                clickFailureReason: "PoE not in focus.");
 
             result.color.Should().Be(Color.Red);
             result.line1.Should().Be("PoE not in focus.");
@@ -254,7 +246,6 @@ namespace ClickIt.Tests.Features.Labels
                 mouseButtonBlocks: false,
                 leftClickBlocks: false,
                 rightClickBlocks: false,
-                gameController: null,
                 clickLabelKey: Keys.T,
                 isRitualActive: false,
                 canActuallyClick: true);
@@ -296,7 +287,7 @@ namespace ClickIt.Tests.Features.Labels
         [TestMethod]
         public void RenderLazyModeText_EnqueuesTitleAndWrappedBodyLines()
         {
-            var queue = new DeferredTextQueue();
+            var queue = new DeferredDrawQueue();
             var overlay = CreateOverlay();
 
             overlay.RenderLazyModeText(
@@ -348,16 +339,16 @@ namespace ClickIt.Tests.Features.Labels
             bool mouseButtonBlocks,
             bool leftClickBlocks,
             bool rightClickBlocks,
-            GameController? gameController,
             Keys clickLabelKey,
             Keys lazyModeDisableKeyBinding = Keys.None,
             bool isRitualActive = false,
-            bool canActuallyClick = true)
+            bool canActuallyClick = true,
+            string? clickFailureReason = null)
         {
             MethodInfo method = typeof(LazyModeOverlay).GetMethod("ComposeLazyModeStatus", BindingFlags.Instance | BindingFlags.NonPublic)!;
             object result = method.Invoke(
                 overlay,
-                [hasRestrictedItems, restrictionReason, hotkeyHeld, lazyModeDisableHeld, lazyModeDisableToggleMode, mouseButtonBlocks, leftClickBlocks, rightClickBlocks, gameController, clickLabelKey, lazyModeDisableKeyBinding, isRitualActive, canActuallyClick])!;
+                [hasRestrictedItems, restrictionReason, hotkeyHeld, lazyModeDisableHeld, lazyModeDisableToggleMode, mouseButtonBlocks, leftClickBlocks, rightClickBlocks, clickLabelKey, lazyModeDisableKeyBinding, isRitualActive, canActuallyClick, clickFailureReason])!;
 
             return ((Color color, string line1, string line2, string line3))result;
         }

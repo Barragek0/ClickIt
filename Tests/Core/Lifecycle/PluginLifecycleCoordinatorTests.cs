@@ -6,6 +6,11 @@ namespace ClickIt.Tests.Core.Lifecycle
     {
         private static readonly BindingFlags PrivateStaticFlags = BindingFlags.Static | BindingFlags.NonPublic;
 
+        private static ThreadLocal<List<Element>> GetThreadLocalElementsList()
+            => (ThreadLocal<List<Element>>)typeof(LabelElementSearch)
+                .GetField("ThreadLocalElementsList", PrivateStaticFlags)!
+                .GetValue(null)!;
+
         [TestInitialize]
         public void TestInitialize()
         {
@@ -28,8 +33,8 @@ namespace ClickIt.Tests.Core.Lifecycle
             var altarService = new AltarService(plugin, settings, null);
             plugin.State.Services.AltarService = altarService;
 
-            LabelElementSearch.AddNullElementToThreadLocal();
-            LabelElementSearch.GetThreadLocalElementsCount().Should().BeGreaterThan(0);
+            GetThreadLocalElementsList().Value!.Add(null!);
+            GetThreadLocalElementsList().Value!.Count.Should().BeGreaterThan(0);
 
             List<object?> primedSkillBarBuffer = MovementSkillMath.GetThreadSkillBarEntriesBuffer(4);
             primedSkillBarBuffer.Add(new object());
@@ -41,7 +46,7 @@ namespace ClickIt.Tests.Core.Lifecycle
             PluginLifecycleCoordinator.Shutdown(plugin, settings);
 
             plugin.State.Runtime.IsShuttingDown.Should().BeTrue();
-            LabelElementSearch.GetThreadLocalElementsCount().Should().Be(0);
+            GetThreadLocalElementsList().Value!.Count.Should().Be(0);
 
             List<object?> freshSkillBarBuffer = MovementSkillMath.GetThreadSkillBarEntriesBuffer(1);
             freshSkillBarBuffer.Should().BeEmpty();
@@ -60,8 +65,6 @@ namespace ClickIt.Tests.Core.Lifecycle
             plugin.State.Services.ErrorHandler = new ErrorHandler(settings, static (_, _) => { }, static (_, _) => { });
             plugin.State.Services.AreaService = new AreaService();
             plugin.State.Services.AltarService = new AltarService(plugin, settings, null);
-            plugin.State.Rendering.DeferredTextQueue = new DeferredTextQueue();
-            plugin.State.Rendering.DeferredFrameQueue = new DeferredFrameQueue();
             LockManager.Instance = new LockManager(settings);
 
             PluginLifecycleCoordinator.Shutdown(plugin, settings);
@@ -70,8 +73,6 @@ namespace ClickIt.Tests.Core.Lifecycle
             plugin.State.Services.ErrorHandler.Should().BeNull();
             plugin.State.Services.AreaService.Should().BeNull();
             plugin.State.Services.AltarService.Should().BeNull();
-            plugin.State.Rendering.DeferredTextQueue.Should().BeNull();
-            plugin.State.Rendering.DeferredFrameQueue.Should().BeNull();
             LockManager.Instance.Should().BeNull();
         }
 

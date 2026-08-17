@@ -19,7 +19,7 @@ namespace ClickIt.Shared.Input
             {
                 bool toggleMode = _settings.IsClickHotkeyToggleModeEnabled();
                 bool keyDown = keyStateProvider(clickHotkey);
-                return ResolveClickHotkeyActive(toggleMode, keyDown, ref _clickHotkeyToggled, ref _clickHotkeyWasDown);
+                return ResolveToggleHotkeyActive(toggleMode, keyDown, ref _clickHotkeyToggled, ref _clickHotkeyWasDown);
             }
         }
 
@@ -32,27 +32,12 @@ namespace ClickIt.Shared.Input
 
                 bool toggleMode = _settings.IsLazyModeDisableHotkeyToggleModeEnabled();
                 bool keyDown = keyStateProvider(_settings.LazyModeDisableKeyBinding);
-                return ResolveLazyModeDisableActive(toggleMode, keyDown, ref _lazyModeDisableToggled, ref _lazyModeDisableKeyWasDown);
+                return ResolveToggleHotkeyActive(toggleMode, keyDown, ref _lazyModeDisableToggled, ref _lazyModeDisableKeyWasDown);
             }
         }
 
-        internal static bool ResolveLazyModeDisableActive(bool toggleModeEnabled, bool disableKeyPressed, ref bool toggledState, ref bool wasPressedLastFrame)
-        {
-            if (!toggleModeEnabled)
-            {
-                wasPressedLastFrame = disableKeyPressed;
-                return disableKeyPressed;
-            }
-
-            if (disableKeyPressed && !wasPressedLastFrame)
-                toggledState = !toggledState;
-
-
-            wasPressedLastFrame = disableKeyPressed;
-            return toggledState;
-        }
-
-        internal static bool ResolveClickHotkeyActive(bool toggleModeEnabled, bool hotkeyPressed, ref bool toggledState, ref bool wasPressedLastFrame)
+        // Shared hotkey toggle/edge resolver: in hold mode the key's raw state is returned (toggle state reset); in toggle mode a fresh key press edge flips the toggle state.
+        internal static bool ResolveToggleHotkeyActive(bool toggleModeEnabled, bool hotkeyPressed, ref bool toggledState, ref bool wasPressedLastFrame)
         {
             if (!toggleModeEnabled)
             {

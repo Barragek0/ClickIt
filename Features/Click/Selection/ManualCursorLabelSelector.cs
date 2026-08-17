@@ -58,7 +58,7 @@ namespace ClickIt.Features.Click.Selection
             return selectedLabel != null && !string.IsNullOrWhiteSpace(selectedMechanicId);
         }
 
-        // Keeps ranking rules testable without fabricating ExileCore label geometry.
+        // Keeps the ranking rules testable without fabricating ExileCore label geometry: the promote loop over pre-evaluated candidates is the unit the ManualCursorLabelSelectorTests drive.
         internal static bool TryResolveEvaluatedCandidates(
             IReadOnlyList<ManualCursorEvaluatedCandidate>? candidates,
             [NotNullWhen(true)] out LabelOnGround? selectedLabel,
@@ -118,9 +118,7 @@ namespace ClickIt.Features.Click.Selection
             if (!TryResolveCandidateMechanicId(candidate, allLabels, out string? mechanicId))
                 return false;
 
-            Entity? candidateEntity = DynamicAccess.TryGetDynamicValue(candidate, DynamicAccessProfiles.ItemOnGround, out object? rawCandidateEntity)
-                ? rawCandidateEntity as Entity
-                : null;
+            DynamicAccess.TryGetLabelItemOnGround(candidate, out Entity? candidateEntity);
             ManualCursorCandidateHoverState hoverState = ResolveCandidateHoverState(candidate, candidateEntity, cursorAbsolute, windowTopLeft);
             if (!hoverState.IsHovered)
                 return false;
@@ -165,9 +163,10 @@ namespace ClickIt.Features.Click.Selection
         }
 
         private bool IsCandidateSuppressed(LabelOnGround candidate, IReadOnlyList<LabelOnGround> allLabels)
-            => _dependencies.PathfindingLabelSuppression.ShouldSuppressLeverClick(candidate)
-                || UltimatumLabelMath.ShouldSuppressInactiveUltimatumLabel(candidate)
-                || _dependencies.LabelClickPointResolver.IsLabelFullyOverlapped(candidate, allLabels);
+            => ClickLabelSelectionMath.IsLabelSuppressionTriad(
+                _dependencies.PathfindingLabelSuppression.ShouldSuppressLeverClick(candidate),
+                UltimatumLabelMath.ShouldSuppressInactiveUltimatumLabel(candidate),
+                _dependencies.LabelClickPointResolver.IsLabelFullyOverlapped(candidate, allLabels));
 
         private static float ResolveCandidateScore(ManualCursorEvaluatedCandidate candidate)
         {
@@ -240,22 +239,10 @@ namespace ClickIt.Features.Click.Selection
             if (!DynamicAccess.TryReadBool(item, DynamicAccessProfiles.IsValid, out bool isValid) || !isValid)
                 return false;
 
-            if (!DynamicAccess.TryGetDynamicValue(item, DynamicAccessProfiles.PosNum, out object? rawPosition)
-                || rawPosition is not System.Numerics.Vector3 position
-                || !DynamicAccess.TryGetDynamicValue(_dependencies.GameController, DynamicAccessProfiles.Game, out object? rawGame)
-                || rawGame == null
-                || !DynamicAccess.TryGetDynamicValue(rawGame, DynamicAccessProfiles.IngameState, out object? rawIngameState)
-                || rawIngameState == null
-                || !DynamicAccess.TryGetDynamicValue(rawIngameState, DynamicAccessProfiles.Camera, out object? rawCamera)
-                || rawCamera == null
-                || !DynamicAccess.TryProjectWorldToScreen(rawCamera, position, out object? rawProjected)
-                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.X, out float projectedX)
-                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.Y, out float projectedY))
-            {
+            if (!EntityScreenProjection.TryProjectEntityScreen(_dependencies.GameController, item, out Vector2 screenPosition))
                 return false;
-            }
 
-            projectedPoint = new Vector2(projectedX + windowTopLeft.X, projectedY + windowTopLeft.Y);
+            projectedPoint = new Vector2(screenPosition.X + windowTopLeft.X, screenPosition.Y + windowTopLeft.Y);
             return float.IsFinite(projectedPoint.X) && float.IsFinite(projectedPoint.Y);
         }
     }

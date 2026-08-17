@@ -14,7 +14,6 @@ namespace ClickIt
             DebugClipboardService service = new(new DebugClipboardServiceDependencies(
                 State,
                 this,
-                GetEffectiveSettingsForLifecycle,
                 () => GameController));
             GameStateDumpCoordinator.SetSource(() => service.GameStateDump);
             return service;
@@ -57,7 +56,6 @@ namespace ClickIt
         {
             if (State.Runtime.IsShuttingDown || State.Services.PerformanceMonitor == null) return;
 
-            // Set flag to prevent logging during render loop
             State.Rendering.IsRendering = true;
             try
             {
@@ -99,22 +97,12 @@ namespace ClickIt
 
         public void LogMessage(string message, int frame = 5)
         {
-            // Skip logging during render loop to prevent crashes
             if (State.Rendering.IsRendering) return;
             base.LogMessage(message, frame);
         }
 
-        public void LogMessage(bool localDebug, string message, int frame = 0)
-        {
-            // Skip logging during render loop to prevent crashes
-            if (State.Rendering.IsRendering) return;
-            if (!localDebug || EffectiveSettings.DebugMode)
-                base.LogMessage(message, frame);
-
-        }
         public void LogError(string message, int frame = 0)
         {
-            // Skip logging during render loop to prevent crashes
             if (State.Rendering.IsRendering) return;
             base.LogError(message, frame);
         }

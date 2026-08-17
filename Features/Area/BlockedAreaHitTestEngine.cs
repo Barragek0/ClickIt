@@ -14,7 +14,7 @@ namespace ClickIt.Features.Area
 
         internal static bool PointInBlockedUiRectangle(Vector2 point, RectangleF rect, RectangleF fullScreenRectangle)
         {
-            if (BlockedAreaGeometryEngine.PointInUiRectangleAnyRepresentation(point, rect))
+            if (BlockedAreaGeometryEngine.PointInUiRectangle(point, rect))
                 return true;
 
             Vector2 windowTopLeft = new(fullScreenRectangle.X, fullScreenRectangle.Y);
@@ -22,7 +22,7 @@ namespace ClickIt.Features.Area
                 return false;
 
             Vector2 clientPoint = point - windowTopLeft;
-            return BlockedAreaGeometryEngine.PointInUiRectangleAnyRepresentation(clientPoint, rect);
+            return BlockedAreaGeometryEngine.PointInUiRectangle(clientPoint, rect);
         }
     }
 }

@@ -60,9 +60,8 @@ namespace ClickIt.Features.Click.State
 
         private static long TryResolveEntityAddress(LabelOnGround? label)
         {
-            if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                || rawItem == null
-                || !DynamicAccess.TryGetDynamicValue(rawItem, DynamicAccessProfiles.Address, out object? rawAddress)
+            if (!DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item)
+                || !DynamicAccess.TryGetDynamicValue(item, DynamicAccessProfiles.Address, out object? rawAddress)
                 || rawAddress == null)
             {
                 return 0;

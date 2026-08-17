@@ -49,7 +49,7 @@ namespace ClickIt.Core.Runtime
 
             bool shouldRunManualUiHoverCoroutine = PluginClickRuntimeStateEvaluator.ResolveManualUiHoverMode(
                 settings,
-                clickHotkeyActive: false).ShouldRunCoroutine;
+                clickHotkeyActive: false);
 
             UpdateManualUiHoverCoroutineForHotkeyRelease(runtime, shouldRunManualUiHoverCoroutine);
 

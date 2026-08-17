@@ -14,17 +14,8 @@ namespace ClickIt
         public bool IsOtherUltimatumClickEnabled()
             => ClickItSettingsRuntimeService.IsOtherUltimatumClickEnabled(this);
 
-        public bool IsAnyUltimatumClickEnabled()
-            => ClickItSettingsRuntimeService.IsAnyUltimatumClickEnabled(this);
-
         public bool IsUltimatumTakeRewardButtonClickEnabled()
             => ClickItSettingsRuntimeService.IsUltimatumTakeRewardButtonClickEnabled(this);
-
-        public bool IsAnyDetailedDebugSectionEnabled()
-            => ClickItSettingsRuntimeService.IsAnyDetailedDebugSectionEnabled(this);
-
-        public bool IsOnlyPathfindingDetailedDebugSectionEnabled()
-            => ClickItSettingsRuntimeService.IsOnlyPathfindingDetailedDebugSectionEnabled(this);
 
         public IReadOnlyList<string> GetMechanicPriorityOrder()
             => ClickItSettingsRuntimeService.GetMechanicPriorityOrder(this);

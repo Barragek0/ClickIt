@@ -61,26 +61,36 @@ namespace ClickIt.Tests.Core.Runtime
         }
 
         [DataTestMethod]
+        [DataRow(true, true, false)]
+        [DataRow(true, false, true)]
+        [DataRow(false, false, false)]
+        public void ShouldRunManualUiHoverCoroutine_ReturnsExpected(
+            bool manualUiHoverEnabled,
+            bool lazyModeEnabled,
+            bool expected)
+        {
+            bool result = PluginClickRuntimeStateEvaluator.ShouldRunManualUiHoverCoroutine(
+                manualUiHoverEnabled,
+                lazyModeEnabled);
+
+            result.Should().Be(expected);
+        }
+
+        [DataTestMethod]
         [DataRow(true, true, false, false)]
         [DataRow(true, false, false, true)]
         [DataRow(true, false, true, false)]
         [DataRow(false, false, false, false)]
-        public void ShouldRunManualUiHoverCoroutine_WithHotkeyState_ReturnsExpected(
+        public void ResolveManualUiHoverMode_WithHotkeyState_ReturnsExpected(
             bool manualUiHoverEnabled,
             bool lazyModeEnabled,
             bool clickHotkeyActive,
             bool expected)
         {
-            bool result = PluginClickRuntimeStateEvaluator.ShouldRunManualUiHoverCoroutine(
-                manualUiHoverEnabled,
-                lazyModeEnabled,
-                clickHotkeyActive);
-
-            result.Should().Be(expected);
             PluginClickRuntimeStateEvaluator.ResolveManualUiHoverMode(
                 manualUiHoverEnabled,
                 lazyModeEnabled,
-                clickHotkeyActive).ShouldRunCoroutine.Should().Be(expected);
+                clickHotkeyActive).Should().Be(expected);
         }
 
         [DataTestMethod]
@@ -91,17 +101,6 @@ namespace ClickIt.Tests.Core.Runtime
         public void ShouldCancelOffscreenPathingForInputRelease_ReturnsExpected(bool lazyModeEnabled, bool clickHotkeyHeld, bool expected)
         {
             bool result = PluginClickRuntimeStateEvaluator.ShouldCancelOffscreenPathingForInputRelease(lazyModeEnabled, clickHotkeyHeld);
-
-            result.Should().Be(expected);
-        }
-
-        [DataTestMethod]
-        [DataRow(10L, 11L, true)]
-        [DataRow(10L, 10L, false)]
-        [DataRow(11L, 10L, false)]
-        public void ShouldRestartClickTimerAfterSuccessfulClick_ReturnsExpected(long clickSequenceBefore, long clickSequenceAfter, bool expected)
-        {
-            bool result = PluginClickRuntimeStateEvaluator.ShouldRestartClickTimerAfterSuccessfulClick(clickSequenceBefore, clickSequenceAfter);
 
             result.Should().Be(expected);
         }
@@ -192,7 +191,7 @@ namespace ClickIt.Tests.Core.Runtime
             settings.ClickOnManualUiHoverOnly.Value = manualUiHoverEnabled;
             settings.LazyMode.Value = lazyModeEnabled;
 
-            PluginClickRuntimeStateEvaluator.ResolveManualUiHoverMode(settings, clickHotkeyActive: false).ShouldRunCoroutine.Should().Be(expected);
+            PluginClickRuntimeStateEvaluator.ResolveManualUiHoverMode(settings, clickHotkeyActive: false).Should().Be(expected);
         }
 
         private static void SeedNearbyMonsterCache(

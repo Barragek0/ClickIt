@@ -64,6 +64,14 @@ namespace ClickIt.Features.Click
                 _dependencies.LogMessage(message);
         }
 
+        // Lazy debug-log: the string factory is only invoked when DebugMode is on, so call sites never pay for the interpolation when debug logging is disabled.
+        internal void DebugLog(Func<string> messageFactory)
+        {
+            if (_dependencies.Settings.DebugMode?.Value != true)
+                return;
+            DebugLog(messageFactory());
+        }
+
         internal bool IsClickableInEitherSpace(Vector2 clientPoint, string path)
         {
             RectangleF windowArea = _dependencies.GetWindowRectangle();

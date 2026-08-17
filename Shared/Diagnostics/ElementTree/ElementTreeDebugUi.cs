@@ -1,18 +1,11 @@
 using NumVec4 = System.Numerics.Vector4;
+using static ClickIt.Shared.Diagnostics.DebugUiPalette;
 
 namespace ClickIt.Shared.Diagnostics.ElementTree;
 
 // Self-contained debug UI for an ElementTreeInspector: the first capture of a target renders the full tree, later captures only render changed values (old value in red, new value in green). Also appends the same view to the copy-all dump.
 internal static class ElementTreeDebugUi
 {
-    private static readonly NumVec4 CHeader = Vec4(Color.Orange);
-    private static readonly NumVec4 CInfo = Vec4(Color.Cyan);
-    private static readonly NumVec4 CMuted = Vec4(Color.LightGray);
-    private static readonly NumVec4 CDim = Vec4(Color.DarkGray);
-    private static readonly NumVec4 CWhite = Vec4(Color.White);
-    private static readonly NumVec4 CError = Vec4(Color.Red);
-    private static readonly NumVec4 CGreen = Vec4(Color.LightGreen);
-
     internal static void DrawSection(ElementTreeInspector inspector, string title, ref int selectedIndex)
     {
         IReadOnlyList<ElementInspectionCapture> history = inspector.GetHistory();
@@ -188,7 +181,4 @@ internal static class ElementTreeDebugUi
         => property.PreviousValue != null
             ? $"{property.Name}: {property.PreviousValue} -> {property.Value}"
             : $"{property.Name}: {property.Value}";
-
-    private static NumVec4 Vec4(Color c)
-        => new(c.R / 255f, c.G / 255f, c.B / 255f, c.A / 255f);
 }

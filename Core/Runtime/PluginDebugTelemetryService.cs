@@ -16,37 +16,9 @@ namespace ClickIt.Core.Runtime
         Func<TimeCache<List<LabelOnGround>>?> GetCachedLabels,
         Func<ErrorHandler?> GetErrorHandler);
 
-    internal sealed class PluginDebugTelemetryService(
-        Func<ClickAutomationPort?> getClickAutomationPort,
-        Func<ClickAutomationSupport?> getClickAutomationSupport,
-        Func<LabelDebugService?> getLabelDebugService,
-        Func<LazyModeBlockerService?> getLazyModeBlockerService,
-        Func<InventoryProbeService?> getInventoryProbeService,
-        Func<PathfindingService?> getPathfindingService,
-        Func<AltarService?> getAltarService,
-        Func<WeightCalculator?> getWeightCalculator,
-        Func<PluginRenderingState?> getRenderingState,
-        Func<GameController?> getGameController,
-        Func<InputHandler?> getInputHandler,
-        Func<ClickItSettings?> getSettings,
-        Func<TimeCache<List<LabelOnGround>>?> getCachedLabels,
-        Func<ErrorHandler?> getErrorHandler)
+    internal sealed class PluginDebugTelemetryService(PluginDebugTelemetryProjectionSources projectionSources)
     {
-        private readonly PluginDebugTelemetryProjectionSources _projectionSources = new(
-            getClickAutomationPort,
-            getClickAutomationSupport,
-            getLabelDebugService,
-            getLazyModeBlockerService,
-            getInventoryProbeService,
-            getPathfindingService,
-            getAltarService,
-            getWeightCalculator,
-            getRenderingState,
-            getGameController,
-            getInputHandler,
-            getSettings,
-            getCachedLabels,
-            getErrorHandler);
+        private readonly PluginDebugTelemetryProjectionSources _projectionSources = projectionSources;
         private readonly DebugTelemetryFreezeState _freezeState = new();
         private DebugTelemetrySnapshot? _cachedSnapshot;
         private long _lastSnapshotBuildTimestampMs;

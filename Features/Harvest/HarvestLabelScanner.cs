@@ -52,7 +52,7 @@ internal static class HarvestLabelScanner
     }
 
     private const int MaxSeedRowCache = 64;
-    // Cap the uncached element-tree walks per pass so entering a large harvest garden spreads the per-plot first-scan cost across frames instead of one processing spike (the full-clear at the cap used to re-scan every plot in the same pass).
+    // Cap uncached element-tree walks per pass so a large garden spreads per-plot first-scan cost across frames.
     private const int MaxSeedRowScansPerPass = 2;
 
     internal static List<(LabelOnGround Label, List<HarvestSeedRow> Rows)> ScanHarvestPlots(
@@ -112,8 +112,8 @@ internal static class HarvestLabelScanner
 
     internal static bool IsHarvestLabel(LabelOnGround label)
     {
-        string path = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-            && DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out string resolvedPath)
+        string path = DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item)
+            && DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
             ? resolvedPath
             : string.Empty;
 

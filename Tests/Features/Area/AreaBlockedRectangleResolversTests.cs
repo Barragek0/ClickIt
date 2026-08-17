@@ -14,13 +14,13 @@ namespace ClickIt.Tests.Features.Area
             RectangleF ritualRect = new(15, 25, 35, 45);
             RectangleF sentinelRect = new(16, 26, 36, 46);
 
-            AreaBlockedRectangleResolver.ResolveChatPanelBlockedRectangleFromRoot(CreatePathRoot(chatRect, 1, 2, 2)).Should().Be(chatRect);
-            AreaBlockedRectangleResolver.ResolveMapPanelBlockedRectangleFromRoot(CreatePathRoot(mapRect, 2, 1)).Should().Be(mapRect);
-            AreaBlockedRectangleResolver.ResolveXpBarBlockedRectangleFromRoot(CreatePathRoot(xpRect, 0)).Should().Be(xpRect);
-            AreaBlockedRectangleResolver.ResolveMirageBlockedRectangleFromRoot(CreateVisiblePathRoot(mirageRect, 7, 17)).Should().Be(mirageRect);
-            AreaBlockedRectangleResolver.ResolveAltarBlockedRectangleFromRoot(CreateVisiblePathRoot(altarRect, 7, 16)).Should().Be(altarRect);
-            AreaBlockedRectangleResolver.ResolveRitualBlockedRectangleFromRoot(CreateVisiblePathRoot(ritualRect, 7, 18, 0)).Should().Be(ritualRect);
-            AreaBlockedRectangleResolver.ResolveSentinelBlockedRectangleFromRoot(CreatePathRoot(sentinelRect, 7, 18, 2, 0)).Should().Be(sentinelRect);
+            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreatePathRoot(chatRect, 1, 2, 2), AreaBlockedRectangleKind.ChatPanel).Should().Be(chatRect);
+            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreatePathRoot(mapRect, 2, 1), AreaBlockedRectangleKind.MapPanel).Should().Be(mapRect);
+            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreatePathRoot(xpRect, 0), AreaBlockedRectangleKind.XpBar).Should().Be(xpRect);
+            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreateVisiblePathRoot(mirageRect, 7, 17), AreaBlockedRectangleKind.Mirage).Should().Be(mirageRect);
+            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreateVisiblePathRoot(altarRect, 7, 16), AreaBlockedRectangleKind.Altar).Should().Be(altarRect);
+            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreateVisiblePathRoot(ritualRect, 7, 18, 0), AreaBlockedRectangleKind.Ritual).Should().Be(ritualRect);
+            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreatePathRoot(sentinelRect, 7, 18, 2, 0), AreaBlockedRectangleKind.Sentinel).Should().Be(sentinelRect);
         }
 
         [TestMethod]
@@ -29,8 +29,8 @@ namespace ClickIt.Tests.Features.Area
             var hiddenRoot = CreatePathRoot(new RectangleF(1, 2, 10, 10), 7, 17);
             EnsurePath(hiddenRoot, [7, 17]).IsVisible = false;
 
-            AreaBlockedRectangleResolver.ResolveMirageBlockedRectangleFromRoot(hiddenRoot).Should().Be(RectangleF.Empty);
-            AreaBlockedRectangleResolver.ResolveAltarBlockedRectangleFromRoot(null).Should().Be(RectangleF.Empty);
+            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(hiddenRoot, AreaBlockedRectangleKind.Mirage).Should().Be(RectangleF.Empty);
+            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(null, AreaBlockedRectangleKind.Altar).Should().Be(RectangleF.Empty);
         }
 
         [TestMethod]

@@ -77,10 +77,26 @@ namespace ClickIt.Features.Click.Runtime
                     continue;
                 }
 
-                names.Add(NormalizeModifierText(modifierObj?.ToString() ?? string.Empty));
+                names.Add(NormalizeModifierText(ResolveModifierObjectName(modifierObj)));
             }
 
             return names == null ? [] : [.. names];
+        }
+
+        // Modifier list entries are UltimatumModifier objects whose Name/Id/Description carry the display text (a bare ToString() yields the type name).
+        private static string ResolveModifierObjectName(object? modifierObj)
+        {
+            if (modifierObj == null)
+                return string.Empty;
+
+            if (TryReadString(static m => m.Name, modifierObj, out string name) && !string.IsNullOrWhiteSpace(name))
+                return name;
+            if (TryReadString(static m => m.Id, modifierObj, out string id) && !string.IsNullOrWhiteSpace(id))
+                return id;
+            if (TryReadString(static m => m.Description, modifierObj, out string description) && !string.IsNullOrWhiteSpace(description))
+                return description;
+
+            return modifierObj.ToString() ?? string.Empty;
         }
 
         internal static string GetUltimatumModifierName(Element option)
@@ -325,6 +341,24 @@ namespace ClickIt.Features.Click.Runtime
         {
             TryGetDynamicValue(choicePanel, static s => s.Modifiers, out object? modifiersObj);
             return ExtractUltimatumModifierNames(modifiersObj, diagnostics, "ChoicePanel: Modifiers missing.");
+        }
+
+        // panel.Modifiers is not populated until a card is hovered on current ExileApi builds; ChoicesPanel.Modifiers carries the three offered modifiers reliably. Prefer it, fall back to the panel-level list.
+        internal static IReadOnlyList<string> GetUltimatumPanelModifierNames(object? panelObj, List<string>? diagnostics = null)
+        {
+            if (panelObj != null
+                && TryGetDynamicValue(panelObj, static s => s.ChoicesPanel, out object? choicesPanel)
+                && choicesPanel != null)
+            {
+                IReadOnlyList<string> fromChoices = GetUltimatumChoicePanelModifierNames(choicesPanel, diagnostics);
+                if (fromChoices.Count > 0)
+                    return fromChoices;
+            }
+
+            if (panelObj != null && TryGetDynamicValue(panelObj, static s => s.Modifiers, out object? modifiersObj))
+                return ExtractUltimatumModifierNames(modifiersObj, diagnostics, "UltimatumPanel: Modifiers missing.");
+
+            return [];
         }
 
         private static string ResolveUltimatumModifierNameFromChoiceObject(object? choiceObject, Element option, int seen, IReadOnlyList<string> modifierNamesByIndex)

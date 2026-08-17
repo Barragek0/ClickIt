@@ -10,6 +10,7 @@ namespace ClickIt.Tests.Behavior.Click
             public bool ClickItems { get; set; } = true;
             public bool ClickStrongboxes { get; set; } = true;
             public bool WalkTowardOffscreenLabels { get; set; } = true;
+            public bool CaptureClickDebug { get; set; }
             public int MechanicPriorityDistancePenalty { get; set; }
             public Dictionary<string, int> MechanicPriorityIndexMap { get; set; } = new(StringComparer.OrdinalIgnoreCase);
             public List<RectangleF> BlockedRects { get; set; } = [];
@@ -163,6 +164,9 @@ namespace ClickIt.Tests.Behavior.Click
             // Number of times the click interaction was actually executed (the click path reached PerformResolvedLabelInteraction). A walk decision stops the tick before this runs.
             public int InteractionsExecuted { get; private set; }
 
+            // Debug stages published by the click pipeline (populated when CaptureClickDebug is enabled), so tests can assert which path ran (e.g. a walk vs a settle-block).
+            public List<ClickDebugSnapshot> ClickDebugSnapshots { get; } = [];
+
             // The click position of the last executed interaction, so tests can assert the click landed inside the label and outside any blocked rectangle.
             public Vector2? LastClickPosition { get; private set; }
 
@@ -215,8 +219,8 @@ namespace ClickIt.Tests.Behavior.Click
                     GetMechanicIdForLabelCore: _labelInteractionPort.GetMechanicIdForLabel));
 
                 var clickDebugPublisher = ClickTestDebugPublisherFactory.Create(
-                    shouldCaptureClickDebug: static () => false,
-                    setLatestClickDebug: static _ => { });
+                    shouldCaptureClickDebug: () => config.CaptureClickDebug,
+                    setLatestClickDebug: ClickDebugSnapshots.Add);
 
                 LabelInteraction = new ClickLabelInteractionService(new ClickLabelInteractionServiceDependencies(
                     Settings,
@@ -313,21 +317,37 @@ namespace ClickIt.Tests.Behavior.Click
                     LabelInteraction));
                 var offscreenPathing = CreateOffscreenPathingCoordinator(config, runtimeState, pathfindingService, clickDebugPublisher);
 
-                return new InteractionExecutionEngine(new InteractionExecutionEngineDependencies(
-                    Settings,
-                    labelInteractionPort,
-                    pathfindingService,
-                    VisibleMechanics,
-                    CreateSpecialLabelInteractionHandler(),
-                    pathfindingLabelSuppression,
-                    chestLootSettlement,
-                    offscreenPathing,
-                    clickDebugPublisher,
-                    LabelInteraction,
-                    PointIsInClickableArea: (point, _) => ClickableArea(point),
-                    ShouldCaptureClickDebug: static () => false,
-                    HoldDebugTelemetryAfterSuccess: static _ => { },
-                    DebugLog: static _ => { }));
+                return new InteractionExecutionEngine(new ClickRuntimeEngineDependencies(
+                    Telemetry: new ClickTelemetryDependencies(
+                        ClickDebugPublisher: clickDebugPublisher,
+                        ShouldCaptureClickDebug: () => config.CaptureClickDebug,
+                        HoldDebugTelemetryAfterSuccess: static _ => { },
+                        DebugLog: static _ => { },
+                        RecordAllocationBreakdown: null,
+                        RecordBreakdownStage: null),
+                    Policy: new ClickPolicyDependencies(
+                        Settings: Settings,
+                        InputHandler: null!,
+                        PointIsInClickableArea: (point, _) => ClickableArea(point),
+                        ClickSuccessAnchor: null),
+                    Selection: new ClickSelectionDependencies(
+                        TickContextFactory: null!,
+                        LabelInteractionPort: labelInteractionPort,
+                        VisibleMechanics: VisibleMechanics,
+                        LabelSelectionScan: null!,
+                        SpecialLabelInteraction: CreateSpecialLabelInteractionHandler(),
+                        LabelInteraction: LabelInteraction,
+                        ChestLootSettlement: chestLootSettlement),
+                    Pathing: new ClickPathingDependencies(
+                        PathfindingService: pathfindingService,
+                        PathfindingLabelSuppression: pathfindingLabelSuppression,
+                        OffscreenPathing: offscreenPathing),
+                    Mechanics: new ClickMechanicDependencies(
+                        AltarAutomation: null!,
+                        GetHarvestLabelToClick: null,
+                        TryProgressBlightBuilding: null,
+                        GetBlightPathfindTarget: null,
+                        IsBlightEncounterActive: null)));
             }
 
             private SpecialLabelInteractionHandler CreateSpecialLabelInteractionHandler()
@@ -399,7 +419,6 @@ namespace ClickIt.Tests.Behavior.Click
                         clickDebugPublisher)),
                     TraversalTargetResolver: traversalResolver,
                     StickyTargetHandler: stickyHandler,
-                    TargetResolver: null!,
                     MovementSkills: null!,
                     LabelInteraction: labelInteraction,
                     DebugLog: static _ => { },
@@ -430,7 +449,7 @@ namespace ClickIt.Tests.Behavior.Click
                 => false;
         }
 
-        internal sealed class ScenarioVisibleMechanicInteractionPort(ScenarioConfig config) : IVisibleMechanicInteractionPort
+        internal sealed class ScenarioVisibleMechanicInteractionPort(ScenarioConfig config) : IVisibleMechanicRuntimePort
         {
             public int ShrineClicks { get; private set; }
 
@@ -468,6 +487,27 @@ namespace ClickIt.Tests.Behavior.Click
 
             public void HandleSuccessfulShrineClick(Entity? shrine)
             {
+            }
+
+            public Entity? ResolveNextShrineCandidate()
+                => null;
+
+            public bool HasClickableShrine()
+                => false;
+
+            public void ResolveVisibleMechanicCandidates(
+                out LostShipmentCandidate? lostShipmentCandidate,
+                out SettlersOreCandidate? settlersOreCandidate,
+                IReadOnlyList<LabelOnGround>? labelsOverride = null)
+            {
+                lostShipmentCandidate = null;
+                settlersOreCandidate = null;
+            }
+
+            public void ResolveHiddenFallbackCandidates(out LostShipmentCandidate? lostShipmentCandidate, out SettlersOreCandidate? settlersOreCandidate)
+            {
+                lostShipmentCandidate = null;
+                settlersOreCandidate = null;
             }
         }
 

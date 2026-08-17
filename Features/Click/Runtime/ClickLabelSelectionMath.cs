@@ -2,18 +2,6 @@ namespace ClickIt.Features.Click.Runtime
 {
     internal static class ClickLabelSelectionMath
     {
-        internal static bool ShouldContinuePathingForSpecialAltarLabel(
-            bool walkTowardOffscreenLabelsEnabled,
-            bool hasBackingEntity,
-            bool isBackingEntityHidden,
-            bool hasClickableAltars)
-        {
-            return walkTowardOffscreenLabelsEnabled
-                && hasBackingEntity
-                && !isBackingEntityHidden
-                && !hasClickableAltars;
-        }
-
         internal static bool IsEssenceLabel(LabelOnGround lbl)
         {
             if (lbl == null || lbl.Label == null)
@@ -27,24 +15,23 @@ namespace ClickIt.Features.Click.Runtime
             if (lbl == null)
                 return false;
 
-            return DynamicAccess.TryGetDynamicValue(lbl, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                && rawItem != null
-                && DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out string path)
+            return DynamicAccess.TryGetLabelItemOnGround(lbl, out Entity? item)
+                && DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string path)
                 && path.Contains("strongbox", StringComparison.OrdinalIgnoreCase);
         }
 
         internal static bool ShouldAttemptSpecialEssenceCorruption(bool corruptionPointInWindow, bool corruptionPointClickable)
             => corruptionPointInWindow && corruptionPointClickable;
 
-        internal static int GetGroundLabelSearchLimit(int totalVisibleLabels)
-            => SystemMath.Max(0, totalVisibleLabels);
+        internal static bool IsLabelSuppressionTriad(bool leverSuppressed, bool ultimatumSuppressed, bool fullyOverlapped)
+            => leverSuppressed || ultimatumSuppressed || fullyOverlapped;
+
 
         // Debug-brief helpers used by the click-flow debug stages so a dumped stage names the exact label (address + entity path) and cursor position that produced it.
         internal static string DescribeLabel(LabelOnGround label)
         {
-            string entityPath = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                && rawItem != null
-                && DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out string resolvedPath)
+            string entityPath = DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item)
+                && DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
                 ? resolvedPath
                 : string.Empty;
             return $"label=0x{label.Address:X} entity={entityPath}";
@@ -73,17 +60,6 @@ namespace ClickIt.Features.Click.Runtime
             return null;
         }
 
-        internal static int IndexOfLabelReference(IReadOnlyList<LabelOnGround> labels, LabelOnGround target, int start, int endExclusive)
-        {
-            for (int i = start; i < endExclusive; i++)
-            {
-                if (ReferenceEquals(labels[i], target))
-                    return i;
-            }
-
-            return -1;
-        }
-
         internal static bool IsLeverClickSuppressedByCooldown(ulong lastLeverKey, long lastLeverClickTimestampMs, ulong currentLeverKey, long now, int cooldownMs)
         {
             if (cooldownMs <= 0)
@@ -101,34 +77,38 @@ namespace ClickIt.Features.Click.Runtime
 
         internal static bool IsLeverLabel(LabelOnGround? label)
         {
-            string? path = label?.ItemOnGround?.Path;
-            return !string.IsNullOrWhiteSpace(path)
-                && path.Contains("Switch_Once", StringComparison.OrdinalIgnoreCase);
-        }
-
-        internal static ulong GetLeverIdentityKey(LabelOnGround label)
-        {
-            ulong itemAddress = unchecked((ulong)(label.ItemOnGround?.Address ?? 0));
-            if (itemAddress != 0)
-                return itemAddress;
-
-            ulong elementAddress = unchecked((ulong)(label.Label?.Address ?? 0));
-            if (elementAddress != 0)
-                return elementAddress;
-
-            return 0;
-        }
-
-        internal static bool IsAltarLabel(LabelOnGround label)
-        {
-            if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                || rawItem == null
-                || !DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out string path))
+            // Read via DynamicAccess so the lever check works on any label wrapper (like the other classification reads), not just live game labels.
+            if (!DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item)
+                || !DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string path))
             {
                 return false;
             }
 
-            return path.Contains("CleansingFireAltar") || path.Contains("TangleAltar");
+            return path.Contains("Switch_Once", StringComparison.OrdinalIgnoreCase);
+        }
+
+        internal static ulong GetLeverIdentityKey(LabelOnGround label)
+        {
+            if (DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item)
+                && DynamicAccess.TryReadEntityAddress(item, out long address))
+            {
+                ulong itemAddress = unchecked((ulong)address);
+                if (itemAddress != 0)
+                    return itemAddress;
+            }
+
+            return UltimatumLabelMath.GetLabelElementAddress(label);
+        }
+
+        internal static bool IsAltarLabel(LabelOnGround label)
+        {
+            if (!DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item)
+                || !DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string path))
+            {
+                return false;
+            }
+
+            return path.Contains("CleansingFireAltar", StringComparison.Ordinal) || path.Contains("TangleAltar", StringComparison.Ordinal);
         }
 
         internal static bool IsInsideWindowInEitherSpace(Vector2 point, RectangleF windowArea)

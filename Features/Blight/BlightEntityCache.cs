@@ -39,7 +39,6 @@ internal sealed class BlightEntityCache
     private readonly List<(Entity Entity, string TowerId)> _towerEntities = [];
     private Entity? _pumpEntity;
     private NumVector2? _persistedPumpGridPosition;
-    private System.Numerics.Vector3? _persistedPumpWorldPosition;
     private bool _hasDetectedAnyBlightContent;
     private bool _hasCompletedInitialScan;
     // When no blight content has been found, the entity scan pauses between full scans; this bounds how long it stays paused so an encounter starting in the current area is still picked up.
@@ -138,11 +137,6 @@ internal sealed class BlightEntityCache
     {
         get { lock (_blightDataLock) return _persistedPumpGridPosition; }
     }
-
-    internal System.Numerics.Vector3? PumpWorldPosition
-    {
-        get { lock (_blightDataLock) return _persistedPumpWorldPosition; }
-    }
     internal IReadOnlyList<BlightCachedTower> KnownTowers
     {
         get
@@ -169,8 +163,6 @@ internal sealed class BlightEntityCache
             }
         }
     }
-    internal HashSet<NumVector2> FailedFoundationPositions { get; } = [];
-    // Read by the render thread (GetBranchDebug/DrawLaneLabels) while the scan thread persists new branch anchors in BlightPlanner.Build, so it must be a concurrent collection.
     internal ConcurrentDictionary<NumVector2, byte> CachedBranchAnchors { get; } = new();
     internal NumVector2[]? CachedCoveragePathways
     {
@@ -220,31 +212,8 @@ internal sealed class BlightEntityCache
     // The lane's own StateMachine "visual" state is the authoritative render signal: visual == 1 (spawned, not yet sending enemies) and visual == 2 (actively sending) both show the lane, visual == 3 (all enemies sent, inactive) hides it. Returns the visual value when readable, else 0 (unknown — treated as hidden).
     private static int ReadPathwayVisualState(Entity entity)
     {
-        try
-        {
-            if (DynamicAccess.TryGetComponent(entity, out StateMachine? stateMachine) && stateMachine != null)
-            {
-                dynamic? states = stateMachine.States;
-                if (states != null)
-                {
-                    foreach (dynamic state in states)
-                    {
-                        string? name = state.Name as string;
-                        if (name == "visual")
-                        {
-                            long value = BlightHelpers.TryReadStateValue(state);
-                            if (value is 1 or 2 or 3)
-                                return (int)value;
-                        }
-                    }
-                }
-            }
-        }
-        catch
-        {
-        }
-
-        return 0;
+        long? visual = BlightEncounter.TryReadPumpState(entity, "visual");
+        return visual is 1 or 2 or 3 ? (int)visual.Value : 0;
     }
 
     // Only currently-valid entities have trustworthy component reads; streamed-out (retained but invalid) entities must keep their last-good persisted icon data instead.
@@ -954,7 +923,6 @@ internal sealed class BlightEntityCache
 
             if (IsEntityCurrentlyValid(entity))
             {
-                // Check for BlightTower component via reflection-safe wrapper
                 if (DynamicAccess.TryGetComponent(entity, out BlightTower? blightComp)
                     && blightComp != null)
                 {
@@ -993,7 +961,7 @@ internal sealed class BlightEntityCache
                     entityScannedFoundations++;
                 }
 
-                // Store entity reference + world position (in-world helpers project from PosNum, not GridPosNum).
+                // In-world helpers project from PosNum, not GridPosNum.
                 _scanLocalKnown[idx].FoundationEntity = entity;
                 _scanLocalKnown[idx].WorldPos3 = SafeReadPosNum(entity);
             }
@@ -1104,7 +1072,6 @@ internal sealed class BlightEntityCache
             if (localPump != null)
             {
                 _persistedPumpGridPosition = new NumVector2(localPump.GridPosNum.X, localPump.GridPosNum.Y);
-                _persistedPumpWorldPosition = localPump.PosNum;
             }
             _knownTowers.Clear();
             _knownTowers.AddRange(_scanLocalKnown);
@@ -1368,14 +1335,12 @@ internal sealed class BlightEntityCache
                     if (existing.UpgradeLevel == 0)
                         existing.TowerType = currentType;
                     existing.FoundationEntity = entity;
-                    existing.LabelElement = labelElement;
                 }
                 else
                 {
                     _knownTowers.Add(new BlightCachedTower(worldPos, currentType)
                     {
-                        FoundationEntity = entity,
-                        LabelElement = labelElement
+                        FoundationEntity = entity
                     });
                 }
             }
@@ -1568,8 +1533,7 @@ internal sealed class BlightEntityCache
     {
         try
         {
-            if (DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                && rawItem is Entity entity)
+            if (DynamicAccess.TryGetLabelItemOnGround(label, out Entity? entity))
                 return entity;
         }
         catch { }
@@ -1580,9 +1544,8 @@ internal sealed class BlightEntityCache
     {
         try
         {
-            if (DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                && rawItem != null
-                && DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out string resolvedPath))
+            if (DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item)
+                && DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath))
                 return resolvedPath;
         }
         catch { }
@@ -1602,7 +1565,6 @@ internal sealed class BlightEntityCache
             _towerEntities.Clear();
             _pumpEntity = null;
             _persistedPumpGridPosition = null;
-            _persistedPumpWorldPosition = null;
             _entityPathCache.Clear();
             _pathwayWorldPositions = [];
         }
@@ -1610,7 +1572,6 @@ internal sealed class BlightEntityCache
         _lastProcessedLabels = null;
         _hasDetectedAnyBlightContent = false;
         _hasCompletedInitialScan = false;
-        FailedFoundationPositions.Clear();
         lock (_blightDataLock)
         {
             _cachedCoverage = null;

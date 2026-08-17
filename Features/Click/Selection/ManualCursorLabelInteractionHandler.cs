@@ -23,9 +23,8 @@ namespace ClickIt.Features.Click.Selection
             if (hoveredLabel == null)
                 return false;
 
-            if (ManualCursorSelectionMath.ShouldAttemptManualCursorAltarClick(
-                ClickLabelSelectionMath.IsAltarLabel(hoveredLabel),
-                _dependencies.AltarAutomation.HasClickableAltars()))
+            // Altars are only ever clicked via the altar automation (which evaluates the top/bottom options). A hovered altar label must never fall through to the generic click - a blind click lands on a fixed label point (an arbitrary altar option), not the evaluated best choice.
+            if (ClickLabelSelectionMath.IsAltarLabel(hoveredLabel))
             {
                 return _dependencies.AltarAutomation.TryClickManualCursorPreferredAltarOption(cursorAbsolute, windowTopLeft);
             }

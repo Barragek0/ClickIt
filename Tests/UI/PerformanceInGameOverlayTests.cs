@@ -3,16 +3,14 @@ namespace ClickIt.Tests.UI;
 [TestClass]
 public class PerformanceInGameOverlayTests
 {
-    private static OverlayRenderContext CreateContext(DeferredTextQueue textQueue)
+    private static OverlayRenderContext CreateContext(DeferredDrawQueue textQueue)
         => new(
             new ClickItSettings(),
             GameController: null,
             Graphics: null,
             WindowArea: default,
             Labels: null,
-            textQueue,
-            new DeferredFrameQueue(),
-            new DeferredDrawQueue());
+            textQueue);
 
     [TestMethod]
     public void Draw_EnqueuesTableRows_WhenFpsDataPresent()
@@ -24,7 +22,7 @@ public class PerformanceInGameOverlayTests
         monitor.RecordAllocation(ProcessingSection.Label, 2048);
 
         var overlay = new PerformanceInGameOverlay(() => monitor.GetDebugSnapshot());
-        var textQueue = new DeferredTextQueue();
+        var textQueue = new DeferredDrawQueue();
 
         overlay.Draw(CreateContext(textQueue));
 
@@ -42,7 +40,7 @@ public class PerformanceInGameOverlayTests
         monitor.RecordAllocation(ProcessingSection.Label, 2048);
 
         var overlay = new PerformanceInGameOverlay(() => monitor.GetDebugSnapshot());
-        var textQueue = new DeferredTextQueue();
+        var textQueue = new DeferredDrawQueue();
 
         overlay.Draw(CreateContext(textQueue));
 
@@ -62,7 +60,7 @@ public class PerformanceInGameOverlayTests
         monitor.RecordRenderSectionTiming(RenderSection.AltarOverlay, 1.0);
 
         var overlay = new PerformanceInGameOverlay(() => monitor.GetDebugSnapshot());
-        var textQueue = new DeferredTextQueue();
+        var textQueue = new DeferredDrawQueue();
 
         overlay.Draw(CreateContext(textQueue));
 
@@ -81,7 +79,7 @@ public class PerformanceInGameOverlayTests
         monitor.MarkInterval(IntervalKind.Click);
 
         var overlay = new PerformanceInGameOverlay(() => monitor.GetDebugSnapshot());
-        var textQueue = new DeferredTextQueue();
+        var textQueue = new DeferredDrawQueue();
 
         overlay.Draw(CreateContext(textQueue));
 
@@ -100,7 +98,7 @@ public class PerformanceInGameOverlayTests
             ListReadBytes: 1024 * 1024, ListAllocBytes: 4096, ValidityBytes: 32768, SortBytes: 2048, TotalBytes: 1024 * 1024 + 4096 + 32768 + 2048));
 
         var overlay = new PerformanceInGameOverlay(() => monitor.GetDebugSnapshot());
-        var textQueue = new DeferredTextQueue();
+        var textQueue = new DeferredDrawQueue();
 
         overlay.Draw(CreateContext(textQueue));
 
@@ -122,7 +120,7 @@ public class PerformanceInGameOverlayTests
             ContextBytes: 2048, AcquireBytes: 2 * 1024 * 1024, RankBytes: 32768, ExecuteBytes: 65536, PostBytes: 1024, OtherBytes: 4096, TotalBytes: 2048 + 2 * 1024 * 1024 + 32768 + 65536 + 1024 + 4096));
 
         var overlay = new PerformanceInGameOverlay(() => monitor.GetDebugSnapshot());
-        var textQueue = new DeferredTextQueue();
+        var textQueue = new DeferredDrawQueue();
 
         overlay.Draw(CreateContext(textQueue));
 
@@ -150,7 +148,7 @@ public class PerformanceInGameOverlayTests
         monitor.RecordBreakdown(ProcessingSection.Blight, bytes, ms);
 
         var overlay = new PerformanceInGameOverlay(() => monitor.GetDebugSnapshot());
-        var textQueue = new DeferredTextQueue();
+        var textQueue = new DeferredDrawQueue();
 
         overlay.Draw(CreateContext(textQueue));
 
@@ -166,7 +164,7 @@ public class PerformanceInGameOverlayTests
     public void Draw_EnqueuesNothing_WhenNoFpsData()
     {
         var overlay = new PerformanceInGameOverlay(() => default);
-        var textQueue = new DeferredTextQueue();
+        var textQueue = new DeferredDrawQueue();
 
         overlay.Draw(CreateContext(textQueue));
 
@@ -179,19 +177,17 @@ public class PerformanceInGameOverlayTests
         var settings = new ClickItSettings();
         var monitor = new PerformanceMonitor(settings);
         monitor.RecordFpsSample(120);
-        // Two render sections with different maxes: the totals row must SUM them, not take the worst.
         monitor.RecordRenderSectionTiming(RenderSection.AltarOverlay, 2.0);
         monitor.RecordRenderSectionTiming(RenderSection.AltarOverlay, 4.0);  // Altar max = 4.0
         monitor.RecordRenderSectionTiming(RenderSection.BlightOverlay, 3.0); // Blight max = 3.0
         monitor.RecordRenderSectionTiming(RenderSection.DebugOverlay, 5.0);  // Debug max = 5.0
 
         var overlay = new PerformanceInGameOverlay(() => monitor.GetDebugSnapshot());
-        var textQueue = new DeferredTextQueue();
+        var textQueue = new DeferredDrawQueue();
 
         overlay.Draw(CreateContext(textQueue));
 
         string[] lines = textQueue.GetPendingTextSnapshot();
-        // 4.0 + 3.0 + 5.0 = 12.0 — only reachable if the totals max combines every section's max.
         lines.Should().Contain("12.0");
     }
 
@@ -204,7 +200,7 @@ public class PerformanceInGameOverlayTests
         monitor.RecordSuccessfulClickTiming(18);
 
         var overlay = new PerformanceInGameOverlay(() => monitor.GetDebugSnapshot());
-        var textQueue = new DeferredTextQueue();
+        var textQueue = new DeferredDrawQueue();
 
         overlay.Draw(CreateContext(textQueue));
 
@@ -230,7 +226,7 @@ public class PerformanceInGameOverlayTests
         monitor.RecordSuccessfulClickTiming(18);
 
         var overlay = new PerformanceInGameOverlay(() => monitor.GetDebugSnapshot());
-        var textQueue = new DeferredTextQueue();
+        var textQueue = new DeferredDrawQueue();
 
         overlay.Draw(CreateContext(textQueue));
 

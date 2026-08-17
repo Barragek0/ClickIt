@@ -207,24 +207,7 @@ namespace ClickIt.Features.Click.Application
                 : $"Sticky offscreen target click succeeded: {stickyTargetPath}";
 
         private bool TryProjectEntityScreenPosition(Entity entity, out Vector2 screenPosition)
-        {
-            screenPosition = default;
-
-            if (!DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.PosNum, out object? rawPosition)
-                || rawPosition is not System.Numerics.Vector3 position
-                || !DynamicAccess.TryGetDynamicValue(_dependencies.GameController, DynamicAccessProfiles.Game, out object? rawGame)
-                || !DynamicAccess.TryGetDynamicValue(rawGame, DynamicAccessProfiles.IngameState, out object? rawIngameState)
-                || !DynamicAccess.TryGetDynamicValue(rawIngameState, DynamicAccessProfiles.Camera, out object? rawCamera)
-                || !DynamicAccess.TryProjectWorldToScreen(rawCamera, position, out object? rawProjected)
-                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.X, out float projectedX)
-                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.Y, out float projectedY))
-            {
-                return false;
-            }
-
-            screenPosition = new(projectedX, projectedY);
-            return true;
-        }
+            => EntityScreenProjection.TryProjectEntityScreen(_dependencies.GameController, entity, out screenPosition);
 
         private static bool TryGetEntityAddress(Entity entity, out long address)
         {

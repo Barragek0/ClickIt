@@ -76,16 +76,5 @@ namespace ClickIt.Shared.Game
                 _cachedValue = default!;
             }
         }
-
-        public bool HasCachedValue
-        {
-            get
-            {
-                lock (_gate)
-                {
-                    return _hasCachedValue;
-                }
-            }
-        }
     }
 }

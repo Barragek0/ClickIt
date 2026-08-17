@@ -419,28 +419,22 @@ namespace ClickIt.Tests.Features.Labels.Classification
         public void TryGetLabelAdapter_ReturnsTrue_WhenLabelPayloadIsElement()
         {
             LabelOnGround label = new LabelProbe { Label = ExileCoreOpaqueFactory.CreateOpaque<Element>() };
-            object?[] args = [label, null];
 
-            bool result = (bool)typeof(MechanicClassifier)
-                .GetMethod("TryGetLabelAdapter", BindingFlags.Static | BindingFlags.NonPublic)!
-                .Invoke(null, args)!;
+            bool result = LabelElementSearch.TryGetLabelAdapter(label, out IElementAdapter? adapter);
 
             result.Should().BeTrue();
-            args[1].Should().BeOfType<ElementAdapter>();
+            adapter.Should().BeOfType<ElementAdapter>();
         }
 
         [TestMethod]
         public void TryGetLabelAdapter_ReturnsFalse_WhenConcreteExileCoreLabelReadFails()
         {
             LabelOnGround label = ExileCoreOpaqueFactory.CreateOpaqueLabel();
-            object?[] args = [label, null];
 
-            bool result = (bool)typeof(MechanicClassifier)
-                .GetMethod("TryGetLabelAdapter", BindingFlags.Static | BindingFlags.NonPublic)!
-                .Invoke(null, args)!;
+            bool result = LabelElementSearch.TryGetLabelAdapter(label, out IElementAdapter? adapter);
 
             result.Should().BeFalse();
-            args[1].Should().BeNull();
+            adapter.Should().BeNull();
         }
 
         private static LabelOnGround CreateLabelWithText(string text)

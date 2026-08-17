@@ -14,17 +14,14 @@ namespace ClickIt.Features.Click.Interaction
         private long _rectCacheWindowStartMs;
         private const long RectCacheWindowMs = 250;
 
-        // Spatial grid (cell -> label addresses) over on-screen label rects so overlap-blocker collection only
-        // inspects labels whose cells intersect the target, instead of scanning all N labels per examined label
-        // (O(N x K) on dense fields with K examined labels). Rebuilt when the label-set reference changes or the
-        // TTL expires; the grid stores ADDRESSES so it stays valid across list-instance churn.
+        // Spatial grid (cell -> label addresses) over on-screen label rects so overlap-blocker collection only inspects labels whose cells intersect the target, instead of scanning all N labels per examined label (O(N x K) on dense fields with K examined labels). Rebuilt when the label-set reference changes or the TTL expires; the grid stores ADDRESSES so it stays valid across list-instance churn.
         private IReadOnlyList<LabelOnGround>? _gridLabelsRef;
         private Dictionary<long, List<long>>? _gridCells;
         private long _gridBuiltAtMs;
         private const long BlockerGridWindowMs = 250;
         private const float BlockerGridCellSize = 64f;
 
-        // The click coroutine and the manual-hover coroutine share this resolver and, with CoroutineMultiThreading enabled, can run on different threads. Both caches are plain dictionaries mutated from those paths, so they are guarded by a lock (the same corruption class previously fixed in LabelReadModelService).
+        // The click coroutine and manual-hover coroutine can run on different threads (CoroutineMultiThreading); both caches are mutated from those paths, so guard them with a lock.
         private readonly Lock _cacheLock = new();
 
         private readonly record struct ResolvedLabelMetadata(EntityType ItemType, string? ItemPath, string? RenderName);
@@ -60,49 +57,6 @@ namespace ClickIt.Features.Click.Interaction
 
             List<RectangleF> blockedAreas = LabelClickPointSearch.BuildIntersectionOverlaps(rect, potentialBlockers);
             return !LabelClickPointSearch.TryResolveVisibleClickPoint(rect, preferredPoint, blockedAreas, out _);
-        }
-
-        // Runtime wrapper over the resolved-value overload so production reads real label geometry.
-        internal Vector2 CalculateClickPosition(LabelOnGround label, Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels = null)
-        {
-            if (!TryResolveLabelRect(label, out RectangleF rect))
-                throw new InvalidOperationException("Label element is invalid");
-
-            ResolveLabelMetadataCached(label, out EntityType itemType, out string? itemPath, out string? renderName);
-
-            bool avoidOverlapsEnabled = ShouldAvoidOverlaps();
-            IReadOnlyList<RectangleF> blockedAreas = ResolveBlockedAreas(label, rect, allLabels, avoidOverlapsEnabled);
-
-            return CalculateClickPosition(
-                rect,
-                itemType,
-                itemPath,
-                renderName,
-                windowTopLeft,
-                blockedAreas,
-                avoidOverlapsEnabled);
-        }
-
-        internal Vector2 CalculateClickPosition(
-            RectangleF rect,
-            EntityType itemType,
-            string? itemPath,
-            string? renderName,
-            Vector2 windowTopLeft,
-            IReadOnlyList<RectangleF> blockedAreas,
-            bool avoidOverlapsEnabled = true)
-        {
-            Vector2 preferredPoint = ResolvePreferredPoint(rect, itemType, itemPath, renderName);
-            IReadOnlyList<RectangleF> effectiveBlockedAreas = avoidOverlapsEnabled ? blockedAreas : [];
-            Vector2 resolvedPoint = avoidOverlapsEnabled
-                ? LabelClickPointSearch.ResolveVisibleClickPoint(rect, preferredPoint, effectiveBlockedAreas)
-                : preferredPoint;
-
-            Vector2 jitteredPoint = ApplyJitterWithinRect(resolvedPoint, rect);
-            if (effectiveBlockedAreas.Count != 0 && LabelClickPointSearch.IsPointBlocked(jitteredPoint, effectiveBlockedAreas))
-                jitteredPoint = resolvedPoint;
-
-            return jitteredPoint + windowTopLeft;
         }
 
         // Runtime wrapper over the resolved-value overload so production reads real label geometry.
@@ -199,16 +153,12 @@ namespace ClickIt.Features.Click.Interaction
                 ? CollectBlockingOverlaps(targetLabel, targetRect, allLabels)
                 : [];
 
-        internal static List<RectangleF> CollectPotentialBlockingLabelRects(LabelOnGround targetLabel, RectangleF targetRect, IReadOnlyList<LabelOnGround>? allLabels)
-            => LabelClickPointSearch.CollectPotentialBlockingLabelRects(targetLabel, targetRect, allLabels);
-
         private List<RectangleF> CollectBlockingOverlaps(LabelOnGround targetLabel, RectangleF targetRect, IReadOnlyList<LabelOnGround>? allLabels)
             => LabelClickPointSearch.BuildIntersectionOverlaps(
                 targetRect,
                 CollectPotentialBlockingLabelRectsCached(targetLabel, targetRect, allLabels));
 
-        // Grid + cached-rect blocker collection: builds the cell grid once per label set, then for the target
-        // label only inspects labels in the cells its rect spans (each rect from the address cache).
+        // Grid + cached-rect blocker collection: builds the cell grid once per label set, then for the target label only inspects labels in the cells its rect spans (each rect from the address cache).
         private List<RectangleF> CollectPotentialBlockingLabelRectsCached(
             LabelOnGround targetLabel,
             RectangleF targetRect,
@@ -393,10 +343,10 @@ namespace ClickIt.Features.Click.Interaction
             itemPath = null;
             renderName = null;
 
-            if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem) || rawItem == null)
+            if (!DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item))
                 return;
 
-            if (DynamicAccess.TryGetDynamicValue(rawItem, DynamicAccessProfiles.Type, out object? rawType) && rawType != null)
+            if (DynamicAccess.TryGetDynamicValue(item, DynamicAccessProfiles.Type, out object? rawType) && rawType != null)
                 itemType = rawType switch
                 {
                     EntityType entityType => entityType,
@@ -404,10 +354,10 @@ namespace ClickIt.Features.Click.Interaction
                     _ => EntityType.WorldItem,
                 };
 
-            if (DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out string resolvedPath))
+            if (DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath))
                 itemPath = resolvedPath;
 
-            if (DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.RenderName, out string resolvedRenderName))
+            if (DynamicAccess.TryReadString(item, DynamicAccessProfiles.RenderName, out string resolvedRenderName))
                 renderName = resolvedRenderName;
         }
     }

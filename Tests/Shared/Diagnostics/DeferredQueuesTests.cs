@@ -4,13 +4,13 @@ namespace ClickIt.Tests.Shared.Diagnostics
     public class DeferredQueuesTests
     {
         [TestMethod]
-        public void DeferredFrameQueue_Enqueue_GetPendingFrameSnapshot()
+        public void DeferredDrawQueue_EnqueueFrame_GetPendingFrameSnapshot()
         {
-            var q = new DeferredFrameQueue();
+            var q = new DeferredDrawQueue();
             var rect = new RectangleF(0, 0, 10, 10);
             var color = Color.Red;
 
-            q.Enqueue(rect, color, 2);
+            q.EnqueueFrame(rect, color, 2);
             var snapshot = q.GetPendingFrameSnapshot();
             snapshot.Should().HaveCount(1);
             snapshot[0].Rectangle.Should().Be(rect);
@@ -18,17 +18,17 @@ namespace ClickIt.Tests.Shared.Diagnostics
         }
 
         [TestMethod]
-        public void DeferredFrameQueue_Enqueue_Multiple_OrderPreserved()
+        public void DeferredDrawQueue_EnqueueFrame_Multiple_OrderPreserved()
         {
-            var q = new DeferredFrameQueue();
+            var q = new DeferredDrawQueue();
 
             var rect1 = new RectangleF(0, 0, 1, 1);
             var rect2 = new RectangleF(10, 10, 1, 1);
             var rect3 = new RectangleF(20, 20, 2, 2);
 
-            q.Enqueue(rect1, Color.Red, 1);
-            q.Enqueue(rect2, Color.Green, 2);
-            q.Enqueue(rect3, Color.Blue, 3);
+            q.EnqueueFrame(rect1, Color.Red, 1);
+            q.EnqueueFrame(rect2, Color.Green, 2);
+            q.EnqueueFrame(rect3, Color.Blue, 3);
 
             var snapshot = q.GetPendingFrameSnapshot();
             snapshot.Should().HaveCount(3);
@@ -38,73 +38,72 @@ namespace ClickIt.Tests.Shared.Diagnostics
         }
 
         [TestMethod]
-        public void DeferredFrameQueue_Enqueue_DoesNotDuplicateConsecutiveIdenticalFrames()
+        public void DeferredDrawQueue_EnqueueFrame_DoesNotDuplicateConsecutiveIdenticalFrames()
         {
-            var queue = new DeferredFrameQueue();
+            var queue = new DeferredDrawQueue();
             var rect = new RectangleF(5, 6, 7, 8);
 
-            queue.Enqueue(rect, Color.Blue, 2);
-            queue.Enqueue(rect, Color.Blue, 2);
+            queue.EnqueueFrame(rect, Color.Blue, 2);
+            queue.EnqueueFrame(rect, Color.Blue, 2);
 
             queue.GetPendingFrameSnapshot().Should().ContainSingle();
             queue.GetPendingCount().Should().Be(1);
         }
 
         [TestMethod]
-        public void DeferredFrameQueue_Enqueue_IgnoresInvalidFrameInput()
+        public void DeferredDrawQueue_EnqueueFrame_IgnoresInvalidFrameInput()
         {
-            var queue = new DeferredFrameQueue();
+            var queue = new DeferredDrawQueue();
 
-            queue.Enqueue(new RectangleF(0, 0, 0, 10), Color.White, 1);
-            queue.Enqueue(new RectangleF(float.NaN, 0, 10, 10), Color.White, 1);
-            queue.Enqueue(new RectangleF(0, 0, 10, 10), Color.White, 0);
+            queue.EnqueueFrame(new RectangleF(0, 0, 0, 10), Color.White, 1);
+            queue.EnqueueFrame(new RectangleF(float.NaN, 0, 10, 10), Color.White, 1);
+            queue.EnqueueFrame(new RectangleF(0, 0, 10, 10), Color.White, 0);
 
             queue.GetPendingFrameSnapshot().Should().BeEmpty();
             queue.GetPendingCount().Should().Be(0);
         }
 
         [TestMethod]
-        public void DeferredTextQueue_Enqueue_FlushWithNullGraphics_DoesNotThrow()
+        public void DeferredDrawQueue_EnqueueText_FlushWithNullGraphics_DoesNotThrow()
         {
-            var q = new DeferredTextQueue();
-            q.Enqueue("hello", new Vector2(5, 5), Color.White, 12);
+            var q = new DeferredDrawQueue();
+            q.EnqueueText("hello", new Vector2(5, 5), Color.White, 12);
 
             q.Flush(null!);
             true.Should().BeTrue();
         }
 
         [TestMethod]
-        public void DeferredTextQueue_Enqueue_AddsTextEntry_ToInternalList()
+        public void DeferredDrawQueue_EnqueueText_AddsTextEntry_ToInternalList()
         {
-            var q = new DeferredTextQueue();
+            var q = new DeferredDrawQueue();
 
             q.GetPendingTextSnapshot().Should().BeEmpty();
 
-            q.Enqueue("hello", new Vector2(1, 2), Color.White, 12, FontAlign.Left);
+            q.EnqueueText("hello", new Vector2(1, 2), Color.White, 12, FontAlign.Left);
 
             q.GetPendingTextSnapshot().Should().ContainSingle().Which.Should().Be("hello");
         }
 
         [TestMethod]
-        public void DeferredTextQueue_Enqueue_IgnoresInvalidTextInput()
+        public void DeferredDrawQueue_EnqueueText_IgnoresEmptyText()
         {
-            var queue = new DeferredTextQueue();
+            var queue = new DeferredDrawQueue();
 
-            queue.Enqueue(string.Empty, new Vector2(1, 2), Color.White, 12);
-            queue.Enqueue("valid text but invalid size", new Vector2(1, 2), Color.White, 0);
+            queue.EnqueueText(string.Empty, new Vector2(1, 2), Color.White, 12);
 
             queue.GetPendingTextSnapshot().Should().BeEmpty();
             queue.GetPendingCount().Should().Be(0);
         }
 
         [TestMethod]
-        public void DeferredTextQueue_GetPendingCount_TracksEnqueueAndFlush()
+        public void DeferredDrawQueue_GetPendingCount_TracksEnqueueAndFlush()
         {
-            var q = new DeferredTextQueue();
+            var q = new DeferredDrawQueue();
             q.GetPendingCount().Should().Be(0);
 
-            q.Enqueue("a", new Vector2(1, 2), Color.White, 12);
-            q.Enqueue("b", new Vector2(2, 3), Color.White, 12);
+            q.EnqueueText("a", new Vector2(1, 2), Color.White, 12);
+            q.EnqueueText("b", new Vector2(2, 3), Color.White, 12);
             q.GetPendingCount().Should().Be(2);
 
             q.Flush(null!);
@@ -116,22 +115,22 @@ namespace ClickIt.Tests.Shared.Diagnostics
         }
 
         [TestMethod]
-        public void DeferredFrameQueue_FlushWithNullGraphics_DoesNotThrow()
+        public void DeferredDrawQueue_EnqueueFrame_FlushWithNullGraphics_DoesNotThrow()
         {
-            var q = new DeferredFrameQueue();
-            q.Enqueue(new RectangleF(1, 2, 3, 4), Color.Blue, 1);
+            var q = new DeferredDrawQueue();
+            q.EnqueueFrame(new RectangleF(1, 2, 3, 4), Color.Blue, 1);
             q.Flush(null!);
             true.Should().BeTrue();
         }
 
         [TestMethod]
-        public void DeferredFrameQueue_GetPendingCount_TracksEnqueueAndFlush()
+        public void DeferredDrawQueue_EnqueueFrame_GetPendingCount_TracksEnqueueAndFlush()
         {
-            var q = new DeferredFrameQueue();
+            var q = new DeferredDrawQueue();
             q.GetPendingCount().Should().Be(0);
 
-            q.Enqueue(new RectangleF(1, 2, 3, 4), Color.Blue, 1);
-            q.Enqueue(new RectangleF(5, 6, 7, 8), Color.Blue, 1);
+            q.EnqueueFrame(new RectangleF(1, 2, 3, 4), Color.Blue, 1);
+            q.EnqueueFrame(new RectangleF(5, 6, 7, 8), Color.Blue, 1);
             q.GetPendingCount().Should().Be(2);
 
             q.Flush(null!);
@@ -143,12 +142,12 @@ namespace ClickIt.Tests.Shared.Diagnostics
         }
 
         [TestMethod]
-        public void DeferredTextQueue_Load_PendingCountStaysAccurate_AcrossFlushes()
+        public void DeferredDrawQueue_EnqueueText_Load_PendingCountStaysAccurate_AcrossFlushes()
         {
-            var q = new DeferredTextQueue();
+            var q = new DeferredDrawQueue();
 
             for (int i = 0; i < 1000; i++)
-                q.Enqueue($"item-{i}", new Vector2(i, i + 1), Color.White, 12);
+                q.EnqueueText($"item-{i}", new Vector2(i, i + 1), Color.White, 12);
 
 
             q.GetPendingCount().Should().Be(1000);
@@ -162,12 +161,12 @@ namespace ClickIt.Tests.Shared.Diagnostics
         }
 
         [TestMethod]
-        public void DeferredFrameQueue_Load_PendingCountStaysAccurate_AcrossFlushes()
+        public void DeferredDrawQueue_EnqueueFrame_Load_PendingCountStaysAccurate_AcrossFlushes()
         {
-            var q = new DeferredFrameQueue();
+            var q = new DeferredDrawQueue();
 
             for (int i = 0; i < 1000; i++)
-                q.Enqueue(new RectangleF(i, i + 1, 10, 10), Color.Blue, 1);
+                q.EnqueueFrame(new RectangleF(i, i + 1, 10, 10), Color.Blue, 1);
 
 
             q.GetPendingCount().Should().Be(1000);
@@ -183,56 +182,41 @@ namespace ClickIt.Tests.Shared.Diagnostics
         [TestMethod]
         public void DeferredQueues_Flush_WithUninitializedGraphics_DoesNotThrow_AndClearsItems()
         {
-            var tf = new DeferredFrameQueue();
-            tf.Enqueue(new RectangleF(1, 2, 3, 4), Color.Blue, 1);
-
-            var tt = new DeferredTextQueue();
-            tt.Enqueue("a", new Vector2(1, 2), Color.Red, 10);
+            var queue = new DeferredDrawQueue();
+            queue.EnqueueFrame(new RectangleF(1, 2, 3, 4), Color.Blue, 1);
+            queue.EnqueueText("a", new Vector2(1, 2), Color.Red, 10);
 
             var gfxType = typeof(Graphics);
             var gfx = (Graphics)RuntimeHelpers.GetUninitializedObject(gfxType);
 
-            tf.Flush(gfx);
-            tt.Flush(gfx);
+            queue.Flush(gfx);
 
-            tf.GetPendingFrameSnapshot().Should().BeEmpty();
-            tt.GetPendingTextSnapshot().Should().BeEmpty();
+            queue.GetPendingFrameSnapshot().Should().BeEmpty();
+            queue.GetPendingTextSnapshot().Should().BeEmpty();
         }
 
         [TestMethod]
-        public void DeferredTextQueue_ClearPending_ResetsBufferedEntries()
+        public void DeferredDrawQueue_ClearPending_ResetsBufferedEntries()
         {
-            var queue = new DeferredTextQueue();
-            queue.Enqueue("a", new Vector2(1, 1), Color.White, 12);
-            queue.Enqueue("b", new Vector2(2, 2), Color.White, 12);
-            queue.GetPendingCount().Should().Be(2);
+            var queue = new DeferredDrawQueue();
+            queue.EnqueueText("a", new Vector2(1, 1), Color.White, 12);
+            queue.EnqueueText("b", new Vector2(2, 2), Color.White, 12);
+            queue.EnqueueFrame(new RectangleF(0, 0, 10, 10), Color.White, 1);
+            queue.GetPendingCount().Should().Be(3);
 
             queue.ClearPending();
 
             queue.GetPendingCount().Should().Be(0);
             queue.GetPendingTextSnapshot().Should().BeEmpty();
-        }
-
-        [TestMethod]
-        public void DeferredFrameQueue_ClearPending_ResetsBufferedEntries()
-        {
-            var queue = new DeferredFrameQueue();
-            queue.Enqueue(new RectangleF(0, 0, 10, 10), Color.White, 1);
-            queue.Enqueue(new RectangleF(20, 20, 10, 10), Color.White, 1);
-            queue.GetPendingCount().Should().Be(2);
-
-            queue.ClearPending();
-
-            queue.GetPendingCount().Should().Be(0);
             queue.GetPendingFrameSnapshot().Should().BeEmpty();
         }
 
         [TestMethod]
-        public void DeferredTextQueue_HardCap_DropsOlderEntries_WhenBufferGrowsTooLarge()
+        public void DeferredDrawQueue_HardCap_DropsOlderEntries_WhenBufferGrowsTooLarge()
         {
-            var queue = new DeferredTextQueue();
+            var queue = new DeferredDrawQueue();
             for (int i = 0; i < 12000; i++)
-                queue.Enqueue($"line-{i}", new Vector2(i, i), Color.White, 12);
+                queue.EnqueueText($"line-{i}", new Vector2(i, i), Color.White, 12);
 
 
             queue.GetPendingCount().Should().BeLessOrEqualTo(8192);
@@ -242,12 +226,12 @@ namespace ClickIt.Tests.Shared.Diagnostics
         }
 
         [TestMethod]
-        public void DeferredTextQueue_GetPendingTextSnapshot_StartIndexSlicesBufferedEntries()
+        public void DeferredDrawQueue_GetPendingTextSnapshot_StartIndexSlicesBufferedEntries()
         {
-            var queue = new DeferredTextQueue();
-            queue.Enqueue("line-0", new Vector2(0, 0), Color.White, 12);
-            queue.Enqueue("line-1", new Vector2(1, 1), Color.White, 12);
-            queue.Enqueue("line-2", new Vector2(2, 2), Color.White, 12);
+            var queue = new DeferredDrawQueue();
+            queue.EnqueueText("line-0", new Vector2(0, 0), Color.White, 12);
+            queue.EnqueueText("line-1", new Vector2(1, 1), Color.White, 12);
+            queue.EnqueueText("line-2", new Vector2(2, 2), Color.White, 12);
 
             string[] snapshot = queue.GetPendingTextSnapshot(startIndex: 1);
 
@@ -255,11 +239,11 @@ namespace ClickIt.Tests.Shared.Diagnostics
         }
 
         [TestMethod]
-        public void DeferredTextQueue_GetPendingTextSnapshot_ReturnsEmpty_WhenStartIndexReachesBufferedCount()
+        public void DeferredDrawQueue_GetPendingTextSnapshot_ReturnsEmpty_WhenStartIndexReachesBufferedCount()
         {
-            var queue = new DeferredTextQueue();
-            queue.Enqueue("line-0", new Vector2(0, 0), Color.White, 12);
-            queue.Enqueue("line-1", new Vector2(1, 1), Color.White, 12);
+            var queue = new DeferredDrawQueue();
+            queue.EnqueueText("line-0", new Vector2(0, 0), Color.White, 12);
+            queue.EnqueueText("line-1", new Vector2(1, 1), Color.White, 12);
 
             string[] snapshot = queue.GetPendingTextSnapshot(startIndex: 2);
 
@@ -267,25 +251,25 @@ namespace ClickIt.Tests.Shared.Diagnostics
         }
 
         [TestMethod]
-        public void DeferredTextQueue_Enqueue_SwallowsInternalBufferFailures()
+        public void DeferredDrawQueue_EnqueueText_SwallowsInternalBufferFailures()
         {
-            var queue = new DeferredTextQueue();
-            typeof(DeferredTextQueue)
+            var queue = new DeferredDrawQueue();
+            typeof(DeferredDrawQueue)
                 .GetField("_items", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .SetValue(queue, null);
 
-            Action act = () => queue.Enqueue("line-0", new Vector2(0, 0), Color.White, 12);
+            Action act = () => queue.EnqueueText("line-0", new Vector2(0, 0), Color.White, 12);
 
             act.Should().NotThrow();
             queue.GetPendingCount().Should().Be(0);
         }
 
         [TestMethod]
-        public void DeferredFrameQueue_HardCap_DropsOlderEntries_WhenBufferGrowsTooLarge()
+        public void DeferredDrawQueue_EnqueueFrame_HardCap_DropsOlderEntries_WhenBufferGrowsTooLarge()
         {
-            var queue = new DeferredFrameQueue();
+            var queue = new DeferredDrawQueue();
             for (int i = 0; i < 12000; i++)
-                queue.Enqueue(new RectangleF(i, i, 10, 10), Color.White, 1);
+                queue.EnqueueFrame(new RectangleF(i, i, 10, 10), Color.White, 1);
 
 
             queue.GetPendingCount().Should().BeLessOrEqualTo(8192);
@@ -295,23 +279,23 @@ namespace ClickIt.Tests.Shared.Diagnostics
         }
 
         [TestMethod]
-        public void DeferredFrameQueue_Enqueue_SwallowsInternalBufferFailures()
+        public void DeferredDrawQueue_EnqueueFrame_SwallowsInternalBufferFailures()
         {
-            var queue = new DeferredFrameQueue();
-            typeof(DeferredFrameQueue)
+            var queue = new DeferredDrawQueue();
+            typeof(DeferredDrawQueue)
                 .GetField("_items", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .SetValue(queue, null);
 
-            Action act = () => queue.Enqueue(new RectangleF(0, 0, 10, 10), Color.White, 1);
+            Action act = () => queue.EnqueueFrame(new RectangleF(0, 0, 10, 10), Color.White, 1);
 
             act.Should().NotThrow();
             queue.GetPendingCount().Should().Be(0);
         }
 
         [TestMethod]
-        public void DeferredFrameQueue_Flush_ReturnsImmediately_WhenGraphicsProvidedButNoFramesAreQueued()
+        public void DeferredDrawQueue_Flush_ReturnsImmediately_WhenGraphicsProvidedButNothingQueued()
         {
-            var queue = new DeferredFrameQueue();
+            var queue = new DeferredDrawQueue();
             var graphics = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));
 
             Action act = () => queue.Flush(graphics);
@@ -326,7 +310,7 @@ namespace ClickIt.Tests.Shared.Diagnostics
             var queue = new DeferredDrawQueue();
             queue.CurrentSection = RenderSection.BlightOverlay;
             queue.EnqueueLine(new NumVector2(1, 2), new NumVector2(3, 4), 2, Color.Red);
-            queue.EnqueueText("lane", new NumVector2(5, 6), Color.White, FontAlign.Left);
+            queue.EnqueueText("lane", new Vector2(5, 6), Color.White, 0, FontAlign.Left);
             queue.CurrentSection = RenderSection.AltarOverlay;
             queue.EnqueueLine(new NumVector2(7, 8), new NumVector2(9, 10), 2, Color.Blue);
 
@@ -353,13 +337,13 @@ namespace ClickIt.Tests.Shared.Diagnostics
         }
 
         [TestMethod]
-        public void DeferredTextQueue_Flush_AttributesElapsedPerSection()
+        public void DeferredDrawQueue_EnqueueText_Flush_AttributesElapsedPerSection()
         {
-            var queue = new DeferredTextQueue();
+            var queue = new DeferredDrawQueue();
             queue.CurrentSection = RenderSection.BlightOverlay;
-            queue.Enqueue("lane", new Vector2(1, 2), Color.White, 12);
+            queue.EnqueueText("lane", new Vector2(1, 2), Color.White, 12);
             queue.CurrentSection = RenderSection.HarvestOverlay;
-            queue.Enqueue("plot", new Vector2(3, 4), Color.White, 12);
+            queue.EnqueueText("plot", new Vector2(3, 4), Color.White, 12);
 
             var reported = new List<(RenderSection Section, double Ms)>();
             var graphics = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));
@@ -370,13 +354,13 @@ namespace ClickIt.Tests.Shared.Diagnostics
         }
 
         [TestMethod]
-        public void DeferredFrameQueue_Flush_AttributesElapsedPerSection()
+        public void DeferredDrawQueue_EnqueueFrame_Flush_AttributesElapsedPerSection()
         {
-            var queue = new DeferredFrameQueue();
+            var queue = new DeferredDrawQueue();
             queue.CurrentSection = RenderSection.AltarOverlay;
-            queue.Enqueue(new RectangleF(1, 2, 3, 4), Color.Blue, 1);
+            queue.EnqueueFrame(new RectangleF(1, 2, 3, 4), Color.Blue, 1);
             queue.CurrentSection = RenderSection.StrongboxOverlay;
-            queue.Enqueue(new RectangleF(5, 6, 7, 8), Color.Blue, 1);
+            queue.EnqueueFrame(new RectangleF(5, 6, 7, 8), Color.Blue, 1);
 
             var reported = new List<(RenderSection Section, double Ms)>();
             var graphics = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));

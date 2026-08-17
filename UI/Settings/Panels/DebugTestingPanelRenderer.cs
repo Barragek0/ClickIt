@@ -43,9 +43,9 @@ namespace ClickIt.UI.Settings.Panels
 
                 ImGui.Spacing();
 
-                // Game-state dump tool (gated by GameStateDumpCoordinator.Enabled in code).
+                // Game-state dump tool.
                 GameStateDumpCoordinator? dump = GameStateDumpCoordinator.Current;
-                if (GameStateDumpCoordinator.Enabled && dump != null)
+                if (dump != null)
                 {
                     GameStateDumpSnapshot dumpState = dump.GetProgress();
                     ImGui.TextUnformatted("Game State Dump");

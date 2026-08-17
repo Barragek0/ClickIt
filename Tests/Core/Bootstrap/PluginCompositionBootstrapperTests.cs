@@ -19,7 +19,6 @@ namespace ClickIt.Tests.Core.Bootstrap
             context.Services.ErrorHandler.Should().BeSameAs(core.ErrorHandler);
             context.Services.AreaService.Should().BeSameAs(core.AreaService);
             context.Services.CachedLabels.Should().BeSameAs(core.CachedLabels);
-            context.Services.Camera.Should().BeSameAs(core.Camera);
             context.Services.AltarService.Should().BeSameAs(core.AltarService);
             context.Services.LabelFilterPort.Should().BeSameAs(core.LabelFilterPort);
             context.Services.LabelDebugService.Should().BeSameAs(core.LabelDebugService);
@@ -28,14 +27,11 @@ namespace ClickIt.Tests.Core.Bootstrap
             context.Services.InventoryInteractionPolicy.Should().BeSameAs(core.InventoryInteractionPolicy);
             context.Services.ClickAutomationPort.Should().BeSameAs(clickAutomationPort);
             context.Services.ClickAutomationSupport.Should().BeSameAs(clickAutomationPort.ClickAutomationSupport);
-            context.Services.LockedInteractionDispatcher.Should().BeSameAs(clickAutomationPort.LockedInteractionDispatcher);
             context.Services.ShrineService.Should().BeSameAs(core.ShrineService);
             context.Services.InputHandler.Should().BeSameAs(core.InputHandler);
             context.Services.PathfindingService.Should().BeSameAs(core.PathfindingService);
             context.Services.AlertService.Should().BeSameAs(alertService);
             context.Services.WeightCalculator.Should().BeSameAs(core.WeightCalculator);
-            context.Rendering.DeferredTextQueue.Should().BeSameAs(core.DeferredTextQueue);
-            context.Rendering.DeferredFrameQueue.Should().BeSameAs(core.DeferredFrameQueue);
             context.Rendering.OverlayRenderHost.Should().BeSameAs(rendering.OverlayRenderHost);
             context.Rendering.DeferredDrawQueue.Should().BeSameAs(core.DeferredDrawQueue);
         }
@@ -54,8 +50,7 @@ namespace ClickIt.Tests.Core.Bootstrap
             context.Services.ErrorHandler = new ErrorHandler(settings, static (_, _) => { }, static (_, _) => { });
             context.Services.PathfindingService = CreateOpaque<PathfindingService>();
             context.Services.AlertService = CreateOpaque<AlertService>();
-            context.Rendering.DeferredTextQueue = new DeferredTextQueue();
-            context.Rendering.DeferredFrameQueue = new DeferredFrameQueue();
+            context.Rendering.DeferredDrawQueue = new DeferredDrawQueue();
             context.Rendering.IsRendering = true;
 
             context.TryGetDebugTelemetryFreezeState(out _, out _).Should().BeTrue();
@@ -66,8 +61,7 @@ namespace ClickIt.Tests.Core.Bootstrap
             context.Services.ErrorHandler.Should().BeNull();
             context.Services.PathfindingService.Should().BeNull();
             context.Services.AlertService.Should().BeNull();
-            context.Rendering.DeferredTextQueue.Should().BeNull();
-            context.Rendering.DeferredFrameQueue.Should().BeNull();
+            context.Rendering.DeferredDrawQueue.Should().BeNull();
             context.Rendering.IsRendering.Should().BeFalse();
             context.GetDebugTelemetrySnapshot().Status.GameControllerAvailable.Should().BeFalse();
             context.TryGetDebugTelemetryFreezeState(out long remainingMs, out string reason).Should().BeFalse();
@@ -301,7 +295,6 @@ namespace ClickIt.Tests.Core.Bootstrap
                 AreaService: new AreaService(),
                 LabelReadModelService: CreateOpaque<LabelReadModelService>(),
                 CachedLabels: new TimeCache<List<LabelOnGround>>(() => [], 50),
-                Camera: CreateOpaque<Camera>(),
                 AltarService: CreateOpaque<AltarService>(),
                 LabelFilterPort: CreateOpaque<LabelFilterPort>(),
                 LabelDebugService: CreateOpaque<LabelDebugService>(),
@@ -312,8 +305,6 @@ namespace ClickIt.Tests.Core.Bootstrap
                 InputHandler: new InputHandler(settings),
                 PathfindingService: CreateOpaque<PathfindingService>(),
                 WeightCalculator: CreateOpaque<WeightCalculator>(),
-                DeferredTextQueue: new DeferredTextQueue(),
-                DeferredFrameQueue: new DeferredFrameQueue(),
                 HarvestService: new HarvestService(settings),
                 BlightService: new BlightService(settings),
                 DeferredDrawQueue: new DeferredDrawQueue());
@@ -330,7 +321,7 @@ namespace ClickIt.Tests.Core.Bootstrap
 
         private static ClickAutomationPort CreateClickAutomationPort(ClickItSettings settings, CoreDomainServices core)
         {
-            return new ClickAutomationPort(
+            return new ClickAutomationPort(new ClickAutomationPortDependencies(
                 settings,
                 ExileCoreOpaqueFactory.CreateOpaqueGameController(),
                 core.ErrorHandler,
@@ -347,7 +338,7 @@ namespace ClickIt.Tests.Core.Bootstrap
                 static () => false,
                 core.CachedLabels,
                 core.PerformanceMonitor,
-                freezeDebugTelemetrySnapshot: null);
+                FreezeDebugTelemetrySnapshot: null));
         }
 
         private static T CreateOpaque<T>() where T : class

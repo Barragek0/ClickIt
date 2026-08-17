@@ -87,7 +87,13 @@ namespace ClickIt.Features.Click.Selection
                     if (collectDiagnostics && hadLabel)
                         labelBacked++;
 
-                    if (MechanicCandidateResolver.TryPromoteSettlersCandidate(ref best, candidate, cursorAbsolute, windowTopLeft))
+                    if (MechanicCandidateResolver.TryPromoteClickableCandidate(
+                            ref best,
+                            candidate,
+                            cursorAbsolute,
+                            windowTopLeft,
+                            static value => value.Distance,
+                            static value => value.ClickPosition))
                         if (captureClickDebug)
                             PublishSettlersCandidateDebug("CandidateSelected", candidate, "Nearest settlers candidate selected");
                 }

@@ -42,10 +42,6 @@ namespace ClickIt.Features.Mechanics
         internal static bool IsSettlersPetrifiedWoodPath(string? path)
             => MatchesSettlersOrePathMarker(path, MechanicIds.SettlersPetrifiedWoodMarker);
 
-        internal static bool IsSettlersVerisiumPath(string? path)
-            => MatchesSettlersOrePathMarker(path, MechanicIds.SettlersVerisiumMarker)
-               && (path?.Contains(MechanicIds.VerisiumBossSubAreaTransitionPathMarker, StringComparison.OrdinalIgnoreCase) != true);
-
         private static bool MatchesSettlersOrePathMarker(string? path, string fullMarker)
         {
             if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(fullMarker))

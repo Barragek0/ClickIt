@@ -3,14 +3,15 @@ namespace ClickIt.Core.Runtime
     internal sealed class PluginRenderHost
     {
         private static double GetElapsedMs(long startTimestamp)
-            => (Stopwatch.GetTimestamp() - startTimestamp) * 1000.0 / Stopwatch.Frequency;
+            => StopwatchMath.ElapsedMs(startTimestamp);
 
         internal static void Render(
             PluginContext state,
             ClickItSettings effectiveSettings,
             GameController? gameController,
             Graphics? graphics,
-            DebugClipboardService debugClipboardService)
+            DebugClipboardService debugClipboardService,
+            Action drawStartupSetupFlow)
         {
             bool debugMode = effectiveSettings.DebugMode;
             bool renderDebug = effectiveSettings.RenderDebug;
@@ -23,12 +24,12 @@ namespace ClickIt.Core.Runtime
             {
                 services.PerformanceMonitor?.UpdateFPS();
 
-                // The "Copy Additional Debug Info" button must be consumed regardless of whether the debug overlays are rendering — otherwise the pending request latches forever and a later debug-mode toggle flushes a stale backlog. With no debug rendering the queue is empty and the service clears the flag without copying.
+                // Consume pending copy requests even when debug overlays are off so the pending flag is always cleared.
                 bool shouldCopyDebugInfo = debugClipboardService.HasPendingAdditionalDebugInfoCopyRequest;
                 if (shouldCopyDebugInfo)
                 {
-                    int debugTextStartCount = rendering.DeferredTextQueue?.GetPendingCount() ?? 0;
-                    string[] debugLines = rendering.DeferredTextQueue?.GetPendingTextSnapshot(debugTextStartCount) ?? [];
+                    int debugTextStartCount = rendering.DeferredDrawQueue?.GetPendingCount() ?? 0;
+                    string[] debugLines = rendering.DeferredDrawQueue?.GetPendingTextSnapshot(debugTextStartCount) ?? [];
                     // The copy service builds the payload + writes the clipboard off-thread; the recorder surfaces that background cost under the Dump processing section.
                     PerformanceMonitor? perf = services.PerformanceMonitor;
                     debugClipboardService.CompleteAdditionalDebugInfoCopy(debugLines,
@@ -39,7 +40,7 @@ namespace ClickIt.Core.Runtime
                         });
                 }
 
-                if (rendering.DeferredTextQueue != null && rendering.DeferredFrameQueue != null && rendering.DeferredDrawQueue != null)
+                if (rendering.DeferredDrawQueue != null)
                 {
                     OverlayRenderContext overlayContext = new(
                         effectiveSettings,
@@ -47,15 +48,13 @@ namespace ClickIt.Core.Runtime
                         graphics,
                         gameController?.Window?.GetWindowRectangleTimeCache ?? RectangleF.Empty,
                         state.Services.CachedLabels?.Value,
-                        rendering.DeferredTextQueue,
-                        rendering.DeferredFrameQueue,
                         rendering.DeferredDrawQueue);
                     rendering.OverlayRenderHost?.Render(overlayContext, services.PerformanceMonitor);
                 }
 
                 long debugStart = Stopwatch.GetTimestamp();
                 rendering.ImGuiDebugOverlay?.Draw();
-                PerformanceSettingsPanelRenderer.DrawStartupSetupFlow();
+                drawStartupSetupFlow();
                 services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.DebugOverlay, GetElapsedMs(debugStart));
 
                 long uiRectStart = Stopwatch.GetTimestamp();
@@ -64,8 +63,6 @@ namespace ClickIt.Core.Runtime
             }
             catch
             {
-                rendering.DeferredTextQueue?.ClearPending();
-                rendering.DeferredFrameQueue?.ClearPending();
                 rendering.DeferredDrawQueue?.ClearPending();
                 throw;
             }
@@ -73,33 +70,16 @@ namespace ClickIt.Core.Runtime
             {
                 PerformanceMonitor? pm = services.PerformanceMonitor;
 
-                // Flush attribution: every deferred item is stamped with the overlay section that enqueued it, so each feature's render row includes its own actual draw cost. Only items enqueued outside the overlay host (section Unknown) fall back to the aggregate TextFlush/FrameFlush rows, keeping the render-total sum non-redundant.
-                double textUnknownMs = 0;
-                rendering.DeferredTextQueue?.Flush(graphics!, (section, ms) =>
-                {
-                    if (section == RenderSection.Unknown)
-                        textUnknownMs += ms;
-                    else
-                        pm?.AccumulateRenderSectionFlush(section, ms);
-                });
-                pm?.RecordRenderSectionTiming(RenderSection.TextFlush, textUnknownMs);
-
-                double frameUnknownMs = 0;
-                rendering.DeferredFrameQueue?.Flush(graphics!, (section, ms) =>
-                {
-                    if (section == RenderSection.Unknown)
-                        frameUnknownMs += ms;
-                    else
-                        pm?.AccumulateRenderSectionFlush(section, ms);
-                });
+                // Flush attribution: every deferred item is stamped with the overlay section that enqueued it, so each feature's render row includes its own actual draw cost. Only items enqueued outside the overlay host (section Unknown) fall back to the aggregate FrameFlush row, keeping the render-total sum non-redundant.
+                double unknownFlushMs = 0;
                 rendering.DeferredDrawQueue?.Flush(graphics!, (section, ms) =>
                 {
                     if (section == RenderSection.Unknown)
-                        frameUnknownMs += ms;
+                        unknownFlushMs += ms;
                     else
                         pm?.AccumulateRenderSectionFlush(section, ms);
                 });
-                pm?.RecordRenderSectionTiming(RenderSection.FrameFlush, frameUnknownMs);
+                pm?.RecordRenderSectionTiming(RenderSection.FrameFlush, unknownFlushMs);
 
                 // Combine this frame's per-section enqueue + flush into one sample per section.
                 pm?.CompleteRenderSectionFrame();

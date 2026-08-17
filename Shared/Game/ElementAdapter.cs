@@ -37,12 +37,5 @@ namespace ClickIt.Shared.Game
         {
             return Underlying?.GetText(maxChars) ?? string.Empty;
         }
-
-        public bool IsValid => Underlying?.IsValid ?? false;
-
-        public RectangleF GetClientRect()
-        {
-            return Underlying?.GetClientRect() ?? RectangleF.Empty;
-        }
     }
 }

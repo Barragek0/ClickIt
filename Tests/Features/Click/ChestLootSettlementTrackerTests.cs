@@ -280,7 +280,7 @@ namespace ClickIt.Tests.Features.Click
         public void TryHandlePendingChestOpenConfirmation_DoesNotReclick_WhenBlightTransitionSuppressionActive()
         {
             var settings = new ClickItSettings();
-            settings.PauseAfterOpeningLeagueChests.Value = true;
+            settings.PauseAfterOpeningBasicChests.Value = true;
 
             var state = new ChestLootSettlementState();
             Entity stickyItem = OffscreenStickyTargetGraphShaper.CreateActiveStickyEntity(address: 0x100);
@@ -298,7 +298,7 @@ namespace ClickIt.Tests.Features.Click
         public void TryHandlePendingChestOpenConfirmation_StillReclicks_WhenNotBlightSuppressed()
         {
             var settings = new ClickItSettings();
-            settings.PauseAfterOpeningLeagueChests.Value = true;
+            settings.PauseAfterOpeningBasicChests.Value = true;
 
             var state = new ChestLootSettlementState();
             Entity stickyItem = OffscreenStickyTargetGraphShaper.CreateActiveStickyEntity(address: 0x100);

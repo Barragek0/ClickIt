@@ -26,7 +26,6 @@ namespace ClickIt.Features.Altars
         private readonly TimedValueCache<int, bool> _validityCache = new(CACHE_DURATION_MS);
         private readonly TimedValueCache<int, AltarWeights> _weightsCache = new(WEIGHT_CACHE_DURATION_MS);
 
-        // Thread safety lock for cache operations
         private readonly object _cacheLock = new();
 
         private T WithCacheLock<T>(Func<T> func)

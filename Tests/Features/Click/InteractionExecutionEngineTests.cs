@@ -36,7 +36,6 @@ namespace ClickIt.Tests.Features.Click
                 CreateDecision(trySettlers: true, tryLostShipment: true, tryShrine: true, groundItemsVisible: true));
 
             result.ShouldRunPostActions.Should().BeFalse();
-            result.DidActionableWork.Should().BeTrue();
             calls.Should().Equal("settlers");
         }
 
@@ -51,7 +50,6 @@ namespace ClickIt.Tests.Features.Click
                 CreateDecision(trySettlers: false, tryLostShipment: false, tryShrine: false, groundItemsVisible: true));
 
             result.ShouldRunPostActions.Should().BeFalse();
-            result.DidActionableWork.Should().BeFalse();
         }
 
         [TestMethod]
@@ -74,7 +72,6 @@ namespace ClickIt.Tests.Features.Click
                 CreateDecision(trySettlers: false, tryLostShipment: false, tryShrine: false, groundItemsVisible: true));
 
             result.ShouldRunPostActions.Should().BeFalse();
-            result.DidActionableWork.Should().BeTrue();
         }
 
         [TestMethod]
@@ -96,7 +93,6 @@ namespace ClickIt.Tests.Features.Click
                 CreateDecision(trySettlers: false, tryLostShipment: false, tryShrine: false, groundItemsVisible: true));
 
             result.ShouldRunPostActions.Should().BeTrue();
-            result.DidActionableWork.Should().BeTrue();
         }
 
         [TestMethod]
@@ -128,7 +124,6 @@ namespace ClickIt.Tests.Features.Click
 
             interactionExecuted.Should().BeFalse("a locked chest must never be clicked");
             result.ShouldRunPostActions.Should().BeFalse();
-            result.DidActionableWork.Should().BeFalse();
         }
 
         [TestMethod]
@@ -566,7 +561,6 @@ namespace ClickIt.Tests.Features.Click
                 CreateDecision(trySettlers: false, tryLostShipment: false, tryShrine: false, groundItemsVisible: true));
 
             result.ShouldRunPostActions.Should().BeFalse();
-            result.DidActionableWork.Should().BeTrue();
             snapshots.Should().Contain(snapshot => snapshot.Stage == "WalkTowardLabel");
         }
 
@@ -600,7 +594,6 @@ namespace ClickIt.Tests.Features.Click
                 CreateDecision(trySettlers: false, tryLostShipment: false, tryShrine: false, groundItemsVisible: true));
 
             result.ShouldRunPostActions.Should().BeTrue();
-            result.DidActionableWork.Should().BeTrue();
             interactionExecuted.Should().BeTrue();
         }
 
@@ -626,22 +619,37 @@ namespace ClickIt.Tests.Features.Click
             ChestLootSettlementTracker chestLootSettlement = CreateChestLootSettlementTracker(settings, resolvedClickDebugPublisher, resolvedLabelInteraction);
             OffscreenPathingCoordinator offscreenPathing = CreateOffscreenPathingCoordinator(settings, runtimeState, pathfindingService, resolvedClickDebugPublisher);
 
-            return new InteractionExecutionEngine(new InteractionExecutionEngineDependencies(
-                Settings: settings,
-                LabelInteractionPort: resolvedLabelInteractionPort,
-                PathfindingService: pathfindingService,
-                VisibleMechanics: visibleMechanics ?? new StubVisibleMechanicInteractionPort(),
-                SpecialLabelInteraction: specialLabelInteraction ?? CreateSpecialLabelInteractionHandler(),
-                PathfindingLabelSuppression: pathfindingLabelSuppression,
-                ChestLootSettlement: chestLootSettlement,
-                OffscreenPathing: offscreenPathing,
-                ClickDebugPublisher: resolvedClickDebugPublisher,
-                LabelInteraction: resolvedLabelInteraction,
-                ShouldCaptureClickDebug: shouldCaptureClickDebug ?? (static () => false),
-                PointIsInClickableArea: static (_, _) => true,
-                HoldDebugTelemetryAfterSuccess: holdDebugTelemetryAfterSuccess ?? (static _ => { }),
-                DebugLog: debugLog ?? (static _ => { }),
-                GetHarvestLabelToClick: getHarvestLabelToClick));
+            return new InteractionExecutionEngine(new ClickRuntimeEngineDependencies(
+                Telemetry: new ClickTelemetryDependencies(
+                    ClickDebugPublisher: resolvedClickDebugPublisher,
+                    ShouldCaptureClickDebug: shouldCaptureClickDebug ?? (static () => false),
+                    HoldDebugTelemetryAfterSuccess: holdDebugTelemetryAfterSuccess ?? (static _ => { }),
+                    DebugLog: debugLog ?? (static _ => { }),
+                    RecordAllocationBreakdown: null,
+                    RecordBreakdownStage: null),
+                Policy: new ClickPolicyDependencies(
+                    Settings: settings,
+                    InputHandler: null!,
+                    PointIsInClickableArea: static (_, _) => true,
+                    ClickSuccessAnchor: null),
+                Selection: new ClickSelectionDependencies(
+                    TickContextFactory: null!,
+                    LabelInteractionPort: resolvedLabelInteractionPort,
+                    VisibleMechanics: visibleMechanics ?? new StubVisibleMechanicInteractionPort(),
+                    LabelSelectionScan: null!,
+                    SpecialLabelInteraction: specialLabelInteraction ?? CreateSpecialLabelInteractionHandler(),
+                    LabelInteraction: resolvedLabelInteraction,
+                    ChestLootSettlement: chestLootSettlement),
+                Pathing: new ClickPathingDependencies(
+                    PathfindingService: pathfindingService,
+                    PathfindingLabelSuppression: pathfindingLabelSuppression,
+                    OffscreenPathing: offscreenPathing),
+                Mechanics: new ClickMechanicDependencies(
+                    AltarAutomation: null!,
+                    GetHarvestLabelToClick: getHarvestLabelToClick,
+                    TryProgressBlightBuilding: null,
+                    GetBlightPathfindTarget: null,
+                    IsBlightEncounterActive: null)));
         }
 
         private static ClickTickContext CreateContext(bool groundItemsVisible, Entity? nextShrine = null)
@@ -714,7 +722,6 @@ namespace ClickIt.Tests.Features.Click
                     ClickDebugPublisher: clickDebugPublisher)),
                 TraversalTargetResolver: null!,
                 StickyTargetHandler: stickyHandler,
-                TargetResolver: null!,
                 MovementSkills: null!,
                 LabelInteraction: labelInteraction,
                 DebugLog: static _ => { },

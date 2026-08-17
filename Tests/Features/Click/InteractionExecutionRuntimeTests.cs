@@ -14,8 +14,8 @@ namespace ClickIt.Tests.Features.Click
                 _ => false,
                 _ => true,
                 _ => { },
-                (_, _, _, _, _, _) => { clickCalls++; return true; },
-                (_, _, _, _, _, _, _) => { holdCalls++; return true; },
+                (_, _, _, _, _, _, _) => { clickCalls++; return true; },
+                (_, _, _, _, _, _) => { holdCalls++; return true; },
                 () => intervalCalls++));
 
             bool executed = runtime.Execute(new InteractionExecutionRequest(
@@ -23,7 +23,6 @@ namespace ClickIt.Tests.Features.Click
                 ExpectedElement: null,
                 Controller: null,
                 UseHoldClick: false,
-                HoldDurationMs: 0,
                 ForceUiHoverVerification: false,
                 AllowWhenHotkeyInactive: false,
                 AvoidCursorMove: false,
@@ -46,8 +45,8 @@ namespace ClickIt.Tests.Features.Click
                 _ => true,
                 _ => true,
                 _ => { },
-                (_, _, _, _, _, _) => { clickCalls++; return true; },
-                (_, _, _, _, _, _, _) => { holdCalls++; return true; },
+                (_, _, _, _, _, _, _) => { clickCalls++; return true; },
+                (_, _, _, _, _, _) => { holdCalls++; return true; },
                 () => intervalCalls++));
 
             bool executed = runtime.Execute(new InteractionExecutionRequest(
@@ -55,7 +54,6 @@ namespace ClickIt.Tests.Features.Click
                 ExpectedElement: null,
                 Controller: null,
                 UseHoldClick: false,
-                HoldDurationMs: 0,
                 ForceUiHoverVerification: false,
                 AllowWhenHotkeyInactive: false,
                 AvoidCursorMove: false,
@@ -77,8 +75,8 @@ namespace ClickIt.Tests.Features.Click
                 _ => true,
                 _ => true,
                 _ => { },
-                (_, _, _, _, _, _) => { clickCalls++; return false; },
-                (_, _, _, _, _, _, _) => { return false; },
+                (_, _, _, _, _, _, _) => { clickCalls++; return false; },
+                (_, _, _, _, _, _) => { return false; },
                 () => intervalCalls++));
 
             bool executed = runtime.Execute(new InteractionExecutionRequest(
@@ -86,7 +84,6 @@ namespace ClickIt.Tests.Features.Click
                 ExpectedElement: null,
                 Controller: null,
                 UseHoldClick: false,
-                HoldDurationMs: 0,
                 ForceUiHoverVerification: false,
                 AllowWhenHotkeyInactive: false,
                 AvoidCursorMove: false,
@@ -108,8 +105,8 @@ namespace ClickIt.Tests.Features.Click
                 _ => true,
                 _ => true,
                 _ => { },
-                (_, _, _, _, _, _) => { clickCalls++; return true; },
-                (_, _, _, _, _, _, _) => { holdCalls++; return true; },
+                (_, _, _, _, _, _, _) => { clickCalls++; return true; },
+                (_, _, _, _, _, _) => { holdCalls++; return true; },
                 () => intervalCalls++));
 
             bool executed = runtime.Execute(new InteractionExecutionRequest(
@@ -117,7 +114,6 @@ namespace ClickIt.Tests.Features.Click
                 ExpectedElement: null,
                 Controller: null,
                 UseHoldClick: true,
-                HoldDurationMs: 150,
                 ForceUiHoverVerification: false,
                 AllowWhenHotkeyInactive: false,
                 AvoidCursorMove: false,
@@ -141,8 +137,8 @@ namespace ClickIt.Tests.Features.Click
                 _ => true,
                 _ => false,
                 message => debugMessage = message,
-                (_, _, _, _, _, _) => { clickCalls++; return true; },
-                (_, _, _, _, _, _, _) => { holdCalls++; return true; },
+                (_, _, _, _, _, _, _) => { clickCalls++; return true; },
+                (_, _, _, _, _, _) => { holdCalls++; return true; },
                 () => intervalCalls++));
 
             bool executed = runtime.Execute(new InteractionExecutionRequest(
@@ -150,7 +146,6 @@ namespace ClickIt.Tests.Features.Click
                 ExpectedElement: null,
                 Controller: null,
                 UseHoldClick: false,
-                HoldDurationMs: 0,
                 ForceUiHoverVerification: false,
                 AllowWhenHotkeyInactive: false,
                 AvoidCursorMove: false,
@@ -161,6 +156,59 @@ namespace ClickIt.Tests.Features.Click
             holdCalls.Should().Be(0);
             intervalCalls.Should().Be(0);
             debugMessage.Should().Contain("blocked UI rectangle");
+        }
+        [TestMethod]
+        public void Execute_PassesRequestInterval_ToClickDispatch()
+        {
+            IntervalKind? capturedInterval = null;
+
+            var runtime = new InteractionExecutionRuntime(new InteractionExecutionRuntimeDependencies(
+                _ => true,
+                _ => true,
+                _ => { },
+                (_, _, _, _, _, _, interval) => { capturedInterval = interval; return true; },
+                (_, _, _, _, _, _) => false,
+                static () => { }));
+
+            bool executed = runtime.Execute(new InteractionExecutionRequest(
+                ClickPosition: new Vector2(100, 200),
+                ExpectedElement: null,
+                Controller: null,
+                UseHoldClick: false,
+                ForceUiHoverVerification: false,
+                AllowWhenHotkeyInactive: false,
+                AvoidCursorMove: false,
+                OutsideWindowLogMessage: "outside",
+                Interval: IntervalKind.Walk));
+
+            executed.Should().BeTrue();
+            capturedInterval.Should().Be(IntervalKind.Walk);
+        }
+
+        [TestMethod]
+        public void Execute_DefaultsIntervalToClick_WhenNotSpecified()
+        {
+            IntervalKind? capturedInterval = null;
+
+            var runtime = new InteractionExecutionRuntime(new InteractionExecutionRuntimeDependencies(
+                _ => true,
+                _ => true,
+                _ => { },
+                (_, _, _, _, _, _, interval) => { capturedInterval = interval; return true; },
+                (_, _, _, _, _, _) => false,
+                static () => { }));
+
+            runtime.Execute(new InteractionExecutionRequest(
+                ClickPosition: new Vector2(100, 200),
+                ExpectedElement: null,
+                Controller: null,
+                UseHoldClick: false,
+                ForceUiHoverVerification: false,
+                AllowWhenHotkeyInactive: false,
+                AvoidCursorMove: false,
+                OutsideWindowLogMessage: "outside"));
+
+            capturedInterval.Should().Be(IntervalKind.Click);
         }
     }
 }

@@ -2,7 +2,7 @@ namespace ClickIt.Core.Runtime
 {
     public partial class PluginLoopHost
     {
-        private PluginManualUiHoverModeDecision ResolveManualUiHoverMode(bool hotkeyActive)
+        private bool ResolveManualUiHoverMode(bool hotkeyActive)
             => PluginClickRuntimeStateEvaluator.ResolveManualUiHoverMode(_settings, hotkeyActive);
 
         private PluginLazyModeContextSnapshot ResolveRegularClickLazyModeContext(bool hotkeyActive)

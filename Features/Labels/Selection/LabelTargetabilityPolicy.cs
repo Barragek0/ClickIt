@@ -42,9 +42,7 @@ namespace ClickIt.Features.Labels.Selection
             hasLabelEntityTargetable = false;
             labelEntityTargetable = true;
 
-            Entity? item = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                ? rawItem as Entity
-                : null;
+            DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item);
             if (item != null)
             {
                 Targetable? targetable = item.GetComponent<Targetable>();

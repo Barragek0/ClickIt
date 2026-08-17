@@ -18,18 +18,11 @@ namespace ClickIt.Features.Click.Selection
 
             if (ClickLabelSelectionMath.IsAltarLabel(nextLabel))
             {
-                bool shouldContinuePathing = ClickLabelSelectionMath.ShouldContinuePathingForSpecialAltarLabel(
-                    _dependencies.Settings.WalkTowardOffscreenLabels.Value,
-                    nextLabel.ItemOnGround != null,
-                    nextLabel.ItemOnGround?.IsHidden == true,
-                    _dependencies.AltarAutomation.HasClickableAltars());
-                if (shouldContinuePathing)
-                {
-                    _dependencies.DebugLog("[ProcessRegularClick] Item is an altar and altar choices are not fully clickable yet; continuing pathing");
-                    return false;
-                }
-
-                _dependencies.DebugLog("[ProcessRegularClick] Item is an altar, breaking");
+                // Altars are ONLY clicked by the altar automation (which evaluates the top/bottom options and picks the best one). The generic label path must never click an altar label - a blind click lands on a fixed label point (an arbitrary altar option), not the evaluated best choice. Consume the tick so the generic click is skipped; the automation clicks the correct option once the choices become clickable, and the upstream walk decision handles approaching a far altar.
+                bool choicesClickable = _dependencies.AltarAutomation.HasClickableAltars();
+                _dependencies.DebugLog(choicesClickable
+                    ? "[ProcessRegularClick] Item is an altar, breaking"
+                    : "[ProcessRegularClick] Item is an altar and altar choices are not fully clickable yet; not clicking");
                 return true;
             }
 

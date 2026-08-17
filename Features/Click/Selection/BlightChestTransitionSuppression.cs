@@ -19,8 +19,7 @@ internal sealed class BlightChestTransitionSuppression
         if (label == null)
             return false;
 
-        if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-            || rawItem is not Entity item)
+        if (!DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item))
             return false;
 
         if (!DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string path)

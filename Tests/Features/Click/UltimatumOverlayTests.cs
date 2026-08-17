@@ -18,7 +18,7 @@ namespace ClickIt.Tests.Features.Click
                 () => [new UltimatumPanelOptionPreview(new RectangleF(1f, 2f, 3f, 4f), element, "mod", 0, false)],
                 () => { });
 
-            var queue = new DeferredFrameQueue();
+            var queue = new DeferredDrawQueue();
             overlay.Draw(CreateContext(queue));
 
             var frames = queue.GetPendingFrameSnapshot();
@@ -34,7 +34,7 @@ namespace ClickIt.Tests.Features.Click
                 () => [new UltimatumPanelOptionPreview(new RectangleF(5f, 6f, 7f, 8f), element, "mod", 0, false)],
                 () => { });
 
-            var queue = new DeferredFrameQueue();
+            var queue = new DeferredDrawQueue();
             overlay.Draw(CreateContext(queue));
 
             var frames = queue.GetPendingFrameSnapshot();
@@ -47,21 +47,19 @@ namespace ClickIt.Tests.Features.Click
         {
             var overlay = new UltimatumOverlay(() => null, () => { });
 
-            var queue = new DeferredFrameQueue();
+            var queue = new DeferredDrawQueue();
             overlay.Draw(CreateContext(queue));
 
             queue.GetPendingFrameSnapshot().Should().BeEmpty();
         }
 
-        private static OverlayRenderContext CreateContext(DeferredFrameQueue queue)
+        private static OverlayRenderContext CreateContext(DeferredDrawQueue queue)
             => new(
                 new ClickItSettings(),
                 GameController: null,
                 Graphics: null,
                 WindowArea: default,
                 Labels: null,
-                new DeferredTextQueue(),
-                queue,
-                new DeferredDrawQueue());
+                queue);
     }
 }

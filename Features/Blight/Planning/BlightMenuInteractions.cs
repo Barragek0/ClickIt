@@ -5,19 +5,8 @@ internal static class BlightMenuInteractions
 {
     internal static bool IsTowerMenuOpen(Element labelElement)
     {
-        try
-        {
-            Element? menu = GetMenuChildElement(labelElement, 3);
-            if (menu == null) return false;
-            for (int i = 0; i < menu.ChildCount; i++)
-            {
-                Element? child = menu.GetChildAtIndex(i);
-                if (child != null && child.IsVisible)
-                    return true;
-            }
-            return false;
-        }
-        catch { return false; }
+        List<Element>? children = GetVisibleMenuChildren(labelElement, 3);
+        return children is { Count: > 0 };
     }
 
     internal static bool CanAffordBuild(Element labelElement)
@@ -160,42 +149,16 @@ internal static class BlightMenuInteractions
 
     // The upgrade menu's visible child count: a plain tier upgrade shows ONE button (the next tier), while a tower at max plain shows the specialization buttons (two+). This tells a maxed tower apart from a tier upgrade even when the rank read lags behind reality.
     internal static int CountVisibleUpgradeButtons(Element labelElement)
-    {
-        try
-        {
-            Element? menu = GetMenuChildElement(labelElement, 3);
-            if (menu == null) return 0;
-            int count = 0;
-            for (int i = 0; i < menu.ChildCount; i++)
-            {
-                Element? child = menu.GetChildAtIndex(i);
-                if (child != null && child.IsVisible)
-                    count++;
-            }
-            return count;
-        }
-        catch { return 0; }
-    }
+        => GetVisibleMenuChildren(labelElement, 3)?.Count ?? 0;
 
     internal static (NumVector2 Position, string? UpgradeId)? GetFirstVisibleUpgradeButton(Element labelElement)
     {
-        try
-        {
-            Element? menu = GetMenuChildElement(labelElement, 3);
-            if (menu == null) return null;
-
-            for (int i = 0; i < menu.ChildCount; i++)
-            {
-                Element? child = menu.GetChildAtIndex(i);
-                if (child == null || !child.IsVisible) continue;
-
-                return (Center(child.GetClientRect()),
-                        ReadUpgradeResultTowerId(child));
-            }
-
+        List<Element>? children = GetVisibleMenuChildren(labelElement, 3);
+        if (children == null || children.Count == 0)
             return null;
-        }
-        catch { return null; }
+
+        Element? first = children[0];
+        return (Center(first.GetClientRect()), ReadUpgradeResultTowerId(first));
     }
 
     internal static NumVector2? GetBuildIconClickPosition(Element labelElement)
@@ -235,25 +198,26 @@ internal static class BlightMenuInteractions
         catch { return null; }
     }
 
-    // True when the hovered element address is the build/upgrade icon (Child[2]/Child[3]) or one of its direct children — used to keep pathfinding clicks off tower build/upgrade icons.
-    internal static bool IsMenuChildHit(Element labelElement, int childIndex, long hoveredAddress)
+    // Shared walk of a menu child's visible slots (Child[0].Child[childIndex]); null when the menu child is absent. The tower/upgrade menu is Child[0].Child[3], the build icon Child[0].Child[2].
+    internal static List<Element>? GetVisibleMenuChildren(Element labelElement, int childIndex)
     {
-        Element? child = GetMenuChildElement(labelElement, childIndex);
-        if (child == null || hoveredAddress == 0)
-            return false;
-        if (child.Address == hoveredAddress)
-            return true;
         try
         {
-            for (int i = 0; i < child.ChildCount; i++)
+            Element? menu = GetMenuChildElement(labelElement, childIndex);
+            if (menu == null)
+                return null;
+
+            List<Element>? visible = null;
+            for (int i = 0; i < menu.ChildCount; i++)
             {
-                Element? sub = child.GetChildAtIndex(i);
-                if (sub != null && sub.Address == hoveredAddress)
-                    return true;
+                Element? child = menu.GetChildAtIndex(i);
+                if (child != null && child.IsVisible)
+                    (visible ??= []).Add(child);
             }
+
+            return visible;
         }
-        catch { }
-        return false;
+        catch { return null; }
     }
 
     internal static RectangleF? GetMenuRegionRect(Element labelElement, int childIndex)

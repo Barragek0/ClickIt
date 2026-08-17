@@ -6,7 +6,6 @@ namespace ClickIt.Core.Bootstrap
         AreaService AreaService,
         LabelReadModelService LabelReadModelService,
         TimeCache<List<LabelOnGround>> CachedLabels,
-        Camera Camera,
         AltarService AltarService,
         LabelFilterPort LabelFilterPort,
         LabelDebugService LabelDebugService,
@@ -17,8 +16,6 @@ namespace ClickIt.Core.Bootstrap
         InputHandler InputHandler,
         PathfindingService PathfindingService,
         WeightCalculator WeightCalculator,
-        DeferredTextQueue DeferredTextQueue,
-        DeferredFrameQueue DeferredFrameQueue,
         HarvestService HarvestService,
         BlightService BlightService,
         DeferredDrawQueue DeferredDrawQueue);
@@ -70,8 +67,6 @@ namespace ClickIt.Core.Bootstrap
             WeightCalculator weightCalculator = new(settings);
             HarvestService harvestService = new(settings);
 
-            DeferredTextQueue deferredTextQueue = new();
-            DeferredFrameQueue deferredFrameQueue = new();
             DeferredDrawQueue deferredDrawQueue = new();
 
             BlightService blightService = new(
@@ -87,7 +82,6 @@ namespace ClickIt.Core.Bootstrap
                 areaService,
                 labelReadModelService,
                 cachedLabels,
-                camera,
                 altarService,
                 labelFilterPort,
                 labelFilterPort.LabelDebugService,
@@ -98,8 +92,6 @@ namespace ClickIt.Core.Bootstrap
                 inputHandler,
                 pathfindingService,
                 weightCalculator,
-                deferredTextQueue,
-                deferredFrameQueue,
                 harvestService,
                 blightService,
                 deferredDrawQueue);

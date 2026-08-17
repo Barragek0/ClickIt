@@ -32,16 +32,18 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void TryPromoteLostShipmentCandidate_SetsBest_WhenBestIsEmpty()
+        public void TryPromoteClickableCandidate_SetsBest_WhenBestIsEmpty()
         {
             LostShipmentCandidate? best = null;
             LostShipmentCandidate candidate = CreateLostShipmentCandidate(new Vector2(20f, 20f), distance: 14f);
 
-            bool promoted = MechanicCandidateResolver.TryPromoteLostShipmentCandidate(
+            bool promoted = MechanicCandidateResolver.TryPromoteClickableCandidate(
                 ref best,
                 candidate,
                 cursorAbsolute: new Vector2(5f, 5f),
-                windowTopLeft: Vector2.Zero);
+                windowTopLeft: Vector2.Zero,
+                static value => value.Distance,
+                static value => value.ClickPosition);
 
             promoted.Should().BeTrue();
             best.Should().NotBeNull();
@@ -50,16 +52,18 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void TryPromoteLostShipmentCandidate_ReplacesBest_WhenDistancesAreEquivalentAndCursorIsCloser()
+        public void TryPromoteClickableCandidate_ReplacesBest_WhenDistancesAreEquivalentAndCursorIsCloser()
         {
             LostShipmentCandidate? best = CreateLostShipmentCandidate(new Vector2(30f, 30f), distance: 10f);
             LostShipmentCandidate candidate = CreateLostShipmentCandidate(new Vector2(12f, 12f), distance: 10.0004f);
 
-            bool promoted = MechanicCandidateResolver.TryPromoteLostShipmentCandidate(
+            bool promoted = MechanicCandidateResolver.TryPromoteClickableCandidate(
                 ref best,
                 candidate,
                 cursorAbsolute: new Vector2(10f, 10f),
-                windowTopLeft: Vector2.Zero);
+                windowTopLeft: Vector2.Zero,
+                static value => value.Distance,
+                static value => value.ClickPosition);
 
             promoted.Should().BeTrue();
             best.Should().NotBeNull();
@@ -67,16 +71,18 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void TryPromoteSettlersCandidate_KeepsExistingBest_WhenCandidateIsWorse()
+        public void TryPromoteClickableCandidate_KeepsExistingBest_WhenCandidateIsWorse()
         {
             SettlersOreCandidate? best = CreateSettlersCandidate(new Vector2(14f, 14f), MechanicIds.SettlersCopper, distance: 8f);
             SettlersOreCandidate candidate = CreateSettlersCandidate(new Vector2(50f, 50f), MechanicIds.SettlersVerisium, distance: 12f);
 
-            bool promoted = MechanicCandidateResolver.TryPromoteSettlersCandidate(
+            bool promoted = MechanicCandidateResolver.TryPromoteClickableCandidate(
                 ref best,
                 candidate,
                 cursorAbsolute: new Vector2(10f, 10f),
-                windowTopLeft: Vector2.Zero);
+                windowTopLeft: Vector2.Zero,
+                static value => value.Distance,
+                static value => value.ClickPosition);
 
             promoted.Should().BeFalse();
             best.Should().NotBeNull();

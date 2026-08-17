@@ -27,6 +27,21 @@ namespace ClickIt.Tests.Features.Click
             handled.Should().BeFalse();
         }
 
+        [TestMethod]
+        public void TryHandle_ReturnsTrue_ForAltarLabel_WhenAltarChoicesAreNotClickableYet()
+        {
+            // Regression: a hovered/selected altar label whose choices are not clickable yet must consume the tick (return true) so the generic label click never fires - a blind click lands on an arbitrary altar option (the wrong-option pick bug).
+            var settings = new ClickItSettings();
+            settings.ClickInitialUltimatum.Value = false;
+            Entity altar = EntityProbeFactory.Create(path: Constants.TangleAltar);
+            LabelOnGround altarLabel = OffscreenStickyTargetGraphShaper.CreateVisibleLabel(altar);
+            var handler = CreateHandler(settings, altarSnapshot: []);
+
+            bool handled = handler.TryHandle(altarLabel, Vector2.Zero);
+
+            handled.Should().BeTrue();
+        }
+
         private static SpecialLabelInteractionHandler CreateHandler(
             ClickItSettings settings,
             IReadOnlyList<PrimaryAltarComponent> altarSnapshot)

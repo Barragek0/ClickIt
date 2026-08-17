@@ -46,7 +46,6 @@ namespace ClickIt.Tests.Behavior.Click
                 GroundItemsDecision());
 
             result.ShouldRunPostActions.Should().BeTrue("a resolvable on-screen strongbox is clicked, not walked");
-            result.DidActionableWork.Should().BeTrue();
             harness.InteractionsExecuted.Should().Be(1);
             AssertPointInside(rect, harness.LastClickPosition!.Value);
         }
@@ -87,7 +86,6 @@ namespace ClickIt.Tests.Behavior.Click
                 GroundItemsDecision());
 
             result.ShouldRunPostActions.Should().BeFalse("a fully obscured strongbox has no clickable point, so the tick walks instead");
-            result.DidActionableWork.Should().BeTrue();
             harness.InteractionsExecuted.Should().Be(0, "the walk decision stops the tick before any click is attempted");
         }
 
@@ -105,7 +103,6 @@ namespace ClickIt.Tests.Behavior.Click
 
             harness.InteractionsExecuted.Should().Be(0, "a locked strongbox must never be clicked");
             result.ShouldRunPostActions.Should().BeFalse();
-            result.DidActionableWork.Should().BeFalse("with only a locked strongbox on screen there is nothing actionable");
         }
 
         [TestMethod]
@@ -300,7 +297,6 @@ namespace ClickIt.Tests.Behavior.Click
                 GroundItemsDecision());
 
             result.ShouldRunPostActions.Should().BeFalse();
-            result.DidActionableWork.Should().BeFalse("with walking disabled a fully obscured label is neither clicked nor walked");
             harness.InteractionsExecuted.Should().Be(0);
         }
 
@@ -339,6 +335,31 @@ namespace ClickIt.Tests.Behavior.Click
 
             result.ShouldRunPostActions.Should().BeFalse("clicks are paused while chest loot settles");
             harness.InteractionsExecuted.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void PostChestLootSettle_BlocksWalkToFarLabel_NoOffscreenPathfinding()
+        {
+            // During the post-chest-loot-settle wait, a label beyond ClickDistance (which would normally be walked to per Spec 11) must NOT be walked toward - the tick waits for drops to settle instead of pathfinding off-screen.
+            var config = BaseConfig();
+            config.CaptureClickDebug = true;
+            var harness = new ClickPipelineScenarioFactory.ScenarioHarness(config);
+            RectangleF rect = new(500f, 300f, 160f, 40f);
+            LabelOnGround box = Strongbox(150f, 0x01, locked: false, rect); // beyond ClickDistance 100 -> would normally be walked to
+            var labels = new List<LabelOnGround> { box };
+            harness.CurrentLabels = labels;
+
+            ExecutionResult result = harness.ExecutionEngine.Execute(
+                harness.CreatePostChestSettleContext(labels),
+                harness.CreateCandidates(box, MechanicIds.Strongboxes),
+                GroundItemsDecision());
+
+            result.ShouldRunPostActions.Should().BeFalse("the tick is consumed while chest drops settle");
+            harness.InteractionsExecuted.Should().Be(0, "no click is dispatched while drops settle");
+            harness.ClickDebugSnapshots.Should().Contain(s => s.Stage == "PostChestLootSettleBlocked",
+                "the settle block must be enforced on the label walk decision");
+            harness.ClickDebugSnapshots.Should().NotContain(s => s.Stage == "WalkTowardLabel",
+                "the far label must not be pathfound toward while drops settle");
         }
 
         [TestMethod]
@@ -391,7 +412,6 @@ namespace ClickIt.Tests.Behavior.Click
                 HiddenGroundItemsDecision());
 
             result.ShouldRunPostActions.Should().BeFalse();
-            result.DidActionableWork.Should().BeFalse("with ground items hidden and no candidate the tick does nothing");
             harness.InteractionsExecuted.Should().Be(0);
         }
 

@@ -27,7 +27,7 @@ namespace ClickIt.Core.Bootstrap
             ArgumentNullException.ThrowIfNull(owner);
             ArgumentNullException.ThrowIfNull(settings);
 
-            settings.EnsureAllModsHaveWeights();
+            settings.InitializeDefaultWeights();
 
             context.Services.AlertService?.ReloadAlertSound();
             context.Services.PerformanceMonitor?.Start();
@@ -109,7 +109,6 @@ namespace ClickIt.Core.Bootstrap
             services.ErrorHandler = core.ErrorHandler;
             services.AreaService = core.AreaService;
             services.CachedLabels = core.CachedLabels;
-            services.Camera = core.Camera;
             services.AltarService = core.AltarService;
             services.LabelFilterPort = core.LabelFilterPort;
             services.LabelDebugService = core.LabelDebugService;
@@ -131,11 +130,9 @@ namespace ClickIt.Core.Bootstrap
         {
             services.ClickAutomationPort = clickAutomationPort;
             services.ClickAutomationSupport = clickAutomationPort.ClickAutomationSupport;
-            services.LockedInteractionDispatcher = clickAutomationPort.LockedInteractionDispatcher;
             services.AlertService = alertService;
             services.WeightCalculator = weightCalculator;
 
-            // Wire the dedicated harvest click path (altar pattern).
             if (services.HarvestService != null)
                 clickAutomationPort.GetHarvestLabelToClick
                     = () => services.HarvestService.GetLabelToClick();
@@ -175,8 +172,6 @@ namespace ClickIt.Core.Bootstrap
             CoreDomainServices core,
             RenderingDomainServices rendering)
         {
-            renderingState.DeferredTextQueue = core.DeferredTextQueue;
-            renderingState.DeferredFrameQueue = core.DeferredFrameQueue;
             renderingState.DeferredDrawQueue = core.DeferredDrawQueue;
             renderingState.ImGuiDebugOverlay = rendering.ImGuiDebugOverlay;
             renderingState.UiRegionRectangleOverlay = rendering.UiRegionRectangleOverlay;

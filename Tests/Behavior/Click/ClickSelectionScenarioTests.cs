@@ -33,7 +33,7 @@ namespace ClickIt.Tests.Behavior.Click
             var harness = new ClickPipelineScenarioFactory.ScenarioHarness(BaseConfig());
             LabelOnGround item = WorldItem(10f, 0x01, new RectangleF(100f, 100f, 60f, 20f));
 
-            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([item], 0, 1);
+            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([item], 0, 1, isAcceptable: null);
 
             selected.Should().BeSameAs(item);
         }
@@ -45,7 +45,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround near = WorldItem(10f, 0x01, new RectangleF(100f, 100f, 60f, 20f));
             LabelOnGround far = WorldItem(90f, 0x02, new RectangleF(800f, 600f, 60f, 20f));
 
-            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([far, near], 0, 2);
+            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([far, near], 0, 2, isAcceptable: null);
 
             selected.Should().BeSameAs(near, "with penalty 0 the closest label must win regardless of list order");
         }
@@ -57,7 +57,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround nearItem = WorldItem(10f, 0x01, new RectangleF(100f, 100f, 60f, 20f));
             LabelOnGround farStrongbox = Strongbox(80f, 0x02, locked: false, new RectangleF(900f, 600f, 160f, 40f));
 
-            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([farStrongbox, nearItem], 0, 2);
+            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([farStrongbox, nearItem], 0, 2, isAcceptable: null);
 
             selected.Should().BeSameAs(nearItem, "penalty 0 ranks purely by distance, so the closer item beats the farther strongbox");
         }
@@ -72,7 +72,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround nearItem = WorldItem(10f, 0x01, new RectangleF(100f, 100f, 60f, 20f));
             LabelOnGround farStrongbox = Strongbox(80f, 0x02, locked: false, new RectangleF(900f, 600f, 160f, 40f));
 
-            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([nearItem, farStrongbox], 0, 2);
+            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([nearItem, farStrongbox], 0, 2, isAcceptable: null);
 
             selected.Should().BeSameAs(farStrongbox,
                 "a high-priority strongbox must win over a closer item when the priority penalty is enabled");
@@ -85,7 +85,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround locked = Strongbox(10f, 0x01, locked: true, new RectangleF(100f, 100f, 160f, 40f));
             LabelOnGround openItem = WorldItem(50f, 0x02, new RectangleF(800f, 600f, 60f, 20f));
 
-            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([locked, openItem], 0, 2);
+            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([locked, openItem], 0, 2, isAcceptable: null);
 
             selected.Should().BeSameAs(openItem, "a locked strongbox is never a candidate, so the next label is selected");
         }
@@ -98,7 +98,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround lockedB = Strongbox(20f, 0x02, locked: true, new RectangleF(400f, 200f, 160f, 40f));
             LabelOnGround open = Strongbox(60f, 0x03, locked: false, new RectangleF(900f, 600f, 160f, 40f));
 
-            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([lockedA, lockedB, open], 0, 3);
+            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([lockedA, lockedB, open], 0, 3, isAcceptable: null);
 
             selected.Should().BeSameAs(open, "all locked strongboxes are excluded; the open one is selected");
         }
@@ -110,7 +110,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround outOfRange = Strongbox(150f, 0x01, locked: false, new RectangleF(100f, 100f, 160f, 40f));
             LabelOnGround inRange = WorldItem(30f, 0x02, new RectangleF(800f, 600f, 60f, 20f));
 
-            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([outOfRange, inRange], 0, 2);
+            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([outOfRange, inRange], 0, 2, isAcceptable: null);
 
             selected.Should().BeSameAs(inRange, "a strongbox beyond ClickDistance must be rejected, the in-range label selected");
         }
@@ -122,7 +122,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround farA = Strongbox(150f, 0x01, locked: false, new RectangleF(100f, 100f, 160f, 40f));
             LabelOnGround farB = WorldItem(200f, 0x02, new RectangleF(800f, 600f, 60f, 20f));
 
-            harness.SelectionService.GetNextLabelToClick([farA, farB], 0, 2).Should().BeNull();
+            harness.SelectionService.GetNextLabelToClick([farA, farB], 0, 2, isAcceptable: null).Should().BeNull();
         }
 
         [TestMethod]
@@ -134,7 +134,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround item = WorldItem(10f, 0x01, new RectangleF(100f, 100f, 60f, 20f));
             LabelOnGround strongbox = Strongbox(50f, 0x02, locked: false, new RectangleF(800f, 600f, 160f, 40f));
 
-            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([item, strongbox], 0, 2);
+            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([item, strongbox], 0, 2, isAcceptable: null);
 
             selected.Should().BeSameAs(strongbox, "with item pickup disabled the world item has no mechanic and is rejected");
         }
@@ -148,7 +148,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround strongbox = Strongbox(10f, 0x01, locked: false, new RectangleF(100f, 100f, 160f, 40f));
             LabelOnGround item = WorldItem(50f, 0x02, new RectangleF(800f, 600f, 60f, 20f));
 
-            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([strongbox, item], 0, 2);
+            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([strongbox, item], 0, 2, isAcceptable: null);
 
             selected.Should().BeSameAs(item, "with strongbox clicking disabled the strongbox is rejected");
         }
@@ -261,7 +261,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround itemA = WorldItem(50f, 0x03, new RectangleF(200f, 200f, 60f, 20f));
             LabelOnGround itemB = WorldItem(70f, 0x04, new RectangleF(1500f, 800f, 60f, 20f));
 
-            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([locked, open, itemA, itemB], 0, 4);
+            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([locked, open, itemA, itemB], 0, 4, isAcceptable: null);
 
             selected.Should().BeSameAs(open,
                 "the closest clickable label is the open strongbox; the locked one must not block it");
@@ -276,7 +276,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround nearItem = WorldItem(25f, 0x02, new RectangleF(900f, 600f, 60f, 20f));
             LabelOnGround open = Strongbox(40f, 0x03, locked: false, new RectangleF(580f, 310f, 160f, 40f));
 
-            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([locked, open, nearItem], 0, 3);
+            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([locked, open, nearItem], 0, 3, isAcceptable: null);
 
             selected.Should().BeSameAs(nearItem, "with penalty 0 the closest clickable label (the item) must win over the farther open strongbox");
         }
@@ -289,7 +289,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround first = WorldItem(50f, 0x01, new RectangleF(100f, 100f, 60f, 20f));
             LabelOnGround second = WorldItem(50f, 0x02, new RectangleF(1500f, 800f, 60f, 20f));
 
-            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([first, second], 0, 2);
+            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([first, second], 0, 2, isAcceptable: null);
 
             selected.Should().NotBeNull("an equal-distance tie must still resolve to one label");
             (selected == first || selected == second).Should().BeTrue();
@@ -303,7 +303,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround mid = WorldItem(40f, 0x02, new RectangleF(800f, 600f, 60f, 20f));
             LabelOnGround far = WorldItem(90f, 0x03, new RectangleF(1500f, 800f, 60f, 20f));
 
-            harness.SelectionService.GetNextLabelToClick([far, mid, near], 0, 3).Should().BeSameAs(near);
+            harness.SelectionService.GetNextLabelToClick([far, mid, near], 0, 3, isAcceptable: null).Should().BeSameAs(near);
         }
 
         [TestMethod]
@@ -317,7 +317,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround strongbox = Strongbox(80f, 0x01, locked: false, new RectangleF(900f, 600f, 160f, 40f));
             LabelOnGround item = WorldItem(20f, 0x02, new RectangleF(100f, 100f, 60f, 20f));
 
-            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([strongbox, item], 0, 2);
+            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([strongbox, item], 0, 2, isAcceptable: null);
 
             selected.Should().BeSameAs(item, "when items have higher priority and the penalty is on, the item wins despite the closer strongbox");
         }
@@ -332,7 +332,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround item = WorldItem(10f, 0x01, new RectangleF(100f, 100f, 60f, 20f));
             LabelOnGround strongbox = Strongbox(20f, 0x02, locked: false, new RectangleF(800f, 600f, 160f, 40f));
 
-            harness.SelectionService.GetNextLabelToClick([item, strongbox], 0, 2).Should().BeNull(
+            harness.SelectionService.GetNextLabelToClick([item, strongbox], 0, 2, isAcceptable: null).Should().BeNull(
                 "with both item and strongbox clicking disabled every label has no mechanic and is rejected");
         }
     }

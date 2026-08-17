@@ -80,7 +80,6 @@ namespace ClickIt.Tests.Behavior.Click
                 harness.CreateCandidates(box, MechanicIds.Strongboxes),
                 ShrineDecision());
 
-            result.DidActionableWork.Should().BeTrue("the shrine click is actionable");
             result.ShouldRunPostActions.Should().BeFalse("mechanic interactions do not run the label post-click aftermath");
             harness.VisibleMechanics.ShrineClicks.Should().Be(1, "the clickable shrine is clicked");
             harness.InteractionsExecuted.Should().Be(0, "the shrine click replaces the label click");
@@ -125,7 +124,6 @@ namespace ClickIt.Tests.Behavior.Click
                 harness.CreateCandidates(item, MechanicIds.Items, config.SettlersCandidate, null),
                 SettlersDecision());
 
-            result.DidActionableWork.Should().BeTrue();
             harness.VisibleMechanics.SettlersClicks.Should().Be(1, "the settlers ore candidate is clicked");
             harness.InteractionsExecuted.Should().Be(0, "the ore click replaces the item click");
         }
@@ -167,7 +165,6 @@ namespace ClickIt.Tests.Behavior.Click
                 harness.CreateCandidates(box, MechanicIds.Strongboxes, null, config.LostShipmentCandidate),
                 LostShipmentDecision());
 
-            result.DidActionableWork.Should().BeTrue();
             harness.VisibleMechanics.LostShipmentClicks.Should().Be(1, "the lost shipment interaction is clicked");
             harness.InteractionsExecuted.Should().Be(0);
         }

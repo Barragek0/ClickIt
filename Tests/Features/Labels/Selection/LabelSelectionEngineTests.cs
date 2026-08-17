@@ -13,8 +13,9 @@ namespace ClickIt.Tests.Features.Labels.Selection
                 startIndex: 2,
                 endExclusive: 4,
                 CreateClickSettings(),
-                _ => CreateSuccessfulCandidate("items"),
-                _ => new LabelRankInput(0f, 0f));
+                _ => new LabelScanEntry(
+                    CreateSuccessfulCandidate("items"),
+                    new LabelRankInput(0f, 0f)));
 
             result.SelectedCandidate.Should().BeNull();
             result.SelectedMechanicId.Should().BeNull();
@@ -60,9 +61,6 @@ namespace ClickIt.Tests.Features.Labels.Selection
         [TestMethod]
         public void SelectNextLabelByPriority_GatedSelection_SkipsSuppressedLabels_AndPicksBestAcceptable()
         {
-            // Regression: the scan now applies suppression INLINE in the selection pass (a single O(n) scan
-            // instead of re-querying the remaining range per suppressed label). A suppressed label must be
-            // skipped even when it would otherwise rank best, and the best ACCEPTABLE label must win.
             LabelOnGround wouldBeBest = CreateLabel();
             LabelOnGround nextBest = CreateLabel();
             LabelOnGround worst = CreateLabel();
@@ -73,10 +71,11 @@ namespace ClickIt.Tests.Features.Labels.Selection
                 startIndex: 0,
                 endExclusive: labels.Count,
                 CreateClickSettings(),
-                static _ => CreateSuccessfulCandidate("items"),
-                label => new LabelRankInput(
-                    ReferenceEquals(label, wouldBeBest) ? 1f : ReferenceEquals(label, nextBest) ? 2f : 3f,
-                    0f),
+                label => new LabelScanEntry(
+                    CreateSuccessfulCandidate("items"),
+                    new LabelRankInput(
+                        ReferenceEquals(label, wouldBeBest) ? 1f : ReferenceEquals(label, nextBest) ? 2f : 3f,
+                        0f)),
                 (label, _) => !ReferenceEquals(label, wouldBeBest));
 
             result.SelectedCandidate.Should().BeSameAs(nextBest,
@@ -87,9 +86,6 @@ namespace ClickIt.Tests.Features.Labels.Selection
         [TestMethod]
         public void SelectNextLabelByPriority_ScanEntryOverload_ResolvesEachLabelOnce_AndPicksBest()
         {
-            // Regression: the production path resolves candidate + rank from ONE scan entry per label (the
-            // live distance/rect DLR reads happen once, not twice) - the result must match the two-resolver
-            // overload while touching the resolver a single time per label.
             LabelOnGround near = CreateLabel();
             LabelOnGround far = CreateLabel();
             IReadOnlyList<LabelOnGround> labels = [far, near];

@@ -1,6 +1,5 @@
 namespace ClickIt.Core.Runtime;
 
-// The debug-settings dump areas: one root object (or service group) per entry, resolved from the GameController / plugin composition root when the dump runs.
 internal enum GameStateDumpTarget
 {
     Cache,
@@ -12,7 +11,6 @@ internal enum GameStateDumpTarget
     UiHover,
 }
 
-// Read-only snapshot of a dump run for the debug-settings panel: progress fraction, status text, recent steps, and any per-area errors surfaced beneath the controls.
 internal readonly record struct GameStateDumpSnapshot(
     bool InProgress,
     int ProgressPercent,
@@ -20,12 +18,9 @@ internal readonly record struct GameStateDumpSnapshot(
     IReadOnlyList<string> Errors,
     IReadOnlyList<string> Steps);
 
-// Background game-state dumper, reachable from the debug settings panel: pick one area (or Dump all) and each area's structure-first report is streamed into a dump file next to the plugin, so the report is never held in memory in full and the clipboard's size limit cannot silently truncate it. Progress, recent steps, and errors are published for the settings panel. The whole surface (UI + trigger) is gated behind Enabled, so it can be switched off from one place.
+// Background game-state dumper, reachable from the debug settings panel: pick one area (or Dump all) and each area's structure-first report is streamed into a dump file next to the plugin, so the report is never held in memory in full and the clipboard's size limit cannot silently truncate it. Progress, recent steps, and errors are published for the settings panel.
 internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies dependencies)
 {
-    // Code switch: the debug-settings dump controls only render when this is true.
-    internal static bool Enabled => true;
-
     private const int MaxSteps = 64;
     private const long StallMs = 15000;
 
@@ -123,9 +118,6 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
 
     private void QueueDumpCore(GameStateDumpTarget[] targets)
     {
-        if (!Enabled)
-            return;
-
         lock (_stateLock)
         {
             PluginRuntimeState runtime = _dependencies.State.Runtime;
@@ -281,10 +273,10 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
         lock (_stateLock)
         {
             _lastProgressAtMs = Environment.TickCount64;
-            _progressPercent = ((areaIndex * 100) + pct) / targets.Length;
+            _progressPercent = ResolveAreaProgressPercent(areaIndex, targets.Length, pct);
             _statusText = $"{targets[areaIndex]}: {pct}%";
 
-            int bucket = pct / 25;
+            int bucket = ResolveProgressBucket(pct);
             if (bucket != _lastProgressBucket)
             {
                 _lastProgressBucket = bucket;
@@ -292,6 +284,12 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
             }
         }
     }
+
+    internal static int ResolveAreaProgressPercent(int areaIndex, int areaCount, int areaPct)
+        => ((areaIndex * 100) + areaPct) / areaCount;
+
+    internal static int ResolveProgressBucket(int areaPct)
+        => areaPct / 25;
 
     // Entity nodes expose their game components (Beam, Positioned, Render, ...) through CacheComp; the generic traversal cannot see them, so they are supplied as extra children the same way the old EntityListWrapper dump did.
     private static List<(string Name, object? Value)>? ExtractEntityComponents(object value)

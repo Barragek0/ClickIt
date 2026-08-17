@@ -219,15 +219,18 @@ namespace ClickIt.Tests.Behavior.Click
             var resolver = new LabelClickPointResolver(settings);
             RectangleF rect = new(500f, 300f, 160f, 40f);
 
-            Vector2 clickPos = resolver.CalculateClickPosition(
+            bool resolved = resolver.TryCalculateClickPosition(
                 rect,
                 EntityType.Chest,
                 StrongboxPath,
                 "Arcanist's Strongbox",
                 windowTopLeft: Vector2.Zero,
                 blockedAreas: [],
+                isClickableArea: null,
+                out Vector2 clickPos,
                 avoidOverlapsEnabled: false);
 
+            resolved.Should().BeTrue();
             AssertPointInside(rect, clickPos);
             clickPos.Y.Should().BeLessThan(rect.Center.Y, "the chest height offset raises the preferred click point");
         }

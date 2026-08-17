@@ -48,8 +48,8 @@ namespace ClickIt.Features.Altars
                     : null;
                 List<Element> elements = LabelElementSearch.GetElementsByStringContains(labelElement, "valuedefault");
                 if (elements == null || elements.Count == 0) continue;
-                string path = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                    && DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out string resolvedPath)
+                string path = DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item)
+                    && DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
                         ? resolvedPath
                         : string.Empty;
 
@@ -71,8 +71,8 @@ namespace ClickIt.Features.Altars
             for (int i = 0; i < labels.Count; i++)
             {
                 LabelOnGround label = labels[i];
-                if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                    || !DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out string path)
+                if (!DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item)
+                    || !DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string path)
                     || !DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
                     || rawLabel == null
                     || !DynamicAccess.TryReadBool(rawLabel, DynamicAccessProfiles.IsVisible, out bool isVisible)

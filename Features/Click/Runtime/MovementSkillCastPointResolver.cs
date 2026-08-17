@@ -24,7 +24,7 @@ namespace ClickIt.Features.Click.Runtime
             for (float t = 1.65f; t >= 0.70f; t -= 0.1f)
             {
                 Vector2 candidate = center + (direction * t);
-                if (!OffscreenTargetResolver.IsInsideWindow(window, candidate))
+                if (!OffscreenPathingMath.IsInsideWindow(window, candidate))
                     continue;
                 if (candidate.X < safeLeft || candidate.X > safeRight || candidate.Y < safeTop || candidate.Y > safeBottom)
                     continue;

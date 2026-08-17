@@ -26,6 +26,8 @@ namespace ClickIt.Shared.Rendering
         bool Filled,
         string Text,
         FontAlign Align,
+        int Size,
+        bool Shadow,
         RenderSection Section = RenderSection.Unknown);
 
     /// <summary>
@@ -43,6 +45,7 @@ namespace ClickIt.Shared.Rendering
         private List<DeferredDrawItem> _items = [];
         private List<DeferredDrawItem> _spare = [];
         private readonly NumVector2[] _polyBuffer = new NumVector2[MaxPolySegments + 1];
+        private readonly double[] _flushSectionMs = new double[15];
         private int _pendingCount;
 
         // Ambient render section set by the overlay host around each overlay's Draw, so flushed items can be attributed back to the feature that enqueued them. Render-thread only.
@@ -65,7 +68,6 @@ namespace ClickIt.Shared.Rendering
 
         private void Add(DeferredDrawItem item)
         {
-            // Stamp the ambient section so the flush can attribute per-feature draw cost.
             item = item with { Section = CurrentSection };
 
             // Silently ignore errors to prevent logging during render
@@ -97,36 +99,33 @@ namespace ClickIt.Shared.Rendering
             if (thickness <= 0 || !IsValidRect(rectangle))
                 return;
 
-            Add(new DeferredDrawItem(DeferredDrawKind.Frame, rectangle, default, default, default, 0, thickness, color, 0, false, string.Empty, FontAlign.Left));
+            Add(new DeferredDrawItem(DeferredDrawKind.Frame, rectangle, default, default, default, 0, thickness, color, 0, false, string.Empty, FontAlign.Left, 0, false));
         }
 
         public void EnqueueLine(NumVector2 start, NumVector2 end, int thickness, Color color)
-            => Add(new DeferredDrawItem(DeferredDrawKind.Line, default, start, end, default, 0, thickness, color, 0, false, string.Empty, FontAlign.Left));
+            => Add(new DeferredDrawItem(DeferredDrawKind.Line, default, start, end, default, 0, thickness, color, 0, false, string.Empty, FontAlign.Left, 0, false));
 
         public void EnqueueLineOnLargeMap(NumVector2 start, NumVector2 end, int thickness, Color color)
-            => Add(new DeferredDrawItem(DeferredDrawKind.LineOnLargeMap, default, start, end, default, 0, thickness, color, 0, false, string.Empty, FontAlign.Left));
+            => Add(new DeferredDrawItem(DeferredDrawKind.LineOnLargeMap, default, start, end, default, 0, thickness, color, 0, false, string.Empty, FontAlign.Left, 0, false));
 
         public void EnqueueLineInWorld(NumVector2 start, NumVector2 end, int thickness, Color color)
-            => Add(new DeferredDrawItem(DeferredDrawKind.LineInWorld, default, start, end, default, 0, thickness, color, 0, false, string.Empty, FontAlign.Left));
+            => Add(new DeferredDrawItem(DeferredDrawKind.LineInWorld, default, start, end, default, 0, thickness, color, 0, false, string.Empty, FontAlign.Left, 0, false));
 
         public void EnqueueCircleOnLargeMap(NumVector2 center, bool filled, float radius, Color color, int thickness)
-            => Add(new DeferredDrawItem(DeferredDrawKind.CircleOnLargeMap, default, default, default, new System.Numerics.Vector3(center.X, center.Y, 0f), radius, thickness, color, 0, filled, string.Empty, FontAlign.Left));
+            => Add(new DeferredDrawItem(DeferredDrawKind.CircleOnLargeMap, default, default, default, new System.Numerics.Vector3(center.X, center.Y, 0f), radius, thickness, color, 0, filled, string.Empty, FontAlign.Left, 0, false));
 
         public void EnqueueCircleInWorld(System.Numerics.Vector3 center, float radius, Color color, int thickness, int segments, bool filled)
-            => Add(new DeferredDrawItem(DeferredDrawKind.CircleInWorld, default, default, default, center, radius, thickness, color, segments, filled, string.Empty, FontAlign.Left));
-
-        public void EnqueueFilledCircleOnLargeMap(NumVector2 center, bool filled, float radius, Color color, int segments)
-            => Add(new DeferredDrawItem(DeferredDrawKind.FilledCircleOnLargeMap, default, default, default, new System.Numerics.Vector3(center.X, center.Y, 0f), radius, 0, color, segments, filled, string.Empty, FontAlign.Left));
+            => Add(new DeferredDrawItem(DeferredDrawKind.CircleInWorld, default, default, default, center, radius, thickness, color, segments, filled, string.Empty, FontAlign.Left, 0, false));
 
         public void EnqueueFilledScreenDisc(NumVector2 center, float radius, Color color, int segments)
-            => Add(new DeferredDrawItem(DeferredDrawKind.FilledScreenDisc, default, default, default, new System.Numerics.Vector3(center.X, center.Y, 0f), radius, 0, color, segments, false, string.Empty, FontAlign.Left));
+            => Add(new DeferredDrawItem(DeferredDrawKind.FilledScreenDisc, default, default, default, new System.Numerics.Vector3(center.X, center.Y, 0f), radius, 0, color, segments, false, string.Empty, FontAlign.Left, 0, false));
 
-        public void EnqueueText(string text, NumVector2 position, Color color, FontAlign align)
+        public void EnqueueText(string text, Vector2 position, Color color, int size, FontAlign align = FontAlign.Left, bool shadow = false)
         {
             if (string.IsNullOrEmpty(text))
                 return;
 
-            Add(new DeferredDrawItem(DeferredDrawKind.Text, default, default, default, new System.Numerics.Vector3(position.X, position.Y, 0f), 0, 0, color, 0, false, text, align));
+            Add(new DeferredDrawItem(DeferredDrawKind.Text, default, default, default, new System.Numerics.Vector3(position.X, position.Y, 0f), 0, 0, color, 0, false, text, align, size, shadow));
         }
 
         public void Flush(Graphics graphics, Action<RenderSection, double>? recordSectionFlush = null)
@@ -143,8 +142,9 @@ namespace ClickIt.Shared.Rendering
                 _pendingCount = 0;
             }
 
-            // Per-section flush accumulation. RenderSection values are small (0..14); a fixed bucket array avoids per-flush allocation on this hot path.
-            double[]? sectionMs = recordSectionFlush != null ? new double[15] : null;
+            // Per-section flush accumulation. RenderSection values are small (0..14); the bucket array is reused across flushes (render-thread-only) so this hot path stays allocation-free.
+            double[] sectionMs = _flushSectionMs;
+            Array.Clear(sectionMs, 0, sectionMs.Length);
 
             for (int i = 0; i < _spare.Count; i++)
             {
@@ -179,6 +179,8 @@ namespace ClickIt.Shared.Rendering
                             DrawFilledScreenDisc(graphics, new NumVector2(item.Center.X, item.Center.Y), item.Radius, item.Color, item.Segments);
                             break;
                         case DeferredDrawKind.Text:
+                            if (item.Shadow)
+                                graphics.DrawText(item.Text, new NumVector2(item.Center.X + 1f, item.Center.Y + 1f), Color.Black, item.Align);
                             graphics.DrawText(item.Text, new NumVector2(item.Center.X, item.Center.Y), item.Color, item.Align);
                             break;
                     }
@@ -188,7 +190,7 @@ namespace ClickIt.Shared.Rendering
                     // Intentionally empty - logging here causes recursive issues
                 }
 
-                if (sectionMs != null)
+                if (recordSectionFlush != null)
                 {
                     int sectionIndex = (int)item.Section;
                     if (sectionIndex >= 0 && sectionIndex < sectionMs.Length)
@@ -196,12 +198,12 @@ namespace ClickIt.Shared.Rendering
                 }
             }
 
-            if (sectionMs != null)
+            if (recordSectionFlush != null)
             {
                 for (int s = 0; s < sectionMs.Length; s++)
                 {
                     if (sectionMs[s] > 0)
-                        recordSectionFlush!((RenderSection)s, sectionMs[s]);
+                        recordSectionFlush((RenderSection)s, sectionMs[s]);
                 }
             }
 
@@ -224,7 +226,7 @@ namespace ClickIt.Shared.Rendering
         }
 
         private static double GetElapsedMs(long startTimestamp)
-            => (Stopwatch.GetTimestamp() - startTimestamp) * 1000.0 / Stopwatch.Frequency;
+            => StopwatchMath.ElapsedMs(startTimestamp);
 
         public int GetPendingCount()
         {
@@ -238,6 +240,37 @@ namespace ClickIt.Shared.Rendering
                 _items.Clear();
                 _spare.Clear();
                 _pendingCount = 0;
+            }
+        }
+
+        public string[] GetPendingTextSnapshot(int startIndex = 0)
+        {
+            lock (_queueLock)
+            {
+                if (_items.Count == 0)
+                    return [];
+
+                int from = SystemMath.Clamp(startIndex, 0, _items.Count);
+                int count = _items.Count - from;
+                if (count <= 0)
+                    return [];
+
+                string[] result = new string[count];
+                for (int i = 0; i < count; i++)
+                    result[i] = _items[from + i].Text;
+
+                return result;
+            }
+        }
+
+        internal (RectangleF Rectangle, Color Color, int Thickness)[] GetPendingFrameSnapshot()
+        {
+            lock (_queueLock)
+            {
+                (RectangleF Rectangle, Color Color, int Thickness)[] result = new (RectangleF, Color, int)[_items.Count];
+                for (int i = 0; i < _items.Count; i++)
+                    result[i] = (_items[i].Rect, _items[i].Color, _items[i].Thickness);
+                return result;
             }
         }
     }

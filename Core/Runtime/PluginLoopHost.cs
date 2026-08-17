@@ -1,23 +1,35 @@
 namespace ClickIt.Core.Runtime
 {
-    public partial class PluginLoopHost(
-        PluginContext state,
-        ClickItSettings settings,
-        GameController gameController,
-        ErrorHandler errorHandler)
+    public partial class PluginLoopHost
     {
-        private readonly PluginContext _state = state ?? throw new ArgumentNullException(nameof(state));
-        private readonly ClickItSettings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-        private readonly GameController _gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
-        private readonly ErrorHandler _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
+        private readonly PluginContext _state;
+        private readonly ClickItSettings _settings;
+        private readonly GameController _gameController;
+        private readonly ErrorHandler _errorHandler;
+        // Cached coroutine steps so Guarded(...) does not allocate a Func delegate on every loop iteration.
+        private readonly Func<IEnumerator> _scanForAltarsStep;
+        private readonly Func<IEnumerator> _clickLabelStep;
+        private readonly Func<IEnumerator> _manualUiHoverStep;
+        private readonly Func<IEnumerator> _flareStep;
         private long _lastCanClickFailureLogTimestampMs;
+
+        public PluginLoopHost(
+            PluginContext state,
+            ClickItSettings settings,
+            GameController gameController,
+            ErrorHandler errorHandler)
+        {
+            _state = state ?? throw new ArgumentNullException(nameof(state));
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            _gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
+            _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
+            _scanForAltarsStep = ScanForAltarsLogic;
+            _clickLabelStep = ClickLabel;
+            _manualUiHoverStep = ProcessManualUiHoverClick;
+            _flareStep = ProcessFlare;
+        }
         private const int ClickIdleWaitMs = 50;
         private const int ClickFrequencyWaitMaxMs = 100;
-        private bool _lastClickTickDidWork;
-        // Set to the remaining frequency-target time when the gate is only waiting on the click timer, so the observed click interval tracks the target instead of overshooting by up to the coarse idle-wait window. Falls back to ClickIdleWaitMs otherwise.
-        private int _clickIdleWaitMs = ClickIdleWaitMs;
-        private double _clickTargetTimeCorrectionMs;
-        private bool _lastClickTimerRestarted;
 
         // Delve-flare decision cache: per-player-address inputs (darkness-debuff charges, health/ES percent) refreshed at most every FlareCacheWindowMs to avoid re-materializing Player.Buffs.
         private long _flarePlayerOwnerAddress;
@@ -28,7 +40,7 @@ namespace ClickIt.Core.Runtime
         private const long FlareCacheWindowMs = 200;
 
         private static double GetElapsedMs(long startTimestamp)
-            => (Stopwatch.GetTimestamp() - startTimestamp) * 1000.0 / Stopwatch.Frequency;
+            => StopwatchMath.ElapsedMs(startTimestamp);
 
         private void RecordProcessing(ProcessingSection section, long startTimestamp, long startAllocatedBytes, double subtractMs = 0)
         {
@@ -39,45 +51,9 @@ namespace ClickIt.Core.Runtime
             pm.RecordAllocation(section, GC.GetAllocatedBytesForCurrentThread() - startAllocatedBytes);
         }
 
+        // Wait until (target - average time-to-click) since the last dispatch, so consecutive clicks land ~target apart regardless of run length.
         private double ResolveClickTargetTime(double frequencyTarget)
-        {
-            double avgClickTime = _state.Services.PerformanceMonitor?.GetAverageTiming(TimingChannel.Click) ?? 0;
-            return SystemMath.Clamp(
-                frequencyTarget - avgClickTime + _state.Random.Next(0, 6) - _clickTargetTimeCorrectionMs,
-                1,
-                SystemMath.Max(1, frequencyTarget));
-        }
-
-        private void RecordClickStartDelay(long elapsedMilliseconds, double frequencyTarget)
-        {
-            double avgClickTime = _state.Services.PerformanceMonitor?.GetAverageTiming(TimingChannel.Click) ?? 0;
-            double desiredDelay = frequencyTarget - avgClickTime;
-            if (desiredDelay <= 0)
-                return;
-
-            double error = elapsedMilliseconds - desiredDelay;
-            _clickTargetTimeCorrectionMs = SystemMath.Clamp(
-                _clickTargetTimeCorrectionMs + (error * 0.5),
-                0,
-                SystemMath.Max(0, desiredDelay - 1));
-        }
-
-        private long GetSuccessfulClickSequence()
-            => _state.Services.LockedInteractionDispatcher?.GetSuccessfulClickSequence() ?? 0;
-
-        private void RestartClickTimerAfterSuccessfulInteraction(long clickSequenceBefore, bool interactionSucceeded = true)
-        {
-            if (!interactionSucceeded)
-                return;
-
-            long clickSequenceAfter = GetSuccessfulClickSequence();
-            if (PluginClickRuntimeStateEvaluator.ShouldRestartClickTimerAfterSuccessfulClick(clickSequenceBefore, clickSequenceAfter))
-            {
-                _state.Runtime.Timer.Restart();
-                _lastClickTimerRestarted = true;
-            }
-
-        }
+            => SystemMath.Max(1, frequencyTarget - (_state.Services.PerformanceMonitor?.GetAverageTimeToClickMs() ?? 0));
 
         public void StartCoroutines(BaseSettingsPlugin<ClickItSettings> plugin)
         {
@@ -115,8 +91,11 @@ namespace ClickIt.Core.Runtime
         }
 
         private IEnumerator MainScanForAltarsLogic()
+            => WhileEnabled(_scanForAltarsStep, "AltarScan");
+
+        // Idle-yield while the Enable master switch is off instead of terminating: a finished coroutine can never be resumed, so terminating here would leave the plugin dead after the user toggles Enable back on (until a full reload).
+        private IEnumerator WhileEnabled(Func<IEnumerator> step, string name, int postStepWaitMs = 0)
         {
-            // Idle-yield while the Enable master switch is off instead of terminating: a finished coroutine can never be resumed, so terminating here would leave the plugin dead after the user toggles Enable back on (until a full reload).
             while (!_state.Runtime.IsShuttingDown)
             {
                 if (!_settings.Enable)
@@ -124,7 +103,9 @@ namespace ClickIt.Core.Runtime
                     yield return new WaitTime(250);
                     continue;
                 }
-                yield return Guarded(ScanForAltarsLogic, "AltarScan");
+                yield return Guarded(step, name);
+                if (postStepWaitMs > 0)
+                    yield return new WaitTime(postStepWaitMs);
             }
         }
 
@@ -199,19 +180,7 @@ namespace ClickIt.Core.Runtime
         }
 
         private IEnumerator MainClickLabelCoroutine()
-        {
-            while (!_state.Runtime.IsShuttingDown)
-            {
-                if (!_settings.Enable)
-                {
-                    yield return new WaitTime(250);
-                    continue;
-                }
-                yield return Guarded(ClickLabel, "ClickLabel");
-                if (!_lastClickTickDidWork)
-                    yield return new WaitTime(_clickIdleWaitMs);
-            }
-        }
+            => WhileEnabled(_clickLabelStep, "ClickLabel");
 
         internal IEnumerator ClickLabel()
         {
@@ -219,13 +188,12 @@ namespace ClickIt.Core.Runtime
 
             if (_state.Runtime.IsShuttingDown || _state.Services.PerformanceMonitor == null || clickPort == null) yield break;
 
-            _lastClickTickDidWork = false;
-
             bool hotkeyActive = PluginClickRuntimeStateEvaluator.ResolveHotkeyActive(_state.Services);
-            PluginManualUiHoverModeDecision manualUiHoverMode = ResolveManualUiHoverMode(hotkeyActive);
-            if (manualUiHoverMode.ShouldRunCoroutine)
+            bool manualUiHoverMode = ResolveManualUiHoverMode(hotkeyActive);
+            if (manualUiHoverMode)
             {
                 _state.Runtime.WorkFinished = true;
+                yield return new WaitTime(ClickIdleWaitMs);
                 yield break;
             }
 
@@ -233,8 +201,7 @@ namespace ClickIt.Core.Runtime
 
             PluginClickFrequencyTargetDecision frequencyTarget = PluginClickRuntimeStateEvaluator.ResolveFrequencyTargetDecision(_settings, runtimeState);
             double frequencyTargetMs = frequencyTarget.TargetIntervalMs;
-            double avgTimeToClickMs = _state.Services.PerformanceMonitor.GetAverageTimeToClickMs();
-            double targetTime = SystemMath.Clamp(frequencyTargetMs - avgTimeToClickMs, 1, SystemMath.Max(1, frequencyTargetMs));
+            double targetTime = ResolveClickTargetTime(frequencyTargetMs);
             long elapsedSinceClickMs = _state.Services.PerformanceMonitor.GetElapsedSinceLastClickMs();
             PluginClickGateDecision gateDecision = PluginClickRuntimeStateEvaluator.ResolveRegularClickGateDecision(
                 _state.Services.InputHandler,
@@ -248,11 +215,6 @@ namespace ClickIt.Core.Runtime
                 if (gateDecision.ShouldCancelOffscreenPathing)
                     clickPort.CancelOffscreenPathingState();
 
-                // When only the frequency timer is gating (click is possible, just not due yet), sleep exactly the remaining time instead of the coarse idle wait so the observed click interval tracks the target. A single wait up to the target avoids a second frame-quantized wake when the remaining time exceeds the idle window.
-                _clickIdleWaitMs = !gateDecision.ReadyByTime && gateDecision.CanClick
-                    ? SystemMath.Clamp((int)SystemMath.Ceiling(targetTime - elapsedSinceClickMs), 1, ClickFrequencyWaitMaxMs)
-                    : ClickIdleWaitMs;
-
                 if (_settings.DebugMode?.Value == true)
                 {
                     long now = Environment.TickCount64;
@@ -265,20 +227,16 @@ namespace ClickIt.Core.Runtime
                 }
 
                 _state.Runtime.WorkFinished = true;
-                yield break;
-            }
-            _clickIdleWaitMs = ClickIdleWaitMs;
 
-            if (_lastClickTimerRestarted)
-            {
-                _lastClickTimerRestarted = false;
-                if (_state.Runtime.Timer.ElapsedMilliseconds < frequencyTarget.TargetIntervalMs + 100)
-                    RecordClickStartDelay(_state.Runtime.Timer.ElapsedMilliseconds, frequencyTarget.TargetIntervalMs);
+                if (!gateDecision.ReadyByTime && gateDecision.CanClick)
+                    yield return new WaitTime(SystemMath.Clamp((int)SystemMath.Ceiling(targetTime - elapsedSinceClickMs), 1, ClickFrequencyWaitMaxMs));
+                else
+                    yield return new WaitTime(ClickIdleWaitMs);
+                yield break;
             }
 
             // Harvest labels are processed in the render path (PluginRenderHost) so the overlay renders correctly and the click path reads the decision via GetLabelToClick without needing to reprocess labels.
 
-            long clickSequenceBefore = GetSuccessfulClickSequence();
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
             long clickStart = Stopwatch.GetTimestamp();
             long clickAllocStart = GC.GetAllocatedBytesForCurrentThread();
@@ -291,26 +249,11 @@ namespace ClickIt.Core.Runtime
             RecordProcessing(ProcessingSection.Click, clickStart, clickAllocStart, clickSleepMs);
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
-            _lastClickTickDidWork = clickPort.LastClickTickWasActionable;
-
-            RestartClickTimerAfterSuccessfulInteraction(clickSequenceBefore);
-
             _state.Runtime.WorkFinished = true;
         }
 
         private IEnumerator MainManualUiHoverClickCoroutine()
-        {
-            while (!_state.Runtime.IsShuttingDown)
-            {
-                if (!_settings.Enable)
-                {
-                    yield return new WaitTime(250);
-                    continue;
-                }
-                yield return Guarded(ProcessManualUiHoverClick, "ManualUiHoverClick");
-                yield return new WaitTime(10);
-            }
-        }
+            => WhileEnabled(_manualUiHoverStep, "ManualUiHoverClick", postStepWaitMs: 10);
 
         private IEnumerator ProcessManualUiHoverClick()
         {
@@ -320,8 +263,8 @@ namespace ClickIt.Core.Runtime
                 yield break;
 
             bool hotkeyActive = PluginClickRuntimeStateEvaluator.ResolveHotkeyActive(_state.Services);
-            PluginManualUiHoverModeDecision manualUiHoverMode = ResolveManualUiHoverMode(hotkeyActive);
-            if (!manualUiHoverMode.ShouldRunCoroutine)
+            bool manualUiHoverMode = ResolveManualUiHoverMode(hotkeyActive);
+            if (!manualUiHoverMode)
                 yield break;
 
             PluginClickRuntimeStateSnapshot runtimeState = ResolveRitualAwareRuntimeState();
@@ -329,32 +272,30 @@ namespace ClickIt.Core.Runtime
                 yield break;
 
             double targetTime = ResolveClickTargetTime(_settings.ClickFrequencyTarget.Value);
+            long elapsedSinceClickMs = _state.Services.PerformanceMonitor.GetElapsedSinceLastClickMs();
             PluginClickReadinessDecision gateDecision = PluginClickRuntimeStateEvaluator.ResolveManualUiHoverGateDecision(
                 _state.Services.InputHandler,
                 _gameController,
-                _state.Runtime.Timer.ElapsedMilliseconds,
+                elapsedSinceClickMs,
                 targetTime);
             if (gateDecision.IsBlocked)
                 yield break;
 
             IReadOnlyList<LabelOnGround>? labels = _state.Services.CachedLabels?.Value;
-            long clickSequenceBefore = GetSuccessfulClickSequence();
 
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
             long hoverStart = Stopwatch.GetTimestamp();
             long hoverAllocStart = GC.GetAllocatedBytesForCurrentThread();
             ClickPipelineTiming.ResetSleepTime();
-            bool clicked;
+            _state.Services.PerformanceMonitor.MarkClickRunStart();
             using (new DlrReadScope(ProcessingSection.ManualUiHover))
             {
-                clicked = clickPort.TryClickManualUiHoverLabel(labels);
+                clickPort.TryClickManualUiHoverLabel(labels);
             }
             double hoverSleepMs = ClickPipelineTiming.ConsumeSleepTimeMs();
             _state.Services.PerformanceMonitor.RecordClickSleepTiming(hoverSleepMs);
             RecordProcessing(ProcessingSection.ManualUiHover, hoverStart, hoverAllocStart, hoverSleepMs);
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
-
-            RestartClickTimerAfterSuccessfulInteraction(clickSequenceBefore, clicked);
         }
 
         private IEnumerator FlareCoroutine()
@@ -369,7 +310,7 @@ namespace ClickIt.Core.Runtime
                     continue;
                 }
                 _state.Services.PerformanceMonitor?.MarkInterval(IntervalKind.Flare);
-                yield return Guarded(ProcessFlare, "Flare");
+                yield return Guarded(_flareStep, "Flare");
                 yield return new WaitTime(100);
             }
         }
@@ -436,30 +377,12 @@ namespace ClickIt.Core.Runtime
         }
 
         internal float GetPlayerHealthPercent()
-        {
-#if RUNTIME_EXILECORE
-            try
-            {
-                Entity? player = _gameController?.Player;
-                if (player == null)
-                    return 100f;
-
-                Life life = player.GetComponent<Life>();
-                if (life == null || life.Health.Max == 0)
-                    return 100f;
-
-                return (float)life.Health.Current / life.Health.Max * 100f;
-            }
-            catch
-            {
-                return 100f;
-            }
-#else
-            return 100f;
-#endif
-        }
+            => GetPlayerStatPercent(static life => life.Health.Current, static life => life.Health.Max);
 
         internal float GetPlayerEnergyShieldPercent()
+            => GetPlayerStatPercent(static life => life.EnergyShield.Current, static life => life.EnergyShield.Max);
+
+        private float GetPlayerStatPercent(Func<Life, int> currentSelector, Func<Life, int> maxSelector)
         {
 #if RUNTIME_EXILECORE
             try
@@ -469,10 +392,14 @@ namespace ClickIt.Core.Runtime
                     return 100f;
 
                 Life life = player.GetComponent<Life>();
-                if (life == null || life.EnergyShield.Max == 0)
+                if (life == null)
                     return 100f;
 
-                return (float)life.EnergyShield.Current / life.EnergyShield.Max * 100f;
+                int max = maxSelector(life);
+                if (max == 0)
+                    return 100f;
+
+                return (float)currentSelector(life) / max * 100f;
             }
             catch
             {

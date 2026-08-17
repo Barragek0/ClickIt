@@ -13,13 +13,11 @@ namespace ClickIt.Features.Shrines
             _gameController = gameController;
         }
 
-        private const int SHRINE_CACHE_DURATION_MS = 200; // 200ms cache for shrines
+        private const int SHRINE_CACHE_DURATION_MS = 200;
         private const int ShrineCacheKey = 0;
         private readonly Stopwatch _shrineCacheTimer = new();
         private readonly TimedValueCache<int, List<Entity>> _shrineCache = new(SHRINE_CACHE_DURATION_MS);
-        private long _lastShrineCacheTime;
 
-        // Thread safety for multi-threading
         [ThreadStatic]
         private static List<Entity>? _threadLocalShrineList;
 
@@ -80,7 +78,6 @@ namespace ClickIt.Features.Shrines
         {
             List<Entity> shrines = GetShrineEntitiesUncached();
             _shrineCache.SetValue(ShrineCacheKey, currentTime, shrines);
-            _lastShrineCacheTime = currentTime;
             return shrines;
         }
 
@@ -101,31 +98,8 @@ namespace ClickIt.Features.Shrines
                     shrines.Add(entity);
             }
 
-            return shrines;
-        }
-
-        public bool AreShrinesPresent()
-        {
-            return GetCachedShrineEntities().Count > 0;
-        }
-
-        public bool AreShrinesPresentInClickableArea(Func<Vector2, bool> isInClickableArea)
-        {
-            List<Entity> shrines = GetCachedShrineEntities();
-
-            foreach (Entity shrine in shrines)
-            {
-                if (shrine == null)
-                    continue;
-
-                if (!TryProjectShrineScreenPosition(shrine, out Vector2 clickPos))
-                    continue;
-
-                if (isInClickableArea(clickPos))
-                    return true;
-            }
-
-            return false;
+            // Snapshot-copy: the shared cache must never hold the thread-local scratch list - another thread can read it while the owner thread's next refresh clears it.
+            return [.. shrines];
         }
 
         public Entity? GetNearestShrineInRange(
@@ -181,51 +155,11 @@ namespace ClickIt.Features.Shrines
         public void InvalidateCache()
         {
             _shrineCache.Invalidate();
-            _lastShrineCacheTime = 0;
         }
 
         internal static void ClearThreadLocalStorageForCurrentThread()
         {
             _threadLocalShrineList = null;
-        }
-
-        internal static void ResetThreadLocalStorage()
-        {
-            _threadLocalShrineList = null;
-        }
-
-        internal static int GetThreadLocalShrineListInstanceId()
-        {
-            return RuntimeHelpers.GetHashCode(GetThreadLocalShrineList());
-        }
-
-        internal void SeedCacheWithSingleNullEntry(long lastShrineCacheTime)
-        {
-            _shrineCache.SetValue(ShrineCacheKey, lastShrineCacheTime, [null!]);
-            _lastShrineCacheTime = lastShrineCacheTime;
-        }
-
-        internal void EnsureCacheTimerStarted()
-        {
-            if (!_shrineCacheTimer.IsRunning)
-            {
-                _shrineCacheTimer.Start();
-            }
-        }
-
-        internal long GetCacheElapsedMilliseconds()
-        {
-            return _shrineCacheTimer.ElapsedMilliseconds;
-        }
-
-        internal bool HasCachedShrines()
-        {
-            return _shrineCache.HasCachedValue;
-        }
-
-        internal long GetLastShrineCacheTime()
-        {
-            return _lastShrineCacheTime;
         }
 
         private bool TryProjectShrineScreenPosition(Entity shrine, out Vector2 screenPos)

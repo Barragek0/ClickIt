@@ -12,7 +12,6 @@ namespace ClickIt.Core.Runtime
         public Stopwatch LastTickTimer { get; } = new();
         public Stopwatch Timer { get; } = new();
         public Stopwatch SecondTimer { get; } = new();
-        public bool LastHotkeyState { get; set; }
         public bool WorkFinished { get; set; }
         public bool IsShuttingDown { get; set; }
     }

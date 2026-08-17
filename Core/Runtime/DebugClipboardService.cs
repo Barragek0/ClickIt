@@ -3,7 +3,6 @@ namespace ClickIt.Core.Runtime
     internal readonly record struct DebugClipboardServiceDependencies(
         PluginContext State,
         ClickIt Owner,
-        Func<ClickItSettings?> GetEffectiveSettings,
         Func<GameController?> GetGameController);
 
     internal sealed class DebugClipboardService(DebugClipboardServiceDependencies dependencies)

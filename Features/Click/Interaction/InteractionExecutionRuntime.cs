@@ -5,22 +5,26 @@ namespace ClickIt.Features.Click.Interaction
         Element? ExpectedElement,
         GameController? Controller,
         bool UseHoldClick,
-        int HoldDurationMs,
         bool ForceUiHoverVerification,
         bool AllowWhenHotkeyInactive,
         bool AvoidCursorMove,
-        string OutsideWindowLogMessage);
+        string OutsideWindowLogMessage,
+        IntervalKind Interval = IntervalKind.Click);
 
     internal readonly record struct InteractionExecutionRuntimeDependencies(
         Func<string, bool> EnsureCursorInsideGameWindowForClick,
         Func<Vector2, bool> IsClickPositionAllowed,
         Action<string> DebugLog,
-        Func<Vector2, Element?, GameController?, bool, bool, bool, bool> PerformLockedClick,
-        Func<Vector2, int, Element?, GameController?, bool, bool, bool, bool> PerformLockedHoldClick,
+        Func<Vector2, Element?, GameController?, bool, bool, bool, IntervalKind, bool> PerformLockedClick,
+        Func<Vector2, Element?, GameController?, bool, bool, bool, bool> PerformLockedHoldClick,
         Action RecordClickInterval);
 
     internal interface IInteractionExecutionRuntime
     {
+        /// <summary>
+        /// Executes one click interaction through the locked dispatcher. Returns true only when the click
+        /// was actually sent to the OS (internal rejections return false so callers skip the success aftermath).
+        /// </summary>
         bool Execute(InteractionExecutionRequest request);
     }
 
@@ -43,7 +47,6 @@ namespace ClickIt.Features.Click.Interaction
             bool clicked = request.UseHoldClick
                 ? _dependencies.PerformLockedHoldClick(
                     request.ClickPosition,
-                    request.HoldDurationMs,
                     request.ExpectedElement,
                     request.Controller,
                     request.ForceUiHoverVerification,
@@ -55,7 +58,8 @@ namespace ClickIt.Features.Click.Interaction
                     request.Controller,
                     request.ForceUiHoverVerification,
                     request.AllowWhenHotkeyInactive,
-                    request.AvoidCursorMove);
+                    request.AvoidCursorMove,
+                    request.Interval);
             if (!clicked)
                 return false;
 

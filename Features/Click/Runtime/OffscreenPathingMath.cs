@@ -153,7 +153,7 @@ namespace ClickIt.Features.Click.Runtime
 
         internal static bool ShouldForceUiHoverVerificationForLabel(LabelOnGround? label)
         {
-            Entity? item = TryGetLabelItemOnGround(label);
+            DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item);
             if (item == null || !TryReadEntityType(item, out EntityType itemType) || itemType != EntityType.WorldItem)
                 return false;
 
@@ -213,15 +213,15 @@ namespace ClickIt.Features.Click.Runtime
                 return null;
 
 
-            if (!TryReadEntityAddress(entity, out long entityAddress) || entityAddress == 0)
+            if (!DynamicAccess.TryReadEntityAddress(entity, out long entityAddress) || entityAddress == 0)
                 return null;
 
 
             for (int i = 0; i < labels.Count; i++)
             {
                 LabelOnGround? label = labels[i];
-                Entity? item = TryGetLabelItemOnGround(label);
-                if (item == null || !TryReadEntityAddress(item, out long itemAddress))
+                DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item);
+                if (item == null || !DynamicAccess.TryReadEntityAddress(item, out long itemAddress))
                     continue;
 
 
@@ -231,49 +231,6 @@ namespace ClickIt.Features.Click.Runtime
             }
 
             return null;
-        }
-
-        private static Entity? TryGetLabelItemOnGround(LabelOnGround? label)
-        {
-            return DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                && rawItem is Entity item
-                ? item
-                : null;
-        }
-
-        private static bool TryReadEntityAddress(Entity? entity, out long address)
-        {
-            address = 0;
-            if (!DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.Address, out object? rawAddress) || rawAddress == null)
-                return false;
-
-
-            switch (rawAddress)
-            {
-                case long longAddress:
-                    address = longAddress;
-                    return true;
-                case int intAddress:
-                    address = intAddress;
-                    return true;
-                case uint uintAddress:
-                    address = uintAddress;
-                    return true;
-                case short shortAddress:
-                    address = shortAddress;
-                    return true;
-                case ushort ushortAddress:
-                    address = ushortAddress;
-                    return true;
-                case byte byteAddress:
-                    address = byteAddress;
-                    return true;
-                case sbyte sbyteAddress:
-                    address = sbyteAddress;
-                    return true;
-                default:
-                    return false;
-            }
         }
 
         private static bool TryReadEntityType(Entity? entity, out EntityType entityType)
@@ -340,7 +297,7 @@ namespace ClickIt.Features.Click.Runtime
             {
                 float t = 1.05f - (i * 0.1f);
                 Vector2 candidate = center + (direction * t);
-                if (!OffscreenTargetResolver.IsInsideWindow(windowRect, candidate))
+                if (!IsInsideWindow(windowRect, candidate))
                     continue;
                 if (candidate.X < safeLeft || candidate.X > safeRight || candidate.Y < safeTop || candidate.Y > safeBottom)
                     continue;
@@ -364,7 +321,7 @@ namespace ClickIt.Features.Click.Runtime
             {
                 float t = 0.25f - ((2 - i) * 0.1f);
                 Vector2 candidate = center + (direction * t);
-                if (!OffscreenTargetResolver.IsInsideWindow(windowRect, candidate))
+                if (!IsInsideWindow(windowRect, candidate))
                     continue;
                 if (candidate.X < safeLeft || candidate.X > safeRight || candidate.Y < safeTop || candidate.Y > safeBottom)
                     continue;
@@ -376,6 +333,114 @@ namespace ClickIt.Features.Click.Runtime
             }
 
             return false;
+        }
+
+        internal static bool IsInsideWindow(RectangleF window, Vector2 point)
+            => point.X >= window.Left && point.X <= window.Right && point.Y >= window.Top && point.Y <= window.Bottom;
+
+        internal static Vector2 GetWindowCenter(RectangleF window)
+            => new(window.X + (window.Width * 0.5f), window.Y + (window.Height * 0.5f));
+
+        internal static bool IsFinite(Vector2 point)
+            => !float.IsNaN(point.X) && !float.IsInfinity(point.X) && !float.IsNaN(point.Y) && !float.IsInfinity(point.Y);
+
+        internal static bool IsNearCorner(Vector2 point, RectangleF window)
+        {
+            float marginX = window.Width * 0.05f;
+            float marginY = window.Height * 0.05f;
+
+            bool nearHorizontal = point.X <= window.Left + marginX || point.X >= window.Right - marginX;
+            bool nearVertical = point.Y <= window.Top + marginY || point.Y >= window.Bottom - marginY;
+            return nearHorizontal && nearVertical;
+        }
+
+        internal static int CountRemainingPathNodes(IReadOnlyList<PathfindingService.GridPoint>? path, int nearestIndex)
+        {
+            if (path == null || path.Count == 0 || nearestIndex < 0)
+                return 0;
+
+            int index = SystemMath.Min(path.Count - 1, nearestIndex);
+            return SystemMath.Max(0, path.Count - (index + 1));
+        }
+
+        internal static int FindClosestPathIndexToPlayer(IReadOnlyList<PathfindingService.GridPoint> path, PathfindingService.GridPoint playerGrid)
+        {
+            if (path == null || path.Count == 0)
+                return -1;
+
+            int bestIndex = -1;
+            int bestDistance = int.MaxValue;
+            for (int i = 0; i < path.Count; i++)
+            {
+                int distance = SystemMath.Abs(path[i].X - playerGrid.X) + SystemMath.Abs(path[i].Y - playerGrid.Y);
+                if (distance >= bestDistance)
+                    continue;
+
+                bestDistance = distance;
+                bestIndex = i;
+            }
+
+            return bestIndex;
+        }
+
+        internal static bool TryGetSmoothedPathDirection(
+            IReadOnlyList<PathfindingService.GridPoint> path,
+            PathfindingService.GridPoint playerGrid,
+            int nearestIndex,
+            out float deltaX,
+            out float deltaY)
+        {
+            deltaX = 0f;
+            deltaY = 0f;
+
+            if (path == null || path.Count < 2 || nearestIndex < 0)
+                return false;
+
+            int start = SystemMath.Min(path.Count - 1, nearestIndex + 1);
+            int end = SystemMath.Min(path.Count - 1, nearestIndex + 8);
+            if (end < start)
+                return false;
+
+            float weightedX = 0f;
+            float weightedY = 0f;
+            float weightTotal = 0f;
+
+            for (int i = start; i <= end; i++)
+            {
+                PathfindingService.GridPoint node = path[i];
+                float dx = node.X - playerGrid.X;
+                float dy = node.Y - playerGrid.Y;
+                if (SystemMath.Abs(dx) + SystemMath.Abs(dy) < 0.001f)
+                    continue;
+
+                float weight = i - start + 1f;
+                weightedX += dx * weight;
+                weightedY += dy * weight;
+                weightTotal += weight;
+            }
+
+            if (weightTotal <= 0f)
+                return false;
+
+            deltaX = weightedX / weightTotal;
+            deltaY = weightedY / weightTotal;
+            return SystemMath.Abs(deltaX) + SystemMath.Abs(deltaY) >= 0.001f;
+        }
+
+        internal static bool TryComputeGridDirectionPoint(Vector2 center, float deltaGridX, float deltaGridY, float radius, out Vector2 point)
+        {
+            point = default;
+            if (radius <= 0f)
+                return false;
+
+            Vector2 axis = new(deltaGridX - deltaGridY, -(deltaGridX + deltaGridY) * 0.65f);
+            float lengthSquared = (axis.X * axis.X) + (axis.Y * axis.Y);
+            if (lengthSquared < 0.001f)
+                return false;
+
+            float invLength = 1f / MathF.Sqrt(lengthSquared);
+            point = center + new Vector2(axis.X * invLength * radius, axis.Y * invLength * radius);
+            return true;
         }
     }
 }

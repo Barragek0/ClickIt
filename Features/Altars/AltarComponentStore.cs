@@ -36,11 +36,32 @@ namespace ClickIt.Features.Altars
             {
                 string newKey = BuildAltarKey(component);
                 if (!_altarKeys.Add(newKey))
+                {
+                    RefreshDuplicateComponentElements(component, newKey);
                     return false;
+                }
 
                 _altarComponents.Add(component);
                 RefreshSnapshotUnderLock();
                 return true;
+            }
+        }
+
+        // Duplicate-key re-scan = same altar mods with fresh UI elements (the game re-creates them as the player approaches); adopt them so visibility/clickability reads hit current elements.
+        private void RefreshDuplicateComponentElements(PrimaryAltarComponent fresh, string key)
+        {
+            for (int i = 0; i < _altarComponents.Count; i++)
+            {
+                PrimaryAltarComponent existing = _altarComponents[i];
+                if (!string.Equals(BuildAltarKey(existing), key, StringComparison.Ordinal))
+                    continue;
+
+                existing.TopMods = fresh.TopMods;
+                existing.TopButton = fresh.TopButton;
+                existing.BottomMods = fresh.BottomMods;
+                existing.BottomButton = fresh.BottomButton;
+                existing.InvalidateCache();
+                return;
             }
         }
 

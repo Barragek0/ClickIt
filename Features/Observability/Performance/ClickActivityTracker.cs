@@ -5,13 +5,19 @@ namespace ClickIt.Features.Observability.Performance
         private readonly Queue<long> _clickIntervals = new(10);
         private readonly Lock _clickIntervalsLock = new();
         private long _lastClickTime;
+        private int _clickCount;
 
-        internal int ClickCount { get; set; }
+        // Recorded from several coroutines (click/manual-hover/ultimatum/movement) while Reset runs on the main thread - volatile-backed so increments are never lost and reads are never torn.
+        internal int ClickCount
+        {
+            get => Volatile.Read(ref _clickCount);
+            set => Volatile.Write(ref _clickCount, value);
+        }
 
         internal void RecordClickInterval(long currentTimeMs)
         {
-            ClickCount++;
-            if (_lastClickTime != 0 && ClickCount > 3)
+            int count = Interlocked.Increment(ref _clickCount);
+            if (_lastClickTime != 0 && count > 3)
             {
                 long interval = currentTimeMs - _lastClickTime;
                 if (interval is > 0 and < 10000)
@@ -43,12 +49,12 @@ namespace ClickIt.Features.Observability.Performance
         }
 
         internal void ResetClickCount()
-            => ClickCount = 0;
+            => Interlocked.Exchange(ref _clickCount, 0);
 
         internal void Clear()
         {
             _lastClickTime = 0;
-            ClickCount = 0;
+            Interlocked.Exchange(ref _clickCount, 0);
             lock (_clickIntervalsLock)
                 _clickIntervals.Clear();
         }

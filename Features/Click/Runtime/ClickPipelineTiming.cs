@@ -17,9 +17,7 @@ namespace ClickIt.Features.Click.Runtime
         internal static void ResetSleepTime()
             => s_sleepTicks = 0;
 
-        // Read-only probe: the accumulated safety-sleep time WITHOUT resetting, so per-stage performance
-        // measurements can subtract the deliberate waits that happened inside them while the host's
-        // ConsumeSleepTimeMs() still accounts for the full total once per tick.
+        // Read-only probe: the accumulated safety-sleep time WITHOUT resetting, so per-stage performance measurements can subtract the deliberate waits that happened inside them while the host's ConsumeSleepTimeMs() still accounts for the full total once per tick.
         internal static double ReadSleepTimeMs()
             => s_sleepTicks / (double)TimeSpan.TicksPerMillisecond;
 

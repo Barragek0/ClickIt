@@ -76,7 +76,7 @@ namespace ClickIt.UI.Settings.Panels
 
             if (string.Equals(groupId, "league-chests", StringComparison.OrdinalIgnoreCase))
             {
-                DrawChestDropSettleSettings(new ChestDropSettleSettingsDescriptor("League Mechanic Chest", "LeagueChests", _settings.PauseAfterOpeningLeagueChests, _settings.PauseAfterOpeningBasicChestsInitialDelayMs, _settings.PauseAfterOpeningBasicChestsPollIntervalMs, _settings.PauseAfterOpeningBasicChestsQuietWindowMs));
+                DrawChestDropSettleSettings(new ChestDropSettleSettingsDescriptor("League Mechanic Chest", "LeagueChests", _settings.PauseAfterOpeningBasicChests, _settings.PauseAfterOpeningBasicChestsInitialDelayMs, _settings.PauseAfterOpeningBasicChestsPollIntervalMs, _settings.PauseAfterOpeningBasicChestsQuietWindowMs));
                 return;
             }
 
@@ -101,7 +101,7 @@ namespace ClickIt.UI.Settings.Panels
         {
             if (string.Equals(groupId, "heist", StringComparison.OrdinalIgnoreCase)
                 && string.Equals(subgroupName, "Chests", StringComparison.OrdinalIgnoreCase))
-                DrawChestDropSettleSettings(new ChestDropSettleSettingsDescriptor("Heist Chest", "HeistChests", _settings.PauseAfterOpeningHeistChests, _settings.PauseAfterOpeningBasicChestsInitialDelayMs, _settings.PauseAfterOpeningBasicChestsPollIntervalMs, _settings.PauseAfterOpeningBasicChestsQuietWindowMs));
+                DrawChestDropSettleSettings(new ChestDropSettleSettingsDescriptor("Heist Chest", "HeistChests", _settings.PauseAfterOpeningBasicChests, _settings.PauseAfterOpeningBasicChestsInitialDelayMs, _settings.PauseAfterOpeningBasicChestsPollIntervalMs, _settings.PauseAfterOpeningBasicChestsQuietWindowMs));
 
         }
 

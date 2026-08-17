@@ -306,15 +306,9 @@ namespace ClickIt.Features.Click.Runtime
                 ? _dependencies.LostShipmentTargets.ResolveNextLostShipmentCandidate()
                 : _dependencies.LostShipmentTargets.ResolveNextLostShipmentCandidate(labelsOverride);
 
-        // Thin runtime wrapper so the internal overload stays testable without ExileCore entity state.
         public void HandleSuccessfulMechanicEntityClick(Entity? entity)
         {
             TryHandleSuccessfulMechanicAftermath(entity, invalidateShrineCache: false);
-        }
-
-        internal void HandleSuccessfulMechanicEntityClick(string? entityPath, bool isStickyTarget)
-        {
-            HandleSuccessfulMechanicAftermath(entityPath, isStickyTarget, invalidateShrineCache: false);
         }
 
         public void HandleSuccessfulShrineClick(Entity? shrine)
@@ -393,29 +387,12 @@ namespace ClickIt.Features.Click.Runtime
         }
 
         private bool TryProjectEntityScreenRaw(Entity entity, out Vector2 screenPosition)
-        {
-            screenPosition = default;
-
-            if (!DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.PosNum, out object? rawPosition)
-                || rawPosition is not System.Numerics.Vector3 position
-                || !DynamicAccess.TryGetDynamicValue(_dependencies.GameController, DynamicAccessProfiles.Game, out object? rawGame)
-                || !DynamicAccess.TryGetDynamicValue(rawGame, DynamicAccessProfiles.IngameState, out object? rawIngameState)
-                || !DynamicAccess.TryGetDynamicValue(rawIngameState, DynamicAccessProfiles.Camera, out object? rawCamera)
-                || !DynamicAccess.TryProjectWorldToScreen(rawCamera, position, out object? rawProjected)
-                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.X, out float projectedX)
-                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.Y, out float projectedY))
-            {
-                return false;
-            }
-
-            screenPosition = new(projectedX, projectedY);
-            return true;
-        }
+            => EntityScreenProjection.TryProjectEntityScreen(_dependencies.GameController, entity, out screenPosition);
 
         private bool TryProjectEntityScreenAbsolute(Entity entity, Vector2 windowTopLeft, out Vector2 absolutePosition)
         {
             absolutePosition = default;
-            if (!TryProjectEntityScreenRaw(entity, out Vector2 screenPosition))
+            if (!EntityScreenProjection.TryProjectEntityScreen(_dependencies.GameController, entity, out Vector2 screenPosition))
                 return false;
 
             absolutePosition = new(screenPosition.X + windowTopLeft.X, screenPosition.Y + windowTopLeft.Y);

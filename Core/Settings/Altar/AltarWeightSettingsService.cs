@@ -35,9 +35,6 @@ namespace ClickIt.Core.Settings.Altar
         internal static string BuildCompositeKey(string type, string id)
             => $"{type}|{id}";
 
-        internal static void EnsureAllModsHaveWeights(ClickItSettings settings)
-            => InitializeDefaultWeights(settings);
-
         internal static int GetModTier(ClickItSettings settings, string modId)
         {
             if (string.IsNullOrEmpty(modId))

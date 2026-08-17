@@ -18,11 +18,9 @@ namespace ClickIt.Core.Runtime
         internal InventoryProbeService? InventoryProbeService { get; set; }
         internal InventoryInteractionPolicy? InventoryInteractionPolicy { get; set; }
         internal ClickAutomationSupport? ClickAutomationSupport { get; set; }
-        internal LockedInteractionDispatcher? LockedInteractionDispatcher { get; set; }
         public ClickAutomationPort? ClickAutomationPort { get; set; }
         public PathfindingService? PathfindingService { get; set; }
         public AlertService? AlertService { get; set; }
-        public Camera? Camera { get; set; }
         public InputHandler? InputHandler { get; set; }
         public WeightCalculator? WeightCalculator { get; set; }
         public HarvestService? HarvestService { get; set; }
@@ -42,11 +40,9 @@ namespace ClickIt.Core.Runtime
             InventoryProbeService = null;
             InventoryInteractionPolicy = null;
             ClickAutomationSupport = null;
-            LockedInteractionDispatcher = null;
             ClickAutomationPort = null;
             PathfindingService = null;
             AlertService = null;
-            Camera = null;
             InputHandler = null;
             WeightCalculator = null;
             HarvestService = null;

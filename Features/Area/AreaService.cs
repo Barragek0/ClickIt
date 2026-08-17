@@ -54,51 +54,16 @@ namespace ClickIt.Features.Area
         public void UpdateScreenAreas(GameController gameController, bool forceBlockedUiRefresh = false)
             => _blockedSnapshotProvider.UpdateScreenAreas(gameController, ResolveBlockedUiRefreshIntervalMs(), forceBlockedUiRefresh);
 
-        internal static bool ShouldUpdateMapPanelBlockedRectangle(bool isInTownOrHideout)
-            => AreaBlockedSnapshotProvider.ShouldUpdateMapPanelBlockedRectangle(isInTownOrHideout);
-
         internal static bool IsInMap(GameController? gameController)
         {
             AreaInstance? area = gameController?.Area?.CurrentArea;
             return area != null && !area.IsHideout && !area.IsTown;
         }
 
-        internal static (RectangleF primarySquare, RectangleF secondaryCompanion) SplitBottomAnchoredRectangleFromLeft(
-            RectangleF source,
-            float secondaryHeightRatio)
-        {
-            return AreaBlockedSnapshotProvider.SplitBottomAnchoredRectangleFromLeft(source, secondaryHeightRatio);
-        }
-
-        internal static (RectangleF primarySquare, RectangleF secondaryCompanion, RectangleF tertiaryCompanion) SplitBottomAnchoredThreeRectanglesFromLeft(
-            RectangleF source,
-            float secondaryHeightRatio,
-            float tertiaryHeightRatio,
-            float tertiaryWidthRatio)
-        {
-            return AreaBlockedSnapshotProvider.SplitBottomAnchoredThreeRectanglesFromLeft(source, secondaryHeightRatio, tertiaryHeightRatio, tertiaryWidthRatio);
-        }
-
-        internal static (RectangleF primarySquare, RectangleF secondaryCompanion) SplitBottomAnchoredRectangleFromRight(
-            RectangleF source,
-            float secondaryHeightRatio)
-        {
-            return AreaBlockedSnapshotProvider.SplitBottomAnchoredRectangleFromRight(source, secondaryHeightRatio);
-        }
-
-        internal static (RectangleF primarySquare, RectangleF secondaryCompanion, RectangleF tertiaryCompanion) SplitBottomAnchoredThreeRectanglesFromRight(
-            RectangleF source,
-            float secondaryHeightRatio,
-            float tertiaryHeightRatio,
-            float tertiaryWidthRatio)
-        {
-            return AreaBlockedSnapshotProvider.SplitBottomAnchoredThreeRectanglesFromRight(source, secondaryHeightRatio, tertiaryHeightRatio, tertiaryWidthRatio);
-        }
-
         public bool PointIsInClickableArea(Vector2 point)
         {
             AreaBlockedSnapshot snapshot = _blockedSnapshotProvider.CurrentSnapshot;
-            if (!BlockedAreaGeometryEngine.PointInUiRectangleAnyRepresentation(point, snapshot.FullScreenRectangle))
+            if (!BlockedAreaGeometryEngine.PointInUiRectangle(point, snapshot.FullScreenRectangle))
                 return false;
 
             return !IsBlockedByAreaEvaluatorPipeline(snapshot, point);
@@ -109,9 +74,21 @@ namespace ClickIt.Features.Area
 
         public bool PointIsInClickableArea(GameController? gameController, Vector2 point, bool forceBlockedUiRefresh = false)
         {
-            if (gameController != null)
+            // The blocked-rect snapshot is rebuilt on its own 250ms cadence; when it is still fresh the update is a pure lock + area-hash read that cannot change the result, so skip it. The click-point resolution probes the grid many times per resolution.
+            if (gameController != null && (forceBlockedUiRefresh || IsBlockedUiSnapshotStale()))
                 UpdateScreenAreas(gameController, forceBlockedUiRefresh);
             return PointIsInClickableArea(point);
+        }
+
+        private bool IsBlockedUiSnapshotStale()
+        {
+            AreaBlockedSnapshot snapshot = _blockedSnapshotProvider.CurrentSnapshot;
+            long now = Environment.TickCount64;
+            int interval = ResolveBlockedUiRefreshIntervalMs();
+            return snapshot.LastBlockedUiRectanglesRefreshTimestampMs <= 0
+                || now - snapshot.LastBlockedUiRectanglesRefreshTimestampMs >= interval
+                || snapshot.LastBuffsAndDebuffsRectanglesRefreshTimestampMs <= 0
+                || now - snapshot.LastBuffsAndDebuffsRectanglesRefreshTimestampMs >= interval;
         }
 
         internal static long? ResolveRefreshAgeMs(long now, long lastRefreshTimestampMs)

@@ -148,13 +148,6 @@ namespace ClickIt.Tests.Features.Labels.Classification
             rs1.Should().BeTrue();
             var rs2 = MechanicClassifier.IsSettlersOrePath("Random/Path");
             rs2.Should().BeFalse();
-
-            var verisiumPath = "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/Verisium";
-            var rs3 = MechanicRuleCatalog.IsSettlersVerisiumPath(verisiumPath);
-            rs3.Should().BeTrue();
-
-            var rs4 = MechanicRuleCatalog.IsSettlersVerisiumPath(verisiumPath.ToLowerInvariant());
-            rs4.Should().BeTrue();
         }
 
         [TestMethod]

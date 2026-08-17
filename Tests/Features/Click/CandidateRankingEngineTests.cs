@@ -74,14 +74,14 @@ namespace ClickIt.Tests.Features.Click
                     [MechanicIds.SettlersVerisium] = 20,
                 });
 
-            CandidateRankingEngine engine = CreateEngine();
+            (LabelSelectionScanEngine scanEngine, ClickLabelInteractionService labelInteraction) = CreateEngine();
             ClickCandidates candidates = new(
                 LostShipment: CreateLostShipmentCandidate(new Vector2(15f, 18f), distance: 25f),
                 SettlersOre: CreateSettlersCandidate(new Vector2(10f, 10f), MechanicIds.SettlersVerisium, distance: 10f),
                 NextLabel: null,
                 NextLabelMechanicId: null);
 
-            RankingResult result = engine.Rank(new ClickTickContext(
+            RankingResult result = CandidateRankingEngine.Rank(scanEngine, labelInteraction, new ClickTickContext(
                 WindowTopLeft: Vector2.Zero,
                 CursorAbsolute: new Vector2(5f, 5f),
                 IsPostChestLootSettleBlocking: false,
@@ -106,14 +106,14 @@ namespace ClickIt.Tests.Features.Click
                 [MechanicIds.LostShipment] = 0,
             });
 
-            CandidateRankingEngine engine = CreateEngine();
+            (LabelSelectionScanEngine scanEngine, ClickLabelInteractionService labelInteraction) = CreateEngine();
             ClickCandidates candidates = new(
                 LostShipment: CreateLostShipmentCandidate(new Vector2(11f, 11f), distance: 12f),
                 SettlersOre: null,
                 NextLabel: null,
                 NextLabelMechanicId: null);
 
-            RankingResult result = engine.Rank(new ClickTickContext(
+            RankingResult result = CandidateRankingEngine.Rank(scanEngine, labelInteraction, new ClickTickContext(
                 WindowTopLeft: Vector2.Zero,
                 CursorAbsolute: new Vector2(5f, 5f),
                 IsPostChestLootSettleBlocking: false,
@@ -133,9 +133,9 @@ namespace ClickIt.Tests.Features.Click
         [TestMethod]
         public void Rank_ReturnsFalsePreferences_WhenNoCandidatesExist()
         {
-            CandidateRankingEngine engine = CreateEngine();
+            (LabelSelectionScanEngine scanEngine, ClickLabelInteractionService labelInteraction) = CreateEngine();
 
-            RankingResult result = engine.Rank(new ClickTickContext(
+            RankingResult result = CandidateRankingEngine.Rank(scanEngine, labelInteraction, new ClickTickContext(
                 WindowTopLeft: Vector2.Zero,
                 CursorAbsolute: Vector2.Zero,
                 IsPostChestLootSettleBlocking: false,
@@ -279,7 +279,7 @@ namespace ClickIt.Tests.Features.Click
                 priorityDistancePenalty);
         }
 
-        private static CandidateRankingEngine CreateEngine()
+        private static (LabelSelectionScanEngine, ClickLabelInteractionService) CreateEngine()
         {
             var settings = new ClickItSettings();
             ILabelInteractionPort port = new FakeLabelInteractionPort();
@@ -298,9 +298,7 @@ namespace ClickIt.Tests.Features.Click
                 ClickDebugPublisher: ClickTestDebugPublisherFactory.Create(),
                 DebugLog: static _ => { }));
 
-            return new CandidateRankingEngine(new CandidateRankingEngineDependencies(
-                LabelSelectionScan: scanEngine,
-                LabelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(gameController: gameController, labelInteractionPort: port)));
+            return (scanEngine, ClickTestServiceFactory.CreateLabelInteractionService(gameController: gameController, labelInteractionPort: port));
         }
 
         private static LostShipmentCandidate CreateLostShipmentCandidate(Vector2 clickPosition, float distance)

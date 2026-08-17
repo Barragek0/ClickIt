@@ -19,7 +19,8 @@ namespace ClickIt.Tests.Features.Click
                 ExecuteInteraction: static _ => false,
                 DebugLog: static _ => { },
                 LogError: static (_, _) => { },
-                ElementAccessLock: new object()));
+                ElementAccessLock: new object(),
+                AddDebugStage: static _ => { }));
         }
 
         internal static ClickLabelInteractionService CreateLabelInteractionService(
@@ -82,7 +83,11 @@ namespace ClickIt.Tests.Features.Click
 
         private sealed class NoOpLabelSelectionService : ILabelSelectionService
         {
-            public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
+            public LabelOnGround? GetNextLabelToClick(
+                IReadOnlyList<LabelOnGround>? allLabels,
+                int startIndex,
+                int maxCount,
+                Func<LabelOnGround, LabelCandidateBuildResult, bool>? isAcceptable)
                 => null;
 
             public string? GetMechanicIdForLabel(LabelOnGround? label)

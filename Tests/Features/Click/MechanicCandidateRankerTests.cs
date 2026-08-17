@@ -56,14 +56,14 @@ namespace ClickIt.Tests.Features.Click
         [TestMethod]
         public void Compare_PrefersIgnoredCandidate_WhenPriorityIsNotWorse()
         {
-            var ignored = new MechanicCandidateRanker.CandidateRank(
+            var ignored = new MechanicRank(
                 ignored: true,
                 priorityIndex: 1,
                 weightedDistance: 999,
                 rawDistance: 120,
                 cursorDistance: 20);
 
-            var nonIgnored = new MechanicCandidateRanker.CandidateRank(
+            var nonIgnored = new MechanicRank(
                 ignored: false,
                 priorityIndex: 1,
                 weightedDistance: 10,
@@ -76,14 +76,14 @@ namespace ClickIt.Tests.Features.Click
         [TestMethod]
         public void Compare_PrefersNonIgnoredCandidate_WhenIgnoredPriorityIsWorse()
         {
-            var ignored = new MechanicCandidateRanker.CandidateRank(
+            var ignored = new MechanicRank(
                 ignored: true,
                 priorityIndex: 5,
                 weightedDistance: 999,
                 rawDistance: 15,
                 cursorDistance: 4);
 
-            var nonIgnored = new MechanicCandidateRanker.CandidateRank(
+            var nonIgnored = new MechanicRank(
                 ignored: false,
                 priorityIndex: 1,
                 weightedDistance: 25,
@@ -96,14 +96,14 @@ namespace ClickIt.Tests.Features.Click
         [TestMethod]
         public void Compare_UsesRawDistanceAndCursor_WhenBothCandidatesAreIgnored()
         {
-            var left = new MechanicCandidateRanker.CandidateRank(
+            var left = new MechanicRank(
                 ignored: true,
                 priorityIndex: 1,
                 weightedDistance: 999,
                 rawDistance: 12,
                 cursorDistance: 8);
 
-            var right = new MechanicCandidateRanker.CandidateRank(
+            var right = new MechanicRank(
                 ignored: true,
                 priorityIndex: 1,
                 weightedDistance: 5,
@@ -116,14 +116,14 @@ namespace ClickIt.Tests.Features.Click
         [TestMethod]
         public void Compare_UsesPriorityAsFinalTieBreak_WhenNonIgnoredDistancesMatch()
         {
-            var left = new MechanicCandidateRanker.CandidateRank(
+            var left = new MechanicRank(
                 ignored: false,
                 priorityIndex: 1,
                 weightedDistance: 30,
                 rawDistance: 10,
                 cursorDistance: 5);
 
-            var right = new MechanicCandidateRanker.CandidateRank(
+            var right = new MechanicRank(
                 ignored: false,
                 priorityIndex: 2,
                 weightedDistance: 30,
@@ -137,14 +137,14 @@ namespace ClickIt.Tests.Features.Click
         public void Compare_PriorityIndexBreaksDistanceTie_BeforeCursorProximity()
         {
             // Spec 4.2: a distance tie is broken by mechanic priority index BEFORE cursor proximity, so the higher-priority candidate wins even when the other is closer to the cursor.
-            var left = new MechanicCandidateRanker.CandidateRank(
+            var left = new MechanicRank(
                 ignored: false,
                 priorityIndex: 1,
                 weightedDistance: 30,
                 rawDistance: 10,
                 cursorDistance: 50);
 
-            var right = new MechanicCandidateRanker.CandidateRank(
+            var right = new MechanicRank(
                 ignored: false,
                 priorityIndex: 3,
                 weightedDistance: 30,

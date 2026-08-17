@@ -35,8 +35,6 @@ namespace ClickIt.Tests.Shared.Rendering
                 Graphics: null,
                 WindowArea: default,
                 Labels: null,
-                new DeferredTextQueue(),
-                new DeferredFrameQueue(),
                 new DeferredDrawQueue());
 
         [TestMethod]

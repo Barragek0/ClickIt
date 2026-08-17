@@ -11,15 +11,12 @@ public sealed class BlightService
     private readonly BlightEntityCache _cache;
     private readonly BlightEncounter _encounter = new();
 
-    internal IReadOnlyList<Entity> PathwayEntities => _cache.PathwayEntities;
     internal IReadOnlyList<(Entity Entity, string TowerId)> TowerEntities => _cache.TowerEntities;
     internal IReadOnlyList<BlightPathwayIcon> IconPathwaySnapshot => _cache.IconPathwaySnapshot;
     internal Entity? PumpEntity => _cache.PumpEntity;
-    internal NumVector2? PumpGridPosition => _cache.PumpGridPosition;
 
     internal string DumpPumpStateMachine()
         => PumpEntity is { } pump ? BlightEncounter.DumpPumpStateMachine(pump) : "Pump: (none)";
-    internal System.Numerics.Vector3? PumpWorldPosition => _cache.PumpWorldPosition;
     internal bool IsEncounterActive => _encounter.IsActive;
     internal IReadOnlyList<BlightCachedTower> KnownTowers => _cache.KnownTowers;
     internal IReadOnlyDictionary<NumVector2, System.Numerics.Vector3> PathwayWorldPositions => _cache.PathwayWorldPositions;
@@ -49,10 +46,6 @@ public sealed class BlightService
     internal void DisposeForShutdown()
         => _cache.DisposeForShutdown();
 
-    // Executor stage (the click-pipeline building work): recorded separately from the refresh stages because it runs on the click thread at a different cadence.
-    internal void RecordExecutorStage(long bytes, double ms)
-        => _recordExecutorStage?.Invoke(bytes, ms);
-
     internal bool IsPointInClickableArea(Vector2 point) => _isPointInClickableArea(point);
 
     internal IBlightTowerStrategy CurrentStrategy => BlightStrategyResolver.Resolve(_settings);
@@ -72,7 +65,6 @@ public sealed class BlightService
 
     internal void ScanFoundations(IReadOnlyList<LabelOnGround>? allLabels)
         => _cache.ScanFoundations(allLabels);
-    internal int GetTowerRadiusCached(string towerId) => _cache.GetTowerRadiusCached(towerId);
     internal string DumpPathwayDebug()
     {
         IReadOnlyList<Entity> pathways = _cache.PathwayEntities;
@@ -240,8 +232,8 @@ public sealed class BlightService
     internal int BlightTowerBuildDelayMs => _settings.BlightTowerBuildDelayMs.Value;
     internal int BlightTowerUpgradeDelayMs => _settings.BlightTowerUpgradeDelayMs.Value;
     internal BlightPlan? CurrentPlan => _executor.CurrentPlan;
-
-    internal int CurrentPlanCursor => _executor.CurrentCursor;
+    internal (BlightPlan? Plan, int Cursor) GetPlanSnapshot()
+        => _executor.GetPlanSnapshot();
 
     private readonly BlightDebugEvents _debugEvents = new();
     internal IReadOnlyList<string> DebugStages => _debugEvents.Stages;
@@ -301,8 +293,6 @@ public sealed class BlightService
 
     internal Entity? GetTowerEntityAt(NumVector2 pos) => _cache.GetTowerEntityAt(pos);
 
-    // Cached entity-path read (entity-id validated) for the executor's per-tick rank/verify loops — avoids re-reading entity.Path (a process-memory read + string allocation) every tick.
-    internal string? GetEntityPathCached(Entity entity) => _cache.GetEntityPathCached(entity);
     internal static string? GetEntityPath(Entity entity) => BlightEntityCache.GetEntityPathFresh(entity);
 
     internal bool IsEntityFullyOnScreen(Entity? entity)
@@ -399,7 +389,7 @@ public sealed class BlightService
             }
         }
 
-        BlightPlan plan = BlightPlanner.Build(KnownTowers, coverage, CurrentStrategy.Rules, _cache.FailedFoundationPositions, _planVersion, pumpPos, playerPos, pathwayPositions, _cache.CachedBranchAnchors, CurrentStrategy.GroupStepsByProximity);
+        BlightPlan plan = BlightPlanner.Build(KnownTowers, coverage, CurrentStrategy.Rules, _planVersion, pumpPos, playerPos, pathwayPositions, _cache.CachedBranchAnchors, CurrentStrategy.GroupStepsByProximity);
 
         _cache.ApplyPlannedTowerTypes(plan);
 
@@ -436,7 +426,6 @@ public sealed class BlightService
     internal void ResetInteractionState()
     {
         _executor.Reset();
-        _cache.FailedFoundationPositions.Clear();
     }
 
     internal int GetSpecialization(BlightTowerType type)

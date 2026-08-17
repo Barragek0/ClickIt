@@ -31,44 +31,17 @@ namespace ClickIt.Features.Click.Runtime
             bool movementSkillsEnabled = _dependencies.Settings.UseMovementSkillsForOffscreenPathfinding?.Value == true;
             long lastSkillUseTimestampMs = _dependencies.RuntimeState.LastMovementSkillUseTimestampMs;
 
-            if (!movementSkillsEnabled)
-            {
-                debugReason = "Skipped: setting disabled (Use Movement Skills for Offscreen Pathfinding = false).";
-                return false;
-            }
-
-            if (!builtPath)
-            {
-                debugReason = "Skipped: no fresh path available (movement skill requires successful path build).";
-                return false;
-            }
-
-            if (remainingNodes < minimumNodes)
-            {
-                debugReason = $"Skipped: remaining path nodes {remainingNodes} below minimum {minimumNodes}.";
-                return false;
-            }
-
-            if (lastSkillUseTimestampMs > 0 && MovementSkillMath.RecastDelayMs > 0)
-            {
-                long elapsed = now - lastSkillUseTimestampMs;
-                if (elapsed < MovementSkillMath.RecastDelayMs)
-                {
-                    debugReason = $"Skipped: local recast delay active ({elapsed}ms elapsed, need {MovementSkillMath.RecastDelayMs}ms).";
-                    return false;
-                }
-            }
-
+            // Single movement-skill gate: every skip condition (disabled, no path, too few nodes, recast delay) lives in ShouldAttemptMovementSkill; this resolves the matching debug reason for the user.
             if (!MovementSkillMath.ShouldAttemptMovementSkill(
-                movementSkillsEnabled,
-                builtPath,
-                remainingNodes,
-                minimumNodes,
-                now,
-                lastSkillUseTimestampMs,
-                MovementSkillMath.RecastDelayMs))
+                    movementSkillsEnabled,
+                    builtPath,
+                    remainingNodes,
+                    minimumNodes,
+                    now,
+                    lastSkillUseTimestampMs,
+                    MovementSkillMath.RecastDelayMs))
             {
-                debugReason = "Skipped: movement skill gate returned false.";
+                debugReason = ResolveMovementSkillSkipReason(movementSkillsEnabled, builtPath, remainingNodes, minimumNodes, now, lastSkillUseTimestampMs);
                 return false;
             }
 
@@ -175,6 +148,25 @@ namespace ClickIt.Features.Click.Runtime
                 return resolved;
 
             return SystemMath.Max(0, _dependencies.Settings.OffscreenShieldChargePostCastClickDelayMs?.Value ?? MovementSkillMath.ShieldChargePostCastClickBlockMs);
+        }
+
+        private static string ResolveMovementSkillSkipReason(
+            bool movementSkillsEnabled,
+            bool builtPath,
+            int remainingNodes,
+            int minimumNodes,
+            long now,
+            long lastSkillUseTimestampMs)
+        {
+            if (!movementSkillsEnabled)
+                return "Skipped: setting disabled (Use Movement Skills for Offscreen Pathfinding = false).";
+            if (!builtPath)
+                return "Skipped: no fresh path available (movement skill requires successful path build).";
+            if (remainingNodes < minimumNodes)
+                return $"Skipped: remaining path nodes {remainingNodes} below minimum {minimumNodes}.";
+            if (lastSkillUseTimestampMs > 0 && MovementSkillMath.RecastDelayMs > 0 && now - lastSkillUseTimestampMs < MovementSkillMath.RecastDelayMs)
+                return $"Skipped: local recast delay active ({now - lastSkillUseTimestampMs}ms elapsed, need {MovementSkillMath.RecastDelayMs}ms).";
+            return "Skipped: movement skill gate returned false.";
         }
 
         private bool TryResolveMovementSkillCastPosition(Vector2 targetScreen, string targetPath, out Vector2 castPoint)

@@ -12,7 +12,8 @@ namespace ClickIt.Features.Click.Application
         Func<InteractionExecutionRequest, bool> ExecuteInteraction,
         Action<string> DebugLog,
         Action<string, int> LogError,
-        object ElementAccessLock);
+        object ElementAccessLock,
+        Action<string> AddDebugStage);
 
     internal sealed class AltarAutomationService(AltarAutomationServiceDependencies dependencies)
     {
@@ -134,12 +135,14 @@ namespace ClickIt.Features.Click.Application
             if (boxToClick == null)
             {
                 _dependencies.DebugLog("Skipping altar - No valid choice could be determined");
+                _dependencies.AddDebugStage($"AltarClick: {altar.AltarType} no valid choice (top={altarWeights.Value.TopWeight} bottom={altarWeights.Value.BottomWeight})");
                 return false;
             }
 
             if (!_dependencies.IsClickableInEitherSpace(boxToClick.GetClientRect().Center, altar.AltarType.ToString()) || !boxToClick.IsVisible)
             {
                 _dependencies.DebugLog("Skipping altar - Choice is not clickable or visible");
+                _dependencies.AddDebugStage($"AltarClick: {altar.AltarType} choice not clickable/visible");
                 return false;
             }
 
@@ -178,9 +181,13 @@ namespace ClickIt.Features.Click.Application
             {
                 _dependencies.RemoveTrackedAltarByElement(element);
                 _dependencies.DebugLog("[ClickAltarElement] Removed clicked altar from tracking (no longer visible)");
+                _dependencies.AddDebugStage("AltarClick: click executed, altar removed from tracking");
             }
             else
+            {
                 _dependencies.DebugLog("[ClickAltarElement] Altar still visible after click; not removing (possible missclick)");
+                _dependencies.AddDebugStage("AltarClick: click executed but altar still visible (possible missclick)");
+            }
 
         }
 
@@ -241,7 +248,6 @@ namespace ClickIt.Features.Click.Application
                     ExpectedElement: element,
                     Controller: _dependencies.GameController,
                     UseHoldClick: false,
-                    HoldDurationMs: 0,
                     ForceUiHoverVerification: false,
                     AllowWhenHotkeyInactive: allowWhenHotkeyInactive,
                     AvoidCursorMove: avoidCursorMove,

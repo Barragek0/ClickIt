@@ -57,15 +57,13 @@ namespace ClickIt.Core.Lifecycle
             DrainFinalizers();
         }
 
+        private static Coroutine?[] TrackedCoroutines(PluginContext state)
+            => [state.Runtime.AltarCoroutine, state.Runtime.ClickLabelCoroutine, state.Runtime.ManualUiHoverCoroutine, state.Runtime.DelveFlareCoroutine, state.Runtime.GameStateDumpCoroutine, state.Runtime.AreaBlockedUiRefreshCoroutine];
+
         private static void StopTrackedCoroutines(PluginContext state)
         {
-            PluginRuntimeState runtime = state.Runtime;
-            runtime.AltarCoroutine?.Done();
-            runtime.ClickLabelCoroutine?.Done();
-            runtime.ManualUiHoverCoroutine?.Done();
-            runtime.DelveFlareCoroutine?.Done();
-            runtime.GameStateDumpCoroutine?.Done();
-            runtime.AreaBlockedUiRefreshCoroutine?.Done();
+            foreach (Coroutine? coroutine in TrackedCoroutines(state))
+                coroutine?.Done();
 
             // Overlay API: the host owns the per-overlay refresh coroutines.
             state.Rendering.OverlayRenderHost?.StopAll();
@@ -73,13 +71,8 @@ namespace ClickIt.Core.Lifecycle
 
         private static void WaitForTrackedCoroutines(PluginContext state)
         {
-            PluginRuntimeState runtime = state.Runtime;
-            WaitForCoroutineShutdown(runtime.AltarCoroutine);
-            WaitForCoroutineShutdown(runtime.ClickLabelCoroutine);
-            WaitForCoroutineShutdown(runtime.ManualUiHoverCoroutine);
-            WaitForCoroutineShutdown(runtime.DelveFlareCoroutine);
-            WaitForCoroutineShutdown(runtime.GameStateDumpCoroutine);
-            WaitForCoroutineShutdown(runtime.AreaBlockedUiRefreshCoroutine);
+            foreach (Coroutine? coroutine in TrackedCoroutines(state))
+                WaitForCoroutineShutdown(coroutine);
         }
 
         private static void ClearTrackedCoroutineReferences(PluginContext state)

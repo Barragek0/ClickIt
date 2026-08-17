@@ -1,3 +1,5 @@
+using static ClickIt.Features.Blight.Planning.BlightGeometry;
+
 namespace ClickIt.Features.Blight;
 
 internal static class BlightLaneTopology
@@ -560,13 +562,6 @@ internal static class BlightLaneTopology
         }
 
         return new BlightLaneNode(name, segments, childLanes);
-    }
-
-    private static float Distance(NumVector2 a, NumVector2 b)
-    {
-        float dx = a.X - b.X;
-        float dy = a.Y - b.Y;
-        return MathF.Sqrt((dx * dx) + (dy * dy));
     }
 
     internal const int OrphanSentinel = -2;

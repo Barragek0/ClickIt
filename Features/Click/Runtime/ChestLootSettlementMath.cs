@@ -8,6 +8,14 @@ namespace ClickIt.Features.Click.Runtime
         internal const int DefaultPollIntervalMs = 100;
         internal const int DefaultQuietWindowMs = 500;
 
+        private static readonly HashSet<string> PostChestLootSettlementTimingMechanicIds =
+            new(StringComparer.OrdinalIgnoreCase)
+            {
+                MechanicIds.BasicChests,
+                MechanicIds.LeagueChests,
+                HeistChestSettleMechanicId,
+            };
+
         internal static LabelOnGround? FindPendingChestLabel(IReadOnlyList<LabelOnGround>? allLabels, long itemAddress, long labelAddress)
         {
             if (allLabels == null || allLabels.Count == 0)
@@ -89,23 +97,10 @@ namespace ClickIt.Features.Click.Runtime
             return true;
         }
 
-        internal static bool ShouldWaitForChestLootSettlement(
-            string? mechanicId,
-            bool waitAfterOpeningBasicChests,
-            bool waitAfterOpeningLeagueChests,
-            bool waitAfterOpeningHeistChests)
-        {
-            if (string.Equals(mechanicId, MechanicIds.BasicChests, StringComparison.OrdinalIgnoreCase))
-                return waitAfterOpeningBasicChests;
-
-            if (string.Equals(mechanicId, HeistChestSettleMechanicId, StringComparison.OrdinalIgnoreCase))
-                return waitAfterOpeningHeistChests;
-
-            if (string.Equals(mechanicId, MechanicIds.LeagueChests, StringComparison.OrdinalIgnoreCase))
-                return waitAfterOpeningLeagueChests;
-
-            return false;
-        }
+        internal static bool ShouldWaitForChestLootSettlement(string? mechanicId, bool waitAfterOpeningChests)
+            => waitAfterOpeningChests
+               && mechanicId != null
+               && PostChestLootSettlementTimingMechanicIds.Contains(mechanicId);
 
         internal static string? ResolveChestLootSettlementMechanicIdForOpenedLabel(
             string? mechanicId,
@@ -124,17 +119,8 @@ namespace ClickIt.Features.Click.Runtime
             string? mechanicId,
             in ChestLootSettlementTimingOptions options)
         {
-            if (string.Equals(mechanicId, MechanicIds.BasicChests, StringComparison.OrdinalIgnoreCase))
+            if (PostChestLootSettlementTimingMechanicIds.Contains(mechanicId))
                 return NormalizeChestLootSettlementTiming(options.Shared);
-
-
-            if (string.Equals(mechanicId, HeistChestSettleMechanicId, StringComparison.OrdinalIgnoreCase))
-                return NormalizeChestLootSettlementTiming(options.Shared);
-
-
-            if (string.Equals(mechanicId, MechanicIds.LeagueChests, StringComparison.OrdinalIgnoreCase))
-                return NormalizeChestLootSettlementTiming(options.Shared);
-
 
             return new ChestLootSettlementTiming(
                 DefaultInitialDelayMs,

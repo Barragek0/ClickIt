@@ -4,6 +4,23 @@ namespace ClickIt.Shared.Game
     {
         private static readonly ThreadLocal<List<Element>> ThreadLocalElementsList = new(() => []);
 
+        public static bool TryGetLabelAdapter(LabelOnGround? label, out IElementAdapter? adapter)
+        {
+            adapter = null;
+            if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
+                || rawLabel == null)
+                return false;
+
+            adapter = rawLabel switch
+            {
+                IElementAdapter existingAdapter => existingAdapter,
+                Element element => new ElementAdapter(element),
+                _ => null,
+            };
+
+            return adapter != null;
+        }
+
         public static void ClearThreadLocalStorage()
         {
             ThreadLocalElementsList.Value?.Clear();

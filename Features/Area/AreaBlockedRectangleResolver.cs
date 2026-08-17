@@ -1,47 +1,42 @@
 namespace ClickIt.Features.Area
 {
+    internal enum AreaBlockedRectangleKind
+    {
+        ChatPanel,
+        MapPanel,
+        XpBar,
+        Mirage,
+        Altar,
+        Ritual,
+        Sentinel,
+    }
+
     internal static class AreaBlockedRectangleResolver
     {
-        internal static RectangleF ResolveChatPanelBlockedRectangle(GameController gameController)
-            => ResolveChatPanelBlockedRectangleFromRoot(AreaUiSnapshotReader.TryGetIngameUiProperty(gameController, "ChatPanel"));
+        // One data table for every blocked rectangle: the IngameUi root property + child path + whether the leaf must be visible (Mirage/Altar/Ritual hide when the widget is off).
+        private static readonly (string RootProperty, int[] Path, bool RequireVisible)[] ByKind =
+        [
+            ("ChatPanel", [1, 2, 2], false),
+            ("Map", [2, 1], false),
+            ("GameUI", [0], false),
+            ("GameUI", [7, 17], true),
+            ("GameUI", [7, 16], true),
+            ("GameUI", [7, 18, 0], true),
+            ("GameUI", [7, 18, 2, 0], false),
+        ];
 
-        internal static RectangleF ResolveChatPanelBlockedRectangleFromRoot(object? root)
-            => AreaUiNodeTraversal.ResolveRectangleFromNodePath(root, 1, 2, 2);
+        internal static RectangleF ResolveBlockedRectangle(GameController gameController, AreaBlockedRectangleKind kind)
+        {
+            (string rootProperty, _, _) = ByKind[(int)kind];
+            return ResolveBlockedRectangleFromRoot(AreaUiSnapshotReader.TryGetIngameUiProperty(gameController, rootProperty), kind);
+        }
 
-        internal static RectangleF ResolveMapPanelBlockedRectangle(GameController gameController)
-            => ResolveMapPanelBlockedRectangleFromRoot(AreaUiSnapshotReader.TryGetIngameUiProperty(gameController, "Map"));
-
-        internal static RectangleF ResolveMapPanelBlockedRectangleFromRoot(object? root)
-            => AreaUiNodeTraversal.ResolveRectangleFromNodePath(root, 2, 1);
-
-        internal static RectangleF ResolveXpBarBlockedRectangle(GameController gameController)
-            => ResolveXpBarBlockedRectangleFromRoot(AreaUiSnapshotReader.TryGetIngameUiProperty(gameController, "GameUI"));
-
-        internal static RectangleF ResolveXpBarBlockedRectangleFromRoot(object? root)
-            => AreaUiNodeTraversal.ResolveRectangleFromNodePath(root, 0);
-
-        internal static RectangleF ResolveMirageBlockedRectangle(GameController gameController)
-            => ResolveMirageBlockedRectangleFromRoot(AreaUiSnapshotReader.TryGetIngameUiProperty(gameController, "GameUI"));
-
-        internal static RectangleF ResolveMirageBlockedRectangleFromRoot(object? root)
-            => AreaUiNodeTraversal.ResolveVisibleRectangleFromNodePath(root, 7, 17);
-
-        internal static RectangleF ResolveAltarBlockedRectangle(GameController gameController)
-            => ResolveAltarBlockedRectangleFromRoot(AreaUiSnapshotReader.TryGetIngameUiProperty(gameController, "GameUI"));
-
-        internal static RectangleF ResolveAltarBlockedRectangleFromRoot(object? root)
-            => AreaUiNodeTraversal.ResolveVisibleRectangleFromNodePath(root, 7, 16);
-
-        internal static RectangleF ResolveRitualBlockedRectangle(GameController gameController)
-            => ResolveRitualBlockedRectangleFromRoot(AreaUiSnapshotReader.TryGetIngameUiProperty(gameController, "GameUI"));
-
-        internal static RectangleF ResolveRitualBlockedRectangleFromRoot(object? root)
-            => AreaUiNodeTraversal.ResolveVisibleRectangleFromNodePath(root, 7, 18, 0);
-
-        internal static RectangleF ResolveSentinelBlockedRectangle(GameController gameController)
-            => ResolveSentinelBlockedRectangleFromRoot(AreaUiSnapshotReader.TryGetIngameUiProperty(gameController, "GameUI"));
-
-        internal static RectangleF ResolveSentinelBlockedRectangleFromRoot(object? root)
-            => AreaUiNodeTraversal.ResolveRectangleFromNodePath(root, 7, 18, 2, 0);
+        internal static RectangleF ResolveBlockedRectangleFromRoot(object? root, AreaBlockedRectangleKind kind)
+        {
+            (_, int[] path, bool requireVisible) = ByKind[(int)kind];
+            return requireVisible
+                ? AreaUiNodeTraversal.ResolveVisibleRectangleFromNodePath(root, path)
+                : AreaUiNodeTraversal.ResolveRectangleFromNodePath(root, path);
+        }
     }
 }

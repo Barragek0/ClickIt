@@ -21,7 +21,7 @@ namespace ClickIt.Tests.Features.Labels.Application
                 },
                 GetMechanicIdForLabelCore: static _ => null));
 
-            var selected = service.GetNextLabelToClick(null, 0, 10);
+            var selected = service.GetNextLabelToClick(null, 0, 10, isAcceptable: null);
 
             selected.Should().BeNull();
             publishedEvent.Should().NotBeNull();
@@ -56,7 +56,7 @@ namespace ClickIt.Tests.Features.Labels.Application
                 },
                 GetMechanicIdForLabelCore: static _ => null));
 
-            LabelOnGround? selected = service.GetNextLabelToClick([nullItemLabel, noMechanicLabel], 0, 5);
+            LabelOnGround? selected = service.GetNextLabelToClick([nullItemLabel, noMechanicLabel], 0, 5, isAcceptable: null);
 
             selected.Should().BeNull();
             events.Select(debugEvent => debugEvent.Stage).Should().ContainInOrder("SelectionRequested", "SelectionScanNone", "SelectionReturnedNone");
@@ -109,7 +109,7 @@ namespace ClickIt.Tests.Features.Labels.Application
                 },
                 GetMechanicIdForLabelCore: static _ => null));
 
-            LabelOnGround? selected = service.GetNextLabelToClick([label], startIndex: 5, maxCount: 1);
+            LabelOnGround? selected = service.GetNextLabelToClick([label], startIndex: 5, maxCount: 1, isAcceptable: null);
 
             selected.Should().BeNull();
             events.Select(debugEvent => debugEvent.Stage).Should().ContainInOrder("SelectionRequested", "SelectionScanNone", "SelectionReturnedNone");
@@ -166,9 +166,9 @@ namespace ClickIt.Tests.Features.Labels.Application
 
             IReadOnlyList<LabelOnGround> labels = [label];
 
-            LabelOnGround? first = service.GetNextLabelToClick(labels, 0, 10);
-            LabelOnGround? second = service.GetNextLabelToClick(labels, 0, 10);
-            LabelOnGround? third = service.GetNextLabelToClick(labels, 0, 10);
+            LabelOnGround? first = service.GetNextLabelToClick(labels, 0, 10, isAcceptable: null);
+            LabelOnGround? second = service.GetNextLabelToClick(labels, 0, 10, isAcceptable: null);
+            LabelOnGround? third = service.GetNextLabelToClick(labels, 0, 10, isAcceptable: null);
 
             first.Should().BeSameAs(label);
             second.Should().BeSameAs(label);
@@ -200,8 +200,8 @@ namespace ClickIt.Tests.Features.Labels.Application
             IReadOnlyList<LabelOnGround> firstList = [firstLabel];
             IReadOnlyList<LabelOnGround> secondList = [secondLabel];
 
-            LabelOnGround? a = service.GetNextLabelToClick(firstList, 0, 10);
-            LabelOnGround? b = service.GetNextLabelToClick(secondList, 0, 10);
+            LabelOnGround? a = service.GetNextLabelToClick(firstList, 0, 10, isAcceptable: null);
+            LabelOnGround? b = service.GetNextLabelToClick(secondList, 0, 10, isAcceptable: null);
 
             a.Should().BeSameAs(firstLabel);
             b.Should().BeSameAs(secondLabel);
@@ -211,9 +211,6 @@ namespace ClickIt.Tests.Features.Labels.Application
         [TestMethod]
         public void GetNextLabelToClick_GatedSelection_RerunsWhenCachedResultBecomesSuppressed()
         {
-            // Regression: the gated (single-pass) scan caches its result under the range key, so a label that
-            // becomes suppressed (e.g. a strongbox locks) within the cache window must NOT be returned - the
-            // cached result is re-validated against the predicate and the scan re-runs for the next acceptable.
             LabelOnGround first = CreateOpaqueLabel(address: 0x1000);
             LabelOnGround second = CreateOpaqueLabel(address: 0x2000);
             bool firstSuppressed = false;
@@ -274,8 +271,8 @@ namespace ClickIt.Tests.Features.Labels.Application
 
             IReadOnlyList<LabelOnGround> labels = [label];
 
-            service.GetNextLabelToClick(labels, 0, 10);
-            service.GetNextLabelToClick(labels, 0, 5);
+            service.GetNextLabelToClick(labels, 0, 10, isAcceptable: null);
+            service.GetNextLabelToClick(labels, 0, 5, isAcceptable: null);
 
             scanCount.Should().Be(2, "a different query range must re-run the selection scan");
         }
@@ -307,14 +304,14 @@ namespace ClickIt.Tests.Features.Labels.Application
             IReadOnlyList<LabelOnGround> labels = [nearLabel, farLabel];
 
             // Both in range; farLabel is nearer (50 < 100) so it ranks first.
-            LabelOnGround? first = service.GetNextLabelToClick(labels, 0, 10);
+            LabelOnGround? first = service.GetNextLabelToClick(labels, 0, 10, isAcceptable: null);
             first.Should().BeSameAs(farLabel);
 
             // The player closes in on nearLabel. The expensive per-label build must NOT re-run (same addresses), but the live distance must be re-read so the ranking flips to nearLabel.
             nearProbe.DistancePlayer = 10f;
             farProbe.DistancePlayer = 200f;
 
-            LabelOnGround? second = service.GetNextLabelToClick(labels, 0, 5);
+            LabelOnGround? second = service.GetNextLabelToClick(labels, 0, 5, isAcceptable: null);
             second.Should().BeSameAs(nearLabel, "the selection must re-read the live distance instead of reusing the cached build");
             buildCount.Should().Be(2, "each label builds once; a different query range re-scans but the per-label build cache must be reused");
         }
@@ -342,19 +339,60 @@ namespace ClickIt.Tests.Features.Labels.Application
                 GetMechanicIdForLabelCore: static _ => null));
 
             // Far away: rejected as out of range, so nothing is selected.
-            service.GetNextLabelToClick([label], 0, 10).Should().BeNull("the label is initially out of distance");
+            service.GetNextLabelToClick([label], 0, 10, isAcceptable: null).Should().BeNull("the label is initially out of distance");
 
             // The player walks closer; the cached OutOfDistance rejection must be re-evaluated, not held for the rest of the 1s cache window.
             probe.DistancePlayer = 10f;
 
-            service.GetNextLabelToClick([label], 0, 10).Should().BeSameAs(label,
+            service.GetNextLabelToClick([label], 0, 10, isAcceptable: null).Should().BeSameAs(label,
                 "an OutOfDistance rejection must be re-checked against the live distance when the player closes in");
+        }
+
+        [TestMethod]
+        public void GetNextLabelToClick_ReevaluatesLockedChestRejection_WhenStrongboxUnlocks()
+        {
+            // Mutable per-tick state (strongbox lock) must NOT be pinned by the 1s build cache: an unlock must advance the scan immediately instead of serving the stale LockedChest rejection for the rest of the window.
+            LabelOnGround label = CreateOpaqueLabel(address: 0x1000);
+            bool locked = true;
+            int buildCount = 0;
+            var service = new LabelSelectionService(new LabelSelectionServiceDependencies(
+                GameController: null,
+                CreateClickSettings: static _ => TestClickSettings(),
+                ShouldCaptureLabelDebug: static () => false,
+                PublishLabelDebugStage: static _ => { },
+                TryBuildLabelCandidate: (LabelOnGround _, ClickSettings _, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
+                {
+                    buildCount++;
+                    if (locked)
+                    {
+                        item = null;
+                        mechanicId = null;
+                        rejectReason = LabelCandidateRejectReason.LockedChest;
+                        return false;
+                    }
+
+                    item = EntityProbeFactory.Create();
+                    mechanicId = MechanicIds.Items;
+                    rejectReason = LabelCandidateRejectReason.None;
+                    return true;
+                },
+                GetMechanicIdForLabelCore: static _ => null));
+
+            // Locked: rejected, nothing selected.
+            service.GetNextLabelToClick([label], 0, 10, isAcceptable: null).Should().BeNull("the locked strongbox is not a candidate");
+            int buildsWhileLocked = buildCount;
+
+            // The strongbox unlocks; the cached LockedChest rejection must be re-evaluated (re-read fresh) so the label is picked up within the same cache window.
+            locked = false;
+            service.GetNextLabelToClick([label], 0, 10, isAcceptable: null).Should().BeSameAs(label,
+                "a LockedChest rejection must be re-checked against the live lock state when the strongbox unlocks");
+            buildCount.Should().BeGreaterThan(buildsWhileLocked,
+                "the mutable-state rejection must be re-read fresh, not served from the build cache");
         }
 
         [TestMethod]
         public void GetNextLabelToClick_ReevaluatesNullSelection_AfterCacheWindow()
         {
-            // Regression guard: a stable label-list reference plus a cached null selection deadlocked item pickup (the scan never re-ran, so items that became clickable were never picked up). A stale null result must be re-evaluated after the cache window.
             LabelOnGround label = CreateOpaqueLabel(address: 0x1000);
             bool shouldSelect = false;
             int buildCount = 0;
@@ -384,18 +422,18 @@ namespace ClickIt.Tests.Features.Labels.Application
             IReadOnlyList<LabelOnGround> labels = [label];
 
             // Initial scan rejects everything and caches the null result for this stable reference.
-            service.GetNextLabelToClick(labels, 0, 10).Should().BeNull();
+            service.GetNextLabelToClick(labels, 0, 10, isAcceptable: null).Should().BeNull();
             int buildsAfterFirstScan = buildCount;
 
             // Within the cache window the null is served from cache (no re-scan).
-            service.GetNextLabelToClick(labels, 0, 10).Should().BeNull();
+            service.GetNextLabelToClick(labels, 0, 10, isAcceptable: null).Should().BeNull();
             buildCount.Should().Be(buildsAfterFirstScan, "the cached null must be served within the window");
 
             // The label becomes selectable; after the window the selection must re-evaluate and pick it up instead of being pinned to the stale null result.
             shouldSelect = true;
             Thread.Sleep(300);
 
-            service.GetNextLabelToClick(labels, 0, 10).Should().BeSameAs(label,
+            service.GetNextLabelToClick(labels, 0, 10, isAcceptable: null).Should().BeSameAs(label,
                 "a stale null selection must be re-evaluated after the cache window");
             buildCount.Should().BeGreaterThan(buildsAfterFirstScan,
                 "the re-scan must rebuild the previously NullItem-rejected label");

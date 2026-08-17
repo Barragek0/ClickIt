@@ -26,6 +26,7 @@ namespace ClickIt.Features.Altars
                 _altarStore.Clear();
                 _lastProcessedLabels = null;
                 _lastScanFoundAltarLabels = false;
+                _debugInfo.AddDebugStage("AltarScan: no labels, store cleared");
                 return;
             }
 
@@ -49,9 +50,11 @@ namespace ClickIt.Features.Altars
             {
                 _lastScanFoundAltarLabels = false;
                 _altarStore.Clear();
+                _debugInfo.AddDebugStage("AltarScan: no altar labels, store cleared");
                 return;
             }
             _lastScanFoundAltarLabels = true;
+            _debugInfo.AddDebugStage($"AltarScan: {altarLabels.Count} altar label(s) found");
 
             long buildStart = Stopwatch.GetTimestamp();
             long buildAllocStart = GC.GetAllocatedBytesForCurrentThread();
@@ -73,6 +76,7 @@ namespace ClickIt.Features.Altars
         {
             List<(Element element, string path)> elementsToProcess = AltarScanner.CollectElementsFromLabels(altarLabels);
             _debugInfo.ElementsFound = elementsToProcess.Count;
+            _debugInfo.AddDebugStage($"AltarScan: {elementsToProcess.Count} element(s) to process");
 
             _altarStore.RemoveWhere(AltarComponentValidation.ShouldRemoveInvalidCachedComponent);
 
@@ -90,6 +94,9 @@ namespace ClickIt.Features.Altars
                 bool wasAdded = _altarStore.Add(altarComponent);
                 AltarComponentFactory.WarmAddedData(altarComponent, wasAdded);
                 _debugInfo.RecordProcessedComponent(altarType, wasAdded);
+                _debugInfo.AddDebugStage(wasAdded
+                    ? $"AltarScan: added {altarType} component (store={_altarStore.GetComponentCount()})"
+                    : $"AltarScan: {altarType} component already tracked (duplicate)");
             }
         }
 
@@ -97,7 +104,10 @@ namespace ClickIt.Features.Altars
         {
             bool isValid = AltarComponentValidation.IsComponentComplete(altarComponent);
             if (!isValid)
+            {
                 _debugInfo.RecordInvalidComponent("Invalid altar component - missing parts");
+                _debugInfo.AddDebugStage($"AltarScan: invalid component skipped ({altarComponent.AltarType})");
+            }
 
             return isValid;
         }

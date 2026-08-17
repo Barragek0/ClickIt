@@ -1,6 +1,7 @@
 using System.Globalization;
 using NumVec2 = System.Numerics.Vector2;
 using NumVec4 = System.Numerics.Vector4;
+using static ClickIt.Shared.Diagnostics.DebugUiPalette;
 
 namespace ClickIt.UI.Debug;
 
@@ -15,19 +16,9 @@ internal sealed class ImGuiDebugOverlay(
     private const float WindowMinWidth = 1240f;
     private const float WindowMinHeight = 400f;
 
-    private static readonly NumVec4 CWarn = Vec4(Color.Yellow);
-    private static readonly NumVec4 CError = Vec4(Color.Red);
-    private static readonly NumVec4 CInfo = Vec4(Color.Cyan);
-    private static readonly NumVec4 CMuted = Vec4(Color.LightGray);
-    private static readonly NumVec4 CDim = Vec4(Color.DarkGray);
-    private static readonly NumVec4 COrange = Vec4(Color.Orange);
-    private static readonly NumVec4 CHeader = Vec4(Color.Orange);
-    private static readonly NumVec4 CWhite = Vec4(Color.White);
     private static readonly NumVec4 CLime = Vec4(Color.Lime);
     private static readonly NumVec4 CGold = Vec4(Color.Gold);
-    private static readonly NumVec4 CGreen = Vec4(Color.LightGreen);
     private static readonly NumVec4 CLightBlue = Vec4(Color.LightBlue);
-    private static readonly NumVec4 COrangeRed = Vec4(Color.OrangeRed);
     private static readonly NumVec4 CBuildAction = Vec4(new Color(0, 190, 0));     // deep green — plan BUILD
     private static readonly NumVec4 CUpgradeAction = Vec4(new Color(255, 80, 80)); // red — plan UPGRADE
     private static readonly NumVec4 CSpecialAction = Vec4(new Color(0, 200, 200)); // cyan — plan 3->4 SPECIALIZATION
@@ -39,9 +30,10 @@ internal sealed class ImGuiDebugOverlay(
     private readonly HarvestService? _harvest = harvest;
     private DebugTelemetrySnapshot? _lastSnapshot;
     private PerformanceMetricsSnapshot _lastPerformance;
+    private long _lastPerformanceSnapshotMs;
+    private const long DebugSnapshotIntervalMs = 200;
     private float _leftColWidth;
     private int _blightChestDebugSelectedIndex;
-    private readonly List<(string Label, string Value, NumVec4 Color)> _kvRows = [];
 
     private enum DebugSection
     {
@@ -101,13 +93,25 @@ internal sealed class ImGuiDebugOverlay(
         if (!_settings.DebugWindowVisible.Value)
             return;
 
+        // The debug window must not stay open when debug mode is disabled; close it so toggling DebugMode off hides the overlay (re-enabling requires the explicit Show checkbox).
+        if (!_settings.DebugMode.Value)
+        {
+            _settings.DebugWindowVisible.Value = false;
+            return;
+        }
+
         if (_telemetrySource != null)
             _lastSnapshot = _telemetrySource.GetSnapshot();
         if (_lastSnapshot == null)
             _lastSnapshot = DebugTelemetrySnapshot.Empty;
 
-        if (_performanceMonitor != null)
+        // The performance snapshot recomputes every section's stats and allocates snapshot arrays/dictionaries on each call; rebuild it on a cadence instead of every frame (the underlying buffers change at 200ms anyway).
+        long now = Environment.TickCount64;
+        if (_performanceMonitor != null && now - _lastPerformanceSnapshotMs >= DebugSnapshotIntervalMs)
+        {
             _lastPerformance = _performanceMonitor.GetDebugSnapshot();
+            _lastPerformanceSnapshotMs = now;
+        }
 
         ImGui.SetNextWindowSizeConstraints(
             new NumVec2(WindowMinWidth, WindowMinHeight),
@@ -234,9 +238,9 @@ internal sealed class ImGuiDebugOverlay(
             node.Value = v;
     }
 
-    private static void DataRows(List<(string Label, string Value, NumVec4 Color)> items)
+    private static void DataRows(ReadOnlySpan<(string Label, string Value, NumVec4 Color)> items)
     {
-        for (int i = 0; i < items.Count; i++)
+        for (int i = 0; i < items.Length; i++)
         {
             (string Label, string Value, Vector4 Color) it = items[i];
             ImGui.TextColored(it.Color, $"{it.Label}: {it.Value}");
@@ -258,6 +262,8 @@ internal sealed class ImGuiDebugOverlay(
         }
     }
 
+    private static readonly char[] SanitizeNeedles = ['\u2190', '\u2191', '\u2192', '\u2193', '\u2713', '\u2717', '\u25CF', '\u25B6', '\u25C0', '\u2665', '\u2605'];
+
     private static void RenderTrail(string label, IReadOnlyList<string> trail, int maxRows = 20)
     {
         if (trail.Count == 0) return;
@@ -269,12 +275,14 @@ internal sealed class ImGuiDebugOverlay(
         for (int i = start; i < trail.Count; i++)
         {
             string s = trail[i];
-            s = SanitizeText(s);
-            ImGui.TextWrapped(s);
+            if (s.AsSpan().IndexOfAny(SanitizeNeedles) < 0)
+                ImGui.TextWrapped(s);
+            else
+                ImGui.TextWrapped(SanitizeText(s));
         }
     }
 
-    private static string SanitizeText(string text)
+    internal static string SanitizeText(string text)
     {
         // Bound the stackalloc buffer and fall back to the heap for very long strings.
         const int MaxStackChars = 4096;
@@ -387,6 +395,10 @@ internal sealed class ImGuiDebugOverlay(
         ImGui.SameLine();
         ImGui.TextColored(GcPauseColor(mem.GcPauseMaxMs), $"  GC Pause: {mem.GcPauseLastMs:F0}/{mem.GcPauseAvgMs:F0}/{mem.GcPauseMaxMs:F0} ms");
 
+        // When the in-game overlay is already rendering the same tables, they are redundant here - skip them to keep the debug box cheap while "Render in-game" is on.
+        if (renderInGame)
+            return;
+
         RenderRenderTable(perf);
         float renderBottom = ImGui.GetCursorPosY();
         ImGui.SameLine(0, 0);
@@ -400,15 +412,13 @@ internal sealed class ImGuiDebugOverlay(
         double coroutineFps = perf.Fps.Current;
         BeginFixedTable("CoroutinesPerFrame", "Coroutine ms/f", 175f, "Last", 38f, "Avg", 38f, "Max", 38f);
         RenderTimingTotalRow("Total", perf.CoroutinesTotalPerFrameSnapshot, FrameColor, "F2", "F2", "F2");
-        RenderScaledTimingRow("Altar", perf.AltarCoroutine, coroutineFps);
-        RenderScaledTimingRow("Blight", perf.BlightCoroutine, coroutineFps);
-        RenderScaledTimingRow("Click", perf.ClickCoroutine, coroutineFps);
         double clickScale = perf.ClickCoroutine.PerFrameScale(coroutineFps);
-        RenderScaledSubTimingRow("  Processing", perf.GetProcessingSection(ProcessingSection.Click), clickScale);
-        RenderScaledSubTimingRow("  Sleep", perf.ClickSleepTiming, clickScale);
-        RenderScaledTimingRow("Flare", perf.FlareCoroutine, coroutineFps);
-        RenderScaledTimingRow("Label Overlay", perf.LabelOverlayCoroutine, coroutineFps);
-        RenderScaledTimingRow("Ultimatum", perf.UltimatumCoroutine, coroutineFps);
+        foreach ((string label, Func<PerformanceMetricsSnapshot, TimingMetricsSnapshot> get, bool isSub) in PerformanceTableRows.Coroutine)
+        {
+            TimingMetricsSnapshot s = get(perf);
+            if (isSub) RenderScaledSubTimingRow($"  {label}", s, clickScale);
+            else RenderScaledTimingRow(label, s, coroutineFps);
+        }
         ImGui.EndTable();
         float coroutineBottom = ImGui.GetCursorPosY();
 
@@ -448,49 +458,24 @@ internal sealed class ImGuiDebugOverlay(
         BeginFixedTable("RenderBreakdown", "Render ms/f", 175f, "Last", 38f, "Avg", 38f, "Max", 38f);
 
         RenderTimingTotalRow("Total", perf.RenderTableTotal, FrameColor, "F1", "F2", "F1");
-        RenderTimingRow("Altar", perf.GetRenderSection(RenderSection.AltarOverlay));
-        RenderTimingRow("Blight", perf.GetRenderSection(RenderSection.BlightOverlay));
-        RenderTimingRow("Click.Hotkey", perf.GetRenderSection(RenderSection.ClickHotkeyToggle));
-        RenderTimingRow("Debug", perf.GetRenderSection(RenderSection.DebugOverlay));
-        RenderTimingRow("Flush.Frame", perf.GetRenderSection(RenderSection.FrameFlush));
-        RenderTimingRow("Flush.Text", perf.GetRenderSection(RenderSection.TextFlush));
-        RenderTimingRow("Harvest", perf.GetRenderSection(RenderSection.HarvestOverlay));
-        RenderTimingRow("Inv.Full", perf.GetRenderSection(RenderSection.InventoryFullWarning));
-        RenderTimingRow("Lazy", perf.GetRenderSection(RenderSection.LazyMode));
-        RenderTimingRow("Pathfinding", perf.GetRenderSection(RenderSection.PathfindingOverlay));
-        RenderTimingRow("Perf.Overlay", perf.GetRenderSection(RenderSection.PerformanceOverlay));
-        RenderTimingRow("Strongbox", perf.GetRenderSection(RenderSection.StrongboxOverlay));
-        RenderTimingRow("UI.Rect", perf.GetRenderSection(RenderSection.UiRegionRectangle));
-        RenderTimingRow("Ultimatum", perf.GetRenderSection(RenderSection.UltimatumOverlay));
+        foreach ((string label, Func<PerformanceMetricsSnapshot, TimingMetricsSnapshot> get) in PerformanceTableRows.Render)
+            RenderTimingRow(label, get(perf));
         ImGui.EndTable();
     }
 
     private static void RenderIntervalTable(PerformanceMetricsSnapshot perf)
     {
         BeginFixedTable("IntervalBreakdown", "Interval ms", 130f, "Last", 58f, "Avg", 58f, "Max", 58f);
-        RenderIntervalRow("Click", perf, IntervalKind.Click, perf.ClickTargetIntervalMs);
-        RenderIntervalRow("Blight", perf, IntervalKind.Blight, 200);
-        RenderIntervalRow("Label", perf, IntervalKind.Label, 50);
-        RenderIntervalRow("Area.Blocked", perf, IntervalKind.Area, 250);
-        RenderIntervalRow("Ultimatum", perf, IntervalKind.Ultimatum, 50);
-        RenderIntervalRow("Flare", perf, IntervalKind.Flare, 100);
+        foreach ((string label, IntervalKind kind, Func<PerformanceMetricsSnapshot, double> expected) in PerformanceTableRows.Interval)
+            RenderIntervalRow(label, perf, kind, expected(perf));
         ImGui.EndTable();
     }
 
     private static void RenderIntervalRow(string label, PerformanceMetricsSnapshot perf, IntervalKind kind, double expectedMs)
     {
-        ImGui.TableNextRow();
-        _ = ImGui.TableNextColumn(); ImGui.Text(label);
-        if (perf.Intervals == null || !perf.Intervals.TryGetValue(kind, out IntervalTimingSnapshot s) || s.SampleCount <= 0)
-        {
-            _ = ImGui.TableNextColumn(); ImGui.Text("-");
-            _ = ImGui.TableNextColumn(); ImGui.Text("-");
-            _ = ImGui.TableNextColumn(); ImGui.Text("-");
-            return;
-        }
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(IntervalColor(s.LastMs, expectedMs), $"{s.LastMs:F0}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(IntervalColor(s.AvgMs, expectedMs), $"{s.AvgMs:F0}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(IntervalColor(s.MaxMs, expectedMs), $"{s.MaxMs:F0}");
+        IntervalTimingSnapshot s = default;
+        bool hasData = perf.Intervals != null && perf.Intervals.TryGetValue(kind, out s) && s.SampleCount > 0;
+        RenderValueRow(label, hasData, s.LastMs, s.AvgMs, s.MaxMs, v => IntervalColor(v, expectedMs), FormatF0);
     }
 
     // Cadence-relative coloring: up to 25% over expected is on-cadence (green, 200->250), 25-49% is delayed (yellow, 251->299), 50%+ is red (300+).
@@ -505,31 +490,22 @@ internal sealed class ImGuiDebugOverlay(
         BeginFixedTable("ProcessingBreakdown", "Process ms/click", 130f, "Last", 58f, "Avg", 58f, "Max", 58f);
 
         RenderTimingTotalRow("Total", perf.ProcessingTotal, ms => ClickTargetColor(ms, targetMs), "F1", "F1", "F1");
-        RenderRunTimingRow("Area.Blocked", perf.GetProcessingSection(ProcessingSection.AreaBlockedUi), targetMs);
-        RenderRunTimingRow("Blight", perf.GetProcessingSection(ProcessingSection.Blight), targetMs);
-        RenderBreakdownTiming(perf, ProcessingSection.Blight, targetMs);
-        RenderClickProcessingRows(perf);
-        RenderRunTimingRow("Dump", perf.GetProcessingSection(ProcessingSection.GameStateDump), targetMs);
-        RenderRunTimingRow("Flare", perf.GetProcessingSection(ProcessingSection.Flare), targetMs);
-        RenderRunTimingRow("Harvest", perf.GetProcessingSection(ProcessingSection.Harvest), targetMs);
-        RenderRunTimingRow("Label Scan", perf.GetProcessingSection(ProcessingSection.Label), targetMs);
-        RenderRunTimingRow("Manual Hover", perf.GetProcessingSection(ProcessingSection.ManualUiHover), targetMs);
-        RenderRunTimingRow("Pathfinding", perf.GetProcessingSection(ProcessingSection.Pathfinding), targetMs);
-        RenderBreakdownTiming(perf, ProcessingSection.Pathfinding, targetMs);
-        RenderRunTimingRow("Strongbox", perf.GetProcessingSection(ProcessingSection.Strongbox), targetMs);
-        RenderBreakdownTiming(perf, ProcessingSection.Strongbox, targetMs);
-        RenderRunTimingRow("Ultimatum", perf.GetProcessingSection(ProcessingSection.Ultimatum), targetMs);
+        foreach ((string label, ProcessingSection section, PerfBreakdownKind breakdown) in PerformanceTableRows.Processing)
+        {
+            if (breakdown == PerfBreakdownKind.Click)
+            {
+                RenderClickProcessingRows(perf);
+                continue;
+            }
+            RenderRunTimingRow(label, perf.GetProcessingSection(section), targetMs);
+            if (breakdown == PerfBreakdownKind.Generic)
+                RenderBreakdownTiming(perf, section, targetMs);
+        }
         ImGui.EndTable();
     }
 
     private static void RenderRunTimingRow(string label, TimingMetricsSnapshot s, double targetMs)
-    {
-        ImGui.TableNextRow();
-        _ = ImGui.TableNextColumn(); ImGui.Text(label);
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(ClickTargetColor(s.LastMs, targetMs), $"{s.LastMs:F1}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(ClickTargetColor(s.AverageMs, targetMs), $"{s.AverageMs:F1}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(ClickTargetColor(s.MaxMs, targetMs), $"{s.MaxMs:F1}");
-    }
+        => RenderClickTargetValueRow(label, s.LastMs, s.AverageMs, s.MaxMs, targetMs);
 
     // Per-section sub-stage TIME rows for the process ms/click table, per-run like the parent rows.
     private static void RenderBreakdownTiming(PerformanceMetricsSnapshot perf, ProcessingSection section, double targetMs)
@@ -541,12 +517,16 @@ internal sealed class ImGuiDebugOverlay(
     }
 
     private static void RenderRunStageTimingRow(string label, TimingStageSnapshot s, double targetMs)
+        => RenderClickTargetValueRow(label, s.LastMs, s.AvgMs, s.MaxMs, targetMs);
+
+    // One process-table row: label + three ms/click values colored against the click frequency target.
+    private static void RenderClickTargetValueRow(string label, double last, double avg, double max, double targetMs)
     {
         ImGui.TableNextRow();
         _ = ImGui.TableNextColumn(); ImGui.Text(label);
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(ClickTargetColor(s.LastMs, targetMs), $"{s.LastMs:F1}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(ClickTargetColor(s.AvgMs, targetMs), $"{s.AvgMs:F1}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(ClickTargetColor(s.MaxMs, targetMs), $"{s.MaxMs:F1}");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(ClickTargetColor(last, targetMs), $"{last:F1}");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(ClickTargetColor(avg, targetMs), $"{avg:F1}");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(ClickTargetColor(max, targetMs), $"{max:F1}");
     }
 
     private static void RenderClickProcessingRows(PerformanceMetricsSnapshot perf)
@@ -592,18 +572,9 @@ internal sealed class ImGuiDebugOverlay(
         if (targetMs <= 0)
             return;
         FreqTargetRow("Click Frequency", $"{targetMs:F0}", CWarn);
-        FreqRunRow("  Processing", perf.GetProcessingSection(ProcessingSection.Click), targetMs);
-        FreqRunRow("  Sleep", perf.ClickSleepTiming, targetMs);
-        FreqRunRow("  Total", perf.ClickCoroutine, targetMs);
-    }
-
-    private static void FreqRunRow(string label, TimingMetricsSnapshot s, double targetMs)
-    {
-        ImGui.TableNextRow();
-        _ = ImGui.TableNextColumn(); ImGui.Text(label);
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(ClickTargetColor(s.LastMs, targetMs), $"{s.LastMs:F1}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(ClickTargetColor(s.AverageMs, targetMs), $"{s.AverageMs:F1}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(ClickTargetColor(s.MaxMs, targetMs), $"{s.MaxMs:F1}");
+        RenderRunTimingRow("  Processing", perf.GetProcessingSection(ProcessingSection.Click), targetMs);
+        RenderRunTimingRow("  Sleep", perf.ClickSleepTiming, targetMs);
+        RenderRunTimingRow("  Total", perf.ClickCoroutine, targetMs);
     }
 
     // ms/click coloring relative to the click frequency target: green within the target, yellow up to +25% over it, red beyond that.
@@ -621,24 +592,16 @@ internal sealed class ImGuiDebugOverlay(
 
         BeginFixedTable("GcBreakdown", "GC byte/s", 130f, "Last", 58f, "Avg", 58f, "Max", 58f);
         RenderGcTotalRow(m);
-        RenderGcRow("Altar", m.GcSections[(int)ProcessingSection.Altar]);
-        RenderBreakdown(perf, ProcessingSection.Altar);
-        RenderGcRow("Area.Blocked", m.GcSections[(int)ProcessingSection.AreaBlockedUi]);
-        RenderGcRow("Blight", m.GcSections[(int)ProcessingSection.Blight]);
-        RenderBreakdown(perf, ProcessingSection.Blight);
-        RenderGcRow("Click", m.GcSections[(int)ProcessingSection.Click]);
-        RenderClickBreakdown(perf);
-        RenderGcRow("Dump", m.GcSections[(int)ProcessingSection.GameStateDump]);
-        RenderGcRow("Flare", m.GcSections[(int)ProcessingSection.Flare]);
-        RenderGcRow("Harvest", m.GcSections[(int)ProcessingSection.Harvest]);
-        RenderGcRow("Label Scan", m.GcSections[(int)ProcessingSection.Label]);
-        RenderLabelScanBreakdown(perf);
-        RenderGcRow("Manual Hover", m.GcSections[(int)ProcessingSection.ManualUiHover]);
-        RenderGcRow("Pathfinding", m.GcSections[(int)ProcessingSection.Pathfinding]);
-        RenderBreakdown(perf, ProcessingSection.Pathfinding);
-        RenderGcRow("Strongbox", m.GcSections[(int)ProcessingSection.Strongbox]);
-        RenderBreakdown(perf, ProcessingSection.Strongbox);
-        RenderGcRow("Ultimatum", m.GcSections[(int)ProcessingSection.Ultimatum]);
+        foreach ((string label, ProcessingSection section, PerfBreakdownKind breakdown) in PerformanceTableRows.Gc)
+        {
+            RenderGcRow(label, m.GcSections[(int)section]);
+            switch (breakdown)
+            {
+                case PerfBreakdownKind.Generic: RenderBreakdown(perf, section); break;
+                case PerfBreakdownKind.Click: RenderClickBreakdown(perf); break;
+                case PerfBreakdownKind.LabelScan: RenderLabelScanBreakdown(perf); break;
+            }
+        }
         ImGui.EndTable();
     }
 
@@ -652,18 +615,8 @@ internal sealed class ImGuiDebugOverlay(
 
         BeginFixedTable("DlrBreakdown", "DLR ms/f", 175f, "Last", 38f, "Avg", 38f, "Max", 38f);
         RenderDlrTotalRow(mem, fps);
-        RenderDlrRow("Altar", mem.DlrSections[(int)ProcessingSection.Altar], fps);
-        RenderDlrRow("Area.Blocked", mem.DlrSections[(int)ProcessingSection.AreaBlockedUi], fps);
-        RenderDlrRow("Blight", mem.DlrSections[(int)ProcessingSection.Blight], fps);
-        RenderDlrRow("Click", mem.DlrSections[(int)ProcessingSection.Click], fps);
-        RenderDlrRow("Dump", mem.DlrSections[(int)ProcessingSection.GameStateDump], fps);
-        RenderDlrRow("Flare", mem.DlrSections[(int)ProcessingSection.Flare], fps);
-        RenderDlrRow("Harvest", mem.DlrSections[(int)ProcessingSection.Harvest], fps);
-        RenderDlrRow("Label Scan", mem.DlrSections[(int)ProcessingSection.Label], fps);
-        RenderDlrRow("Manual Hover", mem.DlrSections[(int)ProcessingSection.ManualUiHover], fps);
-        RenderDlrRow("Pathfinding", mem.DlrSections[(int)ProcessingSection.Pathfinding], fps);
-        RenderDlrRow("Strongbox", mem.DlrSections[(int)ProcessingSection.Strongbox], fps);
-        RenderDlrRow("Ultimatum", mem.DlrSections[(int)ProcessingSection.Ultimatum], fps);
+        foreach ((string label, ProcessingSection section) in PerformanceTableRows.Dlr)
+            RenderDlrRow(label, mem.DlrSections[(int)section], fps);
         ImGui.EndTable();
     }
 
@@ -677,20 +630,8 @@ internal sealed class ImGuiDebugOverlay(
     }
 
     private static void RenderDlrRow(string label, DlrSectionSnapshot s, double fps)
-    {
-        ImGui.TableNextRow();
-        _ = ImGui.TableNextColumn(); ImGui.Text(label);
-        if (s.ReadsMaxPerSec <= 0 && s.ReadsAvgPerSec <= 0)
-        {
-            _ = ImGui.TableNextColumn(); ImGui.Text("-");
-            _ = ImGui.TableNextColumn(); ImGui.Text("-");
-            _ = ImGui.TableNextColumn(); ImGui.Text("-");
-            return;
-        }
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(FrameColor(s.MsLastPerSec / fps), $"{s.MsLastPerSec / fps:F2}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(FrameColor(s.MsAvgPerSec / fps), $"{s.MsAvgPerSec / fps:F2}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(FrameColor(s.MsMaxPerSec / fps), $"{s.MsMaxPerSec / fps:F2}");
-    }
+        => RenderValueRow(label, s.ReadsMaxPerSec > 0 || s.ReadsAvgPerSec > 0,
+            s.MsLastPerSec / fps, s.MsAvgPerSec / fps, s.MsMaxPerSec / fps, FrameColor, FormatF2);
 
     // Generic per-section sub-stage ALLOCATION rows for the GC table (time rows live in the process table).
     private static void RenderBreakdown(PerformanceMetricsSnapshot perf, ProcessingSection section)
@@ -748,33 +689,16 @@ internal sealed class ImGuiDebugOverlay(
     // One breakdown stage as byte/s Last/Avg/Max; stages that never allocated are skipped.
     private static void RenderGcStageRow(string label, AllocationStageSnapshot s, double periodMs)
     {
-        double lastPerSecond = periodMs > 0 ? s.LastBytesPerRun * 1000.0 / periodMs : 0;
-        double avgPerSecond = periodMs > 0 ? s.AvgBytesPerRun * 1000.0 / periodMs : 0;
-        double maxPerSecond = s.MaxAllocPerSecond;
         if (s.MaxBytesPerRun <= 0)
             return;
-        ImGui.TableNextRow();
-        _ = ImGui.TableNextColumn(); ImGui.Text(label);
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(GcColor(lastPerSecond), FormatBytes(lastPerSecond));
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(GcColor(avgPerSecond), FormatBytes(avgPerSecond));
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(GcColor(maxPerSecond), FormatBytes(maxPerSecond));
+        double lastPerSecond = periodMs > 0 ? s.LastBytesPerRun * 1000.0 / periodMs : 0;
+        double avgPerSecond = periodMs > 0 ? s.AvgBytesPerRun * 1000.0 / periodMs : 0;
+        RenderValueRow(label, true, lastPerSecond, avgPerSecond, s.MaxAllocPerSecond, GcColor, FormatBytes);
     }
 
     private static void RenderGcRow(string label, GcSectionSnapshot s)
-    {
-        ImGui.TableNextRow();
-        _ = ImGui.TableNextColumn(); ImGui.Text(label);
-        if (s.BytesMaxPerSec <= 0 && s.BytesAvgPerSec <= 0)
-        {
-            _ = ImGui.TableNextColumn(); ImGui.Text("-");
-            _ = ImGui.TableNextColumn(); ImGui.Text("-");
-            _ = ImGui.TableNextColumn(); ImGui.Text("-");
-            return;
-        }
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(GcColor(s.BytesLastPerSec), FormatBytes(s.BytesLastPerSec));
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(GcColor(s.BytesAvgPerSec), FormatBytes(s.BytesAvgPerSec));
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(GcColor(s.BytesMaxPerSec), FormatBytes(s.BytesMaxPerSec));
-    }
+        => RenderValueRow(label, s.BytesMaxPerSec > 0 || s.BytesAvgPerSec > 0,
+            s.BytesLastPerSec, s.BytesAvgPerSec, s.BytesMaxPerSec, GcColor, FormatBytes);
 
     // Per-value ms/f coloring: each Last/Avg/Max column is colored by its own value (<=3 green, <=6 yellow, >6 red).
     private static NumVec4 FrameColor(double ms)
@@ -825,7 +749,7 @@ internal sealed class ImGuiDebugOverlay(
         return allocPerSecond > 50 * mb ? CError : allocPerSecond > 25 * mb ? CWarn : CGreen;
     }
 
-    private static string FormatMemoryMb(double mb)
+    internal static string FormatMemoryMb(double mb)
         => mb >= 1024.0 ? $"{mb / 1024.0:F1} GB" : $"{mb:F0} MB";
 
     private static NumVec4 SizeColor(double mb)
@@ -838,7 +762,7 @@ internal sealed class ImGuiDebugOverlay(
     private static NumVec4 GcPauseColor(double maxPauseMs)
         => maxPauseMs > 100 ? CError : maxPauseMs > 16 ? CWarn : CGreen;
 
-    private static string FormatBytes(double bytes)
+    internal static string FormatBytes(double bytes)
     {
         if (bytes >= 1024.0 * 1024.0)
             return $"{bytes / (1024.0 * 1024.0):F0} MB";
@@ -847,18 +771,11 @@ internal sealed class ImGuiDebugOverlay(
         return $"{bytes:F0} B";
     }
 
-    private static string FormatAllocRate(double bytesPerSecond)
+    internal static string FormatAllocRate(double bytesPerSecond)
         => $"{FormatBytes(bytesPerSecond)}/s";
 
     private static void RenderScaledTimingRow(string label, TimingMetricsSnapshot stats, double fps)
-    {
-        double scale = stats.PerFrameScale(fps);
-        ImGui.TableNextRow();
-        _ = ImGui.TableNextColumn(); ImGui.Text(label);
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(scale > 0 ? FrameColor(stats.LastMs * scale) : CGreen, scale > 0 ? $"{stats.LastMs * scale:F2}" : "-");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(scale > 0 ? FrameColor(stats.AverageMs * scale) : CGreen, scale > 0 ? $"{stats.AverageMs * scale:F2}" : "-");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(scale > 0 ? FrameColor(stats.MaxMs * scale) : CGreen, scale > 0 ? $"{stats.MaxMs * scale:F2}" : "-");
-    }
+        => RenderScaledSubTimingRow(label, stats, stats.PerFrameScale(fps));
 
     private static void RenderScaledSubTimingRow(string label, TimingMetricsSnapshot stats, double scale)
     {
@@ -870,13 +787,7 @@ internal sealed class ImGuiDebugOverlay(
     }
 
     private static void RenderTimingRow(string label, TimingMetricsSnapshot stats)
-    {
-        ImGui.TableNextRow();
-        _ = ImGui.TableNextColumn(); ImGui.Text(label);
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(FrameColor(stats.LastMs), $"{stats.LastMs:F2}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(FrameColor(stats.AverageMs), $"{stats.AverageMs:F2}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(FrameColor(stats.MaxMs), $"{stats.MaxMs:F2}");
-    }
+        => RenderValueRow(label, true, stats.LastMs, stats.AverageMs, stats.MaxMs, FrameColor, FormatF2);
 
     private static void FreqTargetRow(string label, string value, NumVec4 color)
     {
@@ -884,6 +795,28 @@ internal sealed class ImGuiDebugOverlay(
         _ = ImGui.TableNextColumn(); ImGui.Text(label);
         _ = ImGui.TableNextColumn(); ImGui.TextColored(color, value);
     }
+
+    // One 4-column table row: label + three colored values; a row with no data renders a plain dash in each value column.
+    private static void RenderValueRow(string label, bool hasData, double last, double avg, double max,
+        Func<double, NumVec4> color, Func<double, string> format)
+    {
+        ImGui.TableNextRow();
+        _ = ImGui.TableNextColumn(); ImGui.Text(label);
+        if (!hasData)
+        {
+            _ = ImGui.TableNextColumn(); ImGui.Text("-");
+            _ = ImGui.TableNextColumn(); ImGui.Text("-");
+            _ = ImGui.TableNextColumn(); ImGui.Text("-");
+            return;
+        }
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(color(last), format(last));
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(color(avg), format(avg));
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(color(max), format(max));
+    }
+
+    private static string FormatF2(double v) => v.ToString("F2");
+
+    private static string FormatF0(double v) => v.ToString("F0");
 
     private void RenderErrorsSection()
     {
@@ -968,55 +901,23 @@ internal sealed class ImGuiDebugOverlay(
             ImGui.TextColored(CMuted, "No click data yet");
         }
 
-        RenderTrail("Runtime Log", click.RuntimeLogTrail, 10);
+        RenderTrail("Runtime Log", click.RuntimeLogTrail, 8);
 
-        RenderTrail("Recent Stages", click.ClickTrail, 15);
+        RenderTrail("Recent Stages", click.ClickTrail, 10);
     }
 
     private void RenderClickSettingsFull()
     {
         ClickItSettings s = _settings;
 
-        ImGui.TextColored(CHeader, "Settings:");
-
         static string Fmt(bool v) => BoolStr(v);
-        static NumVec4 Col(bool v) => BoolColor(v);
 
-        ImGui.Spacing();
-        InlineRow(
-            ("ToggleMode", Fmt(s.ClickHotkeyToggleMode.Value), Col(s.ClickHotkeyToggleMode.Value)),
-            ("ManualUIHover", Fmt(s.ClickOnManualUiHoverOnly.Value), Col(s.ClickOnManualUiHoverOnly.Value)),
-            ("LazyMode", Fmt(s.LazyMode.Value), Col(s.LazyMode.Value))
-        );
-        InlineRow(
-            ("LeftHanded", Fmt(s.LeftHanded.Value), Col(s.LeftHanded.Value)),
-            ("ClickDist", s.ClickDistance.Value.ToString(), CWhite),
-            ("FreqTarget", $"{s.ClickFrequencyTarget.Value}ms", CWhite)
-        );
-        InlineRow(
-            ("VerifyCursor", Fmt(s.VerifyCursorInGameWindowBeforeClick.Value), Col(s.VerifyCursorInGameWindowBeforeClick.Value)),
-            ("VerifyUIHover", Fmt(s.VerifyUIHoverWhenNotLazy.Value), Col(s.VerifyUIHoverWhenNotLazy.Value)),
-            ("AvoidOverlap", Fmt(s.AvoidOverlappingLabelClickPoints.Value), Col(s.AvoidOverlappingLabelClickPoints.Value))
-        );
-        InlineRow(
-            ("BlockPanel", Fmt(s.BlockOnOpenLeftRightPanel.Value), Col(s.BlockOnOpenLeftRightPanel.Value)),
-            ("ToggleItems", Fmt(s.ToggleItems.Value), Col(s.ToggleItems.Value)),
-            ("TogInterval", $"{s.ToggleItemsIntervalMs.Value}ms", CWhite)
-        );
-        InlineRow(
-            ("TogPostBlock", $"{s.ToggleItemsPostToggleClickBlockMs.Value}ms", CWhite),
-            ("WalkOffscreen", Fmt(s.WalkTowardOffscreenLabels.Value), Col(s.WalkTowardOffscreenLabels.Value)),
-            ("PrioritizeOnscreen", Fmt(s.PrioritizeOnscreenClickableMechanicsOverPathfinding.Value), Col(s.PrioritizeOnscreenClickableMechanicsOverPathfinding.Value))
-        );
-        InlineRow(
-            ("SearchBudget", $"{s.OffscreenPathfindingSearchBudget.Value}ms", CWhite),
-            ("PauseBasic", Fmt(s.PauseAfterOpeningBasicChests.Value), Col(s.PauseAfterOpeningBasicChests.Value)),
-            ("PauseLeague", Fmt(s.PauseAfterOpeningLeagueChests.Value), Col(s.PauseAfterOpeningLeagueChests.Value))
-        );
-        InlineRow(
-            ("PauseHeist", Fmt(s.PauseAfterOpeningHeistChests.Value), Col(s.PauseAfterOpeningHeistChests.Value)),
-            ("AllowNearby", Fmt(s.AllowNearbyMechanicsWhileWaitingForChestDropsToSettle.Value), Col(s.AllowNearbyMechanicsWhileWaitingForChestDropsToSettle.Value))
-        );
+        // Single-line settings (same data the clipboard dump shows), rendered as 2 text widgets instead of ~40 colored InlineRow widgets - ImGui is ~10x more expensive per widget than the in-game overlay's text.
+        ImGui.TextColored(CHeader, "Settings:");
+        ImGui.TextColored(CWhite,
+            $"Toggle:HT={Fmt(s.ClickHotkeyToggleMode.Value)} MC={Fmt(s.ClickOnManualUiHoverOnly.Value)} LM={Fmt(s.LazyMode.Value)} LH={Fmt(s.LeftHanded.Value)}  Click:R={s.ClickDistance.Value} f={s.ClickFrequencyTarget.Value}ms vW={Fmt(s.VerifyCursorInGameWindowBeforeClick.Value)} vH={Fmt(s.VerifyUIHoverWhenNotLazy.Value)} aO={Fmt(s.AvoidOverlappingLabelClickPoints.Value)}");
+        ImGui.TextColored(CWhite,
+            $"Safety:bP={Fmt(s.BlockOnOpenLeftRightPanel.Value)} tI={Fmt(s.ToggleItems.Value)} ti={s.ToggleItemsIntervalMs.Value} pT={s.ToggleItemsPostToggleClickBlockMs.Value}  Walk:wO={Fmt(s.WalkTowardOffscreenLabels.Value)} pO={Fmt(s.PrioritizeOnscreenClickableMechanicsOverPathfinding.Value)} pB={s.OffscreenPathfindingSearchBudget.Value}  Chest:bC={Fmt(s.PauseAfterOpeningBasicChests.Value)} aN={Fmt(s.AllowNearbyMechanicsWhileWaitingForChestDropsToSettle.Value)}");
     }
 
     private void RenderLabelsSection()
@@ -1060,7 +961,7 @@ internal sealed class ImGuiDebugOverlay(
         if (ld.HasData && !string.IsNullOrEmpty(ld.Notes))
             ImGui.TextColored(CMuted, $"Note: {ld.Notes}");
 
-        RenderTrail("Recent Stages", label.LabelTrail, 15);
+        RenderTrail("Recent Stages", label.LabelTrail, 10);
     }
 
     private void RenderPathfindingSection()
@@ -1109,34 +1010,38 @@ internal sealed class ImGuiDebugOverlay(
         {
             ImGui.TextColored(CInfo, "Offscreen Movement:");
 
-            _kvRows.Clear();
-            _kvRows.Add(("Stage", offscreen.Stage, CWhite));
-            _kvRows.Add(("Built Path", BoolStr(offscreen.BuiltPath), BoolColor(offscreen.BuiltPath)));
-            _kvRows.Add(("From Path", BoolStr(offscreen.ResolvedFromPath), BoolColor(offscreen.ResolvedFromPath)));
-            _kvRows.Add(("Click Point", BoolStr(offscreen.ResolvedClickPoint), BoolColor(offscreen.ResolvedClickPoint)));
-            DataRows(_kvRows);
+            DataRows(
+            [
+                ("Stage", offscreen.Stage, CWhite),
+                ("Built Path", BoolStr(offscreen.BuiltPath), BoolColor(offscreen.BuiltPath)),
+                ("From Path", BoolStr(offscreen.ResolvedFromPath), BoolColor(offscreen.ResolvedFromPath)),
+                ("Click Point", BoolStr(offscreen.ResolvedClickPoint), BoolColor(offscreen.ResolvedClickPoint)),
+            ]);
 
             if (!string.IsNullOrWhiteSpace(offscreen.MovementSkillDebug))
                 ImGui.TextColored(CWarn, $"Skill: {offscreen.MovementSkillDebug}");
 
             ImGui.TextWrapped($"Target: {TrimPath(offscreen.TargetPath)}");
 
-            _kvRows.Clear();
-            _kvRows.Add(("Grid P", $"({offscreen.PlayerGrid.X:F0},{offscreen.PlayerGrid.Y:F0})", COrange));
-            _kvRows.Add(("Grid T", $"({offscreen.TargetGrid.X:F0},{offscreen.TargetGrid.Y:F0})", COrange));
-            _kvRows.Add(("Delta", $"({(offscreen.TargetGrid - offscreen.PlayerGrid).X:F0},{(offscreen.TargetGrid - offscreen.PlayerGrid).Y:F0})", COrange));
-            DataRows(_kvRows);
+            DataRows(
+            [
+                ("Grid P", $"({offscreen.PlayerGrid.X:F0},{offscreen.PlayerGrid.Y:F0})", COrange),
+                ("Grid T", $"({offscreen.TargetGrid.X:F0},{offscreen.TargetGrid.Y:F0})", COrange),
+                ("Delta", $"({(offscreen.TargetGrid - offscreen.PlayerGrid).X:F0},{(offscreen.TargetGrid - offscreen.PlayerGrid).Y:F0})", COrange),
+            ]);
 
-            _kvRows.Clear();
-            _kvRows.Add(("Center", $"({offscreen.WindowCenter.X:F1},{offscreen.WindowCenter.Y:F1})", CMuted));
-            _kvRows.Add(("Target", $"({offscreen.TargetScreen.X:F1},{offscreen.TargetScreen.Y:F1})", CInfo));
-            _kvRows.Add(("Click", $"({offscreen.ClickScreen.X:F1},{offscreen.ClickScreen.Y:F1})", CLime));
-            DataRows(_kvRows);
+            DataRows(
+            [
+                ("Center", $"({offscreen.WindowCenter.X:F1},{offscreen.WindowCenter.Y:F1})", CMuted),
+                ("Target", $"({offscreen.TargetScreen.X:F1},{offscreen.TargetScreen.Y:F1})", CInfo),
+                ("Click", $"({offscreen.ClickScreen.X:F1},{offscreen.ClickScreen.Y:F1})", CLime),
+            ]);
 
-            _kvRows.Clear();
-            _kvRows.Add(("Target Dir", ToCompass(offscreen.TargetScreen - offscreen.WindowCenter), CInfo));
-            _kvRows.Add(("Click Dir", ToCompass(offscreen.ClickScreen - offscreen.WindowCenter), CLime));
-            DataRows(_kvRows);
+            DataRows(
+            [
+                ("Target Dir", ToCompass(offscreen.TargetScreen - offscreen.WindowCenter), CInfo),
+                ("Click Dir", ToCompass(offscreen.ClickScreen - offscreen.WindowCenter), CLime),
+            ]);
         }
         else
         {
@@ -1304,6 +1209,8 @@ internal sealed class ImGuiDebugOverlay(
 
             if (!string.IsNullOrEmpty(d.LastError))
                 ImGui.TextColored(CError, $"Last Error: {d.LastError}");
+
+            RenderTrail("Recent Stages", d.RecentStages, 15);
         }
         else if (_settings.DebugShowAltarService.Value)
         {
@@ -1546,7 +1453,7 @@ internal sealed class ImGuiDebugOverlay(
                     if (planned)
                         ImGui.TextColored(BlightTowerColors.AsVector4(t.PlannedTowerType), t.PlannedTowerType.ToString());
                     else
-                        ImGui.TextColored(CDim, "—");
+                        ImGui.TextColored(CDim, "-");
                     idx++;
                 }
                 ImGui.EndTable();
@@ -1573,13 +1480,11 @@ internal sealed class ImGuiDebugOverlay(
                 if (ImGui.Button(_settings.BlightDebugShowLaneLabels.Value ? "Lane labels: ON" : "Lane labels: OFF"))
                     _settings.BlightDebugShowLaneLabels.Value = !_settings.BlightDebugShowLaneLabels.Value;
 
-                if (!_covTreeHasCache
-                    || !ReferenceEquals(coverage, _covTreeCoverage))
+                if (!ReferenceEquals(coverage, _covTreeCoverage))
                 {
                     _covTreeCoverage = coverage;
                     _covTreePositions.Clear();
                     _covTreeBranchData.Clear();
-                    _covTreeChildren.Clear();
                     _covTreeForests.Clear();
                     _covTreeUnassigned.Clear();
 
@@ -1588,11 +1493,7 @@ internal sealed class ImGuiDebugOverlay(
                     _covTreeBranchData.AddRange(branchData);
                     _covTreeUnassigned.AddRange(unassignedSegments);
                     if (children != null && forests != null)
-                    {
-                        _covTreeChildren.AddRange(children);
                         _covTreeForests.AddRange(forests);
-                    }
-                    _covTreeHasCache = true;
                 }
                 RenderCoverageTree(coverage, _covTreePositions, _covTreeBranchData, _covTreeForests, _covTreeUnassigned);
             }
@@ -1613,7 +1514,7 @@ internal sealed class ImGuiDebugOverlay(
             ImGui.PopTextWrapPos();
         }
 
-        RenderTrail("Recent Stages", stages, 20);
+        RenderTrail("Recent Stages", stages, 12);
 
         RenderTrail("Executor Events", _blight.ExecutorEvents, 30);
 
@@ -1808,20 +1709,8 @@ internal sealed class ImGuiDebugOverlay(
         {
             sb.AppendLine($"  Render: {perf.Render.LastMs:F0} ms (avg: {perf.Render.AverageMs:F2}, max: {perf.Render.MaxMs:F0})");
             AppendTimingTotalLine(sb, "  Render Total", perf.RenderTableTotal);
-            AppendTimingLine(sb, "    Altar", perf.GetRenderSection(RenderSection.AltarOverlay));
-            AppendTimingLine(sb, "    Blight", perf.GetRenderSection(RenderSection.BlightOverlay));
-            AppendTimingLine(sb, "    Click.Hotkey", perf.GetRenderSection(RenderSection.ClickHotkeyToggle));
-            AppendTimingLine(sb, "    Debug", perf.GetRenderSection(RenderSection.DebugOverlay));
-            AppendTimingLine(sb, "    Flush.Frame", perf.GetRenderSection(RenderSection.FrameFlush));
-            AppendTimingLine(sb, "    Flush.Text", perf.GetRenderSection(RenderSection.TextFlush));
-            AppendTimingLine(sb, "    Harvest", perf.GetRenderSection(RenderSection.HarvestOverlay));
-            AppendTimingLine(sb, "    Inv.Full", perf.GetRenderSection(RenderSection.InventoryFullWarning));
-            AppendTimingLine(sb, "    Lazy", perf.GetRenderSection(RenderSection.LazyMode));
-            AppendTimingLine(sb, "    Pathfinding", perf.GetRenderSection(RenderSection.PathfindingOverlay));
-            AppendTimingLine(sb, "    Perf.Overlay", perf.GetRenderSection(RenderSection.PerformanceOverlay));
-            AppendTimingLine(sb, "    Strongbox", perf.GetRenderSection(RenderSection.StrongboxOverlay));
-            AppendTimingLine(sb, "    UI.Rect", perf.GetRenderSection(RenderSection.UiRegionRectangle));
-            AppendTimingLine(sb, "    Ultimatum", perf.GetRenderSection(RenderSection.UltimatumOverlay));
+            foreach ((string label, Func<PerformanceMetricsSnapshot, TimingMetricsSnapshot> get) in PerformanceTableRows.Render)
+                AppendTimingLine(sb, $"    {label}", get(perf));
         }
         RenderingTelemetrySnapshot? r = _lastSnapshot?.Rendering;
         if (r != null)
@@ -1829,22 +1718,19 @@ internal sealed class ImGuiDebugOverlay(
         if (perf.ProcessingTotal.SampleCount > 0)
         {
             AppendTimingTotalLine(sb, "  Processing Total (ms/click)", perf.ProcessingTotal);
-            AppendRunTimingLine(sb, "    Area.Blocked", perf.GetProcessingSection(ProcessingSection.AreaBlockedUi));
-            AppendRunTimingLine(sb, "    Blight", perf.GetProcessingSection(ProcessingSection.Blight));
-            AppendBreakdownTimingLines(sb, perf, ProcessingSection.Blight);
-            AppendRunTimingLine(sb, "    Click", perf.GetProcessingSection(ProcessingSection.Click));
-            AppendClickBreakdownTimingLines(sb, perf);
-            AppendClickFrequencyTargetLines(sb, perf);
-            AppendRunTimingLine(sb, "    Dump", perf.GetProcessingSection(ProcessingSection.GameStateDump));
-            AppendRunTimingLine(sb, "    Flare", perf.GetProcessingSection(ProcessingSection.Flare));
-            AppendRunTimingLine(sb, "    Harvest", perf.GetProcessingSection(ProcessingSection.Harvest));
-            AppendRunTimingLine(sb, "    Label Scan", perf.GetProcessingSection(ProcessingSection.Label));
-            AppendRunTimingLine(sb, "    Manual Hover", perf.GetProcessingSection(ProcessingSection.ManualUiHover));
-            AppendRunTimingLine(sb, "    Pathfinding", perf.GetProcessingSection(ProcessingSection.Pathfinding));
-            AppendBreakdownTimingLines(sb, perf, ProcessingSection.Pathfinding);
-            AppendRunTimingLine(sb, "    Strongbox", perf.GetProcessingSection(ProcessingSection.Strongbox));
-            AppendBreakdownTimingLines(sb, perf, ProcessingSection.Strongbox);
-            AppendRunTimingLine(sb, "    Ultimatum", perf.GetProcessingSection(ProcessingSection.Ultimatum));
+            foreach ((string label, ProcessingSection section, PerfBreakdownKind breakdown) in PerformanceTableRows.Processing)
+            {
+                if (breakdown == PerfBreakdownKind.Click)
+                {
+                    AppendRunTimingLine(sb, "    Click", perf.GetProcessingSection(ProcessingSection.Click));
+                    AppendClickBreakdownTimingLines(sb, perf);
+                    AppendClickFrequencyTargetLines(sb, perf);
+                    continue;
+                }
+                AppendRunTimingLine(sb, $"    {label}", perf.GetProcessingSection(section));
+                if (breakdown == PerfBreakdownKind.Generic)
+                    AppendBreakdownTimingLines(sb, perf, section);
+            }
         }
         if (perf.Allocations != null && perf.Allocations.Count > 0)
         {
@@ -1893,15 +1779,13 @@ internal sealed class ImGuiDebugOverlay(
             TimingMetricsSnapshot runTotal = perf.CoroutinesTotal;
             sb.AppendLine($"  Coroutines: {frameTotal.LastMs:F2} ms/frame (avg: {frameTotal.AverageMs:F2}, max: {frameTotal.MaxMs:F2}) | ms/run: {runTotal.LastMs:F0} (avg: {runTotal.AverageMs:F1}, max: {runTotal.MaxMs:F0})");
         }
-        AppendCoroLine(sb, "  Altar Coroutine", perf.AltarCoroutine, perf.Fps.Current);
-        AppendCoroLine(sb, "  Blight Coroutine", perf.BlightCoroutine, perf.Fps.Current);
-        AppendCoroLine(sb, "  Click Coroutine", perf.ClickCoroutine, perf.Fps.Current);
         double clickScale = perf.ClickCoroutine.PerFrameScale(perf.Fps.Current);
-        AppendCoroSubLine(sb, "    Processing", perf.GetProcessingSection(ProcessingSection.Click), clickScale);
-        AppendCoroSubLine(sb, "    Sleep", perf.ClickSleepTiming, clickScale);
-        AppendCoroLine(sb, "  Flare Coroutine", perf.FlareCoroutine, perf.Fps.Current);
-        AppendCoroLine(sb, "  Label Overlay Coroutine", perf.LabelOverlayCoroutine, perf.Fps.Current);
-        AppendCoroLine(sb, "  Ultimatum Coroutine", perf.UltimatumCoroutine, perf.Fps.Current);
+        foreach ((string label, Func<PerformanceMetricsSnapshot, TimingMetricsSnapshot> get, bool isSub) in PerformanceTableRows.Coroutine)
+        {
+            TimingMetricsSnapshot s = get(perf);
+            if (isSub) AppendCoroSubLine(sb, $"    {label}", s, clickScale);
+            else AppendCoroLine(sb, $"  {label} Coroutine", s, perf.Fps.Current);
+        }
 
         AppendIntervalLines(sb, perf);
 
@@ -2066,12 +1950,8 @@ internal sealed class ImGuiDebugOverlay(
         if (perf.Intervals == null || perf.Intervals.Count == 0)
             return;
         sb.AppendLine("  Interval ms:");
-        AppendIntervalLine(sb, "    Click", perf, IntervalKind.Click);
-        AppendIntervalLine(sb, "    Blight", perf, IntervalKind.Blight);
-        AppendIntervalLine(sb, "    Label", perf, IntervalKind.Label);
-        AppendIntervalLine(sb, "    Area.Blocked", perf, IntervalKind.Area);
-        AppendIntervalLine(sb, "    Ultimatum", perf, IntervalKind.Ultimatum);
-        AppendIntervalLine(sb, "    Flare", perf, IntervalKind.Flare);
+        foreach ((string label, IntervalKind kind, _) in PerformanceTableRows.Interval)
+            AppendIntervalLine(sb, $"    {label}", perf, kind);
     }
 
     private static void AppendIntervalLine(System.Text.StringBuilder sb, string label, PerformanceMetricsSnapshot perf, IntervalKind kind)
@@ -2252,6 +2132,7 @@ internal sealed class ImGuiDebugOverlay(
                 sb.AppendLine($"  Last Altar Type: {d.LastProcessedAltarType}");
                 if (!string.IsNullOrEmpty(d.LastError))
                     sb.AppendLine($"  Last Error: {d.LastError}");
+                AppendTrailSb(sb, "  Recent Stages", d.RecentStages, 40);
             }
         }
         sb.AppendLine();
@@ -2354,7 +2235,7 @@ internal sealed class ImGuiDebugOverlay(
                         realSegments++;
                 sb.AppendLine($"Coverage: {realSegments} segments");
 
-                (List<NumVector2>? positions, List<(PumpBranch Branch, List<int> Segments)>? branchData, List<int>? unassignedSegments, List<List<int>>? children, List<List<BlightLaneNode>>? forests) = _blight.GetBranchDebug();
+                (List<NumVector2>? positions, List<(PumpBranch Branch, List<int> Segments)>? branchData, List<int>? unassignedSegments, List<List<int>>? _, List<List<BlightLaneNode>>? forests) = _blight.GetBranchDebug();
                 if (branchData != null && branchData.Count > 0 && forests != null)
                 {
                     bool havePositions = positions != null && positions.Count == coverage.Length;
@@ -2467,8 +2348,8 @@ internal sealed class ImGuiDebugOverlay(
         for (int i = 0; i < estimates.Count; i++)
         {
             HarvestPlotEstimate e = estimates[i];
-            string path = DynamicAccess.TryGetDynamicValue(e.Label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                && DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out string resolvedPath)
+            string path = DynamicAccess.TryGetLabelItemOnGround(e.Label, out Entity? item)
+                && DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
                 ? resolvedPath
                 : "?";
             bool boundsEmpty = e.LabelBounds == RectangleF.Empty || e.LabelBounds.IsEmpty;
@@ -2477,8 +2358,8 @@ internal sealed class ImGuiDebugOverlay(
 
         HarvestDecision decision = _harvest.CurrentDecision;
         string chosen = decision.ChosenLabel != null
-            ? (DynamicAccess.TryGetDynamicValue(decision.ChosenLabel, DynamicAccessProfiles.ItemOnGround, out object? rawChosen)
-                && DynamicAccess.TryReadString(rawChosen, DynamicAccessProfiles.Path, out string chosenPath)
+            ? (DynamicAccess.TryGetLabelItemOnGround(decision.ChosenLabel, out Entity? chosenItem)
+                && DynamicAccess.TryReadString(chosenItem, DynamicAccessProfiles.Path, out string chosenPath)
                 ? chosenPath
                 : "set")
             : "null";
@@ -2486,18 +2367,13 @@ internal sealed class ImGuiDebugOverlay(
         sb.AppendLine();
     }
 
-    private static NumVec4 ColorToVec4(Color c)
-        => new(c.R / 255f, c.G / 255f, c.B / 255f, c.A / 255f);
-
-    private static NumVec4 Vec4(Color c) => ColorToVec4(c);
-
     private static void SectionAccent()
     {
         ImGui.Spacing();
         ImGui.Separator();
     }
 
-    private static string BoolStr(bool v) => v ? "Yes" : "No";
+    internal static string BoolStr(bool v) => v ? "Yes" : "No";
 
     private static NumVec4 BoolColor(bool v) => v ? CGreen : CError;
 
@@ -2526,15 +2402,13 @@ internal sealed class ImGuiDebugOverlay(
     private LaneCoverageResult[]? _covTreeCoverage;
     private readonly List<NumVector2> _covTreePositions = [];
     private readonly List<(PumpBranch Branch, List<int> Segments)> _covTreeBranchData = [];
-    private readonly List<List<int>> _covTreeChildren = [];
     private readonly List<List<BlightLaneNode>> _covTreeForests = [];
     private readonly List<int> _covTreeUnassigned = [];
-    private bool _covTreeHasCache;
 
-    private static string TrimPath(string? path)
+    internal static string TrimPath(string? path)
         => string.IsNullOrWhiteSpace(path) ? "<none>" : path.Length <= 80 ? path : path[..77] + "...";
 
-    private static string ToCompass(SharpDX.Vector2 delta)
+    internal static string ToCompass(SharpDX.Vector2 delta)
     {
         float angle = (float)(Math.Atan2(delta.Y, delta.X) * 180.0 / Math.PI);
         angle = (angle + 360f) % 360f;

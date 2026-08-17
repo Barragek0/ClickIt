@@ -112,53 +112,6 @@ namespace ClickIt.Features.Click.Interaction
             return resolvedPoint;
         }
 
-        internal static List<RectangleF> CollectPotentialBlockingLabelRects(LabelOnGround targetLabel, RectangleF targetRect, IReadOnlyList<LabelOnGround>? allLabels)
-            => CollectPotentialBlockingLabelRects(
-                targetLabel,
-                targetRect,
-                allLabels,
-                static other =>
-                {
-                    bool hasRect = LabelGeometry.TryGetLabelRect(other, out RectangleF rect);
-                    return (rect, hasRect);
-                });
-
-        // Rect-resolver overload lets callers supply cached per-label rects (overlap checks run per Execute tick and would otherwise re-read every other label's rect each time).
-        internal static List<RectangleF> CollectPotentialBlockingLabelRects(
-            LabelOnGround targetLabel,
-            RectangleF targetRect,
-            IReadOnlyList<LabelOnGround>? allLabels,
-            Func<LabelOnGround, (RectangleF Rect, bool HasRect)> rectResolver)
-        {
-            List<RectangleF> potentialBlockers = GetBlockerRects();
-            potentialBlockers.Clear();
-            if (allLabels == null || allLabels.Count == 0)
-                return potentialBlockers;
-
-            for (int i = 0; i < allLabels.Count; i++)
-            {
-                LabelOnGround? other = allLabels[i];
-                if (other == null || ReferenceEquals(other, targetLabel))
-                    continue;
-
-                (RectangleF otherRect, bool hasRect) = rectResolver(other);
-                if (!hasRect)
-                    continue;
-
-                if (otherRect.Right <= targetRect.Left
-                    || otherRect.Left >= targetRect.Right
-                    || otherRect.Bottom <= targetRect.Top
-                    || otherRect.Top >= targetRect.Bottom)
-                {
-                    continue;
-                }
-
-                potentialBlockers.Add(otherRect);
-            }
-
-            return potentialBlockers;
-        }
-
         internal static List<RectangleF> BuildIntersectionOverlaps(RectangleF targetRect, IReadOnlyList<RectangleF> potentialBlockers)
         {
             List<RectangleF> blockedAreas = GetIntersectionRects();

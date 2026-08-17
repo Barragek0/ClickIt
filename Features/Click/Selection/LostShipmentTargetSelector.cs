@@ -54,7 +54,13 @@ namespace ClickIt.Features.Click.Selection
                 if (!TryCreateLostShipmentCandidate(label, windowTopLeft, out LostShipmentCandidate candidate))
                     continue;
 
-                _ = MechanicCandidateResolver.TryPromoteLostShipmentCandidate(ref best, candidate, cursorAbsolute, windowTopLeft);
+                _ = MechanicCandidateResolver.TryPromoteClickableCandidate(
+                    ref best,
+                    candidate,
+                    cursorAbsolute,
+                    windowTopLeft,
+                    static value => value.Distance,
+                    static value => value.ClickPosition);
             }
         }
 
@@ -62,9 +68,7 @@ namespace ClickIt.Features.Click.Selection
         {
             candidate = default;
 
-            Entity? entity = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                ? rawItem as Entity
-                : null;
+            DynamicAccess.TryGetLabelItemOnGround(label, out Entity? entity);
             if (label == null || entity == null)
                 return false;
 

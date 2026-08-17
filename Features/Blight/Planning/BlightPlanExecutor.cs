@@ -34,13 +34,25 @@ internal sealed class BlightPlanExecutor
     // Kind.None placeholder when the debug-stage throttle is not due — avoids a per-tick string alloc.
     private const string WaitingDebugMessage = "Waiting for build/upgrade...";
 
+    private readonly Lock _planLock = new();
+
     internal BlightPlan? CurrentPlan { get; private set; }
     internal int CurrentCursor { get; private set; }
 
+    // Render thread reads plan + cursor together (BlightOverlay draws the current step); the pair is published under the same lock the writers use so a SetPlan/AdvanceCursor mid-read can never expose a new plan with a stale cursor.
+    internal (BlightPlan? Plan, int Cursor) GetPlanSnapshot()
+    {
+        lock (_planLock)
+            return (CurrentPlan, CurrentCursor);
+    }
+
     internal void SetPlan(BlightPlan plan)
     {
-        CurrentPlan = plan.WithCurrentStepIndex(0);
-        CurrentCursor = 0;
+        lock (_planLock)
+        {
+            CurrentPlan = plan.WithCurrentStepIndex(0);
+            CurrentCursor = 0;
+        }
         _phase = Phase.Walking;
         _consecutiveFailures = 0;
         _stationaryTicks = 0;
@@ -95,36 +107,36 @@ internal sealed class BlightPlanExecutor
             (int currentRank, int cachedLevel, int effectiveRank) = GetTowerRank(service, s.FoundationPosition);
             string? verifyDatId = service.GetTowerDatIdAt(s.FoundationPosition);
             if (service.IsDebugStageDue)
-                service.AddDebugStage($"Executor: VERIFY → rank={currentRank} cached={cachedLevel} effective={effectiveRank} target={s.TargetLevel} datId={verifyDatId ?? "?"}");
+                service.AddDebugStage($"Executor: VERIFY -> rank={currentRank} cached={cachedLevel} effective={effectiveRank} target={s.TargetLevel} datId={verifyDatId ?? "?"}");
             if (effectiveRank >= s.TargetLevel)
             {
-                // A spec step must land on the strategy's chosen specialization. A level-4 tower cannot be re-specialized in-game, so when the tower shows a DIFFERENT spec there is no safe re-click that can fix it (the spec menu index is the only mechanism, and clicking a maxed tower's spec slot risks a mis-click). Log it clearly and advance — the prior "re-select" path was dead code because SelectSpecialization's at-target guard advanced without clicking on the very next tick.
+                // A maxed tower cannot be re-specialized in-game; when it shows a different spec, log it and advance rather than risk a mis-click.
                 int specIndex = service.GetSpecialization(s.TowerType);
                 if (IsSpecializationStep(specIndex, s.TargetLevel)
                     && TowerShowsOtherSpecialization(service, s, specIndex))
                 {
-                    service.AddDebugStage($"Executor: VERIFY → tower has the WRONG specialization for {s.TowerType} (spec index {specIndex}); cannot re-specialize a maxed tower - advancing");
+                    service.AddDebugStage($"Executor: VERIFY -> tower has the WRONG specialization for {s.TowerType} (spec index {specIndex}); cannot re-specialize a maxed tower - advancing");
                     return AdvanceStep(service, s, $"Step complete (wrong spec accepted - cannot re-specialize): {s.TowerType} lvl {s.TargetLevel}");
                 }
-                service.AddDebugStage($"Executor: VERIFY → step verified - advancing cursor");
+                service.AddDebugStage("Executor: VERIFY -> step verified - advancing cursor");
                 return AdvanceStep(service, s, $"Step complete: {s.TowerType} lvl {s.TargetLevel}");
             }
 
             if (elapsed > _verifyTimeoutMs)
             {
                 _consecutiveFailures++;
-                service.AddDebugStage($"Executor: VERIFY → timeout - rank={currentRank} cached={cachedLevel} target={s.TargetLevel} failures={_consecutiveFailures}");
+                service.AddDebugStage($"Executor: VERIFY -> timeout - rank={currentRank} cached={cachedLevel} target={s.TargetLevel} failures={_consecutiveFailures}");
 
                 // A retry click on an already-upgraded tower would over-upgrade it (e.g. Seismic 3 -> 4).
                 if (effectiveRank >= s.TargetLevel)
                 {
-                    service.AddDebugStage($"Executor: VERIFY → rank {effectiveRank} meets target — advancing without re-click");
+                    service.AddDebugStage($"Executor: VERIFY -> rank {effectiveRank} meets target - advancing without re-click");
                     return AdvanceStep(service, s, $"Step verified via cache: {s.TowerType} lvl {s.TargetLevel}");
                 }
 
                 if (ShouldSkipAfterVerifyFailures(s.Action, _consecutiveFailures))
                 {
-                    service.AddDebugStage("Executor: VERIFY → 3 consecutive failures - skipping step");
+                    service.AddDebugStage("Executor: VERIFY -> 3 consecutive failures - skipping step");
                     AdvanceCursor();
                     return new BlightBuildAction(BlightBuildActionKind.Error,
                         DebugMessage: $"Skipped after 3 failures: {s.TowerType} at ({s.FoundationPosition.X:F0},{s.FoundationPosition.Y:F0})");
@@ -135,12 +147,12 @@ internal sealed class BlightPlanExecutor
                 {
                     _consecutiveFailures = 0;
                     _phase = Phase.Walking;
-                    service.AddDebugStage($"Executor: VERIFY → upgrade unconfirmed after retries - waiting for currency/state");
+                    service.AddDebugStage("Executor: VERIFY -> upgrade unconfirmed after retries - waiting for currency/state");
                     return new BlightBuildAction(BlightBuildActionKind.None,
                         DebugMessage: $"Upgrade unconfirmed ({s.TowerType} lvl {s.TargetLevel}) - waiting for currency/state");
                 }
 
-                service.AddDebugStage("Executor: VERIFY → timeout, retrying from OpenMenu");
+                service.AddDebugStage("Executor: VERIFY -> timeout, retrying from OpenMenu");
                 _phase = Phase.OpenMenu;
                 return new BlightBuildAction(BlightBuildActionKind.None,
                     DebugMessage: "Retrying step after verification timeout");
@@ -261,18 +273,18 @@ internal sealed class BlightPlanExecutor
                     {
                         // Icon invisible — the tower may already meet the target; check the actual rank.
                         (int currentRank, _, _) = GetTowerRank(service, s.FoundationPosition);
-                        service.AddDebugStage($"Executor: OPEN → UPGRADE canAfford=false, actual rank={currentRank} target={s.TargetLevel}");
+                        service.AddDebugStage($"Executor: OPEN -> UPGRADE canAfford=false, actual rank={currentRank} target={s.TargetLevel}");
 
                         if (currentRank >= s.TargetLevel)
                         {
-                            service.AddDebugStage($"Executor: OPEN → upgrade already done (rank={currentRank} >= target={s.TargetLevel}) — advancing");
+                            service.AddDebugStage($"Executor: OPEN -> upgrade already done (rank={currentRank} >= target={s.TargetLevel}) - advancing");
                             return AdvanceStep(service, s, $"Step already complete: {s.TowerType} lvl {s.TargetLevel}");
                         }
 
                         // Invisible icon = can't afford: pause and wait for currency rather than skip the step.
-                        service.AddDebugStage($"Executor: OPEN → UPGRADE cannot afford (rank={currentRank} < target={s.TargetLevel}) — waiting for currency");
+                        service.AddDebugStage($"Executor: OPEN -> UPGRADE cannot afford (rank={currentRank} < target={s.TargetLevel}) - waiting for currency");
                         return new BlightBuildAction(BlightBuildActionKind.None,
-                            DebugMessage: $"Cannot afford upgrade ({s.TowerType} lvl {s.TargetLevel}) — waiting for currency");
+                            DebugMessage: $"Cannot afford upgrade ({s.TowerType} lvl {s.TargetLevel}) - waiting for currency");
                     }
 
                     NumVector2? upgradeClickPos = BlightMenuInteractions.GetUpgradeIconClickPosition(labelElement);
@@ -291,7 +303,7 @@ internal sealed class BlightPlanExecutor
 
             // Check menu state FIRST — the affordability check becomes unreliable after the menu opens.
             bool menuPopulated = BlightMenuInteractions.IsTowerMenuOpen(labelElement);
-            service.AddDebugStage($"Executor: OPEN → menuPopulated={menuPopulated}");
+            service.AddDebugStage($"Executor: OPEN -> menuPopulated={menuPopulated}");
 
             if (menuPopulated)
             {
@@ -311,7 +323,7 @@ internal sealed class BlightPlanExecutor
                     (_, _, int effectiveRank) = GetTowerRank(service, s.FoundationPosition);
                     if (effectiveRank >= s.TargetLevel)
                     {
-                        service.AddDebugStage($"Executor: OPEN → build already done (rank={effectiveRank} >= target={s.TargetLevel}) — advancing");
+                        service.AddDebugStage($"Executor: OPEN -> build already done (rank={effectiveRank} >= target={s.TargetLevel}) - advancing");
                         return AdvanceStep(service, s, $"Step already complete: {s.TowerType} lvl {s.TargetLevel}");
                     }
 
@@ -365,7 +377,7 @@ internal sealed class BlightPlanExecutor
                     }
                 }
                 catch { }
-                service.AddDebugStage($"Executor: SELECT - {s.TowerType}(idx={(int)s.TowerType}) not found — menu has {childCount} children - FAIL #{_consecutiveFailures + 1}");
+                service.AddDebugStage($"Executor: SELECT - {s.TowerType}(idx={(int)s.TowerType}) not found - menu has {childCount} children - FAIL #{_consecutiveFailures + 1}");
                 return Fail($"Tower type {s.TowerType} not found in menu");
             }
 
@@ -387,7 +399,7 @@ internal sealed class BlightPlanExecutor
             (int currentRank, _, _) = GetTowerRank(service, s.FoundationPosition);
             if (SystemMath.Max(currentRank, tower.UpgradeLevel) >= s.TargetLevel)
             {
-                service.AddDebugStage($"Executor: SPEC - tower already at rank {SystemMath.Max(currentRank, tower.UpgradeLevel)} >= target {s.TargetLevel} — advancing without clicking");
+                service.AddDebugStage($"Executor: SPEC - tower already at rank {SystemMath.Max(currentRank, tower.UpgradeLevel)} >= target {s.TargetLevel} - advancing without clicking");
                 return AdvanceStep(service, s, $"Step already complete: {s.TowerType} lvl {s.TargetLevel}");
             }
 
@@ -680,7 +692,7 @@ internal sealed class BlightPlanExecutor
         if (step == null)
             return false;
 
-        // The executor's phase is the source of truth: once it leaves Walking (StopPlayer/OpenMenu/ Select*/WaitVerify) it needs the player STOPPED to click, so pathfinding must stand down. Without this gate the pipeline kept re-walking toward the foundation while the executor was trying to click its on-screen build icon — the walk clicks got offset off the icon, the player never stopped, and MenuClick never landed ("not clicking anything").
+        // The executor's phase is the source of truth: once it leaves Walking it needs the player stopped to click, so pathfinding must stand down.
         if (!WantsWalkForCurrentPhase(_phase))
             return false;
 
@@ -751,11 +763,14 @@ internal sealed class BlightPlanExecutor
     private void AdvanceCursor()
     {
         _consecutiveFailures = 0;
-        CurrentCursor++;
+        lock (_planLock)
+        {
+            CurrentCursor++;
+            if (CurrentPlan != null)
+                CurrentPlan = CurrentPlan.WithAdvancedCursor();
+        }
         _phase = Phase.Walking;
         _lastBuildMenuClickTimestampMs = 0;
-        if (CurrentPlan != null)
-            CurrentPlan = CurrentPlan.WithAdvancedCursor();
     }
 
     // Rank of the tower at a step position from the live entity path and the cached tower level. The path is read FRESH (not from the entity path cache): when a tower is upgraded in place the cached path can lag one rank behind reality, and that stale rank is exactly what makes the verify/retry loop re-click an already-upgraded tower (e.g. Seismic 3 -> 4, Fireball -> Flamethrower). The executor ticks at most a few times per second, so a fresh read is cheap.
@@ -785,7 +800,7 @@ internal sealed class BlightPlanExecutor
         {
             _phase = Phase.StopPlayer;
             return new BlightBuildAction(BlightBuildActionKind.None,
-                DebugMessage: "Player still moving — waiting to stop before menu click");
+                DebugMessage: "Player still moving - waiting to stop before menu click");
         }
         _phaseStartTimestamp = Stopwatch.GetTimestamp();
         _phase = nextPhase;
@@ -795,7 +810,8 @@ internal sealed class BlightPlanExecutor
     internal void Reset()
     {
         // Preserve the plan — only rewind to Walking so it can approach from a different angle.
-        CurrentCursor = 0;
+        lock (_planLock)
+            CurrentCursor = 0;
         _phase = Phase.Walking;
         _consecutiveFailures = 0;
         _stationaryTicks = 0;
@@ -805,8 +821,11 @@ internal sealed class BlightPlanExecutor
 
     internal void ClearPlan()
     {
-        CurrentPlan = null;
-        CurrentCursor = 0;
+        lock (_planLock)
+        {
+            CurrentPlan = null;
+            CurrentCursor = 0;
+        }
         _phase = Phase.Walking;
         _consecutiveFailures = 0;
         _stationaryTicks = 0;

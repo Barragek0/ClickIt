@@ -155,5 +155,7 @@ ThirdParty/Decompiled/
 # Local third-party decompiler workspace
 .scripts/ThirdPartyDecompiler/
 
-# Copilot
+# Extensions
 .github/copilot-instructions.md
+.groupedtimelineinclude
+.history_machine/

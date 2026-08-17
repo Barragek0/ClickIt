@@ -124,12 +124,8 @@ namespace ClickIt.Shared.Diagnostics
         /// </summary>
         public void LogMessage(bool requireLocalDebug, bool localDebugFlag, string message, int frame)
         {
-            if (requireLocalDebug && localDebugFlag && _settings.DebugMode && _settings.LogMessages)
+            if (_settings.DebugMode && _settings.LogMessages && (!requireLocalDebug || localDebugFlag))
                 _logMessage(message, frame);
-
-            else if (!requireLocalDebug && _settings.DebugMode && _settings.LogMessages)
-                _logMessage(message, frame);
-
         }
 
         /// <summary>

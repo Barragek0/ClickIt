@@ -46,23 +46,6 @@ namespace ClickIt.UI.Settings
             ImGui.Text(text);
         }
 
-        internal static void SetupFixedWidthTableColumns(
-            (string HeaderText, float Width) first,
-            (string HeaderText, float Width) second,
-            (string HeaderText, float Width) third,
-            (string HeaderText, float Width)? fourth = null)
-        {
-            ImGui.TableSetupColumn(first.HeaderText, ImGuiTableColumnFlags.WidthFixed, first.Width);
-            ImGui.TableSetupColumn(second.HeaderText, ImGuiTableColumnFlags.WidthFixed, second.Width);
-            ImGui.TableSetupColumn(third.HeaderText, ImGuiTableColumnFlags.WidthFixed, third.Width);
-            if (fourth.HasValue)
-            {
-                ImGui.TableSetupColumn(fourth.Value.HeaderText, ImGuiTableColumnFlags.WidthFixed, fourth.Value.Width);
-            }
-
-            ImGui.TableHeadersRow();
-        }
-
         internal static void DrawTableSectionHeaderRow(string headerText, Vector4 headerColor, Vector4? textColor = null)
         {
             ImGui.TableNextRow(ImGuiTableRowFlags.None);

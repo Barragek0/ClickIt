@@ -7,7 +7,6 @@ namespace ClickIt.Features.Click.Runtime
         OnscreenMechanicPathingBlocker OnscreenMechanicPathingBlocker,
         OffscreenTraversalTargetResolver TraversalTargetResolver,
         OffscreenStickyTargetHandler StickyTargetHandler,
-        OffscreenTargetResolver TargetResolver,
         MovementSkillCoordinator MovementSkills,
         ClickLabelInteractionService LabelInteraction,
         Action<string> DebugLog,
@@ -67,10 +66,11 @@ namespace ClickIt.Features.Click.Runtime
 
         public bool TryWalkTowardOffscreenTarget(Entity? preferredTarget = null)
         {
-            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("WalkTowardEntry",
-                string.Format("preferredTarget={0} setting={1}",
-                    preferredTarget != null ? DynamicAccess.TryReadString(preferredTarget, DynamicAccessProfiles.Path, out string entryPrefPath) ? entryPrefPath : "set" : "none",
-                    _dependencies.Settings.WalkTowardOffscreenLabels.Value), null);
+            if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("WalkTowardEntry",
+                    string.Format("preferredTarget={0} setting={1}",
+                        preferredTarget != null ? DynamicAccess.TryReadString(preferredTarget, DynamicAccessProfiles.Path, out string entryPrefPath) ? entryPrefPath : "set" : "none",
+                        _dependencies.Settings.WalkTowardOffscreenLabels.Value), null);
 
             // Only gate on the general pathfinding setting when no specific target is provided.  Blight-specific pathfinding (with a target) must work even when the general setting is off.
             if (!_dependencies.Settings.WalkTowardOffscreenLabels.Value && preferredTarget == null)
@@ -95,11 +95,12 @@ namespace ClickIt.Features.Click.Runtime
 
             if (!TryStartTraversal(preferredTarget, out OffscreenTraversalTargetContext context))
             {
-                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("WalkTowardNoTarget",
-                    string.Format("preferredTarget={0} | TryStartTraversal returned no target",
-                        preferredTarget != null
-                            ? (DynamicAccess.TryReadString(preferredTarget, DynamicAccessProfiles.Path, out string walkPrefPath) ? walkPrefPath : "set")
-                            : "none"), null);
+                if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
+                    _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("WalkTowardNoTarget",
+                        string.Format("preferredTarget={0} | TryStartTraversal returned no target",
+                            preferredTarget != null
+                                ? (DynamicAccess.TryReadString(preferredTarget, DynamicAccessProfiles.Path, out string walkPrefPath) ? walkPrefPath : "set")
+                                : "none"), null);
                 return false;
             }
 
@@ -109,7 +110,7 @@ namespace ClickIt.Features.Click.Runtime
             if (!TryResolveTraversalClick(context, builtPath, out bool resolvedFromPath, out Vector2 targetScreen, out Vector2 walkClick))
                 return false;
 
-            (bool movementSkillUsed, Vector2 movementSkillCastPoint, string movementSkillDebug) = TryUseMovementSkillForOffscreenPathing(context.TargetPath, targetScreen, builtPath);
+            bool movementSkillUsed = _dependencies.MovementSkills.TryUseMovementSkillForOffscreenPathing(context.TargetPath, targetScreen, builtPath, out Vector2 movementSkillCastPoint, out string movementSkillDebug);
             if (movementSkillUsed)
             {
                 AddPathfindingStage($"Walk: movement skill cast toward {context.TargetPath}");
@@ -124,8 +125,7 @@ namespace ClickIt.Features.Click.Runtime
 
             PublishOffscreenMovementDebug(context.Target, context.TargetPath, builtPath, resolvedFromPath, true, targetScreen, walkClick, "BeforeClick", movementSkillDebug);
 
-            // Pickup-to-next-pathfinding latency at the point the first walk click actually lands: the true
-            // delay between the last successful click (item picked up) and pathfinding resuming.
+            // Pickup-to-next-pathfinding latency at the point the first walk click actually lands: the true delay between the last successful click (item picked up) and pathfinding resuming.
             long now = Environment.TickCount64;
             long lastClickAtMs = _dependencies.ClickSuccessAnchor?.Value ?? 0;
             if (lastClickAtMs > 0 && now - lastClickAtMs < 5000)
@@ -135,7 +135,7 @@ namespace ClickIt.Features.Click.Runtime
             }
 
             Vector2 clickPos = ResolveBlightIconSafeClickPosition(walkClick, targetScreen, context.TargetPath);
-            bool clicked = _dependencies.LabelInteraction.PerformMechanicClick(clickPos);
+            bool clicked = _dependencies.LabelInteraction.PerformMechanicClick(clickPos, interval: IntervalKind.Walk);
             AddPathfindingStage(clicked
                 ? $"Walk: click executed ({clickPos.X:F0},{clickPos.Y:F0})"
                 : $"Walk: click REJECTED ({clickPos.X:F0},{clickPos.Y:F0})");
@@ -176,7 +176,8 @@ namespace ClickIt.Features.Click.Runtime
                 }
 
                 bool clicked = _dependencies.LabelInteraction.PerformMechanicClick(
-                    ResolveBlightIconSafeClickPosition(walkClick, targetScreen, "blight-foundation"));
+                    ResolveBlightIconSafeClickPosition(walkClick, targetScreen, "blight-foundation"),
+                    interval: IntervalKind.Walk);
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
                     "BlightBuildWalk",
                     clicked
@@ -218,7 +219,7 @@ namespace ClickIt.Features.Click.Runtime
                 offset = new Vector2(walkClick.X + BlightIconAvoidOffset, walkClick.Y + BlightIconAvoidOffset);
             }
 
-            AddPathfindingStage($"Walk: click offset from blight icon → ({offset.X:F0},{offset.Y:F0})");
+            AddPathfindingStage($"Walk: click offset from blight icon -> ({offset.X:F0},{offset.Y:F0})");
             _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] Click would hit a blight tower build/upgrade icon - offsetting to ({offset.X:F0},{offset.Y:F0})");
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("BlightIconAvoided", "Pathfinding click offset away from a blight tower icon", null);
             return offset;
@@ -332,10 +333,6 @@ namespace ClickIt.Features.Click.Runtime
 
             PublishOffscreenMovementDebug(context.Target, context.TargetPath, builtPath, resolvedFromPath, true, targetScreen, walkClick, "Clicked", movementSkillDebug);
             _dependencies.HoldDebugTelemetryAfterSuccess($"Offscreen traversal click succeeded: {context.TargetPath}");
-            _ = _dependencies.PathfindingService.TryBuildPathToTarget(
-                _dependencies.GameController,
-                context.Target,
-                _dependencies.Settings.OffscreenPathfindingSearchBudget.Value);
             _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] Walking toward offscreen target: {context.TargetPath}");
             return true;
         }
@@ -351,6 +348,10 @@ namespace ClickIt.Features.Click.Runtime
             string stage,
             string movementSkillDebug = "")
         {
+            // The snapshot only feeds the pathfinding debug overlay section and the copy-all dump, both of which require DebugMode; skip the DLR reads entirely when debug is off.
+            if (!_dependencies.Settings.DebugMode.Value)
+                return;
+
             Entity? player = _runtimeSeam.GetPlayer(_dependencies.GameController);
             Vector2 playerGrid = player != null && _runtimeSeam.TryGetGridPosition(player, out Vector2 resolvedPlayerGrid)
                 ? resolvedPlayerGrid
@@ -377,33 +378,119 @@ namespace ClickIt.Features.Click.Runtime
                 TimestampMs: Environment.TickCount64));
         }
 
-        private bool TryResolveDirectionalWalkClickPosition(Vector2 targetScreen, string targetPath, out Vector2 clickPos)
+        internal int GetRemainingOffscreenPathNodeCount()
         {
-            RectangleF win = _runtimeSeam.GetWindowRectangle(_dependencies.GameController);
-            return OffscreenPathingMath.TryResolveDirectionalWalkClickPosition(
-                win,
-                targetScreen,
-                targetPath,
-                _dependencies.PointIsInClickableArea,
-                out clickPos);
+            IReadOnlyList<PathfindingService.GridPoint> path = _dependencies.PathfindingService.GetLatestGridPath();
+            Entity? player = _runtimeSeam.GetPlayer(_dependencies.GameController);
+            if (player == null)
+                return 0;
+
+            if (!_runtimeSeam.TryGetGridPosition(player, out Vector2 playerGridPosition))
+                return 0;
+
+            int nearest = OffscreenPathingMath.FindClosestPathIndexToPlayer(
+                path,
+                new PathfindingService.GridPoint((int)playerGridPosition.X, (int)playerGridPosition.Y));
+
+            return OffscreenPathingMath.CountRemainingPathNodes(path, nearest);
         }
 
-        private (bool Success, Vector2 TargetScreen) TryResolveOffscreenTargetScreenPointFromPath()
+        private bool TryResolveOffscreenTargetScreenPointFromPath(out Vector2 targetScreen)
         {
-            bool success = _dependencies.TargetResolver.TryResolveOffscreenTargetScreenPointFromPath(out Vector2 targetScreen);
-            return (success, targetScreen);
+            targetScreen = default;
+
+            Entity? player = _runtimeSeam.GetPlayer(_dependencies.GameController);
+            if (player == null)
+                return false;
+
+            IReadOnlyList<PathfindingService.GridPoint> path = _dependencies.PathfindingService.GetLatestGridPath();
+            if (path.Count < 2)
+                return false;
+
+            if (!_runtimeSeam.TryGetGridPosition(player, out Vector2 playerGridPosition))
+                return false;
+
+            PathfindingService.GridPoint playerGrid = new((int)playerGridPosition.X, (int)playerGridPosition.Y);
+            int nearestIndex = OffscreenPathingMath.FindClosestPathIndexToPlayer(path, playerGrid);
+            if (nearestIndex < 0)
+                return false;
+
+            if (!OffscreenPathingMath.TryGetSmoothedPathDirection(path, playerGrid, nearestIndex, out float deltaX, out float deltaY))
+                return false;
+
+            RectangleF window = _runtimeSeam.GetWindowRectangle(_dependencies.GameController);
+            Vector2 center = OffscreenPathingMath.GetWindowCenter(window);
+            float radius = SystemMath.Min(window.Width, window.Height) * 0.30f;
+            return OffscreenPathingMath.TryComputeGridDirectionPoint(center, deltaX, deltaY, radius, out targetScreen);
         }
 
-        private (bool Success, Vector2 TargetScreen) TryResolveOffscreenTargetScreenPoint(Entity target)
+        private bool TryResolveOffscreenTargetScreenPoint(Entity target, out Vector2 targetScreen)
         {
-            bool success = _dependencies.TargetResolver.TryResolveOffscreenTargetScreenPoint(target, out Vector2 targetScreen);
-            return (success, targetScreen);
+            RectangleF window = _runtimeSeam.GetWindowRectangle(_dependencies.GameController);
+            Vector2 center = OffscreenPathingMath.GetWindowCenter(window);
+            float radius = SystemMath.Min(window.Width, window.Height) * 0.30f;
+            TryGetGridDelta(target, out float deltaX, out float deltaY);
+
+            if (target.Type == EntityType.WorldItem
+                && OffscreenPathingMath.TryComputeGridDirectionPoint(center, deltaX, deltaY, radius, out targetScreen))
+                return true;
+
+            if (!_runtimeSeam.TryProjectWorldToScreen(_dependencies.GameController, target, out Vector2 projected))
+                projected = default;
+
+            if (OffscreenPathingMath.IsFinite(projected) && !OffscreenPathingMath.IsNearCorner(projected, window))
+            {
+                // Target is on screen - but can we actually click there? If the projected position falls in a blocked zone (minimap, right panel, etc.), treat the target as still offscreen so pathfinding keeps walking until it moves into a clickable area.
+                if (_dependencies.PointIsInClickableArea(projected, "offscreen"))
+                {
+                    targetScreen = projected;
+                    return true;
+                }
+            }
+
+            return OffscreenPathingMath.TryComputeGridDirectionPoint(center, deltaX, deltaY, radius, out targetScreen);
         }
 
-        private (bool Success, Vector2 CastPoint, string DebugReason) TryUseMovementSkillForOffscreenPathing(string targetPath, Vector2 targetScreen, bool builtPath)
+        private bool TryResolveOnScreenTargetScreenPoint(Entity target, out Vector2 targetScreen)
         {
-            bool success = _dependencies.MovementSkills.TryUseMovementSkillForOffscreenPathing(targetPath, targetScreen, builtPath, out Vector2 castPoint, out string debugReason);
-            return (success, castPoint, debugReason);
+            targetScreen = default;
+            if (!_runtimeSeam.TryProjectWorldToScreen(_dependencies.GameController, target, out Vector2 projected))
+                return false;
+
+            if (!OffscreenPathingMath.IsFinite(projected))
+                return false;
+
+            RectangleF window = _runtimeSeam.GetWindowRectangle(_dependencies.GameController);
+            if (!OffscreenPathingMath.IsInsideWindow(window, projected) || OffscreenPathingMath.IsNearCorner(projected, window))
+                return false;
+
+            if (!_dependencies.PointIsInClickableArea(projected, "offscreen"))
+                return false;
+
+            targetScreen = projected;
+            return true;
+        }
+
+        private void TryGetGridDelta(Entity target, out float deltaX, out float deltaY)
+        {
+            Entity? player = _runtimeSeam.GetPlayer(_dependencies.GameController);
+            if (player == null)
+            {
+                deltaX = 0f;
+                deltaY = 0f;
+                return;
+            }
+
+            if (!_runtimeSeam.TryGetGridPosition(player, out Vector2 playerGridPosition)
+                || !_runtimeSeam.TryGetGridPosition(target, out Vector2 targetGridPosition))
+            {
+                deltaX = 0f;
+                deltaY = 0f;
+                return;
+            }
+
+            deltaX = targetGridPosition.X - playerGridPosition.X;
+            deltaY = targetGridPosition.Y - playerGridPosition.Y;
         }
 
         private bool TryStartTraversal(Entity? preferredTarget, out OffscreenTraversalTargetContext context)
@@ -492,14 +579,15 @@ namespace ClickIt.Features.Click.Runtime
         {
             walkClick = default;
 
-            (resolvedFromPath, targetScreen) = builtPath
-                ? TryResolveOffscreenTargetScreenPointFromPath()
-                : (false, default);
+            resolvedFromPath = false;
+            targetScreen = default;
+            if (builtPath)
+                resolvedFromPath = TryResolveOffscreenTargetScreenPointFromPath(out targetScreen);
 
             // The path-based point sits at a fixed radius in the path's direction, which overshoots close targets (e.g. a tower already beside the player). Prefer the target's real on-screen projection so the player walks onto it instead of around it.
             bool resolvedOnScreen = false;
             if (resolvedFromPath
-                && _dependencies.TargetResolver.TryResolveOnScreenTargetScreenPoint(context.Target, out Vector2 onScreenTargetScreen))
+                && TryResolveOnScreenTargetScreenPoint(context.Target, out Vector2 onScreenTargetScreen))
             {
                 targetScreen = onScreenTargetScreen;
                 resolvedFromPath = false;
@@ -508,19 +596,18 @@ namespace ClickIt.Features.Click.Runtime
 
             if (!resolvedFromPath && !resolvedOnScreen)
             {
-                (bool success, Vector2 resolvedTargetScreen) = TryResolveOffscreenTargetScreenPoint(context.Target);
-                if (!success)
+                if (!TryResolveOffscreenTargetScreenPoint(context.Target, out targetScreen))
                 {
                     AddPathfindingStage("Walk: target screen point FAILED");
-                    PublishOffscreenMovementDebug(context.Target, context.TargetPath, builtPath, false, false, targetScreen, default, "ResolveTargetScreenFailed");
+                    PublishOffscreenMovementDebug(context.Target, context.TargetPath, builtPath, false, false, default, default, "ResolveTargetScreenFailed");
                     _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Failed to resolve target screen point.");
                     return false;
                 }
-
-                targetScreen = resolvedTargetScreen;
             }
 
-            if (TryResolveDirectionalWalkClickPosition(targetScreen, context.TargetPath, out walkClick))
+            RectangleF win = _runtimeSeam.GetWindowRectangle(_dependencies.GameController);
+            if (OffscreenPathingMath.TryResolveDirectionalWalkClickPosition(
+                    win, targetScreen, context.TargetPath, _dependencies.PointIsInClickableArea, out walkClick))
                 return true;
 
             AddPathfindingStage("Walk: directional click point FAILED");
@@ -571,7 +658,7 @@ namespace ClickIt.Features.Click.Runtime
 
         private bool AbortOffscreenPathingForBlocker(string debugMessage, string? debugStage, string? debugDetails)
         {
-            AddPathfindingStage($"Walk: aborted — {debugMessage}");
+            AddPathfindingStage($"Walk: aborted - {debugMessage}");
             CancelTraversalState();
             _dependencies.DebugLog(debugMessage);
             if (!string.IsNullOrWhiteSpace(debugStage))

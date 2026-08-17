@@ -202,7 +202,8 @@ namespace ClickIt.Tests.Features.Click
                 ExecuteInteraction: executeInteraction ?? (_ => false),
                 DebugLog: message => debugLogs?.Add(message),
                 LogError: static (_, _) => { },
-                ElementAccessLock: new object()));
+                ElementAccessLock: new object(),
+                AddDebugStage: static _ => { }));
         }
 
         private static PrimaryAltarComponent CreateAltar(AltarType altarType)

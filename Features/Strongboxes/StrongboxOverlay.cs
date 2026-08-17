@@ -26,7 +26,7 @@ namespace ClickIt.Features.Strongboxes
             IReadOnlyList<string> ClickMetadata,
             IReadOnlyList<string> DontClickMetadata);
         private readonly record struct StrongboxLabelMetadata(Chest? Chest, string Path, string RenderName, bool IsUnique);
-        private readonly record struct CachedStrongbox(LabelOnGround Label, StrongboxLabelMetadata Metadata);
+        private record struct CachedStrongbox(LabelOnGround Label, StrongboxLabelMetadata Metadata, bool IsLocked);
 
         private static readonly List<CachedStrongbox> s_emptyStrongboxes = [];
 
@@ -76,6 +76,9 @@ namespace ClickIt.Features.Strongboxes
                 return;
             }
 
+            // Refresh the chest lock-state on the coroutine thread every frame so the render thread never reads IsLocked (green->red transition stays within one frame since refresh runs every frame).
+            RefreshLockedStates();
+
             // The refresh runs every frame; the expensive scan only re-runs when the label snapshot or the render state (settings) actually changed.
             if (ReferenceEquals(_lastScannedLabels, ctx.Labels)
                 && _lastScannedCount == (ctx.Labels?.Count ?? 0)
@@ -113,6 +116,16 @@ namespace ClickIt.Features.Strongboxes
             _recordBreakdown.Invoke(bytes, ms);
         }
 
+        private void RefreshLockedStates()
+        {
+            List<CachedStrongbox> cached = _snapshot.Current;
+            for (int i = 0; i < cached.Count; i++)
+            {
+                CachedStrongbox sb = cached[i];
+                cached[i] = sb with { IsLocked = TryReadChestLocked(sb.Metadata.Chest) };
+            }
+        }
+
         // Render thread — cached data + fresh per-frame projection, enqueue only.
         public void Draw(OverlayRenderContext ctx)
         {
@@ -124,7 +137,7 @@ namespace ClickIt.Features.Strongboxes
                 if (!TryResolveStrongboxFrame(sb, ctx.WindowArea, renderState, out StrongboxFrame frame))
                     continue;
 
-                ctx.FrameQueue.Enqueue(frame.Rect, frame.Color, 2);
+                ctx.DrawQueue.EnqueueFrame(frame.Rect, frame.Color, 2);
             }
         }
 
@@ -191,7 +204,7 @@ namespace ClickIt.Features.Strongboxes
                 if (!IsStrongboxClickableBySettings(metadata.Path, metadata.RenderName, renderState.ClickMetadata, renderState.DontClickMetadata, metadata.IsUnique))
                     continue;
 
-                strongboxes.Add(new CachedStrongbox(label, metadata));
+                strongboxes.Add(new CachedStrongbox(label, metadata, TryReadChestLocked(metadata.Chest)));
             }
 
             return strongboxes;
@@ -225,7 +238,7 @@ namespace ClickIt.Features.Strongboxes
             if (!IsStrongboxClickableBySettings(itemPathRaw, metadata.RenderName, renderState.ClickMetadata, renderState.DontClickMetadata, metadata.IsUnique))
                 return false;
 
-            bool chestLocked = TryReadChestLocked(metadata.Chest);
+            bool chestLocked = sb.IsLocked;
             if (!TryResolveStrongboxRect(sb, windowArea, chestLocked, out RectangleF rect))
                 return false;
 
@@ -301,20 +314,18 @@ namespace ClickIt.Features.Strongboxes
 
         private static StrongboxLabelMetadata ResolveStrongboxLabelMetadata(LabelOnGround? label)
         {
-            object? rawItem = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? itemValue)
-                ? itemValue
-                : null;
+            DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item);
 
-            string path = DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out string resolvedPath)
+            string path = DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
                 ? resolvedPath
                 : string.Empty;
-            string renderName = DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.RenderName, out string resolvedRenderName)
+            string renderName = DynamicAccess.TryReadString(item, DynamicAccessProfiles.RenderName, out string resolvedRenderName)
                 ? resolvedRenderName
                 : string.Empty;
-            bool isUnique = DynamicAccess.TryGetDynamicValue(rawItem, DynamicAccessProfiles.Rarity, out object? rawRarity)
+            bool isUnique = DynamicAccess.TryGetDynamicValue(item, DynamicAccessProfiles.Rarity, out object? rawRarity)
                 && rawRarity is MonsterRarity rarity
                 && rarity == MonsterRarity.Unique;
-            Chest? chest = DynamicAccess.TryGetComponent(rawItem, out Chest? resolvedChest)
+            Chest? chest = DynamicAccess.TryGetComponent(item, out Chest? resolvedChest)
                 ? resolvedChest
                 : null;
 

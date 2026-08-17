@@ -1,4 +1,5 @@
 using static ClickIt.Features.Blight.Planning.BlightBranches;
+using static ClickIt.Features.Blight.Planning.BlightGeometry;
 
 namespace ClickIt.Features.Blight.Planning;
 
@@ -8,7 +9,6 @@ internal static class BlightPlanner
         IReadOnlyList<BlightCachedTower> knownTowers,
         LaneCoverageResult[] coverage,
         IReadOnlyList<TowerBuildRule> rules,
-        HashSet<NumVector2> failedPositions,
         int version,
         NumVector2? pumpPosition = null,
         NumVector2? playerPosition = null,
@@ -85,7 +85,7 @@ internal static class BlightPlanner
                     if (branchIdx >= 0)
                     {
                         float distToPlayerSq = playerPosition.HasValue
-                            ? (knownTowers[i].WorldPosition - playerPosition.Value).LengthSquared()
+                            ? SqDist(knownTowers[i].WorldPosition, playerPosition.Value)
                             : 0f;
                         coveragePlacements.Add(new CoveragePlacement(
                             branchIdx, knownTowers[i].TowerType, i, distToPlayerSq, reqRadiusSq));
@@ -116,7 +116,7 @@ internal static class BlightPlanner
             AssignCoverage(
                 tierRules, knownTowers, coverage, pumpBranches,
                 plannedType,
-                failedPositions, assignedIndices, assignments,
+                assignedIndices, assignments,
                 pumpPosition, playerPosition, coveragePlacements);
 
             // Coverage is complete ONLY when every branch has full coverage of every coverage type — the fill tier must never run while any branch still lacks a coverage type.
@@ -141,7 +141,7 @@ internal static class BlightPlanner
                         skipped[b] = !SubtreeHasReachableFoundation(
                             coverage, pumpBranches[b],
                             CoverageMaxRadiusSq(rules, type),
-                            knownTowers, failedPositions, assignedIndices);
+                            knownTowers, assignedIndices);
                 }
                 for (int b = 0; b < branchCount; b++)
                 {
@@ -167,7 +167,7 @@ internal static class BlightPlanner
             if (fillRules.Count == 0)
                 continue;
 
-            BlightFillPlanner.AssignFill(fillRules, knownTowers, coverage, failedPositions,
+            BlightFillPlanner.AssignFill(fillRules, knownTowers, coverage,
                 assignedIndices, assignments, orderedFillPositions,
                 pumpPosition, playerPosition);
         }
@@ -316,7 +316,7 @@ internal static class BlightPlanner
             for (int c = 0; c < clusters.Count; c++)
             {
                 if (visited[c]) continue;
-                float d = (clusterPositions[c] - clusterPositions[current]).LengthSquared();
+                float d = SqDist(clusterPositions[c], clusterPositions[current]);
                 if (d < bestSq)
                 {
                     bestSq = d;
@@ -354,7 +354,6 @@ internal static class BlightPlanner
         PumpBranch branch,
         float maxRadiusSq,
         IReadOnlyList<BlightCachedTower> knownTowers,
-        HashSet<NumVector2> failedPositions,
         HashSet<int> assignedIndices)
     {
         Stack<int> pending = new();
@@ -370,7 +369,6 @@ internal static class BlightPlanner
             for (int i = 0; i < knownTowers.Count; i++)
             {
                 if (assignedIndices.Contains(i)) continue;
-                if (failedPositions.Contains(knownTowers[i].WorldPosition)) continue;
                 if (SqDist(knownTowers[i].WorldPosition, coverage[s].Midpoint) <= maxRadiusSq)
                     return true;
             }
@@ -394,7 +392,6 @@ internal static class BlightPlanner
         LaneCoverageResult[] coverage,
         List<PumpBranch> branches,
         Dictionary<BlightTowerType, bool[]> plannedByType,
-        HashSet<NumVector2> failedPositions,
         HashSet<int> assignedIndices,
         Dictionary<NumVector2, (BlightTowerType Type, int MaxLevel)> assignments,
         NumVector2? pumpPosition,
@@ -414,7 +411,7 @@ internal static class BlightPlanner
 
             AssignCoverageType(rule, rule.TowerType,
                 knownTowers, coverage, branches, planned,
-                failedPositions, assignedIndices, assignments,
+                assignedIndices, assignments,
                 pumpPosition, playerPosition, coveragePlacements);
         }
     }
@@ -426,7 +423,6 @@ internal static class BlightPlanner
         LaneCoverageResult[] coverage,
         List<PumpBranch> branches,
         bool[] planned,
-        HashSet<NumVector2> failedPositions,
         HashSet<int> assignedIndices,
         Dictionary<NumVector2, (BlightTowerType Type, int MaxLevel)> assignments,
         NumVector2? pumpPosition,
@@ -460,7 +456,6 @@ internal static class BlightPlanner
             for (int i = 0; i < knownTowers.Count; i++)
             {
                 if (assignedIndices.Contains(i)) continue;
-                if (failedPositions.Contains(knownTowers[i].WorldPosition)) continue;
 
                 NumVector2 pos = knownTowers[i].WorldPosition;
                 // Count directly-covered segments first; only clone+propagate when a candidate actually covers something, so candidates too far away or already-fully-covered cost nothing.
@@ -532,7 +527,7 @@ internal static class BlightPlanner
 
                 int before = coveragePlacements.Count;
                 TryPlaceExtraTower(knownTowers, coverage, branches, b, type, rule,
-                    failedPositions, assignedIndices, assignments,
+                    assignedIndices, assignments,
                     pumpPosition, playerPosition, coveragePlacements);
                 if (coveragePlacements.Count - before > 0)
                     placed++;
@@ -547,7 +542,6 @@ internal static class BlightPlanner
         int branchIdx,
         BlightTowerType type,
         TowerBuildRule rule,
-        HashSet<NumVector2> failedPositions,
         HashSet<int> assignedIndices,
         Dictionary<NumVector2, (BlightTowerType Type, int MaxLevel)> assignments,
         NumVector2? pumpPosition,
@@ -559,7 +553,7 @@ internal static class BlightPlanner
 
         (int idx, float distSq) = FindBestFoundationForSegment(
             knownTowers, branch.Anchor, maxRadiusSq,
-            failedPositions, assignedIndices, pumpPosition, rule.Placement);
+            assignedIndices, pumpPosition, rule.Placement);
 
         if (idx < 0 && branch.CoverageSegment >= 0)
         {
@@ -569,7 +563,7 @@ internal static class BlightPlanner
                     continue;
                 (idx, distSq) = FindBestFoundationForSegment(
                     knownTowers, coverage[sb].Midpoint, maxRadiusSq,
-                    failedPositions, assignedIndices, pumpPosition, rule.Placement);
+                    assignedIndices, pumpPosition, rule.Placement);
                 if (idx >= 0)
                     break;
             }
@@ -594,7 +588,7 @@ internal static class BlightPlanner
         List<CoveragePlacement> coveragePlacements)
     {
         float distToPlayerSq = playerPosition.HasValue
-            ? (knownTowers[towerIdx].WorldPosition - playerPosition.Value).LengthSquared()
+            ? SqDist(knownTowers[towerIdx].WorldPosition, playerPosition.Value)
             : 0f;
         coveragePlacements.Add(new CoveragePlacement(branchIdx, type, towerIdx, distToPlayerSq, requiredRadiusSq));
     }
@@ -603,7 +597,6 @@ internal static class BlightPlanner
         IReadOnlyList<BlightCachedTower> knownTowers,
         NumVector2 target,
         float radiusSq,
-        HashSet<NumVector2> failedPositions,
         HashSet<int> assignedIndices,
         NumVector2? pumpPosition,
         BlightPlacementPreference placement = BlightPlacementPreference.Default)
@@ -615,7 +608,6 @@ internal static class BlightPlanner
         for (int i = 0; i < knownTowers.Count; i++)
         {
             if (assignedIndices.Contains(i)) continue;
-            if (failedPositions.Contains(knownTowers[i].WorldPosition)) continue;
 
             float distSq = SqDist(knownTowers[i].WorldPosition, target);
             if (distSq > radiusSq)

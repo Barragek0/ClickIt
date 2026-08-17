@@ -78,9 +78,9 @@ namespace ClickIt.Features.Altars
 
         public static string GetModTarget(string cleanedNegativeModType)
         {
-            if (cleanedNegativeModType.Contains("Mapboss")) return "Boss";
-            if (cleanedNegativeModType.Contains("EldritchMinions")) return "Minion";
-            if (cleanedNegativeModType.Contains("Player")) return "Player";
+            if (cleanedNegativeModType.Contains("Mapboss", StringComparison.Ordinal)) return "Boss";
+            if (cleanedNegativeModType.Contains("EldritchMinions", StringComparison.Ordinal)) return "Minion";
+            if (cleanedNegativeModType.Contains("Player", StringComparison.Ordinal)) return "Player";
             return string.Empty;
         }
     }

@@ -97,7 +97,8 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                 ModsUnmatched: debugInfo.ModsUnmatched,
                 LastProcessedAltarType: debugInfo.LastProcessedAltarType,
                 LastError: debugInfo.LastError,
-                LastScanTime: debugInfo.LastScanTime);
+                LastScanTime: debugInfo.LastScanTime,
+                RecentStages: debugInfo.RecentStages);
         }
     }
 }

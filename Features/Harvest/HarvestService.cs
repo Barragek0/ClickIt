@@ -186,8 +186,8 @@ public sealed class HarvestService
     {
         try
         {
-            if (DynamicAccess.TryGetDynamicValue(estimate.Label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                && DynamicAccess.TryReadFloat(rawItem, DynamicAccessProfiles.DistancePlayer, out float dist))
+            if (DynamicAccess.TryGetLabelItemOnGround(estimate.Label, out Entity? item)
+                && DynamicAccess.TryReadFloat(item, DynamicAccessProfiles.DistancePlayer, out float dist))
                 return dist;
         }
         catch { }
@@ -233,28 +233,5 @@ public sealed class HarvestService
         }
 
         return RectangleF.Empty;
-    }
-
-    internal void Clear()
-    {
-        CurrentEstimates = [];
-        CurrentDecision = default;
-        _lastProcessedList = null;
-    }
-
-    internal const long BlockedSentinel = -1;
-
-    internal long GetChosenLabelAddress()
-    {
-        if (CurrentDecision.IsHarvestClickBlocked)
-            return BlockedSentinel;
-
-        LabelOnGround? chosen = CurrentDecision.ChosenLabel;
-        if (chosen == null)
-            return 0;
-
-        return DynamicAccess.TryGetDynamicValue(chosen, DynamicAccessProfiles.Label, out object? rawElement)
-            ? (rawElement as Element)?.Address ?? 0
-            : 0;
     }
 }

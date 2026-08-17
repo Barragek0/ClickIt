@@ -42,7 +42,7 @@ namespace ClickIt.Features.Labels
             bool clicking = _inputHandler.IsClickHotkeyActiveForCurrentInputState();
             (Color color, string statusText) = BuildStatus(clicking);
 
-            ctx.TextQueue.Enqueue(statusText, new Vector2(centerX, topY + (36f * 1.2f)), color, 24, FontAlign.Center);
+            ctx.DrawQueue.EnqueueText(statusText, new Vector2(centerX, topY + (36f * 1.2f)), color, 24, FontAlign.Center);
         }
 
         internal static float ResolveTopY(bool lazyModeEnabled)

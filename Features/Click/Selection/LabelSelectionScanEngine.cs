@@ -61,19 +61,32 @@ namespace ClickIt.Features.Click.Selection
                 mechanicPriorityContext);
         }
 
+        private enum UiHoverTargetKind
+        {
+            Essence,
+            Strongbox,
+        }
+
         internal LabelOnGround? ResolveNextLabelCandidate(IReadOnlyList<LabelOnGround>? allLabels)
         {
             LabelOnGround? nextLabel = FindNextLabelToClick(allLabels);
-            nextLabel = PreferUiHoverEssenceLabel(nextLabel, allLabels);
-            return PreferUiHoverStrongboxLabel(nextLabel, allLabels);
+            Element? uiHover = ResolveUiHoverElement();
+            nextLabel = PreferUiHoverLabel(nextLabel, allLabels, UiHoverTargetKind.Essence, ClickLabelSelectionMath.IsEssenceLabel, uiHover);
+            return PreferUiHoverLabel(nextLabel, allLabels, UiHoverTargetKind.Strongbox, ClickLabelSelectionMath.IsStrongboxLabel, uiHover);
         }
 
-        private LabelOnGround? PreferUiHoverEssenceLabel(LabelOnGround? nextLabel, IReadOnlyList<LabelOnGround>? allLabels)
+        private LabelOnGround? PreferUiHoverLabel(
+            LabelOnGround? nextLabel,
+            IReadOnlyList<LabelOnGround>? allLabels,
+            UiHoverTargetKind kind,
+            Func<LabelOnGround, bool> isTargetKind,
+            Element? uiHover)
         {
-            if (allLabels == null || !_dependencies.IsEssenceClickingEnabled())
+            bool isEnabled = kind == UiHoverTargetKind.Essence
+                ? _dependencies.IsEssenceClickingEnabled()
+                : _dependencies.IsStrongboxClickingEnabled();
+            if (allLabels == null || !isEnabled)
                 return nextLabel;
-
-            Element? uiHover = ResolveUiHoverElement();
 
             if (uiHover == null)
                 return nextLabel;
@@ -82,33 +95,38 @@ namespace ClickIt.Features.Click.Selection
             if (hovered == null)
                 return nextLabel;
 
-            bool hoveredIsEssence = ClickLabelSelectionMath.IsEssenceLabel(hovered);
-            bool nextIsEssence = nextLabel != null && ClickLabelSelectionMath.IsEssenceLabel(nextLabel);
-            bool hoveredHasOverlappingEssence = hoveredIsEssence && HasOverlappingEssenceLabel(hovered, allLabels);
+            bool hoveredIsTarget = isTargetKind(hovered);
+            bool nextIsTarget = nextLabel != null && isTargetKind(nextLabel);
+            bool hoveredHasOverlappingTarget = hoveredIsTarget && HasOverlappingLabel(hovered, allLabels, isTargetKind);
             bool hoveredDiffersFromNext = !ReferenceEquals(hovered, nextLabel);
 
-            if (ManualCursorSelectionMath.ShouldPreferHoveredEssenceLabel(hoveredIsEssence, hoveredHasOverlappingEssence, nextIsEssence, hoveredDiffersFromNext))
+            if (ManualCursorSelectionMath.ShouldPreferHoveredLabel(hoveredIsTarget, hoveredHasOverlappingTarget, nextIsTarget, hoveredDiffersFromNext))
             {
                 // The preference must not re-target a label the scan itself would suppress (locked strongbox, fully overlapped, lever/ultimatum/blight): the click path would reject it and the tick would fall through to walking instead of clicking the ranked label.
                 if (IsHoveredLabelSuppressed(hovered, allLabels))
                     return nextLabel;
 
-                _dependencies.DebugLog("[ProcessRegularClick] UIHover-first: switching target to UIHover label");
+                _dependencies.DebugLog(kind == UiHoverTargetKind.Essence
+                    ? "[ProcessRegularClick] UIHover-first: switching target to UIHover label"
+                    : "[ProcessRegularClick] UIHover-first: switching target to UIHover strongbox");
                 return hovered;
             }
 
             return nextLabel;
         }
 
-        private static bool HasOverlappingEssenceLabel(LabelOnGround hoveredEssence, IReadOnlyList<LabelOnGround> allLabels)
+        private static bool HasOverlappingLabel(
+            LabelOnGround hoveredTarget,
+            IReadOnlyList<LabelOnGround> allLabels,
+            Func<LabelOnGround, bool> isTargetKind)
         {
-            if (!LabelGeometry.TryGetLabelRect(hoveredEssence, out RectangleF hoveredRect))
+            if (!LabelGeometry.TryGetLabelRect(hoveredTarget, out RectangleF hoveredRect))
                 return false;
 
             for (int i = 0; i < allLabels.Count; i++)
             {
                 LabelOnGround? candidate = allLabels[i];
-                if (candidate == null || ReferenceEquals(candidate, hoveredEssence) || !ClickLabelSelectionMath.IsEssenceLabel(candidate))
+                if (candidate == null || ReferenceEquals(candidate, hoveredTarget) || !isTargetKind(candidate))
                     continue;
 
                 if (!LabelGeometry.TryGetLabelRect(candidate, out RectangleF candidateRect))
@@ -119,38 +137,6 @@ namespace ClickIt.Features.Click.Selection
             }
 
             return false;
-        }
-
-        private LabelOnGround? PreferUiHoverStrongboxLabel(LabelOnGround? nextLabel, IReadOnlyList<LabelOnGround>? allLabels)
-        {
-            if (allLabels == null || !_dependencies.IsStrongboxClickingEnabled())
-                return nextLabel;
-
-            Element? uiHover = ResolveUiHoverElement();
-
-            if (uiHover == null)
-                return nextLabel;
-
-            LabelOnGround? hovered = ClickLabelSelectionMath.FindLabelByAddress(allLabels, uiHover.Address);
-            if (hovered == null)
-                return nextLabel;
-
-            bool hoveredIsStrongbox = ClickLabelSelectionMath.IsStrongboxLabel(hovered);
-            bool nextIsStrongbox = nextLabel != null && ClickLabelSelectionMath.IsStrongboxLabel(nextLabel);
-            bool hoveredHasOverlappingStrongbox = hoveredIsStrongbox && HasOverlappingStrongboxLabel(hovered, allLabels);
-            bool hoveredDiffersFromNext = !ReferenceEquals(hovered, nextLabel);
-
-            if (ManualCursorSelectionMath.ShouldPreferHoveredStrongboxLabel(hoveredIsStrongbox, hoveredHasOverlappingStrongbox, nextIsStrongbox, hoveredDiffersFromNext))
-            {
-                // Same guard as the essence preference: never switch to a hovered strongbox the scan would suppress - in particular a LOCKED strongbox must not override the ranked next label, or the click path skips it and the tick falls through to walking.
-                if (IsHoveredLabelSuppressed(hovered, allLabels))
-                    return nextLabel;
-
-                _dependencies.DebugLog("[ProcessRegularClick] UIHover-first: switching target to UIHover strongbox");
-                return hovered;
-            }
-
-            return nextLabel;
         }
 
         // The hovered element drives the essence/strongbox preferences; production reads the game's UIHoverElement, tests inject a probe so the preference path is exercised.
@@ -172,37 +158,15 @@ namespace ClickIt.Features.Click.Selection
         // A hovered label must never override the ranked next label when the scan itself would have suppressed it (lever/ultimatum/blight/overlap/locked) - the UI-hover preference must not re-target a label the click path would immediately reject.
         private bool IsHoveredLabelSuppressed(LabelOnGround hovered, IReadOnlyList<LabelOnGround> allLabels)
         {
-            if (_dependencies.ShouldSuppressLeverClick(hovered))
-                return true;
-            if (_dependencies.ShouldSuppressInactiveUltimatumLabel(hovered))
-                return true;
-            if (_dependencies.LabelClickPointResolver.IsLabelFullyOverlapped(hovered, allLabels))
+            if (ClickLabelSelectionMath.IsLabelSuppressionTriad(
+                    _dependencies.ShouldSuppressLeverClick(hovered),
+                    _dependencies.ShouldSuppressInactiveUltimatumLabel(hovered),
+                    _dependencies.LabelClickPointResolver.IsLabelFullyOverlapped(hovered, allLabels)))
                 return true;
             if (_dependencies.ShouldSuppressBlightChestClick(hovered))
                 return true;
             if (_dependencies.ShouldSuppressLockedStrongboxClick(hovered))
                 return true;
-            return false;
-        }
-
-        private static bool HasOverlappingStrongboxLabel(LabelOnGround hoveredStrongbox, IReadOnlyList<LabelOnGround> allLabels)
-        {
-            if (!LabelGeometry.TryGetLabelRect(hoveredStrongbox, out RectangleF hoveredRect))
-                return false;
-
-            for (int i = 0; i < allLabels.Count; i++)
-            {
-                LabelOnGround? candidate = allLabels[i];
-                if (candidate == null || ReferenceEquals(candidate, hoveredStrongbox) || !ClickLabelSelectionMath.IsStrongboxLabel(candidate))
-                    continue;
-
-                if (!LabelGeometry.TryGetLabelRect(candidate, out RectangleF candidateRect))
-                    continue;
-
-                if (hoveredRect.Intersects(candidateRect))
-                    return true;
-            }
-
             return false;
         }
 
@@ -217,7 +181,7 @@ namespace ClickIt.Features.Click.Selection
             if (allLabels == null || allLabels.Count == 0)
                 return null;
 
-            int searchLimit = ClickLabelSelectionMath.GetGroundLabelSearchLimit(allLabels.Count);
+            int searchLimit = SystemMath.Max(0, allLabels.Count);
             return FindLabelInRange(allLabels, 0, searchLimit);
         }
 
@@ -230,9 +194,7 @@ namespace ClickIt.Features.Click.Selection
             int blightChestTransitionSuppressed = 0;
             int lockedStrongboxSuppressed = 0;
 
-            // Suppression is applied INLINE inside the selection's single pass (O(n) even when many labels are
-            // suppressed); the old loop re-queried the remaining range per suppressed label, which was O(suppressed x n)
-            // on dense item fields and re-ran the full selection + overlap scans each time.
+            // Apply suppression INLINE in the selection's single pass so dense fields stay O(n) instead of O(suppressed x n).
             bool IsAcceptable(LabelOnGround label, LabelCandidateBuildResult _)
             {
                 examined++;

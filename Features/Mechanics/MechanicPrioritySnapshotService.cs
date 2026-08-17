@@ -71,7 +71,7 @@ namespace ClickIt.Features.Mechanics
                     map.TryAdd(id, i);
             }
 
-            AddPriorityAliasesFromGroups(map);
+            AddGroupAliasesToIndexMap(map);
 
             return map;
         }
@@ -83,7 +83,7 @@ namespace ClickIt.Features.Mechanics
 
         private static void ExpandGroupIgnoreDistanceWithinAliases(Dictionary<string, int> ignoreDistanceWithinMap)
         {
-            AddIgnoreDistanceWithinAliasesFromGroups(ignoreDistanceWithinMap);
+            AddGroupAliasesToIndexMap(ignoreDistanceWithinMap);
         }
 
         private static readonly (string Group, string Specific)[] GroupAliases =
@@ -105,7 +105,7 @@ namespace ClickIt.Features.Mechanics
             (MechanicIds.Doors, MechanicIds.AlvaTempleDoors),
         ];
 
-        private static void AddPriorityAliasesFromGroups(Dictionary<string, int> map)
+        private static void AddGroupAliasesToIndexMap(Dictionary<string, int> map)
         {
             foreach ((string group, string specific) in GroupAliases)
             {
@@ -121,16 +121,6 @@ namespace ClickIt.Features.Mechanics
             {
                 if (ignoreDistanceSet.Contains(group))
                     ignoreDistanceSet.Add(specific);
-            }
-        }
-
-        private static void AddIgnoreDistanceWithinAliasesFromGroups(Dictionary<string, int> ignoreDistanceWithinMap)
-        {
-            foreach ((string group, string specific) in GroupAliases)
-            {
-                if (ignoreDistanceWithinMap.ContainsKey(specific) || !ignoreDistanceWithinMap.TryGetValue(group, out int groupValue))
-                    continue;
-                ignoreDistanceWithinMap[specific] = groupValue;
             }
         }
     }

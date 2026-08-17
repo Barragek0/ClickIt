@@ -11,9 +11,7 @@ namespace ClickIt.Features.Labels.Selection
             out string? mechanicId,
             out LabelCandidateRejectReason rejectReason)
         {
-            item = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
-                ? rawItem as Entity
-                : null;
+            DynamicAccess.TryGetLabelItemOnGround(label, out item);
             mechanicId = null;
             rejectReason = LabelCandidateRejectReason.None;
 

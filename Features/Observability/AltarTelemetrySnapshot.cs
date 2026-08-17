@@ -52,8 +52,11 @@ namespace ClickIt.Features.Observability
         int ModsUnmatched,
         string LastProcessedAltarType,
         string LastError,
-        DateTime LastScanTime)
+        DateTime LastScanTime,
+        IReadOnlyList<string> RecentStages)
     {
+        private static readonly IReadOnlyList<string> EmptyStages = [];
+
         public static readonly AltarServiceDebugTelemetrySnapshot Empty = new(
             LastScanExarchLabels: 0,
             LastScanEaterLabels: 0,
@@ -65,6 +68,7 @@ namespace ClickIt.Features.Observability
             ModsUnmatched: 0,
             LastProcessedAltarType: string.Empty,
             LastError: string.Empty,
-            LastScanTime: DateTime.MinValue);
+            LastScanTime: DateTime.MinValue,
+            RecentStages: EmptyStages);
     }
 }
