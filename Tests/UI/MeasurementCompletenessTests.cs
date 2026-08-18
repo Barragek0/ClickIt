@@ -22,7 +22,7 @@ namespace ClickIt.Tests.UI
         [TestMethod]
         public void IntervalKind_Count_IsRendered()
         {
-            Enum.GetValues<IntervalKind>().Length.Should().Be(7, "IntervalKind is Click/Walk/Blight/Label/ClickIt.Features.ClickIt.Features.Area.Blocked/Ultimatum/Flare");
+            Enum.GetValues<IntervalKind>().Length.Should().Be(7, "IntervalKind is Click/Walk/Blight/Label/Area.Blocked/Ultimatum/Flare");
         }
     }
 }

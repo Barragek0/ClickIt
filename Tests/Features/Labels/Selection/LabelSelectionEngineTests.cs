@@ -43,6 +43,7 @@ namespace ClickIt.Tests.Features.Labels.Selection
                 Success: true,
                 Item: (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity)),
                 MechanicId: mechanicId,
+                EntityPath: null,
                 RejectReason: LabelCandidateRejectReason.None);
         }
 
@@ -52,6 +53,7 @@ namespace ClickIt.Tests.Features.Labels.Selection
                 Success: false,
                 Item: null,
                 MechanicId: null,
+                EntityPath: null,
                 RejectReason: rejectReason);
         }
 

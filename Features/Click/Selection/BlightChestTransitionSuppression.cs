@@ -11,10 +11,10 @@ internal sealed class BlightChestTransitionSuppression
     // Entity addresses that already had their false -> true transition. The blacklist is armed once on that edge and never again, so these never re-arm.
     private readonly HashSet<long> _everTransitioned = [];
 
-    internal bool ShouldSuppressBlightChestClick(LabelOnGround? label)
-        => ShouldSuppressBlightChestClick(label, Environment.TickCount64);
+    internal bool ShouldSuppressBlightChestClick(LabelOnGround? label, string? entityPath = null)
+        => ShouldSuppressBlightChestClick(label, Environment.TickCount64, entityPath);
 
-    internal bool ShouldSuppressBlightChestClick(LabelOnGround? label, long now)
+    internal bool ShouldSuppressBlightChestClick(LabelOnGround? label, long now, string? entityPath = null)
     {
         if (label == null)
             return false;
@@ -22,9 +22,17 @@ internal sealed class BlightChestTransitionSuppression
         if (!DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item))
             return false;
 
-        if (!DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string path)
-            || !BlightChestDebug.IsBlightChestPath(path))
-            return false;
+        if (entityPath != null)
+        {
+            if (!BlightChestDebug.IsBlightChestPath(entityPath))
+                return false;
+        }
+        else
+        {
+            if (!DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string path)
+                || !BlightChestDebug.IsBlightChestPath(path))
+                return false;
+        }
 
         bool isTransitioned = DynamicAccess.TryReadBool(item, static current => current.IsTransitioned, out bool value) && value;
 

@@ -54,9 +54,9 @@ namespace ClickIt.Features.Click.Runtime
         internal static bool ShouldSuppressInactiveUltimatumLabel(bool isUltimatumPath, bool isUltimatumLabel)
             => isUltimatumPath && !isUltimatumLabel;
 
-        internal static bool ShouldSuppressInactiveUltimatumLabel(LabelOnGround? label)
+        internal static bool ShouldSuppressInactiveUltimatumLabel(LabelOnGround? label, string? entityPath = null)
             => ShouldSuppressInactiveUltimatumLabel(
-                TryGetLabelItemPath(label, out string path) && IsUltimatumPath(path),
+                (entityPath != null ? IsUltimatumPath(entityPath) : TryGetLabelItemPath(label, out string path) && IsUltimatumPath(path)),
                 IsUltimatumLabel(label));
     }
 }

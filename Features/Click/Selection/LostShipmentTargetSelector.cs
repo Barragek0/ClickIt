@@ -29,6 +29,28 @@ namespace ClickIt.Features.Click.Selection
                     return best;
                 }
 
+                // Fast path: walk the EntityEventHub retained set (one path read per event) instead of scanning every ground label.
+                EntityEventHub.Instance.EnsureSubscribed(_dependencies.GameController);
+                List<Entity> tracked = EntityEventHub.Instance.LostShipment.Snapshot();
+                if (tracked.Count > 0)
+                {
+                    for (int i = 0; i < tracked.Count; i++)
+                    {
+                        if (!TryCreateLostShipmentCandidateFromEntity(tracked[i], windowTopLeft, out LostShipmentCandidate candidate))
+                            continue;
+
+                        _ = MechanicCandidateResolver.TryPromoteClickableCandidate(
+                            ref best,
+                            candidate,
+                            cursorAbsolute,
+                            windowTopLeft,
+                            static value => value.Distance,
+                            static value => value.ClickPosition);
+                    }
+                    return best;
+                }
+
+                // Fallback: full label scan (renderName-only entities, test controllers without a live entity cache).
                 IList<LabelOnGround>? labels = _dependencies.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels;
                 if (labels == null || labels.Count == 0)
                     return null;
@@ -62,6 +84,33 @@ namespace ClickIt.Features.Click.Selection
                     static value => value.Distance,
                     static value => value.ClickPosition);
             }
+        }
+
+        private bool TryCreateLostShipmentCandidateFromEntity(Entity entity, Vector2 windowTopLeft, out LostShipmentCandidate candidate)
+        {
+            candidate = default;
+
+            if (entity == null)
+                return false;
+
+            bool isValid = DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsValid, out bool resolvedIsValid) && resolvedIsValid;
+            float distance = DynamicAccess.TryReadFloat(entity, DynamicAccessProfiles.DistancePlayer, out float resolvedDistance)
+                ? resolvedDistance
+                : float.MaxValue;
+            bool isOpened = DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsOpened, out bool resolvedIsOpened) && resolvedIsOpened;
+
+            if (VisibleMechanicSelectionPolicy.ShouldSkipLostShipmentEntity(isValid, distance, _dependencies.Settings.ClickDistance.Value, isOpened))
+                return false;
+
+            string path = DynamicAccess.TryReadString(entity, DynamicAccessProfiles.Path, out string resolvedPath)
+                ? resolvedPath
+                : string.Empty;
+
+            if (!TryResolveLostShipmentClickPosition(entity, path, windowTopLeft, out Vector2 clickPos))
+                return false;
+
+            candidate = new LostShipmentCandidate(entity, clickPos, distance);
+            return true;
         }
 
         private bool TryCreateLostShipmentCandidate(LabelOnGround? label, Vector2 windowTopLeft, out LostShipmentCandidate candidate)

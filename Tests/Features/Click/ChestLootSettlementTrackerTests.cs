@@ -286,7 +286,7 @@ namespace ClickIt.Tests.Features.Click
             Entity stickyItem = OffscreenStickyTargetGraphShaper.CreateActiveStickyEntity(address: 0x100);
             LabelOnGround label = OffscreenStickyTargetGraphShaper.CreateVisibleLabel(stickyItem);
 
-            var tracker = CreateTracker(settings, state, shouldSuppressBlightChestClick: static _ => true);
+            var tracker = CreateTracker(settings, state, shouldSuppressBlightChestClick: static (_, _) => true);
             tracker.MarkPendingChestOpenConfirmation(MechanicIds.LeagueChests, label);
 
             bool handled = tracker.TryHandlePendingChestOpenConfirmation(default, new[] { label });
@@ -316,7 +316,7 @@ namespace ClickIt.Tests.Features.Click
             ClickItSettings settings,
             ChestLootSettlementState state,
             Func<IReadOnlySet<long>>? snapshotProvider = null,
-            Func<LabelOnGround, bool>? shouldSuppressBlightChestClick = null)
+            Func<LabelOnGround, string?, bool>? shouldSuppressBlightChestClick = null)
         {
             _ = snapshotProvider;
             return new ChestLootSettlementTracker(new ChestLootSettlementTrackerDependencies(

@@ -8,7 +8,7 @@ namespace ClickIt.Features.Click.Selection
     {
         private readonly PathfindingLabelSuppressionEvaluatorDependencies _dependencies = dependencies;
 
-        public bool ShouldSuppressLeverClick(LabelOnGround label)
+        public bool ShouldSuppressLeverClick(LabelOnGround label, string? entityPath = null)
         {
             if (!_dependencies.Settings.LazyMode.Value)
                 return false;
@@ -27,10 +27,10 @@ namespace ClickIt.Features.Click.Selection
                 cooldownMs);
         }
 
-        public bool ShouldSuppressPathfindingLabel(LabelOnGround label)
+        public bool ShouldSuppressPathfindingLabel(LabelOnGround label, string? entityPath = null)
             => ClickLabelSelectionMath.ShouldSuppressPathfindingLabel(
-                ShouldSuppressLeverClick(label),
-                UltimatumLabelMath.ShouldSuppressInactiveUltimatumLabel(label));
+                ShouldSuppressLeverClick(label, entityPath),
+                UltimatumLabelMath.ShouldSuppressInactiveUltimatumLabel(label, entityPath));
 
         public void RecordLeverClick(LabelOnGround label)
         {

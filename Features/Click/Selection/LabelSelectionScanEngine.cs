@@ -5,9 +5,9 @@ namespace ClickIt.Features.Click.Selection
         ILabelInteractionPort LabelInteractionPort,
         ILabelSelectionService LabelSelectionService,
         LabelClickPointResolver LabelClickPointResolver,
-        Func<LabelOnGround, bool> ShouldSuppressLeverClick,
-        Func<LabelOnGround, bool> ShouldSuppressInactiveUltimatumLabel,
-        Func<LabelOnGround, bool> ShouldSuppressBlightChestClick,
+        Func<LabelOnGround, string?, bool> ShouldSuppressLeverClick,
+        Func<LabelOnGround, string?, bool> ShouldSuppressInactiveUltimatumLabel,
+        Func<LabelOnGround, string?, bool> ShouldSuppressBlightChestClick,
         ClickLabelInteractionService LabelInteraction,
         MechanicPriorityContextProvider MechanicPriorityContextProvider,
         ClickDebugPublicationService ClickDebugPublisher,
@@ -20,7 +20,7 @@ namespace ClickIt.Features.Click.Selection
         public Func<bool> IsStrongboxClickingEnabled { get; init; } = static () => true;
 
         // A freshly-opened strongbox is locked (red frame) and cannot be clicked, but the selection caches can still rank it for up to a second. Skipping it here advances the scan to the next clickable label instead of stalling on the locked box at click time.
-        public Func<LabelOnGround, bool> ShouldSuppressLockedStrongboxClick { get; init; } = static _ => false;
+        public Func<LabelOnGround, string?, bool> ShouldSuppressLockedStrongboxClick { get; init; } = static (_, _) => false;
 
         // The hovered element read by the essence/strongbox UI-hover preferences. Production reads the game's UIHoverElement; tests inject a probe so the preference path is exercised.
         public Func<Element?>? GetUiHoverElement { get; init; }
@@ -159,13 +159,13 @@ namespace ClickIt.Features.Click.Selection
         private bool IsHoveredLabelSuppressed(LabelOnGround hovered, IReadOnlyList<LabelOnGround> allLabels)
         {
             if (ClickLabelSelectionMath.IsLabelSuppressionTriad(
-                    _dependencies.ShouldSuppressLeverClick(hovered),
-                    _dependencies.ShouldSuppressInactiveUltimatumLabel(hovered),
+                    _dependencies.ShouldSuppressLeverClick(hovered, null),
+                    _dependencies.ShouldSuppressInactiveUltimatumLabel(hovered, null),
                     _dependencies.LabelClickPointResolver.IsLabelFullyOverlapped(hovered, allLabels)))
                 return true;
-            if (_dependencies.ShouldSuppressBlightChestClick(hovered))
+            if (_dependencies.ShouldSuppressBlightChestClick(hovered, null))
                 return true;
-            if (_dependencies.ShouldSuppressLockedStrongboxClick(hovered))
+            if (_dependencies.ShouldSuppressLockedStrongboxClick(hovered, null))
                 return true;
             return false;
         }
@@ -195,14 +195,15 @@ namespace ClickIt.Features.Click.Selection
             int lockedStrongboxSuppressed = 0;
 
             // Apply suppression INLINE in the selection's single pass so dense fields stay O(n) instead of O(suppressed x n).
-            bool IsAcceptable(LabelOnGround label, LabelCandidateBuildResult _)
+            bool IsAcceptable(LabelOnGround label, LabelCandidateBuildResult result)
             {
                 examined++;
-                bool suppressLever = _dependencies.ShouldSuppressLeverClick(label);
-                bool suppressUltimatum = _dependencies.ShouldSuppressInactiveUltimatumLabel(label);
+                string? entityPath = result.EntityPath;
+                bool suppressLever = _dependencies.ShouldSuppressLeverClick(label, entityPath);
+                bool suppressUltimatum = _dependencies.ShouldSuppressInactiveUltimatumLabel(label, entityPath);
                 bool fullyOverlapped = _dependencies.LabelClickPointResolver.IsLabelFullyOverlapped(label, allLabels);
-                bool suppressBlightChestTransition = _dependencies.ShouldSuppressBlightChestClick(label);
-                bool suppressLockedStrongbox = _dependencies.ShouldSuppressLockedStrongboxClick(label);
+                bool suppressBlightChestTransition = _dependencies.ShouldSuppressBlightChestClick(label, entityPath);
+                bool suppressLockedStrongbox = _dependencies.ShouldSuppressLockedStrongboxClick(label, entityPath);
 
                 if (suppressLever)
                     leverSuppressed++;

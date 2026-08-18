@@ -4,6 +4,7 @@ namespace ClickIt.Features.Labels.Selection
         bool Success,
         Entity? Item,
         string? MechanicId,
+        string? EntityPath,
         LabelCandidateRejectReason RejectReason);
 
     // Distance + cursor distance for ranking. Production resolves both from a per-label cache keyed on the label address (the DLR reads behind each are the dominant Click-Acquire allocation); tests supply plain values.
@@ -95,6 +96,9 @@ namespace ClickIt.Features.Labels.Selection
                 if (!candidate.Success)
                 {
                     stats = stats.AddReject(candidate.RejectReason);
+                    // Labels are distance-sorted, so once a label is out of range the rest are too and will be rejected as OutOfDistance. Only break once a within-range candidate exists so the walk fallback (null result) still triggers when nothing is in range.
+                    if (candidate.RejectReason == LabelCandidateRejectReason.OutOfDistance && hasBestScore)
+                        break;
                     continue;
                 }
 

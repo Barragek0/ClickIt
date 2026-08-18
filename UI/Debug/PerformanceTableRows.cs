@@ -18,7 +18,7 @@ internal static class PerformanceTableRows
         ("Frame", p => p.Render),
         ("Altar", p => p.GetRenderSection(RenderSection.AltarOverlay)),
         ("Blight", p => p.GetRenderSection(RenderSection.BlightOverlay)),
-        ("ClickIt.Features.ClickIt.Features.Click.Hotkey", p => p.GetRenderSection(RenderSection.ClickHotkeyToggle)),
+        ("Click.Hotkey", p => p.GetRenderSection(RenderSection.ClickHotkeyToggle)),
         ("Debug", p => p.GetRenderSection(RenderSection.DebugOverlay)),
         ("Flush.Frame", p => p.GetRenderSection(RenderSection.FrameFlush)),
         ("Flush.Text", p => p.GetRenderSection(RenderSection.TextFlush)),
@@ -39,7 +39,7 @@ internal static class PerformanceTableRows
         ("Walk", IntervalKind.Walk, p => p.ClickTargetIntervalMs),
         ("Blight", IntervalKind.Blight, _ => 200),
         ("Label", IntervalKind.Label, _ => 50),
-        ("ClickIt.Features.ClickIt.Features.Area.Blocked", IntervalKind.Area, _ => 250),
+        ("Area.Blocked", IntervalKind.Area, _ => 250),
         ("Ultimatum", IntervalKind.Ultimatum, _ => 50),
         ("Flare", IntervalKind.Flare, _ => 100),
     ];
@@ -61,7 +61,7 @@ internal static class PerformanceTableRows
     public static readonly (string Label, ProcessingSection Section)[] Dlr =
     [
         ("Altar", ProcessingSection.Altar),
-        ("ClickIt.Features.ClickIt.Features.Area.Blocked", ProcessingSection.AreaBlockedUi),
+        ("Area.Blocked", ProcessingSection.AreaBlockedUi),
         ("Blight", ProcessingSection.Blight),
         ("Click", ProcessingSection.Click),
         ("Dump", ProcessingSection.GameStateDump),
@@ -78,7 +78,7 @@ internal static class PerformanceTableRows
     public static readonly (string Label, ProcessingSection Section, PerfBreakdownKind Breakdown)[] Processing =
     [
         ("Altar", ProcessingSection.Altar, PerfBreakdownKind.Generic),
-        ("ClickIt.Features.ClickIt.Features.Area.Blocked", ProcessingSection.AreaBlockedUi, PerfBreakdownKind.None),
+        ("Area.Blocked", ProcessingSection.AreaBlockedUi, PerfBreakdownKind.None),
         ("Blight", ProcessingSection.Blight, PerfBreakdownKind.Generic),
         ("Click", ProcessingSection.Click, PerfBreakdownKind.Click),
         ("Dump", ProcessingSection.GameStateDump, PerfBreakdownKind.None),
@@ -95,7 +95,7 @@ internal static class PerformanceTableRows
     public static readonly (string Label, ProcessingSection Section, PerfBreakdownKind Breakdown)[] Gc =
     [
         ("Altar", ProcessingSection.Altar, PerfBreakdownKind.Generic),
-        ("ClickIt.Features.ClickIt.Features.Area.Blocked", ProcessingSection.AreaBlockedUi, PerfBreakdownKind.None),
+        ("Area.Blocked", ProcessingSection.AreaBlockedUi, PerfBreakdownKind.None),
         ("Blight", ProcessingSection.Blight, PerfBreakdownKind.Generic),
         ("Click", ProcessingSection.Click, PerfBreakdownKind.Click),
         ("Dump", ProcessingSection.GameStateDump, PerfBreakdownKind.None),

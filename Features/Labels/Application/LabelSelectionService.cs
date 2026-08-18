@@ -30,8 +30,7 @@ namespace ClickIt.Features.Labels.Application
             float Distance,
             RectangleF Rect,
             bool HasRect);
-        private readonly Dictionary<long, LabelCandidateBuildResult> _buildCache = [];
-        private long _buildCacheWindowStartMs;
+        private readonly Dictionary<long, (LabelCandidateBuildResult Result, long AtMs)> _buildCache = [];
         private const long BuildCacheWindowMs = 1000;
 
         // Per-label rect cache: the on-screen rect element-tree walk is the dominant per-label DLR cost of the scan, but a label's rect only changes as the player moves, so a short window cuts the walk to ~once per window. The interaction path re-reads the chosen label's rect fresh before clicking, so a briefly stale ranking rect is safe.
@@ -47,6 +46,7 @@ namespace ClickIt.Features.Labels.Application
             Func<LabelOnGround, LabelCandidateBuildResult, bool>? isAcceptable)
         {
             long now = Environment.TickCount64;
+
             if (ReferenceEquals(allLabels, _selectionCacheLabelsRef))
             {
                 if (_selectionCacheByRange.TryGetValue((startIndex, maxCount), out (LabelOnGround? Selected, long AtMs) cached)
@@ -65,6 +65,7 @@ namespace ClickIt.Features.Labels.Application
 
             LabelOnGround? selected = SelectCore(allLabels, startIndex, maxCount, isAcceptable);
             _selectionCacheByRange[(startIndex, maxCount)] = (selected, now);
+
             return selected;
         }
 
@@ -147,68 +148,104 @@ namespace ClickIt.Features.Labels.Application
             });
         }
 
+        private static LabelCandidateBuildResult BuildResult(bool success, Entity? item, string? mechanicId, LabelCandidateRejectReason rejectReason)
+        {
+            string? entityPath = item != null && DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath) ? resolvedPath : null;
+            return new LabelCandidateBuildResult(success, item, mechanicId, entityPath, rejectReason);
+        }
+
         private CachedLabelScanEntry GetOrBuildScanEntry(LabelOnGround label, ClickSettings clickSettings)
         {
             long address = label.Address;
             long now = Environment.TickCount64;
-            if (now - _buildCacheWindowStartMs >= BuildCacheWindowMs)
+
+            // Per-entry TTL: only rebuild entries that have expired, preventing a burst of rebuilds when a global window expires on a dense field.
+            if (_buildCache.TryGetValue(address, out (LabelCandidateBuildResult Result, long AtMs) cached)
+                && now - cached.AtMs < BuildCacheWindowMs)
             {
-                _buildCache.Clear();
-                _buildCacheWindowStartMs = now;
+                LabelCandidateBuildResult candidate = cached.Result;
+                // Mutable/transient per-tick state (targetable/hidden/strongbox lock, item streaming) must not be pinned by the build cache: re-read fresh so an unlock, targetable change, or item read failure advances the scan immediately.
+                if (!candidate.Success
+                    && (candidate.RejectReason == LabelCandidateRejectReason.Untargetable
+                        || candidate.RejectReason == LabelCandidateRejectReason.LockedChest
+                        || candidate.RejectReason == LabelCandidateRejectReason.NullItem))
+                {
+                    candidate = _dependencies.TryBuildLabelCandidate(label, clickSettings, out Entity? freshItem, out string? freshMechanicId, out LabelCandidateRejectReason freshRejectReason)
+                        ? BuildResult(true, freshItem, freshMechanicId, LabelCandidateRejectReason.None)
+                        : BuildResult(false, freshItem, freshMechanicId, freshRejectReason);
+                    _buildCache[address] = (candidate, now);
+                }
+
+                Entity? buildItem = candidate.Item;
+                float distance = buildItem != null
+                    && DynamicAccess.TryReadFloat(buildItem, DynamicAccessProfiles.DistancePlayer, out float resolvedDistance)
+                    ? resolvedDistance
+                    : float.MaxValue;
+
+                if (candidate.RejectReason == LabelCandidateRejectReason.OutOfDistance
+                    && distance <= clickSettings.ClickDistance)
+                {
+                    candidate = _dependencies.TryBuildLabelCandidate(label, clickSettings, out buildItem, out string? freshMechanicId, out LabelCandidateRejectReason freshRejectReason)
+                        ? BuildResult(true, buildItem, freshMechanicId, LabelCandidateRejectReason.None)
+                        : BuildResult(false, buildItem, freshMechanicId, freshRejectReason);
+                    _buildCache[address] = (candidate, now);
+                    distance = buildItem != null
+                        && DynamicAccess.TryReadFloat(buildItem, DynamicAccessProfiles.DistancePlayer, out float reResolvedDistance)
+                        ? reResolvedDistance
+                        : distance;
+                }
+
+                bool hasRect = TryGetCachedLabelRect(label, out RectangleF rect);
+                return new CachedLabelScanEntry(candidate, distance, rect, hasRect);
             }
 
-            if (!_buildCache.TryGetValue(address, out LabelCandidateBuildResult candidate))
+            // Cache miss or expired: build fresh.
+            LabelCandidateBuildResult freshCandidate = _dependencies.TryBuildLabelCandidate(label, clickSettings, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason)
+                ? BuildResult(true, item, mechanicId, LabelCandidateRejectReason.None)
+                : BuildResult(false, item, mechanicId, rejectReason);
+            _buildCache[address] = (freshCandidate, now);
+
+            // A NullItem rejection is usually a transient item read failure and must not pin the label as unclickable for the rest of the window.
+            if (!freshCandidate.Success && freshCandidate.RejectReason == LabelCandidateRejectReason.NullItem)
             {
-                candidate = _dependencies.TryBuildLabelCandidate(label, clickSettings, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason)
-                    ? new LabelCandidateBuildResult(true, item, mechanicId, LabelCandidateRejectReason.None)
-                    : new LabelCandidateBuildResult(false, item, mechanicId, rejectReason);
-                _buildCache[address] = candidate;
+                freshCandidate = _dependencies.TryBuildLabelCandidate(label, clickSettings, out Entity? freshItem, out string? freshMechanicId, out LabelCandidateRejectReason freshRejectReason)
+                    ? BuildResult(true, freshItem, freshMechanicId, LabelCandidateRejectReason.None)
+                    : BuildResult(false, freshItem, freshMechanicId, freshRejectReason);
+                _buildCache[address] = (freshCandidate, now);
             }
 
-            // A NullItem rejection is usually a transient item read failure (entity streaming) and must not pin the label as unclickable for the rest of the build-cache window.
-            if (!candidate.Success && candidate.RejectReason == LabelCandidateRejectReason.NullItem)
+            // Mutable per-tick state (targetable/hidden/strongbox lock) must not be pinned by the build cache.
+            if (!freshCandidate.Success
+                && (freshCandidate.RejectReason == LabelCandidateRejectReason.Untargetable
+                    || freshCandidate.RejectReason == LabelCandidateRejectReason.LockedChest))
             {
-                candidate = _dependencies.TryBuildLabelCandidate(label, clickSettings, out Entity? freshItem, out string? freshMechanicId, out LabelCandidateRejectReason freshRejectReason)
-                    ? new LabelCandidateBuildResult(true, freshItem, freshMechanicId, LabelCandidateRejectReason.None)
-                    : new LabelCandidateBuildResult(false, freshItem, freshMechanicId, freshRejectReason);
-                _buildCache[address] = candidate;
+                freshCandidate = _dependencies.TryBuildLabelCandidate(label, clickSettings, out Entity? freshItem2, out string? freshMechanicId2, out LabelCandidateRejectReason freshRejectReason2)
+                    ? BuildResult(true, freshItem2, freshMechanicId2, LabelCandidateRejectReason.None)
+                    : BuildResult(false, freshItem2, freshMechanicId2, freshRejectReason2);
+                _buildCache[address] = (freshCandidate, now);
             }
 
-            // Mutable per-tick state (targetable/hidden/strongbox lock) must not be pinned by the build cache: re-read fresh so an unlock or targetable change advances the scan immediately instead of serving a stale rejection for the rest of the window.
-            if (!candidate.Success
-                && (candidate.RejectReason == LabelCandidateRejectReason.Untargetable
-                    || candidate.RejectReason == LabelCandidateRejectReason.LockedChest))
-            {
-                candidate = _dependencies.TryBuildLabelCandidate(label, clickSettings, out Entity? freshItem, out string? freshMechanicId, out LabelCandidateRejectReason freshRejectReason)
-                    ? new LabelCandidateBuildResult(true, freshItem, freshMechanicId, LabelCandidateRejectReason.None)
-                    : new LabelCandidateBuildResult(false, freshItem, freshMechanicId, freshRejectReason);
-                _buildCache[address] = candidate;
-            }
-
-            // Fresh per scan: the on-screen rect and distance change as the player moves, so they are read live instead of being cached alongside the (static) build result.
-            Entity? buildItem = candidate.Item;
-            float distance = buildItem != null
-                && DynamicAccess.TryReadFloat(buildItem, DynamicAccessProfiles.DistancePlayer, out float resolvedDistance)
-                ? resolvedDistance
+            Entity? buildItem2 = freshCandidate.Item;
+            float freshDistance = buildItem2 != null
+                && DynamicAccess.TryReadFloat(buildItem2, DynamicAccessProfiles.DistancePlayer, out float freshResolvedDistance)
+                ? freshResolvedDistance
                 : float.MaxValue;
 
-            // An OutOfDistance rejection is distance-dependent and must not stay cached while the player closes in: re-check the fresh distance and rebuild (clears the rejection) when the label is now within range.
-            if (candidate.RejectReason == LabelCandidateRejectReason.OutOfDistance
-                && distance <= clickSettings.ClickDistance)
+            if (freshCandidate.RejectReason == LabelCandidateRejectReason.OutOfDistance
+                && freshDistance <= clickSettings.ClickDistance)
             {
-                candidate = _dependencies.TryBuildLabelCandidate(label, clickSettings, out buildItem, out string? freshMechanicId, out LabelCandidateRejectReason freshRejectReason)
-                    ? new LabelCandidateBuildResult(true, buildItem, freshMechanicId, LabelCandidateRejectReason.None)
-                    : new LabelCandidateBuildResult(false, buildItem, freshMechanicId, freshRejectReason);
-                _buildCache[address] = candidate;
-                distance = buildItem != null
-                    && DynamicAccess.TryReadFloat(buildItem, DynamicAccessProfiles.DistancePlayer, out float reResolvedDistance)
-                    ? reResolvedDistance
-                    : distance;
+                freshCandidate = _dependencies.TryBuildLabelCandidate(label, clickSettings, out buildItem2, out string? freshMechanicId3, out LabelCandidateRejectReason freshRejectReason3)
+                    ? BuildResult(true, buildItem2, freshMechanicId3, LabelCandidateRejectReason.None)
+                    : BuildResult(false, buildItem2, freshMechanicId3, freshRejectReason3);
+                _buildCache[address] = (freshCandidate, now);
+                freshDistance = buildItem2 != null
+                    && DynamicAccess.TryReadFloat(buildItem2, DynamicAccessProfiles.DistancePlayer, out float reResolvedDistance2)
+                    ? reResolvedDistance2
+                    : freshDistance;
             }
 
-            bool hasRect = TryGetCachedLabelRect(label, out RectangleF rect);
-
-            return new CachedLabelScanEntry(candidate, distance, rect, hasRect);
+            bool freshHasRect = TryGetCachedLabelRect(label, out RectangleF freshRect);
+            return new CachedLabelScanEntry(freshCandidate, freshDistance, freshRect, freshHasRect);
         }
 
         private bool TryGetCachedLabelRect(LabelOnGround label, out RectangleF rect)

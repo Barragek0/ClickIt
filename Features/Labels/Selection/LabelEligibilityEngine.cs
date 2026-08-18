@@ -35,7 +35,13 @@ namespace ClickIt.Features.Labels.Selection
             }
 
             // A locked strongbox (the strongbox overlay's red frame) cannot be opened, so it is never a click candidate even when a mechanic would otherwise match.
-            if (MechanicClassifier.IsLockedStrongbox(item))
+            // Only check Chest entities -- most labels aren't chests, so this skips expensive DLR reads for non-chest labels.
+            EntityType entityType = DynamicAccess.TryGetDynamicValue(item, DynamicAccessProfiles.Type, out object? rawType)
+                && rawType is EntityType resolvedType
+                ? resolvedType
+                : default;
+
+            if (entityType == EntityType.Chest && MechanicClassifier.IsLockedStrongbox(item))
             {
                 rejectReason = LabelCandidateRejectReason.LockedChest;
                 return false;

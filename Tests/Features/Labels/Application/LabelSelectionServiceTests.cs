@@ -438,5 +438,36 @@ namespace ClickIt.Tests.Features.Labels.Application
             buildCount.Should().BeGreaterThan(buildsAfterFirstScan,
                 "the re-scan must rebuild the previously NullItem-rejected label");
         }
+
+        [TestMethod]
+        public void GetNextLabelToClick_CacheDisabled_DoesNotRetargetAcrossTicks()
+        {
+            // With the setting disabled, the scan-once-click-many cache is bypassed. Swapping the label between ticks must surface the new label, not a stale cached one.
+            LabelOnGround labelV1 = CreateOpaqueLabel(address: 0x3000);
+            LabelOnGround labelV2 = CreateOpaqueLabel(address: 0x3100);
+            int buildCount = 0;
+            var service = new LabelSelectionService(new LabelSelectionServiceDependencies(
+                GameController: null,
+                CreateClickSettings: static _ => TestClickSettings(),
+                ShouldCaptureLabelDebug: static () => false,
+                PublishLabelDebugStage: static _ => { },
+                TryBuildLabelCandidate: (LabelOnGround _, ClickSettings _, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
+                {
+                    buildCount++;
+                    item = EntityProbeFactory.Create();
+                    mechanicId = MechanicIds.Items;
+                    rejectReason = LabelCandidateRejectReason.None;
+                    return true;
+                },
+                GetMechanicIdForLabelCore: static _ => MechanicIds.Items));
+
+            IReadOnlyList<LabelOnGround> labelsV1 = [labelV1];
+            IReadOnlyList<LabelOnGround> labelsV2 = [labelV2];
+
+            service.GetNextLabelToClick(labelsV1, 0, 10, isAcceptable: null).Should().BeSameAs(labelV1);
+
+            // New label-list reference forces a re-scan; the new label must be selected (no stale click-target cache).
+            service.GetNextLabelToClick(labelsV2, 0, 10, isAcceptable: null).Should().BeSameAs(labelV2);
+        }
     }
 }

@@ -8,6 +8,22 @@ namespace ClickIt.Features.Labels.Selection
                 ? resolvedPath
                 : string.Empty;
 
+            // Fast path: WorldItem entities without harvest or settlers markers are always targetable.
+            // This skips the expensive DLR reads in harvest visibility and settlers targetability checks
+            // for the common case (85%+ of labels are WorldItems).
+            EntityType type = DynamicAccess.TryGetDynamicValue(item, DynamicAccessProfiles.Type, out object? rawType)
+                && rawType is EntityType resolvedType
+                ? resolvedType
+                : default;
+
+            if (type == EntityType.WorldItem
+                && !MechanicClassifier.IsHarvestPath(path)
+                && !MechanicClassifier.IsSettlersOrePath(path)
+                && !MechanicClassifier.IsSettlersPetrifiedWoodPath(path))
+            {
+                return true;
+            }
+
             if (!ShouldAllowHarvestRootElementVisibility(path, IsHarvestRootElementVisibleForClick(label)))
                 return false;
 

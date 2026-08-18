@@ -81,7 +81,7 @@ namespace ClickIt.Features.Click.Runtime
     internal sealed class VisibleMechanicCoordinator(VisibleMechanicCoordinatorDependencies dependencies) : IVisibleMechanicRuntimePort
     {
         private const int HiddenFallbackCandidateCacheWindowMs = 150;
-        private const int VisibleMechanicCandidateCacheWindowMs = 80;
+        private const int VisibleMechanicCandidateCacheWindowMs = 250;
 
         private readonly record struct SettlersClickPlan(Entity? Entity, bool UseHoldClick, bool CaptureClickDebug);
 

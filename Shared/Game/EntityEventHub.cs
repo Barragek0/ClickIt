@@ -11,6 +11,7 @@ internal sealed class EntityEventHub
     private readonly Dictionary<long, Entity> _settlersOre = [];
     private readonly Dictionary<long, Entity> _shrines = [];
     private readonly Dictionary<long, Entity> _ritualBlockers = [];
+    private readonly Dictionary<long, Entity> _lostShipment = [];
     private GameController? _subscribedController;
     private bool _subscribed;
     private long _lastReseedMs;
@@ -24,6 +25,7 @@ internal sealed class EntityEventHub
     internal TrackedEntityView SettlersOre { get; }
     internal TrackedEntityView Shrines { get; }
     internal TrackedEntityView RitualBlockers { get; }
+    internal TrackedEntityView LostShipment { get; }
 
     internal EntityEventHub()
     {
@@ -32,6 +34,7 @@ internal sealed class EntityEventHub
         SettlersOre = new TrackedEntityView(_lock, _settlersOre);
         Shrines = new TrackedEntityView(_lock, _shrines);
         RitualBlockers = new TrackedEntityView(_lock, _ritualBlockers);
+        LostShipment = new TrackedEntityView(_lock, _lostShipment);
     }
 
     // Returns the accumulated entity-event cost since the last poll and resets the accumulator.
@@ -89,6 +92,7 @@ internal sealed class EntityEventHub
             _settlersOre.Clear();
             _shrines.Clear();
             _ritualBlockers.Clear();
+            _lostShipment.Clear();
         }
         Unsubscribe(gc);
     }
@@ -121,6 +125,7 @@ internal sealed class EntityEventHub
             _settlersOre.Clear();
             _shrines.Clear();
             _ritualBlockers.Clear();
+            _lostShipment.Clear();
         }
     }
 
@@ -146,6 +151,7 @@ internal sealed class EntityEventHub
             _settlersOre.Clear();
             _shrines.Clear();
             _ritualBlockers.Clear();
+            _lostShipment.Clear();
         }
         GameController? gc = _subscribedController;
         if (gc == null)
@@ -199,6 +205,7 @@ internal sealed class EntityEventHub
                 _settlersOre.Remove(id);
                 _shrines.Remove(id);
                 _ritualBlockers.Remove(id);
+                _lostShipment.Remove(id);
             }
         }
         finally
@@ -218,6 +225,7 @@ internal sealed class EntityEventHub
             _settlersOre.Clear();
             _shrines.Clear();
             _ritualBlockers.Clear();
+            _lostShipment.Clear();
         }
     }
 
@@ -231,6 +239,7 @@ internal sealed class EntityEventHub
         bool isSettlers = MechanicRuleCatalog.IsSettlersOrePath(path);
         bool isShrine = IsShrineEntity(path, entity);
         bool isRitual = path.Contains(RitualBlockerMarker, StringComparison.Ordinal);
+        bool isLostShipment = IsLostShipmentPath(path);
         bool isOffscreen = IsOffscreenStructurePath(path) || isShrine;
         if (!isOffscreen)
         {
@@ -245,6 +254,7 @@ internal sealed class EntityEventHub
             if (isSettlers) _settlersOre[id] = entity;
             if (isShrine) _shrines[id] = entity;
             if (isRitual) _ritualBlockers[id] = entity;
+            if (isLostShipment) _lostShipment[id] = entity;
         }
     }
 
@@ -286,12 +296,18 @@ internal sealed class EntityEventHub
     private const string BlightFoundationPathMarker = "BlightFoundation";
     private const string ShrinePathMarker = "DarkShrine";
     private const string RitualBlockerMarker = "RitualBlocker";
+    private const string LostShipmentCratePathMarker = "LostShipmentCrate";
+    private const string LostShipmentLoosePathMarker = "LostShipment";
 
     private static bool IsBlightPath(string path)
         => path.Contains(BlightPathwayMetadata, StringComparison.OrdinalIgnoreCase)
         || path.Contains(BlightPumpMetadata, StringComparison.OrdinalIgnoreCase)
         || path.Contains(BlightTowerPathMarker, StringComparison.OrdinalIgnoreCase)
         || path.Contains(BlightFoundationPathMarker, StringComparison.OrdinalIgnoreCase);
+
+    internal static bool IsLostShipmentPath(string path)
+        => path.Contains(LostShipmentCratePathMarker, StringComparison.OrdinalIgnoreCase)
+        || path.Contains(LostShipmentLoosePathMarker, StringComparison.OrdinalIgnoreCase);
 
     // Current-league shrines (e.g. Shrouded Shrine) carry the Shrine component but a path without "DarkShrine"; the component read is gated on a path hint to keep the event burst one read per entity.
     internal static bool IsShrineEntity(string path, Entity entity)

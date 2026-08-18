@@ -83,10 +83,19 @@ namespace ClickIt.Features.Labels.Selection
 
         private static readonly HashSet<string> s_emptyEnabledLeagueChestIds = new(StringComparer.OrdinalIgnoreCase);
 
+        // League-chest-specific-id HashSet cache: the 13 booleans change only when the user edits settings, so the 13-bool snapshot is a stable cache key. Saves the per-scan HashSet allocation when the scan runs repeatedly with the same settings.
+        private static HashSet<string>? s_cachedLeagueChestIds;
+        private static long s_cachedLeagueChestFlags;
+
         internal static IReadOnlySet<string> BuildEnabledLeagueChestSpecificIds(ClickItSettings settings, bool leagueChestsEnabled)
         {
             if (!leagueChestsEnabled)
                 return s_emptyEnabledLeagueChestIds;
+
+            // Pack the 13 booleans into a snapshot key (2 bits per value, 7 booleans per qword). When the snapshot matches the cache, return the cached HashSet without re-allocating.
+            long flags = PackLeagueChestFlags(settings);
+            if (flags == s_cachedLeagueChestFlags && s_cachedLeagueChestIds != null)
+                return s_cachedLeagueChestIds;
 
             HashSet<string> enabled = new(StringComparer.OrdinalIgnoreCase);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickMirageGoldenDjinnCache.Value, MechanicIds.MirageGoldenDjinnCache);
@@ -102,7 +111,29 @@ namespace ClickIt.Features.Labels.Selection
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickAllflameCursedTreasure.Value, MechanicIds.AllflameCursedTreasure);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickAllflameBrinerotPlunder.Value, MechanicIds.AllflameBrinerotPlunder);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickAllflameCoralNest.Value, MechanicIds.AllflameCoralNest);
+            s_cachedLeagueChestFlags = flags;
+            s_cachedLeagueChestIds = enabled;
             return enabled;
+        }
+
+        // 13 booleans packed into a long: 1 bit per flag, occupying the low 13 bits with deterministic ordering so the bit positions are stable. The cache treats the long as a content hash of the input set.
+        private static long PackLeagueChestFlags(ClickItSettings settings)
+        {
+            long flags = 0;
+            if (settings.ClickMirageGoldenDjinnCache.Value) flags |= 1L << 0;
+            if (settings.ClickMirageSilverDjinnCache.Value) flags |= 1L << 1;
+            if (settings.ClickMirageBronzeDjinnCache.Value) flags |= 1L << 2;
+            if (settings.ClickHeistSecureLocker.Value) flags |= 1L << 3;
+            if (settings.ClickHeistSecureRepository.Value) flags |= 1L << 4;
+            if (settings.ClickHeistHazards.Value) flags |= 1L << 5;
+            if (settings.ClickBlightCyst.Value) flags |= 1L << 6;
+            if (settings.ClickLegionChest.Value) flags |= 1L << 7;
+            if (settings.ClickBreachGraspingCoffers.Value) flags |= 1L << 8;
+            if (settings.ClickSynthesisSynthesisedStash.Value) flags |= 1L << 9;
+            if (settings.ClickAllflameCursedTreasure.Value) flags |= 1L << 10;
+            if (settings.ClickAllflameBrinerotPlunder.Value) flags |= 1L << 11;
+            if (settings.ClickAllflameCoralNest.Value) flags |= 1L << 12;
+            return flags;
         }
 
         private static void AddEnabledLeagueChestSpecificId(HashSet<string> enabledIds, bool isEnabled, string specificId)

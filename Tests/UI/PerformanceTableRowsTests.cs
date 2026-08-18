@@ -11,7 +11,7 @@ public class PerformanceTableRowsTests
             "Frame",
             "Altar",
             "Blight",
-            "ClickIt.Features.ClickIt.Features.Click.Hotkey",
+            "Click.Hotkey",
             "Debug",
             "Flush.Frame",
             "Flush.Text",
@@ -60,7 +60,7 @@ public class PerformanceTableRowsTests
             ("Walk", IntervalKind.Walk),
             ("Blight", IntervalKind.Blight),
             ("Label", IntervalKind.Label),
-            ("ClickIt.Features.ClickIt.Features.Area.Blocked", IntervalKind.Area),
+            ("Area.Blocked", IntervalKind.Area),
             ("Ultimatum", IntervalKind.Ultimatum),
             ("Flare", IntervalKind.Flare),
         ];
@@ -117,7 +117,7 @@ public class PerformanceTableRowsTests
         (string Label, ProcessingSection Section)[] expected =
         [
             ("Altar", ProcessingSection.Altar),
-            ("ClickIt.Features.ClickIt.Features.Area.Blocked", ProcessingSection.AreaBlockedUi),
+            ("Area.Blocked", ProcessingSection.AreaBlockedUi),
             ("Blight", ProcessingSection.Blight),
             ("Click", ProcessingSection.Click),
             ("Dump", ProcessingSection.GameStateDump),
@@ -142,7 +142,7 @@ public class PerformanceTableRowsTests
         (string Label, ProcessingSection Section, PerfBreakdownKind Breakdown)[] expected =
         [
             ("Altar", ProcessingSection.Altar, PerfBreakdownKind.Generic),
-            ("ClickIt.Features.ClickIt.Features.Area.Blocked", ProcessingSection.AreaBlockedUi, PerfBreakdownKind.None),
+            ("Area.Blocked", ProcessingSection.AreaBlockedUi, PerfBreakdownKind.None),
             ("Blight", ProcessingSection.Blight, PerfBreakdownKind.Generic),
             ("Click", ProcessingSection.Click, PerfBreakdownKind.Click),
             ("Dump", ProcessingSection.GameStateDump, PerfBreakdownKind.None),
@@ -167,7 +167,7 @@ public class PerformanceTableRowsTests
         (string Label, ProcessingSection Section, PerfBreakdownKind Breakdown)[] expected =
         [
             ("Altar", ProcessingSection.Altar, PerfBreakdownKind.Generic),
-            ("ClickIt.Features.ClickIt.Features.Area.Blocked", ProcessingSection.AreaBlockedUi, PerfBreakdownKind.None),
+            ("Area.Blocked", ProcessingSection.AreaBlockedUi, PerfBreakdownKind.None),
             ("Blight", ProcessingSection.Blight, PerfBreakdownKind.Generic),
             ("Click", ProcessingSection.Click, PerfBreakdownKind.Click),
             ("Dump", ProcessingSection.GameStateDump, PerfBreakdownKind.None),

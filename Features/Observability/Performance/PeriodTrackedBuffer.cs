@@ -1,6 +1,6 @@
 namespace ClickIt.Features.Observability.Performance
 {
-    // Per-value processing buffer: rolling ms sample + inter-run period tracked under a lock (label-scan processing can be recorded from any coroutine that touches CachedClickIt.Features.ClickIt.Features.Labels.Value, unlike render sections which are render-thread only).
+    // Per-value processing buffer: rolling ms sample + inter-run period tracked under a lock (label-scan processing can be recorded from any coroutine that touches cached labels, unlike render sections which are render-thread only).
     internal sealed class PeriodTrackedBuffer
     {
         private readonly RollingSampleBuffer _samples = new();

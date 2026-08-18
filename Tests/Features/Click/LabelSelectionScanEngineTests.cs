@@ -14,7 +14,7 @@ namespace ClickIt.Tests.Features.Click
                 labelInteractionPort: port,
                 labelSelectionService: new FakeLabelSelectionService(
                     getNextLabelToClick: (allLabels, startIndex, maxCount) => allLabels?[startIndex]),
-                shouldSuppressLockedStrongboxClick: label => ReferenceEquals(label, locked));
+                shouldSuppressLockedStrongboxClick: (label, _) => ReferenceEquals(label, locked));
 
             engine.ResolveNextLabelCandidate(labels).Should().BeSameAs(selected);
         }
@@ -38,7 +38,7 @@ namespace ClickIt.Tests.Features.Click
                 labelInteractionPort: port,
                 labelSelectionService: new FakeLabelSelectionService(
                     getNextLabelToClick: (allLabels, startIndex, maxCount) => allLabels?[startIndex]),
-                shouldSuppressLeverClick: label => ReferenceEquals(label, suppressed));
+                shouldSuppressLeverClick: (label, _) => ReferenceEquals(label, suppressed));
 
             engine.ResolveNextLabelCandidate(labels).Should().BeSameAs(selected);
         }
@@ -54,7 +54,7 @@ namespace ClickIt.Tests.Features.Click
                 labelInteractionPort: port,
                 labelSelectionService: new FakeLabelSelectionService(
                     getNextLabelToClick: (allLabels, startIndex, maxCount) => allLabels?[startIndex]),
-                shouldSuppressBlightChestClick: label => ReferenceEquals(label, suppressed));
+                shouldSuppressBlightChestClick: (label, _) => ReferenceEquals(label, suppressed));
 
             engine.ResolveNextLabelCandidate(labels).Should().BeSameAs(selected);
         }
@@ -94,7 +94,7 @@ namespace ClickIt.Tests.Features.Click
                 labelInteractionPort: new FakeLabelInteractionPort(),
                 labelSelectionService: new FakeLabelSelectionService(
                     getNextLabelToClick: (allLabels, startIndex, _) => allLabels?[startIndex]),
-                shouldSuppressInactiveUltimatumLabel: static _ => true,
+                shouldSuppressInactiveUltimatumLabel: static (_, _) => true,
                 clickDebugPublisher: ClickTestDebugPublisherFactory.Create(
                     shouldCaptureClickDebug: static () => true,
                     setLatestClickDebug: snapshot => latestSnapshot = snapshot));
@@ -118,7 +118,7 @@ namespace ClickIt.Tests.Features.Click
             var engine = CreateEngine(
                 labelInteractionPort: new FakeLabelInteractionPort(),
                 labelSelectionService: new FakeLabelSelectionService(getNextLabelToClick: (_, _, _) => foreign),
-                shouldSuppressLeverClick: static _ => true,
+                shouldSuppressLeverClick: static (_, _) => true,
                 clickDebugPublisher: ClickTestDebugPublisherFactory.Create(
                     shouldCaptureClickDebug: static () => true,
                     setLatestClickDebug: snapshot => latestSnapshot = snapshot));
@@ -135,10 +135,10 @@ namespace ClickIt.Tests.Features.Click
         private static LabelSelectionScanEngine CreateEngine(
             ILabelInteractionPort? labelInteractionPort = null,
             ILabelSelectionService? labelSelectionService = null,
-            Func<LabelOnGround, bool>? shouldSuppressLeverClick = null,
-            Func<LabelOnGround, bool>? shouldSuppressInactiveUltimatumLabel = null,
-            Func<LabelOnGround, bool>? shouldSuppressBlightChestClick = null,
-            Func<LabelOnGround, bool>? shouldSuppressLockedStrongboxClick = null,
+            Func<LabelOnGround, string?, bool>? shouldSuppressLeverClick = null,
+            Func<LabelOnGround, string?, bool>? shouldSuppressInactiveUltimatumLabel = null,
+            Func<LabelOnGround, string?, bool>? shouldSuppressBlightChestClick = null,
+            Func<LabelOnGround, string?, bool>? shouldSuppressLockedStrongboxClick = null,
             ClickDebugPublicationService? clickDebugPublisher = null)
         {
             GameController gameController = (GameController)RuntimeHelpers.GetUninitializedObject(typeof(GameController));
@@ -157,15 +157,15 @@ namespace ClickIt.Tests.Features.Click
                 safeLabelInteractionPort,
                 safeLabelSelectionService,
                 labelClickPointResolver,
-                ShouldSuppressLeverClick: shouldSuppressLeverClick ?? (_ => false),
-                ShouldSuppressInactiveUltimatumLabel: shouldSuppressInactiveUltimatumLabel ?? (_ => false),
-                ShouldSuppressBlightChestClick: shouldSuppressBlightChestClick ?? (_ => false),
+                ShouldSuppressLeverClick: shouldSuppressLeverClick ?? ((_, _) => false),
+                ShouldSuppressInactiveUltimatumLabel: shouldSuppressInactiveUltimatumLabel ?? ((_, _) => false),
+                ShouldSuppressBlightChestClick: shouldSuppressBlightChestClick ?? ((_, _) => false),
                 labelInteraction,
                 mechanicPriorityContextProvider,
                 ClickDebugPublisher: clickDebugPublisher ?? ClickTestDebugPublisherFactory.Create(),
                 DebugLog: static _ => { })
             {
-                ShouldSuppressLockedStrongboxClick = shouldSuppressLockedStrongboxClick ?? (static _ => false)
+                ShouldSuppressLockedStrongboxClick = shouldSuppressLockedStrongboxClick ?? (static (_, _) => false)
             });
         }
 
