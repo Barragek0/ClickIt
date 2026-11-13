@@ -21,7 +21,7 @@ public class PerformanceTableRowsTests
             "Pathfinding",
             "Perf.Overlay",
             "Strongbox",
-            "ClickIt.ClickIt.UI.Rect",
+            "UI.Rect",
             "Ultimatum",
         ];
 

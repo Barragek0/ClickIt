@@ -59,11 +59,11 @@
       <HintPath>..\..\PoeHelper\net48\ExileCore.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="Hexa.NET.ImGui">
+    <Reference Include="Hexa.NET.ImGui" Condition="'$(UseHexaImGuiNuGet)' != 'true' and Exists('..\..\PoeHelper\net48\Hexa.NET.ImGui.dll')">
       <HintPath>..\..\PoeHelper\net48\Hexa.NET.ImGui.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="HexaGen.Runtime">
+    <Reference Include="HexaGen.Runtime" Condition="'$(UseHexaImGuiNuGet)' != 'true' and Exists('..\..\PoeHelper\net48\HexaGen.Runtime.dll')">
       <HintPath>..\..\PoeHelper\net48\HexaGen.Runtime.dll</HintPath>
       <Private>false</Private>
     </Reference>
@@ -75,6 +75,10 @@
       <HintPath>..\..\PoeHelper\net48\ProcessMemoryUtilities.dll</HintPath>
       <Private>false</Private>
     </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(exapiPackage)' == '' and ('$(UseHexaImGuiNuGet)' == 'true' or !Exists('..\..\PoeHelper\net48\Hexa.NET.ImGui.dll'))">
+    <PackageReference Include="Hexa.NET.ImGui" Version="3.1.0-experimental" />
   </ItemGroup>
 
   <ItemGroup>

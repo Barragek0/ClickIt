@@ -28,7 +28,7 @@ internal static class PerformanceTableRows
         ("Pathfinding", p => p.GetRenderSection(RenderSection.PathfindingOverlay)),
         ("Perf.Overlay", p => p.GetRenderSection(RenderSection.PerformanceOverlay)),
         ("Strongbox", p => p.GetRenderSection(RenderSection.StrongboxOverlay)),
-        ("ClickIt.ClickIt.UI.Rect", p => p.GetRenderSection(RenderSection.UiRegionRectangle)),
+        ("UI.Rect", p => p.GetRenderSection(RenderSection.UiRegionRectangle)),
         ("Ultimatum", p => p.GetRenderSection(RenderSection.UltimatumOverlay)),
     ];
 
