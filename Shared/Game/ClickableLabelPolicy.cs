@@ -59,6 +59,7 @@ namespace ClickIt.Shared.Game
         {
             if (label == null
                 || !DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item)
+                || item is null
                 || !DynamicAccess.TryReadBool(label, DynamicAccessProfiles.IsVisible, out bool isVisible)
                 || !isVisible
                 || !IsLabelElementValid(label))

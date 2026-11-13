@@ -194,7 +194,7 @@ namespace ClickIt.UI.Settings
                 ImGui.Unindent(indent);
         }
 
-        private static float DrawWord(ImDrawListPtr drawList, ImFontPtr font, float fontSize, float x, float y, Vector4 color, string word)
+        private static unsafe float DrawWord(ImDrawListPtr drawList, ImFontPtr font, float fontSize, float x, float y, Vector4 color, string word)
         {
             drawList.AddText(font, fontSize, new NumVector2(x, y), ImGui.GetColorU32(color), word);
             return x + ImGui.CalcTextSize(word).X;

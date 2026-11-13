@@ -64,9 +64,11 @@ namespace ClickIt.Features.Labels
             bool hotkeyHeld = Input.GetKeyState(clickLabelKey);
             bool lazyModeDisableHeld = _inputHandler.IsLazyModeDisableActiveForCurrentInputState();
             bool lazyModeDisableToggleMode = ctx.Settings.IsLazyModeDisableHotkeyToggleModeEnabled();
-            bool isRitualActive = EntityHelpers.IsRitualActive(ctx.GameController);
+            GameController? gameController = ctx.GameController;
+            bool isRitualActive = EntityHelpers.IsRitualActive(gameController);
             string? clickFailureReason = null;
-            bool canActuallyClick = _inputHandler?.TryGetClickFailureReason(ctx.GameController, false, isRitualActive, out clickFailureReason) ?? false;
+            bool canActuallyClick = gameController != null
+                && _inputHandler.TryGetClickFailureReason(gameController, false, isRitualActive, out clickFailureReason);
 
             (Color textColor, string? line1, string? line2, string? line3) = ComposeLazyModeStatus(
                 hasRestrictedItems,

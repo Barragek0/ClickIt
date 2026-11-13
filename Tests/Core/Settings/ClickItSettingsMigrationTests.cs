@@ -11,7 +11,7 @@ namespace ClickIt.Tests.Core.Settings
             var restored = JsonConvert.DeserializeObject<ClickItSettings>(legacyJson);
 
             restored.Should().NotBeNull();
-            restored.GetUltimatumModifierPriority()[0].Should().Be("Ruin");
+            restored!.GetUltimatumModifierPriority()[0].Should().Be("Ruin");
             restored.GetUltimatumModifierPriority()[1].Should().Be("Choking Miasma");
         }
 

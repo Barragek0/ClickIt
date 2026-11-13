@@ -403,7 +403,7 @@ internal static class BlightPlanner
             TowerBuildRule rule = tierRules[r];
             if (!rule.IsCoverageTower)
                 continue;
-            if (!plannedByType.TryGetValue(rule.TowerType, out bool[] planned))
+            if (!plannedByType.TryGetValue(rule.TowerType, out bool[]? planned) || planned is null)
             {
                 planned = new bool[branches.Count];
                 plannedByType[rule.TowerType] = planned;

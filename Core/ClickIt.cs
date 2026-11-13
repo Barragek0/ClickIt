@@ -90,8 +90,7 @@ namespace ClickIt
                 ImGui.TreePop();
             }
 
-            foreach (ISettingsHolder? drawer in Drawers)
-                drawer.Draw();
+            base.DrawSettings();
 
         }
 

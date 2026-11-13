@@ -2,10 +2,10 @@
 Runs the standard local build-and-test loop for ClickIt and copies the built DLL to the
 configured plugin directory.
 
-Fast path notes:
-- A single `dotnet build Tests/ClickIt.Tests.csproj --no-incremental -m` builds the WHOLE graph
-  (product ClickIt.csproj + test harness GameOffsetsShim.csproj + tests) in one MSBuild invocation
-  with parallel nodes — the old flow built each project in a separate serial `dotnet build`.
+Build notes:
+- A single serial `dotnet build Tests/ClickIt.Tests.csproj --no-incremental -m:1 -nr:false` builds
+  the whole graph (product ClickIt.csproj + test harness GameOffsetsShim.csproj + tests) in one
+  MSBuild invocation without project-reference races or orphaned compiler nodes.
 - Third-party decompile is owned by THIS script: it runs ONCE, in PARALLEL with the build, and the
   build always gets SkipThirdPartyDecompile=true so the test project's own decompile target does
   not re-run it (the decompiled sources are excluded from compilation anyway).
@@ -91,7 +91,7 @@ function Invoke-Build {
         }
 
         if (-not [string]::IsNullOrWhiteSpace($ExapiPackagePath)) {
-            $buildArgs += "/p:exapiPackage=$ExapiPackagePath"
+            $buildArgs += "/p:exapiPackage=$resolvedExapiPackagePath"
         }
 
         # Decompile is owned by THIS script (single parallel run below); always stop the test
@@ -122,7 +122,7 @@ function Invoke-Build {
     }
 
     if (-not [string]::IsNullOrWhiteSpace($ExapiPackagePath)) {
-        $buildArgs += "/p:exapiPackage=$ExapiPackagePath"
+        $buildArgs += "/p:exapiPackage=$resolvedExapiPackagePath"
     }
 
     # Decompile is owned by THIS script (single parallel run below); always stop the test
@@ -133,9 +133,9 @@ function Invoke-Build {
         $buildArgs += '/p:BuildProjectReferences=false'
     }
 
-    # Parallel MSBuild nodes: the test project pulls the product + harness into one graph, and
-    # MSBuild schedules the independent projects across nodes instead of building serially.
-    $buildArgs += '-m'
+    # Keep the project-reference graph serial to avoid concurrent output and compiler-server races.
+    $buildArgs += '-m:1'
+    $buildArgs += '-nr:false'
 
     & dotnet @buildArgs
 }
@@ -145,6 +145,7 @@ $resolvedProductProjectPath = Resolve-FullPath $ProductProjectPath
 $resolvedTestProjectPath = Resolve-FullPath $TestProjectPath
 $resolvedTestHarnessProjectPath = Resolve-FullPath $TestHarnessProjectPath
 $resolvedPluginOutputPath = Resolve-FullPath $PluginOutputPath
+$resolvedExapiPackagePath = (Resolve-FullPath $ExapiPackagePath).TrimEnd([char[]]@('\', '/'))
 $resolvedDecompileScriptPath = Resolve-FullPath $DecompileScriptPath
 
 # The decompiled sources under ThirdParty/Decompiled/ are excluded from both csproj compile sets,
@@ -160,9 +161,8 @@ if (-not $SkipThirdPartyDecompile -and -not [string]::IsNullOrWhiteSpace($resolv
     } -ArgumentList $resolvedDecompileScriptPath
 }
 
-# ONE graph build: the test project references the product (ClickIt.csproj) and the test harness
-# (GameOffsetsShim.csproj), so a single build of it fully builds ALL three projects in one MSBuild
-# graph with parallel nodes — no redundant second/third build of the same code.
+# One graph build: the test project references the product (ClickIt.csproj) and the test harness
+# (GameOffsetsShim.csproj), so one serial build fully builds all three projects in one MSBuild graph.
 Invoke-Build -ProjectPath $resolvedTestProjectPath -BuildProjectReferences
 
 if ($LASTEXITCODE -ne 0) {
@@ -197,7 +197,7 @@ if ($SkipThirdPartyDecompile) {
     $testArgs += '/p:SkipThirdPartyDecompile=true'
 }
 
-& (Join-Path $PSScriptRoot 'invoke-dotnet-test-with-memory-guard.ps1') -ProjectPath $resolvedTestProjectPath -Configuration $Configuration -AdditionalArgs $testArgs
+& (Join-Path $PSScriptRoot 'invoke-dotnet-test-with-memory-guard.ps1') -ProjectPath $resolvedTestProjectPath -Configuration $Configuration -ExapiPackagePath $resolvedExapiPackagePath -AdditionalArgs $testArgs
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }

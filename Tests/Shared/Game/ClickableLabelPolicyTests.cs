@@ -219,7 +219,15 @@ namespace ClickIt.Tests.Shared.Game
             ClickableLabelPolicy.IsBasicLabelValid(label).Should().BeFalse();
         }
 
-        private static LabelOnGround CreateBasicValidLabel(Entity item)
+        [TestMethod]
+        public void IsValidClickableLabel_ReturnsFalse_WhenItemIsNull()
+        {
+            LabelOnGround label = CreateBasicValidLabel(null);
+
+            ClickableLabelPolicy.IsValidClickableLabel(label, static _ => true).Should().BeFalse();
+        }
+
+        private static LabelOnGround CreateBasicValidLabel(Entity? item)
         {
             var label = (BasicValidProbeLabel)RuntimeHelpers.GetUninitializedObject(typeof(BasicValidProbeLabel));
             label.ItemOnGround = item;
@@ -233,7 +241,7 @@ namespace ClickIt.Tests.Shared.Game
     {
         public new bool IsVisible { get; set; }
 
-        public new Entity ItemOnGround { get; set; } = null!;
+        public new Entity? ItemOnGround { get; set; }
 
         public new Element? Label { get; set; }
     }

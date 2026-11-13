@@ -6,7 +6,7 @@
         <Configuration>
           <Format>cobertura,opencover</Format>
           <ResultsDirectory>TestResults</ResultsDirectory>
-          <Exclude>[*.Tests]*,[*]*.Program,[ExileCore]*,[ImGui.NET]*,[Newtonsoft.Json]*,[System.*]*,[Microsoft.*]*</Exclude>
+          <Exclude>[*.Tests]*,[*]*.Program,[ExileCore]*,[Hexa.NET.ImGui]*,[HexaGen.Runtime]*,[Newtonsoft.Json]*,[System.*]*,[Microsoft.*]*</Exclude>
           <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
           <ExcludeByFile>**/obj/**/*.*,**/bin/**/*.*</ExcludeByFile>
           <IncludeDirectory>../</IncludeDirectory>

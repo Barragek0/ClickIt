@@ -119,7 +119,7 @@ namespace ClickIt.Features.Click.Runtime
             string? mechanicId,
             in ChestLootSettlementTimingOptions options)
         {
-            if (PostChestLootSettlementTimingMechanicIds.Contains(mechanicId))
+            if (mechanicId != null && PostChestLootSettlementTimingMechanicIds.Contains(mechanicId))
                 return NormalizeChestLootSettlementTiming(options.Shared);
 
             return new ChestLootSettlementTiming(

@@ -13,7 +13,7 @@ namespace ClickIt.UI.Settings
             float leftColumnWeight = 0.5f,
             float rightColumnWeight = 0.5f)
         {
-            if (!ImGui.BeginTable(tableId, 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable))
+            if (!ImGui.BeginTable(tableId, 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable | ImGuiTableFlags.Hideable))
                 return;
 
             try

@@ -1,6 +1,6 @@
 #pragma warning disable IDE0005
 
-global using ImGuiNET;
+global using Hexa.NET.ImGui;
 global using Microsoft.CSharp.RuntimeBinder;
 global using Newtonsoft.Json;
 global using SharpDX;

@@ -28,7 +28,7 @@ namespace ClickIt.Core.Settings.Runtime
             }
 
             SettingsDefaultsService.EnsureMechanicPrioritiesInitialized(settings);
-            runtimeCache.MechanicPrioritySnapshot = [.. settings.MechanicPriorityOrder];
+            runtimeCache.MechanicPrioritySnapshot = [.. (settings.MechanicPriorityOrder ?? [])];
             return runtimeCache.MechanicPrioritySnapshot;
         }
 
@@ -43,7 +43,7 @@ namespace ClickIt.Core.Settings.Runtime
             }
 
             SettingsDefaultsService.EnsureMechanicPrioritiesInitialized(settings);
-            runtimeCache.MechanicIgnoreDistanceSnapshot = [.. settings.MechanicPriorityIgnoreDistanceIds.OrderBy(static x => x, ClickItSettings.PriorityComparer)];
+            runtimeCache.MechanicIgnoreDistanceSnapshot = [.. (settings.MechanicPriorityIgnoreDistanceIds ?? []).OrderBy(static x => x, ClickItSettings.PriorityComparer)];
             return runtimeCache.MechanicIgnoreDistanceSnapshot;
         }
 
@@ -58,7 +58,7 @@ namespace ClickIt.Core.Settings.Runtime
             }
 
             SettingsDefaultsService.EnsureMechanicPrioritiesInitialized(settings);
-            runtimeCache.MechanicIgnoreDistanceWithinSnapshot = [.. settings.MechanicPriorityIgnoreDistanceWithinById.OrderBy(static x => x.Key, ClickItSettings.PriorityComparer)];
+            runtimeCache.MechanicIgnoreDistanceWithinSnapshot = [.. (settings.MechanicPriorityIgnoreDistanceWithinById ?? []).OrderBy(static x => x.Key, ClickItSettings.PriorityComparer)];
             runtimeCache.MechanicIgnoreDistanceWithinMapSnapshot = new Dictionary<string, int>(
                 runtimeCache.MechanicIgnoreDistanceWithinSnapshot.ToDictionary(static x => x.Key, static x => x.Value, ClickItSettings.PriorityComparer),
                 ClickItSettings.PriorityComparer);

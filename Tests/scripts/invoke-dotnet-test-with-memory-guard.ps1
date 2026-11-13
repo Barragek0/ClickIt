@@ -7,7 +7,7 @@ processes and trips if memory exceeds the configured threshold.
 param(
     [string] $ProjectPath = 'Tests/ClickIt.Tests.csproj',
     [string] $Configuration = 'Debug',
-    [Parameter(ValueFromRemainingArguments = $true)]
+    [string] $ExapiPackagePath = '',
     [string[]] $AdditionalArgs = @()
 )
 
@@ -15,6 +15,20 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
+$testArgs = @('-m:1', '-nr:false')
+
+if (-not [string]::IsNullOrWhiteSpace($ExapiPackagePath)) {
+    $resolvedExapiPackagePath = if ([System.IO.Path]::IsPathRooted($ExapiPackagePath)) {
+        $ExapiPackagePath
+    }
+    else {
+        Join-Path $repoRoot $ExapiPackagePath
+    }
+    $resolvedExapiPackagePath = [System.IO.Path]::GetFullPath($resolvedExapiPackagePath).TrimEnd([char[]]@([char]92, [char]47))
+    $testArgs += "/p:exapiPackage=$resolvedExapiPackagePath"
+}
+
+$testArgs += $AdditionalArgs
 $guardDir = Join-Path $repoRoot 'Tests\TestResults\memory-guard'
 New-Item -ItemType Directory -Path $guardDir -Force | Out-Null
 
@@ -38,7 +52,7 @@ try {
         $stopPath
     ) -WindowStyle Hidden -PassThru
 
-    & dotnet test $ProjectPath -c $Configuration @AdditionalArgs
+    & dotnet test $ProjectPath -c $Configuration @testArgs
     $testExitCode = $LASTEXITCODE
 }
 finally {

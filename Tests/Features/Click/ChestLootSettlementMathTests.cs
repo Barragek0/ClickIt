@@ -28,6 +28,11 @@ namespace ClickIt.Tests.Features.Click
             unknown.InitialDelayMs.Should().Be(ChestLootSettlementMath.DefaultInitialDelayMs);
             unknown.PollIntervalMs.Should().Be(ChestLootSettlementMath.DefaultPollIntervalMs);
             unknown.QuietWindowMs.Should().Be(ChestLootSettlementMath.DefaultQuietWindowMs);
+
+            ChestLootSettlementTiming missing = ChestLootSettlementMath.ResolvePostChestLootSettlementTimingSettings(null, options);
+            missing.InitialDelayMs.Should().Be(ChestLootSettlementMath.DefaultInitialDelayMs);
+            missing.PollIntervalMs.Should().Be(ChestLootSettlementMath.DefaultPollIntervalMs);
+            missing.QuietWindowMs.Should().Be(ChestLootSettlementMath.DefaultQuietWindowMs);
         }
 
         [TestMethod]

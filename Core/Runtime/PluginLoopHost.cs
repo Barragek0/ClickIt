@@ -357,7 +357,7 @@ namespace ClickIt.Core.Runtime
                     if (useFlare)
                     {
                         PluginClickRuntimeStateSnapshot runtimeState = ResolveRitualAwareRuntimeState();
-                        canClick = _state.Services.InputHandler?.CanClick(_gameController, false, runtimeState.IsRitualActive) == true;
+                        canClick = _state.Services.InputHandler?.CanClick(_gameController!, false, runtimeState.IsRitualActive) == true;
                     }
 
                     if (useFlare && canClick)

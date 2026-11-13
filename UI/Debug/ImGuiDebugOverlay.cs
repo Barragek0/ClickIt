@@ -172,7 +172,7 @@ internal sealed class ImGuiDebugOverlay(
         NumVec2 splitterOrigin = ImGui.GetWindowPos() + ImGui.GetCursorPos();
         ImGui.InvisibleButton("##colSplitter", new NumVec2(splitterW, availH));
         if (ImGui.IsItemHovered())
-            ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW);
+            ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEw);
         if (ImGui.IsItemActive())
         {
             float newLeftW = Math.Clamp(_leftColWidth + ImGui.GetIO().MouseDelta.X, minColW, availW - minColW - spacing * 2);
@@ -1537,17 +1537,19 @@ internal sealed class ImGuiDebugOverlay(
         List<List<BlightLaneNode>> forests,
         List<int> unassigned)
     {
-        if (branchData.Count == 0 && unassigned.Count == 0)
+        BlightService? blight = _blight;
+        if (blight == null || (branchData.Count == 0 && unassigned.Count == 0))
             return;
 
         bool havePositions = positions.Count == coverage.Length;
-        IReadOnlySet<BlightTowerType> coverageTypes = BlightCoverageFlags.ForStrategy(_blight.CurrentStrategy);
+        IBlightTowerStrategy strategy = blight.CurrentStrategy;
+        IReadOnlySet<BlightTowerType> coverageTypes = BlightCoverageFlags.ForStrategy(strategy);
         string Pt(NumVector2 p) => havePositions ? $"({p.X:F0},{p.Y:F0})" : "";
         string Flags(LaneCoverageResult r) => BlightCoverageFlags.Format(r, coverageTypes);
         NumVec4 SegTextColor(LaneCoverageResult seg)
         {
             if (seg.IsPhantom) return CWhite;
-            Color c = _blight.CurrentStrategy.GetLaneColor(seg);
+            Color c = strategy.GetLaneColor(seg);
             return Vec4(new Color(c.R, c.G, c.B, (byte)255));
         }
 

@@ -160,14 +160,15 @@ namespace ClickIt.Features.Click.Runtime
 
             try
             {
-                Camera? camera = _dependencies.GameController?.Game?.IngameState?.Camera;
-                if (camera == null)
+                GameController? gameController = _dependencies.GameController;
+                Camera? camera = gameController?.Game?.IngameState?.Camera;
+                if (gameController == null || camera == null)
                     return false;
 
                 float scale = 1f / PoeMapExtension.WorldToGridConversion;
                 NumVector2 raw = camera.WorldToScreen(new System.Numerics.Vector3(gridPos.X * scale, gridPos.Y * scale, 0f));
                 Vector2 targetScreen = new(raw.X, raw.Y);
-                RectangleF win = _runtimeSeam.GetWindowRectangle(_dependencies.GameController);
+                RectangleF win = _runtimeSeam.GetWindowRectangle(gameController);
                 if (!OffscreenPathingMath.TryResolveDirectionalWalkClickPosition(
                         win, targetScreen, "blight-foundation", _dependencies.PointIsInClickableArea, out Vector2 walkClick))
                 {

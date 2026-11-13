@@ -96,5 +96,20 @@ namespace ClickIt.Tests.Core.Settings
 
             updated["shrines"].Should().Be(80);
         }
+
+        [TestMethod]
+        public void GetMechanicPrioritySnapshots_RebuildsWhenSerializedCollectionsAreNull()
+        {
+            var settings = new ClickItSettings
+            {
+                MechanicPriorityOrder = null!,
+                MechanicPriorityIgnoreDistanceIds = null!,
+                MechanicPriorityIgnoreDistanceWithinById = null!
+            };
+
+            ClickItSettingsRuntimeService.GetMechanicPriorityOrder(settings).Should().NotBeEmpty();
+            ClickItSettingsRuntimeService.GetMechanicPriorityIgnoreDistanceIds(settings).Should().NotBeNull();
+            ClickItSettingsRuntimeService.GetMechanicPriorityIgnoreDistanceWithinById(settings).Should().NotBeNull();
+        }
     }
 }

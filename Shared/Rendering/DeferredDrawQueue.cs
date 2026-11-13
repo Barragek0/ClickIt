@@ -161,19 +161,19 @@ namespace ClickIt.Shared.Rendering
                             graphics.DrawLine(item.A, item.B, item.Thickness, item.Color);
                             break;
                         case DeferredDrawKind.LineOnLargeMap:
-                            graphics.DrawLineOnLargeMap(item.A, item.B, item.Thickness, item.Color);
+                            graphics.DrawLineOnMap(item.A, item.B, item.Thickness, item.Color, VisibleSubMap.Large);
                             break;
                         case DeferredDrawKind.LineInWorld:
                             graphics.DrawLineInWorld(item.A, item.B, item.Thickness, item.Color);
                             break;
                         case DeferredDrawKind.CircleOnLargeMap:
-                            graphics.DrawCircleOnLargeMap(new NumVector2(item.Center.X, item.Center.Y), item.Filled, item.Radius, item.Color, item.Thickness);
+                            graphics.DrawCircleOnMap(new NumVector2(item.Center.X, item.Center.Y), item.Filled, item.Radius, item.Color, item.Thickness, VisibleSubMap.Large);
                             break;
                         case DeferredDrawKind.CircleInWorld:
                             graphics.DrawCircleInWorld(item.Center, item.Radius, item.Color, item.Thickness, item.Segments, item.Filled);
                             break;
                         case DeferredDrawKind.FilledCircleOnLargeMap:
-                            graphics.DrawFilledCircleOnLargeMap(new NumVector2(item.Center.X, item.Center.Y), item.Filled, item.Radius, item.Color, item.Segments);
+                            graphics.DrawFilledCircleOnMap(new NumVector2(item.Center.X, item.Center.Y), item.Filled, item.Radius, item.Color, item.Segments, VisibleSubMap.Large);
                             break;
                         case DeferredDrawKind.FilledScreenDisc:
                             DrawFilledScreenDisc(graphics, new NumVector2(item.Center.X, item.Center.Y), item.Radius, item.Color, item.Segments);
