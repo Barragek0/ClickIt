@@ -21,6 +21,14 @@ namespace ClickIt.UI.Settings
                 _ => new("Free Modifiers", new Vector4(0.0f, 0.7f, 0.0f, 0.3f), new Vector4(1f, 1f, 1f, 1f), new Vector4(0.5f, 1.0f, 0.5f, 1.0f))
             };
 
+        internal static IEnumerable<(string id, string name, string type, int defaultWeight)> OrderAltarModRows(
+            IReadOnlyList<(string id, string name, string type, int defaultWeight)> mods,
+            bool isUpside)
+            => isUpside
+                ? mods.OrderBy(static mod => GetAltarTypeOrder(mod.type))
+                : mods.OrderBy(static mod => GetAltarDownsideSectionOrder(mod.defaultWeight))
+                    .ThenBy(static mod => GetAltarTypeOrder(mod.type));
+
         internal static AltarModSectionDescriptor GetUpsideAltarModSectionDescriptor()
             => new(
                 "Altar Weight Upsides",
@@ -124,7 +132,7 @@ namespace ClickIt.UI.Settings
 
             SetupAltarModTableColumns(descriptor.ShowAlertColumn);
             string currentSection = string.Empty;
-            foreach ((string id, string name, string type, int defaultWeight) in mods)
+            foreach ((string id, string name, string type, int defaultWeight) in OrderAltarModRows(mods, descriptor.ShowAlertColumn))
             {
                 if (!MatchesSearch(searchFilter, name, type))
                     continue;
@@ -136,6 +144,25 @@ namespace ClickIt.UI.Settings
 
             ImGui.EndTable();
         }
+
+        private static int GetAltarTypeOrder(string type)
+            => type switch
+            {
+                ClickItSettings.AltarTypeMinion => 0,
+                ClickItSettings.AltarTypeBoss => 1,
+                ClickItSettings.AltarTypePlayer => 2,
+                _ => 3
+            };
+
+        private static int GetAltarDownsideSectionOrder(int defaultWeight)
+            => defaultWeight switch
+            {
+                100 => 0,
+                >= 70 => 1,
+                >= 40 => 2,
+                >= 2 => 3,
+                _ => 4
+            };
 
         private static void SetupAltarModTableColumns(bool showAlertColumn)
         {
