@@ -163,6 +163,8 @@ namespace ClickIt.Tests.Features.Labels.Classification
             cb4.Should().BeFalse();
             var cb5 = MechanicClassifier.IsBasicChestName(null);
             cb5.Should().BeFalse();
+            var cb6 = MechanicClassifier.IsBasicChestName("aMpHoRa");
+            cb6.Should().BeTrue();
         }
 
         [TestMethod]

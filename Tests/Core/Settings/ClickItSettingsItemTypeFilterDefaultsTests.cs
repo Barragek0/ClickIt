@@ -58,6 +58,14 @@ namespace ClickIt.Tests.Core.Settings
         }
 
         [TestMethod]
+        public void ItemTypeCatalog_ThreadsHoverExample_UsesBlightThread()
+        {
+            ItemCategoryCatalog.TryGet("scarabs", out ItemCategoryDefinition category).Should().BeTrue();
+            category.DisplayName.Should().Be("Threads");
+            category.ExampleItems.Should().Equal("Blight Thread");
+        }
+
+        [TestMethod]
         public void UnifiedJewels_DefaultSubtypeSplit_PreservesClusterWhitelistBehavior()
         {
             var settings = new ClickItSettings();

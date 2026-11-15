@@ -38,7 +38,7 @@
             new("unique-items", "Unique Items", ["special:unique-items"], ItemListKind.Whitelist, ["Tabula Rasa", "Headhunter"]),
             new("inscribed-ultimatums", "Inscribed Ultimatums", ["special:inscribed-ultimatum"], ItemListKind.Whitelist, ["Inscribed Ultimatum"]),
             // Keep the persisted category ID so existing saves retain their whitelist/blacklist choice.
-            new("scarabs", "Threads", "Items/Threads/", ItemListKind.Whitelist),
+            new("scarabs", "Threads", "Items/Threads/", ItemListKind.Whitelist, ["Blight Thread"]),
             new("heist-contracts", "Heist Contracts", ["special:heist-non-quest-contract"], ItemListKind.Whitelist, ["Contract: Bunker", "Contract: Smuggler's Den"]),
             new("heist-quest-contracts", "Heist Quest Contracts", ["special:heist-quest-contract"], ItemListKind.Blacklist, ["Contract: Trial Run", "Contract: The Finest Costumes"]),
             new("rogue-markers", "Rogue Markers", "Items/Heist/HeistCoin", ItemListKind.Whitelist, ["Rogue's Marker"]),
