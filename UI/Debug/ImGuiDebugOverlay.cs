@@ -1158,6 +1158,7 @@ internal sealed class ImGuiDebugOverlay(
 
         DebugTelemetrySnapshot snap = _lastSnapshot ?? DebugTelemetrySnapshot.Empty;
         AltarTelemetrySnapshot altar = snap.Altar;
+        ImGui.TextWrapped($"Altar Settings: {altar.SettingsSummary}");
 
         if (_settings.DebugShowAltarDetection.Value)
         {
@@ -1171,6 +1172,7 @@ internal sealed class ImGuiDebugOverlay(
                 {
                     AltarComponentTelemetrySnapshot comp = altar.Components[i];
                     ImGui.TextColored(CInfo, $"Altar #{i + 1}:");
+                    ImGui.TextWrapped($"Runtime: {comp.RuntimeState}");
                     RenderAltarSectionTable("Top", comp.Top);
                     RenderAltarSectionTable("Bottom", comp.Bottom);
                 }
@@ -2112,15 +2114,20 @@ internal sealed class ImGuiDebugOverlay(
         if (_lastSnapshot != null)
         {
             AltarTelemetrySnapshot altar = _lastSnapshot.Altar;
+            sb.AppendLine($"  Settings: {altar.SettingsSummary}");
             sb.AppendLine($"  Components: {altar.ComponentCount}");
             for (int i = 0; i < altar.Components.Count; i++)
             {
                 AltarComponentTelemetrySnapshot comp = altar.Components[i];
                 sb.AppendLine($"  Altar #{i + 1}:");
                 sb.AppendLine($"    Top ({comp.Top.SectionName}):");
+                sb.AppendLine($"      Raw UI Text: {FormatAltarDebugText(comp.TopRawText)}");
+                sb.AppendLine($"      Cleaned UI Text: {FormatAltarDebugText(comp.TopCleanedText)}");
                 if (comp.Top.Upsides.Count > 0) sb.AppendLine($"      Upsides: {JoinModTexts(comp.Top.Upsides)}");
                 if (comp.Top.Downsides.Count > 0) sb.AppendLine($"      Downsides: {JoinModTexts(comp.Top.Downsides)}");
                 sb.AppendLine($"    Bottom ({comp.Bottom.SectionName}):");
+                sb.AppendLine($"      Raw UI Text: {FormatAltarDebugText(comp.BottomRawText)}");
+                sb.AppendLine($"      Cleaned UI Text: {FormatAltarDebugText(comp.BottomCleanedText)}");
                 if (comp.Bottom.Upsides.Count > 0) sb.AppendLine($"      Upsides: {JoinModTexts(comp.Bottom.Upsides)}");
                 if (comp.Bottom.Downsides.Count > 0) sb.AppendLine($"      Downsides: {JoinModTexts(comp.Bottom.Downsides)}");
             }
@@ -2135,10 +2142,21 @@ internal sealed class ImGuiDebugOverlay(
                 if (!string.IsNullOrEmpty(d.LastError))
                     sb.AppendLine($"  Last Error: {d.LastError}");
                 AppendTrailSb(sb, "  Recent Stages", d.RecentStages, 40);
+                if (altar.RecentUnmatchedMods is { Count: > 0 } unmatchedMods)
+                {
+                    sb.AppendLine("  Unmatched Raw Mods:");
+                    foreach (string mod in unmatchedMods)
+                        sb.AppendLine($"    {FormatAltarDebugText(mod)}");
+                }
             }
         }
         sb.AppendLine();
     }
+
+    private static string FormatAltarDebugText(string? text)
+        => string.IsNullOrEmpty(text)
+            ? "(empty)"
+            : text.Replace("\r", " ").Replace("\n", " | ").Trim();
 
     private void AppendHoveredItem(System.Text.StringBuilder sb)
     {

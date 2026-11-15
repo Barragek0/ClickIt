@@ -18,11 +18,10 @@ namespace ClickIt.Features.Altars
             bool includeExarch,
             bool includeEater)
         {
-            _debugInfo.ResetForScan(DateTime.Now);
-
             List<LabelOnGround>? labelsFromCache = cachedLabels?.Value;
             if (labelsFromCache == null || labelsFromCache.Count == 0)
             {
+                _debugInfo.ResetForScan(DateTime.Now);
                 _altarStore.Clear();
                 _lastProcessedLabels = null;
                 _lastScanFoundAltarLabels = false;
@@ -35,6 +34,7 @@ namespace ClickIt.Features.Altars
                 && (!_lastScanFoundAltarLabels || _altarStore.GetComponentCount() > 0))
                 return;
 
+            _debugInfo.ResetForScan(DateTime.Now);
             _lastProcessedLabels = labelsFromCache;
 
             long labelsStart = Stopwatch.GetTimestamp();

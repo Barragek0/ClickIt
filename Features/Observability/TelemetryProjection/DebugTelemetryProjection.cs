@@ -32,7 +32,7 @@ namespace ClickIt.Features.Observability.TelemetryProjection
             StatusTelemetrySnapshot statusTelemetry = BuildStatusTelemetry(gameController, cachedLabels);
             ErrorTelemetrySnapshot errorTelemetry = BuildErrorTelemetry(errorHandler);
             InventoryTelemetrySnapshot inventoryTelemetry = BuildInventoryTelemetry(inventoryProbeService);
-            AltarTelemetrySnapshot altarTelemetry = BuildAltarTelemetry(altarService, weightCalculator);
+            AltarTelemetrySnapshot altarTelemetry = BuildAltarTelemetry(altarService, weightCalculator, settings, gameController);
             HoveredItemMetadataTelemetrySnapshot hoveredItemTelemetry = BuildHoveredItemMetadataTelemetry(gameController);
 
             return new DebugTelemetrySnapshot(

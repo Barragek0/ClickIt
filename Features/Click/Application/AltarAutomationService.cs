@@ -98,32 +98,34 @@ namespace ClickIt.Features.Click.Application
 
             if (!altar.IsValidCached())
             {
-                _dependencies.DebugLog("Skipping altar - Validation failed");
+                string validation = $"topValid={altar.TopMods?.Element?.IsValid == true} bottomValid={altar.BottomMods?.Element?.IsValid == true} "
+                    + $"topUnmatched={altar.TopMods?.HasUnmatchedMods == true} bottomUnmatched={altar.BottomMods?.HasUnmatchedMods == true}";
+                RecordSkip("Validation failed", validation);
                 return false;
             }
 
             if ((altar.TopMods?.Element?.IsValid != true) || (altar.BottomMods?.Element?.IsValid != true))
             {
-                _dependencies.DebugLog("Skipping altar - Elements are not valid");
+                RecordSkip("Elements are not valid");
                 return false;
             }
 
             if ((altar.TopMods?.HasUnmatchedMods == true) || (altar.BottomMods?.HasUnmatchedMods == true))
             {
-                _dependencies.DebugLog("Skipping altar - Unmatched mods present");
+                RecordSkip("Unmatched mods present");
                 return false;
             }
 
-            if (!AreBothAltarOptionsVisibleAndClickable(altar))
+            if (!AreBothAltarOptionsVisibleAndClickable(altar, out bool topActionable, out bool bottomActionable))
             {
-                _dependencies.DebugLog("Skipping altar - Top and bottom options are not both visible/clickable yet");
+                RecordSkip("Top and bottom options are not both visible/clickable yet", $"top={topActionable} bottom={bottomActionable}");
                 return false;
             }
 
             AltarWeights? altarWeights = altar.GetCachedWeights(component => _dependencies.CalculateAltarWeights(component));
             if (!altarWeights.HasValue)
             {
-                _dependencies.DebugLog("Skipping altar - Weight calculation failed");
+                RecordSkip("Weight calculation failed");
                 return false;
             }
 
@@ -134,15 +136,15 @@ namespace ClickIt.Features.Click.Application
             boxToClick = _dependencies.DetermineAltarChoice(altar, altarWeights.Value, topModsRect, bottomModsRect, topModsTopLeft);
             if (boxToClick == null)
             {
-                _dependencies.DebugLog("Skipping altar - No valid choice could be determined");
-                _dependencies.AddDebugStage($"AltarClick: {altar.AltarType} no valid choice (top={altarWeights.Value.TopWeight} bottom={altarWeights.Value.BottomWeight})");
+                string details = $"top={altarWeights.Value.TopWeight} bottom={altarWeights.Value.BottomWeight}";
+                _dependencies.DebugLog($"Skipping altar - No valid choice could be determined ({details})");
+                _dependencies.AddDebugStage($"AltarClick: {altar.AltarType} no valid choice ({details})");
                 return false;
             }
 
             if (!_dependencies.IsClickableInEitherSpace(boxToClick.GetClientRect().Center, altar.AltarType.ToString()) || !boxToClick.IsVisible)
             {
-                _dependencies.DebugLog("Skipping altar - Choice is not clickable or visible");
-                _dependencies.AddDebugStage($"AltarClick: {altar.AltarType} choice not clickable/visible");
+                RecordSkip("Choice is not clickable or visible", $"visible={boxToClick.IsVisible}");
                 return false;
             }
 
@@ -194,12 +196,23 @@ namespace ClickIt.Features.Click.Application
         private static bool IsValidVisible(Element el)
             => el != null && el.IsValid && el.IsVisible;
 
-        private bool AreBothAltarOptionsVisibleAndClickable(PrimaryAltarComponent altar)
+        private bool AreBothAltarOptionsVisibleAndClickable(PrimaryAltarComponent altar, out bool topActionable, out bool bottomActionable)
         {
             string altarPath = altar.AltarType.ToString();
-            bool topVisibleAndClickable = IsAltarOptionVisibleAndClickable(altar.TopMods?.Element, altarPath);
-            bool bottomVisibleAndClickable = IsAltarOptionVisibleAndClickable(altar.BottomMods?.Element, altarPath);
-            return AltarClickPolicy.AreBothAltarOptionsActionable(topVisibleAndClickable, bottomVisibleAndClickable);
+            topActionable = IsAltarOptionVisibleAndClickable(altar.TopMods?.Element, altarPath);
+            bottomActionable = IsAltarOptionVisibleAndClickable(altar.BottomMods?.Element, altarPath);
+            return AltarClickPolicy.AreBothAltarOptionsActionable(topActionable, bottomActionable);
+        }
+
+        private void RecordSkip(string reason, string details = "")
+        {
+            string message = string.IsNullOrEmpty(details)
+                ? $"Skipping altar - {reason}"
+                : $"Skipping altar - {reason}";
+            _dependencies.DebugLog(message);
+            _dependencies.AddDebugStage(string.IsNullOrEmpty(details)
+                ? $"AltarClick: skipped - {reason}"
+                : $"AltarClick: skipped - {reason} ({details})");
         }
 
         private bool IsAltarOptionVisibleAndClickable(Element? optionElement, string altarPath)

@@ -14,6 +14,7 @@ namespace ClickIt.Features.Altars
         public string LastError { get; set; } = "";
         public DateTime LastScanTime { get; set; } = DateTime.MinValue;
         public List<string> RecentUnmatchedMods { get; set; } = [];
+        public List<string> RecentUnmatchedRawMods { get; set; } = [];
 
         // Recent scan/decision/click stages so the debug box + dump show exactly what happened to each altar (which option was chosen and why), instead of only the aggregate counters. Deduped so a hot path collapses to one accumulating entry.
         private readonly DedupEventBuffer _stages = new(64);
@@ -34,6 +35,7 @@ namespace ClickIt.Features.Altars
             ModsUnmatched = 0;
             LastError = string.Empty;
             RecentUnmatchedMods.Clear();
+            RecentUnmatchedRawMods.Clear();
         }
 
         internal void RecordScannedLabelCounts(int exarchCount, int eaterCount)
@@ -59,13 +61,19 @@ namespace ClickIt.Features.Altars
         internal void RecordUnmatchedMod(string mod, string negativeModType)
         {
             ModsUnmatched++;
-            string cleanedMod = AltarModMatcher.NormalizeLetters(mod);
-            string unmatchedInfo = $"{cleanedMod} ({negativeModType})";
-            if (!RecentUnmatchedMods.Contains(unmatchedInfo))
+            string normalizedMod = AltarModMatcher.NormalizeLetters(mod);
+            string unmatchedInfo = $"{normalizedMod} ({negativeModType})";
+            AddRecentUnique(RecentUnmatchedMods, unmatchedInfo);
+            AddRecentUnique(RecentUnmatchedRawMods, $"{mod} ({negativeModType})");
+        }
+
+        private static void AddRecentUnique(List<string> entries, string value)
+        {
+            if (!entries.Contains(value))
             {
-                RecentUnmatchedMods.Add(unmatchedInfo);
-                if (RecentUnmatchedMods.Count > 5)
-                    RecentUnmatchedMods.RemoveAt(0);
+                entries.Add(value);
+                if (entries.Count > 5)
+                    entries.RemoveAt(0);
             }
         }
     }

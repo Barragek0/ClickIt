@@ -61,6 +61,9 @@ namespace ClickIt.Features.Altars
             });
         }
 
+        public bool AreModElementsValid()
+            => TopMods?.Element?.IsValid == true && BottomMods?.Element?.IsValid == true;
+
         public AltarWeights? GetCachedWeights(Func<PrimaryAltarComponent, AltarWeights> weightCalculator)
         {
             return WithCacheLock(() =>

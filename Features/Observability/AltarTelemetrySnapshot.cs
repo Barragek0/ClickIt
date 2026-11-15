@@ -4,7 +4,9 @@ namespace ClickIt.Features.Observability
         bool ServiceAvailable,
         int ComponentCount,
         IReadOnlyList<AltarComponentTelemetrySnapshot> Components,
-        AltarServiceDebugTelemetrySnapshot ServiceDebug)
+        AltarServiceDebugTelemetrySnapshot ServiceDebug,
+        string SettingsSummary = "",
+        IReadOnlyList<string>? RecentUnmatchedMods = null)
     {
         private static readonly IReadOnlyList<AltarComponentTelemetrySnapshot> EmptyComponents = [];
 
@@ -12,12 +14,19 @@ namespace ClickIt.Features.Observability
             ServiceAvailable: false,
             ComponentCount: 0,
             Components: EmptyComponents,
-            ServiceDebug: AltarServiceDebugTelemetrySnapshot.Empty);
+            ServiceDebug: AltarServiceDebugTelemetrySnapshot.Empty,
+            SettingsSummary: string.Empty,
+            RecentUnmatchedMods: []);
     }
 
     internal sealed record AltarComponentTelemetrySnapshot(
         AltarModSectionTelemetrySnapshot Top,
-        AltarModSectionTelemetrySnapshot Bottom);
+        AltarModSectionTelemetrySnapshot Bottom,
+        string RuntimeState = "",
+        string TopRawText = "",
+        string BottomRawText = "",
+        string TopCleanedText = "",
+        string BottomCleanedText = "");
 
     internal sealed record AltarModSectionTelemetrySnapshot(
         string SectionName,

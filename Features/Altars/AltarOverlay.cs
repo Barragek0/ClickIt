@@ -63,7 +63,8 @@ namespace ClickIt.Features.Altars
 
         private void RenderSingleAltar(DeferredDrawQueue drawQueue, RectangleF windowArea, PrimaryAltarComponent altar)
         {
-            if (!altar.IsValidCached())
+            // Mod recognition controls whether automation may choose, but it must not suppress the warning overlay for unmatched mods.
+            if (!altar.AreModElementsValid())
             {
                 return;
             }
