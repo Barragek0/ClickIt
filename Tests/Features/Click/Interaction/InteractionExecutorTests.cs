@@ -247,13 +247,14 @@ namespace ClickIt.Tests.Features.Click.Interaction
         }
 
         [TestMethod]
-        public void ResolveClickExecutionPosition_ReturnsCurrentCursorPosition_WhenCursorMoveIsAvoided()
+        public void ResolveClickExecutionPosition_ReturnsSuppliedCursorPosition_WhenCursorMoveIsAvoided()
         {
-            var cursor = Mouse.GetCursorPosition();
+            Vector2 resolved = InteractionExecutor.ResolveClickExecutionPosition(
+                new Vector2(321f, 654f),
+                avoidCursorMove: true,
+                cursorPosition: new SystemDrawingPoint(100, 200));
 
-            Vector2 resolved = InteractionExecutor.ResolveClickExecutionPosition(new Vector2(321f, 654f), avoidCursorMove: true);
-
-            resolved.Should().Be(new Vector2(cursor.X, cursor.Y));
+            resolved.Should().Be(new Vector2(100f, 200f));
         }
 
         [TestMethod]

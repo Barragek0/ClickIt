@@ -135,8 +135,13 @@ namespace ClickIt.Features.Click.Interaction
                 return requestedPosition;
 
             SystemDrawingPoint cursor = Mouse.GetCursorPosition();
-            return new Vector2(cursor.X, cursor.Y);
+            return ResolveClickExecutionPosition(requestedPosition, avoidCursorMove, cursor);
         }
+
+        internal static Vector2 ResolveClickExecutionPosition(Vector2 requestedPosition, bool avoidCursorMove, SystemDrawingPoint cursorPosition)
+            => avoidCursorMove
+                ? new Vector2(cursorPosition.X, cursorPosition.Y)
+                : requestedPosition;
 
         internal static bool ShouldSkipClickDueToHoverMismatch(
             bool lazyModeEnabled,
