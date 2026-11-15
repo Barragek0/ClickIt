@@ -4,6 +4,24 @@ namespace ClickIt.Tests.UI
     public class ClickItSettingsScreenTests
     {
         [TestMethod]
+        public void AlertSoundTestState_DisablesWhilePlaying_AndCanBeStartedAgainAfterCompletion()
+        {
+            var settings = new ClickItSettings();
+
+            settings.UiState.IsAlertSoundTestPlaying.Should().BeFalse();
+            settings.UiState.TryBeginAlertSoundTest().Should().BeTrue();
+            settings.UiState.IsAlertSoundTestPlaying.Should().BeTrue();
+            settings.UiState.TryBeginAlertSoundTest().Should().BeFalse();
+
+            settings.UiState.CompleteAlertSoundTest(TimeSpan.Zero);
+
+            settings.UiState.IsAlertSoundTestPlaying.Should().BeFalse();
+            settings.UiState.TryBeginAlertSoundTest().Should().BeTrue();
+            settings.UiState.CancelAlertSoundTest();
+            settings.UiState.IsAlertSoundTestPlaying.Should().BeFalse();
+        }
+
+        [TestMethod]
         public void ApplyTo_AssignsAllScreenNodes_ToSettingsSurface()
         {
             var settings = new ClickItSettings();

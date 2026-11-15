@@ -361,6 +361,8 @@ namespace ClickIt
         public ButtonNode OpenConfigDirectory { get; set; } = new ButtonNode();
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ButtonNode ReloadAlertSound { get; set; } = new ButtonNode();
+        [JsonIgnore]
+        internal ButtonNode TestAlertSound { get; set; } = new ButtonNode();
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public RangeNode<int> AlertSoundVolume { get; set; } = new RangeNode<int>(5, 0, 100);
 

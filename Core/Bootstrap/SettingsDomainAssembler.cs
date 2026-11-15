@@ -28,18 +28,35 @@ namespace ClickIt.Core.Bootstrap
         {
             settings.OpenConfigDirectory.OnPressed += alertService.OpenConfigDirectory;
             settings.ReloadAlertSound.OnPressed += alertService.ReloadAlertSound;
+            Action settingsTestAlertSound = () => PlayTestAlertSound(settings, alertService);
+            settings.TestAlertSound.OnPressed += settingsTestAlertSound;
 
             registry.Register(() => settings.OpenConfigDirectory.OnPressed -= alertService.OpenConfigDirectory);
             registry.Register(() => settings.ReloadAlertSound.OnPressed -= alertService.ReloadAlertSound);
+            registry.Register(() => settings.TestAlertSound.OnPressed -= settingsTestAlertSound);
 
             if (ReferenceEquals(settings, effectiveSettings))
                 return;
 
             effectiveSettings.OpenConfigDirectory.OnPressed += alertService.OpenConfigDirectory;
             effectiveSettings.ReloadAlertSound.OnPressed += alertService.ReloadAlertSound;
+            Action effectiveTestAlertSound = () => PlayTestAlertSound(effectiveSettings, alertService);
+            effectiveSettings.TestAlertSound.OnPressed += effectiveTestAlertSound;
 
             registry.Register(() => effectiveSettings.OpenConfigDirectory.OnPressed -= alertService.OpenConfigDirectory);
             registry.Register(() => effectiveSettings.ReloadAlertSound.OnPressed -= alertService.ReloadAlertSound);
+            registry.Register(() => effectiveSettings.TestAlertSound.OnPressed -= effectiveTestAlertSound);
+        }
+
+        private static void PlayTestAlertSound(ClickItSettings settings, AlertService alertService)
+        {
+            if (!settings.UiState.TryBeginAlertSoundTest())
+                return;
+
+            if (alertService.TryPlayTestSound(out TimeSpan playbackDuration))
+                settings.UiState.CompleteAlertSoundTest(playbackDuration);
+            else
+                settings.UiState.CancelAlertSoundTest();
         }
     }
 }

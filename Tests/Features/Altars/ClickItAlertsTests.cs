@@ -255,6 +255,109 @@ namespace ClickIt.Tests.Features.Altars
         }
 
         [TestMethod]
+        public void TryPlayTestSound_UsesLoadedWavAndConfiguredVolume_AndReportsPlaybackDuration()
+        {
+            var settings = new ClickItSettings();
+            settings.AlertSoundVolume.Value = 17;
+            string tempDirectory = Path.Combine(Path.GetTempPath(), "ClickItAlertTest_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDirectory);
+            string soundPath = Path.Combine(tempDirectory, "alert.wav");
+            WriteTestWave(soundPath, dataBytes: 1764, includeOddLengthChunk: true);
+            string? playedPath = null;
+            int? playedVolume = null;
+
+            try
+            {
+                var alertService = new AlertService(
+                    () => settings,
+                    () => settings,
+                    () => tempDirectory,
+                    () => null,
+                    (_, _) => { },
+                    (_, _) => { },
+                    playSound: (path, volume) =>
+                    {
+                        playedPath = path;
+                        playedVolume = volume;
+                    });
+
+                alertService.TryPlayTestSound(out TimeSpan playbackDuration).Should().BeTrue();
+
+                playedPath.Should().Be(soundPath);
+                playedVolume.Should().Be(17);
+                playbackDuration.TotalMilliseconds.Should().BeApproximately(110, 1);
+            }
+            finally
+            {
+                Directory.Delete(tempDirectory, recursive: true);
+            }
+        }
+
+        [TestMethod]
+        public void TryPlayTestSound_InvalidWaveDoesNotInvokePlayer()
+        {
+            var settings = new ClickItSettings();
+            string tempDirectory = Path.Combine(Path.GetTempPath(), "ClickItAlertInvalidTest_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDirectory);
+            string soundPath = Path.Combine(tempDirectory, "alert.wav");
+            File.WriteAllText(soundPath, "not a wave");
+            List<string> errors = [];
+            bool played = false;
+
+            try
+            {
+                var alertService = new AlertService(
+                    () => settings,
+                    () => settings,
+                    () => tempDirectory,
+                    () => null,
+                    (_, _) => { },
+                    (message, _) => errors.Add(message),
+                    playSound: (_, _) => played = true);
+
+                alertService.TryPlayTestSound(out TimeSpan playbackDuration).Should().BeFalse();
+
+                played.Should().BeFalse();
+                playbackDuration.Should().Be(TimeSpan.Zero);
+                errors.Should().ContainSingle(message => message.Contains("not a readable WAV", StringComparison.Ordinal));
+            }
+            finally
+            {
+                Directory.Delete(tempDirectory, recursive: true);
+            }
+        }
+
+        private static void WriteTestWave(string path, uint dataBytes, bool includeOddLengthChunk)
+        {
+            using FileStream stream = File.Create(path);
+            using BinaryWriter writer = new(stream, Encoding.ASCII, leaveOpen: true);
+            writer.Write(Encoding.ASCII.GetBytes("RIFF"));
+            writer.Write(0u);
+            writer.Write(Encoding.ASCII.GetBytes("WAVE"));
+            if (includeOddLengthChunk)
+            {
+                writer.Write(Encoding.ASCII.GetBytes("JUNK"));
+                writer.Write(1u);
+                writer.Write((byte)0);
+                writer.Write((byte)0);
+            }
+            writer.Write(Encoding.ASCII.GetBytes("fmt "));
+            writer.Write(16u);
+            writer.Write((ushort)1);
+            writer.Write((ushort)2);
+            writer.Write(44100u);
+            writer.Write(176400u);
+            writer.Write((ushort)4);
+            writer.Write((ushort)16);
+            writer.Write(Encoding.ASCII.GetBytes("data"));
+            writer.Write(dataBytes);
+            writer.Write(new byte[checked((int)dataBytes)]);
+            writer.Flush();
+            stream.Position = 4;
+            writer.Write((uint)(stream.Length - 8));
+        }
+
+        [TestMethod]
         public void TryTriggerAlertForMatchedMod_SetsLastAlertTime_WhenFileExistsAndEnabled()
         {
             var settings = new ClickItSettings();

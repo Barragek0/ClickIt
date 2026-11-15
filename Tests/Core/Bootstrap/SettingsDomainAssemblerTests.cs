@@ -12,6 +12,8 @@ namespace ClickIt.Tests.Core.Bootstrap
             string configDir = Path.Combine(Path.GetTempPath(), "clickit_settingsdomain_" + Guid.NewGuid().ToString("N"));
             int openConfigHandlersBefore = GetHandlerCount(settings.OpenConfigDirectory);
             int reloadHandlersBefore = GetHandlerCount(settings.ReloadAlertSound);
+            int testAlertHandlersBefore = GetHandlerCount(settings.TestAlertSound);
+            settings.AutoDownloadAlertSound.Value = false;
 
             Directory.CreateDirectory(configDir);
 
@@ -23,15 +25,19 @@ namespace ClickIt.Tests.Core.Bootstrap
 
                 GetHandlerCount(settings.OpenConfigDirectory).Should().Be(openConfigHandlersBefore + 1);
                 GetHandlerCount(settings.ReloadAlertSound).Should().Be(reloadHandlersBefore + 1);
+                GetHandlerCount(settings.TestAlertSound).Should().Be(testAlertHandlersBefore + 1);
 
                 SettingsUiRenderHelpers.TriggerButtonNode(settings.ReloadAlertSound);
+                SettingsUiRenderHelpers.TriggerButtonNode(settings.TestAlertSound);
 
-                logs.Should().ContainSingle(message => message.Contains("Alert sound not found in config directory.", StringComparison.Ordinal));
+                logs.Should().Contain(message => message.Contains("Alert sound not found in config directory.", StringComparison.Ordinal));
+                settings.UiState.IsAlertSoundTestPlaying.Should().BeFalse();
 
                 registry.DisposeAll();
 
                 GetHandlerCount(settings.OpenConfigDirectory).Should().Be(openConfigHandlersBefore);
                 GetHandlerCount(settings.ReloadAlertSound).Should().Be(reloadHandlersBefore);
+                GetHandlerCount(settings.TestAlertSound).Should().Be(testAlertHandlersBefore);
             }
             finally
             {
@@ -48,8 +54,10 @@ namespace ClickIt.Tests.Core.Bootstrap
             string configDir = Path.Combine(Path.GetTempPath(), "clickit_settingsdomain_" + Guid.NewGuid().ToString("N"));
             int runtimeOpenHandlersBefore = GetHandlerCount(settings.OpenConfigDirectory);
             int runtimeReloadHandlersBefore = GetHandlerCount(settings.ReloadAlertSound);
+            int runtimeTestAlertHandlersBefore = GetHandlerCount(settings.TestAlertSound);
             int effectiveOpenHandlersBefore = GetHandlerCount(effectiveSettings.OpenConfigDirectory);
             int effectiveReloadHandlersBefore = GetHandlerCount(effectiveSettings.ReloadAlertSound);
+            int effectiveTestAlertHandlersBefore = GetHandlerCount(effectiveSettings.TestAlertSound);
 
             Directory.CreateDirectory(configDir);
 
@@ -61,15 +69,19 @@ namespace ClickIt.Tests.Core.Bootstrap
 
                 GetHandlerCount(settings.OpenConfigDirectory).Should().Be(runtimeOpenHandlersBefore + 1);
                 GetHandlerCount(settings.ReloadAlertSound).Should().Be(runtimeReloadHandlersBefore + 1);
+                GetHandlerCount(settings.TestAlertSound).Should().Be(runtimeTestAlertHandlersBefore + 1);
                 GetHandlerCount(effectiveSettings.OpenConfigDirectory).Should().Be(effectiveOpenHandlersBefore + 1);
                 GetHandlerCount(effectiveSettings.ReloadAlertSound).Should().Be(effectiveReloadHandlersBefore + 1);
+                GetHandlerCount(effectiveSettings.TestAlertSound).Should().Be(effectiveTestAlertHandlersBefore + 1);
 
                 registry.DisposeAll();
 
                 GetHandlerCount(settings.OpenConfigDirectory).Should().Be(runtimeOpenHandlersBefore);
                 GetHandlerCount(settings.ReloadAlertSound).Should().Be(runtimeReloadHandlersBefore);
+                GetHandlerCount(settings.TestAlertSound).Should().Be(runtimeTestAlertHandlersBefore);
                 GetHandlerCount(effectiveSettings.OpenConfigDirectory).Should().Be(effectiveOpenHandlersBefore);
                 GetHandlerCount(effectiveSettings.ReloadAlertSound).Should().Be(effectiveReloadHandlersBefore);
+                GetHandlerCount(effectiveSettings.TestAlertSound).Should().Be(effectiveTestAlertHandlersBefore);
             }
             finally
             {

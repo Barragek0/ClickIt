@@ -144,6 +144,117 @@ namespace ClickIt.Features.Altars
             }
         }
 
+        public bool TryPlayTestSound(out TimeSpan playbackDuration)
+        {
+            playbackDuration = TimeSpan.Zero;
+
+            try
+            {
+                EnsureAlertLoaded();
+                string? path = CurrentAlertSoundPath;
+                if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                {
+                    _logError($"Cannot test alert sound because '{AlertFileName}' is not available.", 10);
+                    return false;
+                }
+
+                if (!TryGetWaveDuration(path, out playbackDuration))
+                {
+                    _logError($"Cannot test alert sound because '{AlertFileName}' is not a readable WAV file.", 10);
+                    return false;
+                }
+
+                if (_playSound == null && _gameControllerProvider()?.SoundController == null)
+                {
+                    _logError("Cannot test alert sound because the game sound controller is unavailable.", 10);
+                    playbackDuration = TimeSpan.Zero;
+                    return false;
+                }
+
+                PlaySoundFile(path);
+                // Leave a small scheduling margin so the button does not enable before XAudio finishes.
+                playbackDuration += TimeSpan.FromMilliseconds(100);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                playbackDuration = TimeSpan.Zero;
+                _logError("Failed to play test alert sound: " + ex.Message, 10);
+                return false;
+            }
+        }
+
+        private static bool TryGetWaveDuration(string path, out TimeSpan duration)
+        {
+            duration = TimeSpan.Zero;
+
+            using FileStream stream = File.OpenRead(path);
+            using BinaryReader reader = new(stream, Encoding.ASCII, leaveOpen: true);
+            if (stream.Length < 12 || reader.ReadUInt32() != 0x46464952) // RIFF
+                return false;
+
+            uint riffSize = reader.ReadUInt32();
+            if (reader.ReadUInt32() != 0x45564157) // WAVE
+                return false;
+
+            long riffEnd = 8L + riffSize;
+            if (riffEnd > stream.Length || riffEnd < 12)
+                return false;
+
+            uint byteRate = 0;
+            uint dataSize = 0;
+            bool hasFormat = false;
+            bool hasData = false;
+
+            while (stream.Position + 8 <= riffEnd)
+            {
+                uint chunkId = reader.ReadUInt32();
+                uint chunkSize = reader.ReadUInt32();
+                long chunkDataStart = stream.Position;
+                if (chunkSize > riffEnd - chunkDataStart)
+                    return false;
+
+                if (chunkId == 0x20746D66 && chunkSize >= 16) // fmt
+                {
+                    ushort format = reader.ReadUInt16();
+                    ushort channels = reader.ReadUInt16();
+                    uint sampleRate = reader.ReadUInt32();
+                    byteRate = reader.ReadUInt32();
+                    ushort blockAlign = reader.ReadUInt16();
+                    ushort bitsPerSample = reader.ReadUInt16();
+                    ulong expectedByteRate = (ulong)sampleRate * blockAlign;
+                    hasFormat = byteRate > 0
+                        && channels > 0
+                        && sampleRate > 0
+                        && blockAlign > 0
+                        && bitsPerSample > 0
+                        && expectedByteRate == byteRate
+                        && format is 1 or 3 or 0xFFFE;
+                }
+                else if (chunkId == 0x61746164) // data
+                {
+                    dataSize = chunkSize;
+                    hasData = true;
+                }
+
+                long nextChunk = chunkDataStart + chunkSize + (chunkSize & 1);
+                if (nextChunk > riffEnd)
+                    return false;
+
+                stream.Position = nextChunk;
+            }
+
+            if (!hasFormat || !hasData || dataSize == 0)
+                return false;
+
+            double seconds = (double)dataSize / byteRate;
+            if (double.IsNaN(seconds) || double.IsInfinity(seconds) || seconds <= 0)
+                return false;
+
+            duration = TimeSpan.FromSeconds(seconds);
+            return true;
+        }
+
         private void TryDownloadDefaultAlert(string file)
         {
             try

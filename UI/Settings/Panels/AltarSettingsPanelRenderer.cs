@@ -116,9 +116,26 @@ namespace ClickIt.UI.Settings.Panels
             SettingsUiRenderHelpers.DrawButtonNodeControl("Open Config Directory", _settings.OpenConfigDirectory, "Open the plugin config directory where you should put 'alert.wav'");
             SettingsUiRenderHelpers.DrawButtonNodeControl("Reload Alert Sound", _settings.ReloadAlertSound, "Reloads the 'alert.wav' sound file from the config directory");
 
-            SettingsUiRenderHelpers.DrawRangeNodeControl("Alert Volume", _settings.AlertSoundVolume, 0, 100, "Volume to play alert sound at (0-100)");
+            DrawAlertSoundVolumeControl();
 
             ImGui.TreePop();
+        }
+
+        private void DrawAlertSoundVolumeControl()
+        {
+            int volume = _settings.AlertSoundVolume.Value;
+            ImGui.SetNextItemWidth(300f);
+            if (ImGui.SliderInt("Alert Volume", ref volume, 0, 100))
+                _settings.AlertSoundVolume.Value = volume;
+
+            ImGui.SameLine();
+            bool isPlaying = _settings.UiState.IsAlertSoundTestPlaying;
+            ImGui.BeginDisabled(isPlaying);
+            if (ImGui.Button("Test"))
+                SettingsUiRenderHelpers.TriggerButtonNode(_settings.TestAlertSound);
+            ImGui.EndDisabled();
+
+            SettingsUiRenderHelpers.DrawInlineTooltip("Volume to play alert sound at (0-100). Test plays the loaded alert sound at this volume.");
         }
 
         private bool DrawUpsideModsSection()
