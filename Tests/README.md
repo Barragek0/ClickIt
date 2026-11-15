@@ -29,21 +29,20 @@ The test project should stay separate from the main project as much as possible.
 
 ## Running Tests Locally
 
-Run unit and integration tests in Debug:
+Run unit and integration tests in Debug through the guarded script from the repository root. The command uses the checked-in ExileCore references and does not require a machine-specific ExileAPI path:
 
 ```powershell
-dotnet test Tests\ClickIt.Tests.csproj -c Debug -p:IncludeIntegrationTests=true
+powershell -NoProfile -ExecutionPolicy Bypass -File Tests/Scripts/invoke-dotnet-test-with-memory-guard.ps1 -ProjectPath Tests/ClickIt.Tests.csproj -Configuration Debug
 ```
 
 The normal `Test`, `Build and Test`, coverage, and CI entry points start a hidden sidecar monitor from `Tests/Scripts/memory-guard.ps1`. That sidecar watches combined `testhost*` memory, writes a temporary trip file if the threshold is exceeded, and the caller prints a memory-guard failure after `dotnet test` completes. Set `CLICKIT_TEST_MEMORY_THRESHOLD_MB` if you need to override the default `2048` MB threshold locally.
 
-If you want the same workflow the repo expects in VS Code, use the default `Build and Test` task from `.vscode/tasks.json`.
+If you want the full build, test, and formatting workflow, use the **Build and Test** task in `.vscode/tasks.sample.json` or the equivalent PowerShell commands in the repository README.
 
 ## Coverage
 
-The repo has one common workspace coverage flow:
+The sample VS Code **Review Coverage** task invokes the coverage script with its supported configuration parameter. The script runs both XPlat and LCOV collection through the memory-guarded runner, restores the pinned ReportGenerator local tool, and generates its reports. A fresh checkout needs NuGet access for package and tool restore.
 
-- VS Code task: `Review Coverage`
 - Script: `Tests/Scripts/generate-coverage.ps1`
 
 The script runs XPlat coverage, generates a ReportGenerator XML summary, and writes the usual outputs under `Tests/TestResults/`:
@@ -56,10 +55,12 @@ The script runs XPlat coverage, generates a ReportGenerator XML summary, and wri
 
 `uncovered-lines.csv` is the repo-local replacement for the transient VS Code Problems list produced by the Code Coverage extension. It is generated directly from `Tests/TestResults/lcov.info` and records one row per uncovered line with the same owner and message shape the Problems pane uses.
 
-Run it like this:
+The script accepts `-Configuration`, `-ResultsDir`, and `-TopN`. Its nested test runs use the guarded runner and the repository's checked-in runtime references, so no host-specific ExileAPI path is needed for local coverage.
+
+Run it with the declared parameters, for example:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File ./Tests/Scripts/generate-coverage.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File ./Tests/Scripts/generate-coverage.ps1 -Configuration Debug
 ```
 
 ## Writing New Tests

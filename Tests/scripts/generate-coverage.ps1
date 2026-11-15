@@ -70,35 +70,53 @@ Set-StrictMode -Version Latest
 
 Write-Host "Running tests and collecting XPlat coverage (configuration=$configuration)"
 
-& (Join-Path $PSScriptRoot 'invoke-dotnet-test-with-memory-guard.ps1') -ProjectPath 'Tests/ClickIt.Tests.csproj' -Configuration $configuration -AdditionalArgs @('--collect:XPlat Code Coverage', '--settings', 'runsettings.xml', '/p:CollectCoverage=false', '/p:BuildProjectReferences=false')
+& dotnet tool restore
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-$coverageFiles = Get-ChildItem -Path Tests/TestResults -Recurse -Filter "coverage.cobertura.xml" -ErrorAction SilentlyContinue
+if (-not (Test-Path $resultsDir)) {
+    New-Item -ItemType Directory -Path $resultsDir -Force | Out-Null
+}
+
+$resultsPath = (Resolve-Path $resultsDir).Path
+$xplatResultsDir = Join-Path $resultsPath ('coverage-xplat-' + [guid]::NewGuid().ToString('N'))
+$canonicalLcovPath = Join-Path $resultsPath 'lcov.info'
+if (Test-Path $canonicalLcovPath) {
+    Remove-Item -Path $canonicalLcovPath -Force
+}
+
+$xplatArgs = @('--collect:XPlat Code Coverage', '--settings', 'runsettings.xml', '--results-directory', $xplatResultsDir, '/p:CollectCoverage=false')
+& (Join-Path $PSScriptRoot 'invoke-dotnet-test-with-memory-guard.ps1') -ProjectPath 'Tests/ClickIt.Tests.csproj' -Configuration $configuration -AdditionalArgs $xplatArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$lcovBuildArgs = @('/p:CollectCoverage=true', '/p:CoverletOutputFormat=lcov', "/p:CoverletOutput=$canonicalLcovPath", '/p:BuildProjectReferences=false', '--no-build')
+& (Join-Path $PSScriptRoot 'invoke-dotnet-test-with-memory-guard.ps1') -ProjectPath 'Tests/ClickIt.Tests.csproj' -Configuration $configuration -AdditionalArgs $lcovBuildArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$coverageFiles = Get-ChildItem -Path $xplatResultsDir -Recurse -Filter "coverage.cobertura.xml" -ErrorAction SilentlyContinue
 if (-not $coverageFiles) { Write-Error "No coverage.cobertura.xml files found in Tests/TestResults"; exit 1 }
 
 $coverageFiles = $coverageFiles | Sort-Object LastWriteTime -Descending
 $chosen = $coverageFiles | Select-Object -First 1
 if (-not $chosen) { Write-Error "No cobertura coverage file found to parse"; exit 1 }
 
-$lcovFiles = Get-ChildItem -Path $resultsDir -Recurse -Filter 'lcov.info' -ErrorAction SilentlyContinue
-if (-not $lcovFiles) { Write-Error "No lcov.info files found in $resultsDir"; exit 1 }
+$lcovFiles = Get-ChildItem -Path $resultsPath -Recurse -Filter 'lcov.info' -ErrorAction SilentlyContinue
+if (-not $lcovFiles) { Write-Error "No lcov.info files found in $resultsPath"; exit 1 }
 
 $lcovFiles = $lcovFiles | Sort-Object LastWriteTime -Descending
 $chosenLcov = $lcovFiles | Select-Object -First 1
 if (-not $chosenLcov) { Write-Error "No lcov.info file found to parse"; exit 1 }
 
-$canonicalCoveragePath = Join-Path $resultsDir 'coverage.cobertura.xml'
+$canonicalCoveragePath = Join-Path $resultsPath 'coverage.cobertura.xml'
 if ($chosen.FullName -ne (Resolve-Path $canonicalCoveragePath -ErrorAction SilentlyContinue | ForEach-Object { $_.Path })) {
     Copy-Item $chosen.FullName $canonicalCoveragePath -Force
 }
 
-$canonicalLcovPath = Join-Path $resultsDir 'lcov.info'
 if ($chosenLcov.FullName -ne (Resolve-Path $canonicalLcovPath -ErrorAction SilentlyContinue | ForEach-Object { $_.Path })) {
     Copy-Item $chosenLcov.FullName $canonicalLcovPath -Force
 }
 
-$summaryTargetDir = Join-Path $resultsDir 'cov'
-$htmlTargetDir = Join-Path $resultsDir 'covstats-xplat'
+$summaryTargetDir = Join-Path $resultsPath 'cov'
+$htmlTargetDir = Join-Path $resultsPath 'covstats-xplat'
 if (-not (Test-Path $summaryTargetDir)) { New-Item -ItemType Directory -Path $summaryTargetDir -Force | Out-Null }
 if (Test-Path $htmlTargetDir) {
     Remove-Item $htmlTargetDir -Recurse -Force
@@ -128,7 +146,7 @@ if ($null -ne $licenseArg) {
     $summaryReportArgs += $licenseArg
 }
 
-& reportgenerator @summaryReportArgs
+& dotnet tool run reportgenerator -- @summaryReportArgs
 if ($LASTEXITCODE -ne 0) { Write-Error "reportgenerator failed while generating XML summary"; exit $LASTEXITCODE }
 
 Write-Host "Generating HTML report using ReportGenerator into $htmlTargetDir"
@@ -141,7 +159,7 @@ if ($null -ne $licenseArg) {
     $htmlReportArgs += $licenseArg
 }
 
-& reportgenerator @htmlReportArgs
+& dotnet tool run reportgenerator -- @htmlReportArgs
 if ($LASTEXITCODE -ne 0) { Write-Error "reportgenerator failed"; exit $LASTEXITCODE }
 
 $summaryPath = Join-Path $summaryTargetDir 'Summary.xml'
@@ -150,7 +168,7 @@ if (-not (Test-Path $summaryPath)) { Write-Error "Summary.xml not found at $summ
 $htmlIndexPath = Join-Path $htmlTargetDir 'index.html'
 if (-not (Test-Path $htmlIndexPath)) { Write-Error "index.html not found at $htmlIndexPath"; exit 1 }
 
-$uncoveredLinesPath = Join-Path $resultsDir 'uncovered-lines.csv'
+$uncoveredLinesPath = Join-Path $resultsPath 'uncovered-lines.csv'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 
 Write-Host "Extracting uncovered LCOV lines to $uncoveredLinesPath"
@@ -246,7 +264,7 @@ $out = $stats.GetEnumerator() | ForEach-Object {
     [PSCustomObject]@{ File = $o.File; MissingLines = $o.Missing; TotalLines = $o.Total; MissingPct = [math]::Round((($o.Missing / [double]$o.Total) * 100), 2) }
 }
 
-$csvPath = Join-Path $resultsDir 'missing-files.csv'
+$csvPath = Join-Path $resultsPath 'missing-files.csv'
 $out | Sort-Object -Property MissingLines -Descending | Select-Object -First $topN | Export-Csv -NoTypeInformation -Path $csvPath -Force
 
 Write-Host "Generated: $canonicalLcovPath, $summaryPath, $htmlIndexPath, $csvPath, and $uncoveredLinesPath"

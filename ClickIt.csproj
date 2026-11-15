@@ -56,7 +56,7 @@
   <!-- Fallback references for development when exapiPackage is not set -->
   <ItemGroup Condition="'$(exapiPackage)' == ''">
     <Reference Include="ExileCore">
-      <HintPath>..\..\PoeHelper\net48\ExileCore.dll</HintPath>
+      <HintPath>ThirdParty\ExileCore.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Hexa.NET.ImGui" Condition="'$(UseHexaImGuiNuGet)' != 'true' and Exists('..\..\PoeHelper\net48\Hexa.NET.ImGui.dll')">
@@ -68,11 +68,11 @@
       <Private>false</Private>
     </Reference>
     <Reference Include="GameOffsets">
-      <HintPath>..\..\PoeHelper\net48\GameOffsets.dll</HintPath>
+      <HintPath>ThirdParty\GameOffsets.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="ProcessMemoryUtilities">
-      <HintPath>..\..\PoeHelper\net48\ProcessMemoryUtilities.dll</HintPath>
+      <HintPath>ThirdParty\ProcessMemoryUtilities.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
@@ -108,10 +108,6 @@
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
   </ItemGroup>
-
-  <Target Name="AfterBuild">
-    <Copy SourceFiles="$(ProjectDir)$(OutputPath)ClickIt.dll" DestinationFolder="C:\1.Path stuff\PoeHelper\net48\Plugins\Compiled\ClickIt" ContinueOnError="true" />
-  </Target>
 
   <PropertyGroup>
     <ThirdPartyDecompileScript>$(MSBuildProjectDirectory)\.scripts\decompile-thirdparty.ps1</ThirdPartyDecompileScript>

@@ -156,6 +156,6 @@ ThirdParty/Decompiled/
 .scripts/ThirdPartyDecompiler/
 
 # Extensions
-.github/copilot-instructions.md
+AGENTS.md
 .groupedtimelineinclude
 .history_machine/

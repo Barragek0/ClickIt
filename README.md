@@ -40,23 +40,33 @@ ClickIt reads the game state, collects the labels and interactions available aro
 - `UI/` — overlays, debug UI, introspection, settings panels
 - `Tests/` — tests mirroring the runtime ownership structure
 
-### Building
+### Building and testing
+
+On Windows, install the .NET 10 SDK and restore NuGet packages. The checked-in runtime references under `ThirdParty/` let a fresh checkout build without a separate ExileAPI installation. Generated decompiled sources are not required.
+
+For VS Code, copy the tracked `.vscode/tasks.sample.json` into the workspace task configuration and run **Build and Test**. It performs a non-incremental build, runs the full suite through the memory-guarded runner, verifies whitespace formatting, and stages the plugin DLL under the ignored `artifacts/Plugins/Compiled/ClickIt/` directory. To build against and deploy to a local ExileAPI installation, set `-ExapiPackagePath` to its assembly directory and `-PluginOutputPath` to its `Plugins/Compiled/ClickIt` directory.
+
+The same workflow is available from PowerShell at the repository root:
 
 ```powershell
-dotnet test Tests\ClickIt.Tests.csproj -c Debug -p:IncludeIntegrationTests=true
+powershell -NoProfile -ExecutionPolicy Bypass -File Tests/Scripts/invoke-build-and-test.ps1 `
+  -SolutionPath ClickIt.sln `
+  -TestProjectPath Tests/ClickIt.Tests.csproj `
+  -Configuration Debug `
+  -PluginOutputPath artifacts/Plugins/Compiled/ClickIt `
+  -BuildTool dotnet `
+  -NoIncrementalBuild
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+dotnet format ClickIt.sln whitespace --verify-no-changes --verbosity quiet
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
-```powershell
-msbuild ClickIt.sln /p:Configuration=Debug /p:exapiPackage="C:\Path\To\PoeHelper\net48\"
-```
-
-In VS Code, rename `.vscode/tasks.sample.json` to `.vscode/tasks.json`, adjust for your environment, and run the default `Build and Test` task (build → test → copy the DLL into the plugin folder). A hidden sidecar monitors `testhost*` memory (default 2048 MB; override with `CLICKIT_TEST_MEMORY_THRESHOLD_MB`).
-
-`ThirdParty/Decompiled/` and `.scripts/ThirdPartyDecompiler/` are local-only decompile artifacts and are not required to build.
+The test memory guard defaults to 2048 MB and can be changed with `CLICKIT_TEST_MEMORY_THRESHOLD_MB`. Do not invoke `dotnet test` directly; use the guarded runner, the VS Code task, or the command above.
 
 ### Testing & coverage
 
-- Use the `Review Coverage` task; output is written under `Tests/TestResults/`.
+- The sample **Review Coverage** task runs `Tests/Scripts/generate-coverage.ps1`; it restores the pinned ReportGenerator local tool and writes output under `Tests/TestResults/`.
 - `Tests/README.md` documents the repo's testing conventions.
 
 ### Contributing
@@ -64,7 +74,7 @@ In VS Code, rename `.vscode/tasks.sample.json` to `.vscode/tasks.json`, adjust f
 - Prefer merge-first changes inside the existing owner; no wrappers just to preserve an old shape.
 - Feature logic in `Features/`, shared helpers in `Shared/`, UI in `UI/`.
 - Update tests when behavior changes; keep test-only helpers inside `Tests/` (no `*ForTests` methods or test-only branches in the main project).
-- If you move folders or namespaces, update `.github/project-structure.md` too.
+- If you move folders or namespaces, keep the project layout and ownership guidance in this README accurate.
 - Follow the current structure.
 
 ## Credits
@@ -72,4 +82,4 @@ In VS Code, rename `.vscode/tasks.sample.json` to `.vscode/tasks.json`, adjust f
 - **Arecurius0** — original pickit improvements that started this project
 - **cheatingeagle / exapitools** — keeping ExileAPI up to date and functional
 - **instantsc** — the Radar plugin that influenced the terrain/pathfinding structure
-- **AI** — used for documentation, bug fixing (if I couldn't find a solution myself), refactoring / improving codebase structure, and all tests in the `Tests/` project
+- **AI** — used for documentation, bug fixing (if I couldn't find a solution myself), refactoring / improving codebase structure, and all tests in the `Tests/` project.

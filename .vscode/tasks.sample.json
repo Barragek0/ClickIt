@@ -3,6 +3,19 @@
   "tasks": [
     {
       "label": "Build and Test",
+      "dependsOn": [
+        "Build and Test: Build and run tests",
+        "Build and Test: Verify formatting"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Build and Test: Build and run tests",
       "type": "process",
       "command": "powershell",
       "args": [
@@ -10,29 +23,46 @@
         "-ExecutionPolicy",
         "Bypass",
         "-File",
-        "Tests\\Scripts\\invoke-build-and-test.ps1",
+        "${workspaceFolder}/Tests/Scripts/invoke-build-and-test.ps1",
         "-SolutionPath",
-        "ClickIt.sln",
+        "${workspaceFolder}/ClickIt.sln",
         "-TestProjectPath",
-        "Tests\\ClickIt.Tests.csproj",
+        "${workspaceFolder}/Tests/ClickIt.Tests.csproj",
         "-Configuration",
         "Debug",
-        "-ExapiPackagePath",
-        "..\\..\\PoeHelper\\net48\\",
         "-PluginOutputPath",
-        "C:\\Path\\To\\PoeHelper\\net48\\Plugins\\Compiled\\ClickIt",
+        "${workspaceFolder}/artifacts/Plugins/Compiled/ClickIt",
         "-BuildTool",
-        "msbuild-auto",
-        "-IncludeIntegrationTests"
+        "dotnet",
+        "-NoIncrementalBuild"
       ],
-      "presentation": {
-        "reveal": "never"
+      "options": {
+        "cwd": "${workspaceFolder}"
       },
-      "problemMatcher": [],
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      }
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build and Test: Verify formatting",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "format",
+        "${workspaceFolder}/ClickIt.sln",
+        "whitespace",
+        "--verify-no-changes",
+        "--verbosity",
+        "quiet"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
     },
     {
       "label": "Test",
@@ -43,21 +73,22 @@
         "-ExecutionPolicy",
         "Bypass",
         "-File",
-        "Tests\\Scripts\\invoke-dotnet-test-with-memory-guard.ps1",
+        "${workspaceFolder}/Tests/Scripts/invoke-dotnet-test-with-memory-guard.ps1",
         "-ProjectPath",
-        "Tests\\ClickIt.Tests.csproj",
+        "${workspaceFolder}/Tests/ClickIt.Tests.csproj",
         "-Configuration",
-        "Debug",
-        "-AdditionalArgs",
-        "-p:IncludeIntegrationTests=true"
+        "Debug"
       ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
       "presentation": {
-        "reveal": "never"
+        "reveal": "always"
       },
       "problemMatcher": [],
       "group": {
         "kind": "test",
-        "isDefault": true
+        "isDefault": false
       }
     },
     {
@@ -66,11 +97,18 @@
       "command": "powershell",
       "args": [
         "-NoProfile",
-        "-Command",
-        "& { & powershell -NoProfile -ExecutionPolicy Bypass -File 'Tests\\Scripts\\generate-coverage.ps1' -configuration 'Debug'; exit $LASTEXITCODE }"
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/Tests/Scripts/generate-coverage.ps1",
+        "-Configuration",
+        "Debug"
       ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
       "presentation": {
-        "reveal": "never",
+        "reveal": "always",
         "panel": "new"
       },
       "problemMatcher": [],
