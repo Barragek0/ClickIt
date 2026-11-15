@@ -43,6 +43,11 @@ namespace ClickIt.UI.Settings.Panels
             if (!ImGui.TreeNode("Altar Weights"))
                 return false;
 
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 1f, 0.35f, 1f));
+            ImGui.TextWrapped("Each modifier's slider value contributes to its option: upsides add value and downsides add risk. The score is upside total divided by downside total, multiplied by 100; the higher score wins. Enabled overrides are checked before scores, in this order: Valuable Upside, Dangerous Downside, Unvaluable Upside, then Minimum Weight. If both options trigger the same override or their final scores tie, no option is chosen automatically.");
+            ImGui.PopStyleColor();
+            ImGui.Spacing();
+
             bool upsideExpanded = DrawUpsideModsSection();
             bool downsideExpanded = DrawDownsideModsSection();
             DrawAltarWeightOverridesSection();
