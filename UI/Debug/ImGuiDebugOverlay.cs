@@ -1222,28 +1222,60 @@ internal sealed class ImGuiDebugOverlay(
 
     private static void RenderAltarSectionTable(string label, AltarModSectionTelemetrySnapshot section)
     {
-        if (section.Upsides.Count == 0 && section.Downsides.Count == 0) return;
+        if (section.Upsides.Count == 0 && section.Downsides.Count == 0 && section.MatchTrace.Count == 0) return;
         ImGui.TextColored(CInfo, $"  {label} ({section.SectionName}):");
         if (ImGui.BeginTable($"Altar{label}Mods", 2, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX))
         {
-            ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed, 65f);
+            ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed, 130f);
             ImGui.TableSetupColumn("Mods", ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableHeadersRow();
 
             if (section.Upsides.Count > 0)
             {
                 ImGui.TableNextRow();
-                _ = ImGui.TableNextColumn(); ImGui.Text("Upsides");
-                _ = ImGui.TableNextColumn(); ImGui.Text(JoinModTexts(section.Upsides));
+                string rawUpsides = JoinMatchedRawText(section.MatchTrace, "Upside");
+                _ = ImGui.TableNextColumn(); ImGui.Text(rawUpsides.Length > 0 ? "Upsides (raw)" : "Upsides (catalog IDs)");
+                _ = ImGui.TableNextColumn(); RenderUnformattedWrapped(rawUpsides.Length > 0 ? rawUpsides : JoinModTexts(section.Upsides));
             }
             if (section.Downsides.Count > 0)
             {
                 ImGui.TableNextRow();
-                _ = ImGui.TableNextColumn(); ImGui.Text("Downsides");
-                _ = ImGui.TableNextColumn(); ImGui.Text(JoinModTexts(section.Downsides));
+                string rawDownsides = JoinMatchedRawText(section.MatchTrace, "Downside");
+                _ = ImGui.TableNextColumn(); ImGui.Text(rawDownsides.Length > 0 ? "Downsides (raw)" : "Downsides (catalog IDs)");
+                _ = ImGui.TableNextColumn(); RenderUnformattedWrapped(rawDownsides.Length > 0 ? rawDownsides : JoinModTexts(section.Downsides));
+            }
+            if (section.MatchTrace.Count > 0)
+            {
+                ImGui.TableNextRow();
+                _ = ImGui.TableNextColumn(); ImGui.Text("Catalog matches");
+                _ = ImGui.TableNextColumn(); RenderUnformattedWrapped(string.Join(Environment.NewLine, section.MatchTrace));
             }
             ImGui.EndTable();
         }
+    }
+
+    private static void RenderUnformattedWrapped(string text)
+    {
+        ImGui.PushTextWrapPos();
+        ImGui.TextUnformatted(text);
+        ImGui.PopTextWrapPos();
+    }
+
+    private static string JoinMatchedRawText(IReadOnlyList<string> matchTrace, string classification)
+    {
+        string prefix = $"{classification}: ";
+        List<string> rawMods = [];
+        foreach (string trace in matchTrace)
+        {
+            if (!trace.StartsWith(prefix, StringComparison.Ordinal))
+                continue;
+
+            int matchSeparator = trace.IndexOf(" => ", prefix.Length, StringComparison.Ordinal);
+            if (matchSeparator > prefix.Length)
+                rawMods.Add(trace[prefix.Length..matchSeparator]);
+        }
+
+        return string.Join(Environment.NewLine, rawMods);
     }
 
     private static string JoinModTexts(IReadOnlyList<AltarWeightedModTelemetrySnapshot> mods)
@@ -2123,13 +2155,17 @@ internal sealed class ImGuiDebugOverlay(
                 sb.AppendLine($"    Top ({comp.Top.SectionName}):");
                 sb.AppendLine($"      Raw UI Text: {FormatAltarDebugText(comp.TopRawText)}");
                 sb.AppendLine($"      Cleaned UI Text: {FormatAltarDebugText(comp.TopCleanedText)}");
-                if (comp.Top.Upsides.Count > 0) sb.AppendLine($"      Upsides: {JoinModTexts(comp.Top.Upsides)}");
-                if (comp.Top.Downsides.Count > 0) sb.AppendLine($"      Downsides: {JoinModTexts(comp.Top.Downsides)}");
+                if (comp.Top.Upsides.Count > 0) AppendAltarMods(sb, "Upsides", comp.Top.Upsides, comp.Top.MatchTrace, "Upside");
+                if (comp.Top.Downsides.Count > 0) AppendAltarMods(sb, "Downsides", comp.Top.Downsides, comp.Top.MatchTrace, "Downside");
+                foreach (string trace in comp.Top.MatchTrace)
+                    sb.AppendLine($"      Catalog Match: {FormatAltarDebugText(trace)}");
                 sb.AppendLine($"    Bottom ({comp.Bottom.SectionName}):");
                 sb.AppendLine($"      Raw UI Text: {FormatAltarDebugText(comp.BottomRawText)}");
                 sb.AppendLine($"      Cleaned UI Text: {FormatAltarDebugText(comp.BottomCleanedText)}");
-                if (comp.Bottom.Upsides.Count > 0) sb.AppendLine($"      Upsides: {JoinModTexts(comp.Bottom.Upsides)}");
-                if (comp.Bottom.Downsides.Count > 0) sb.AppendLine($"      Downsides: {JoinModTexts(comp.Bottom.Downsides)}");
+                if (comp.Bottom.Upsides.Count > 0) AppendAltarMods(sb, "Upsides", comp.Bottom.Upsides, comp.Bottom.MatchTrace, "Upside");
+                if (comp.Bottom.Downsides.Count > 0) AppendAltarMods(sb, "Downsides", comp.Bottom.Downsides, comp.Bottom.MatchTrace, "Downside");
+                foreach (string trace in comp.Bottom.MatchTrace)
+                    sb.AppendLine($"      Catalog Match: {FormatAltarDebugText(trace)}");
             }
             if (altar.ServiceAvailable)
             {
@@ -2151,6 +2187,24 @@ internal sealed class ImGuiDebugOverlay(
             }
         }
         sb.AppendLine();
+    }
+
+    private static void AppendAltarMods(
+        System.Text.StringBuilder sb,
+        string label,
+        IReadOnlyList<AltarWeightedModTelemetrySnapshot> catalogMods,
+        IReadOnlyList<string> matchTrace,
+        string classification)
+    {
+        string rawMods = JoinMatchedRawText(matchTrace, classification);
+        if (rawMods.Length > 0)
+        {
+            foreach (string rawMod in rawMods.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries))
+                sb.AppendLine($"      {label}: {FormatAltarDebugText(rawMod)}");
+            return;
+        }
+
+        sb.AppendLine($"      {label} (catalog IDs; raw text unavailable): {JoinModTexts(catalogMods)}");
     }
 
     private static string FormatAltarDebugText(string? text)

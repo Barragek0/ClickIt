@@ -69,7 +69,40 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                 UpsideCount: mods.Upsides?.Count ?? 0,
                 DownsideCount: mods.Downsides?.Count ?? 0,
                 Upsides: BuildWeightedMods(mods.Upsides, upsideWeights),
-                Downsides: BuildWeightedMods(mods.Downsides, downsideWeights));
+                Downsides: BuildWeightedMods(mods.Downsides, downsideWeights),
+                MatchTrace: BuildAltarMatchTrace(ReadElementText(mods.Element)));
+        }
+
+        private static IReadOnlyList<string> BuildAltarMatchTrace(string rawText)
+        {
+            if (rawText.StartsWith("<read-error:", StringComparison.Ordinal)
+                || string.Equals(rawText, "<unavailable>", StringComparison.Ordinal)
+                || string.IsNullOrWhiteSpace(rawText))
+                return [];
+
+            string displayText = System.Text.RegularExpressions.Regex.Replace(rawText, "<[^>]*>", string.Empty)
+                .Replace("{", string.Empty)
+                .Replace("}", string.Empty);
+            string[] lines = displayText.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (lines.Length <= 1)
+                return [];
+
+            string negativeModType = lines[0].Replace("gain:", string.Empty, StringComparison.OrdinalIgnoreCase)
+                .Replace("gains:", string.Empty, StringComparison.OrdinalIgnoreCase)
+                .Trim();
+            List<string> trace = [];
+            for (int i = 1; i < lines.Length; i++)
+            {
+                string rawMod = lines[i];
+                if (string.IsNullOrWhiteSpace(rawMod))
+                    continue;
+
+                trace.Add(AltarModMatcher.TryMatchMod(rawMod, negativeModType, out bool isUpside, out string matchedId)
+                    ? $"{(isUpside ? "Upside" : "Downside")}: {rawMod} => {matchedId}"
+                    : $"Unmatched ({negativeModType}): {rawMod}");
+            }
+
+            return trace;
         }
 
         private static string DescribeAltarRuntimeState(

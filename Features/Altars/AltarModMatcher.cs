@@ -2,7 +2,7 @@ namespace ClickIt.Features.Altars
 {
     public static class AltarModMatcher
     {
-        private static readonly Dictionary<string, (bool IsUpside, string MatchedId)> ModLookup = BuildModLookup();
+        private static readonly Dictionary<string, List<(bool IsUpside, string MatchedId)>> ModLookup = BuildModLookup();
 
         public static bool TryMatchMod(string mod, string negativeModType, out bool isUpside, out string matchedId)
         {
@@ -19,23 +19,24 @@ namespace ClickIt.Features.Altars
             if (modTarget.Length == 0)
                 return false;
 
-            if (!ModLookup.TryGetValue(BuildLookupKey(cleanedMod, modTarget), out (bool IsUpside, string MatchedId) match))
+            if (!ModLookup.TryGetValue(BuildLookupKey(cleanedMod, modTarget), out List<(bool IsUpside, string MatchedId)>? matches))
                 return false;
 
+            (bool IsUpside, string MatchedId) match = SelectMatch(mod, matches);
             isUpside = match.IsUpside;
             matchedId = match.MatchedId;
             return true;
         }
 
-        private static Dictionary<string, (bool IsUpside, string MatchedId)> BuildModLookup()
+        private static Dictionary<string, List<(bool IsUpside, string MatchedId)>> BuildModLookup()
         {
-            Dictionary<string, (bool IsUpside, string MatchedId)> lookup = new(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, List<(bool IsUpside, string MatchedId)>> lookup = new(StringComparer.OrdinalIgnoreCase);
             AddMods(lookup, AltarModsConstants.UpsideMods, isUpside: true);
             AddMods(lookup, AltarModsConstants.DownsideMods, isUpside: false);
             return lookup;
         }
 
-        private static void AddMods(Dictionary<string, (bool IsUpside, string MatchedId)> lookup, IReadOnlyList<(string Id, string Name, string Type, int DefaultValue)> mods, bool isUpside)
+        private static void AddMods(Dictionary<string, List<(bool IsUpside, string MatchedId)>> lookup, IReadOnlyList<(string Id, string Name, string Type, int DefaultValue)> mods, bool isUpside)
         {
             foreach ((string? id, string _, string? type, int _) in mods)
             {
@@ -44,10 +45,54 @@ namespace ClickIt.Features.Altars
                     continue;
 
                 string key = BuildLookupKey(cleanedId, type);
-                if (!lookup.ContainsKey(key))
-                    lookup[key] = (isUpside, $"{type}|{id}");
-
+                if (!lookup.TryGetValue(key, out List<(bool IsUpside, string MatchedId)>? matches))
+                    lookup[key] = matches = [];
+                matches.Add((isUpside, $"{type}|{id}"));
             }
+        }
+
+        private static (bool IsUpside, string MatchedId) SelectMatch(
+            string mod,
+            List<(bool IsUpside, string MatchedId)> matches)
+        {
+            if (matches.Count <= 1)
+                return matches[0];
+
+            Match valueMatch = Regex.Match(mod, @"(?<!\d)(?<value>\d+(?:\.\d+)?)\s*%");
+            if (!valueMatch.Success
+                || !decimal.TryParse(valueMatch.Groups["value"].Value, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal value))
+                return matches[0];
+
+            List<(bool IsUpside, string MatchedId, decimal Min, decimal Max)> rangedMatches = [];
+            foreach ((bool isUpside, string matchedId) in matches)
+            {
+                int separatorIndex = matchedId.IndexOf('|');
+                string id = separatorIndex >= 0 ? matchedId[(separatorIndex + 1)..] : matchedId;
+                Match rangeMatch = Regex.Match(id, @"\((?<min>\d+(?:\.\d+)?)-(?<max>\d+(?:\.\d+)?)\)\s*$");
+                if (!rangeMatch.Success
+                    || !decimal.TryParse(rangeMatch.Groups["min"].Value, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal min)
+                    || !decimal.TryParse(rangeMatch.Groups["max"].Value, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal max))
+                    continue;
+
+                rangedMatches.Add((isUpside, matchedId, min, max));
+            }
+
+            List<(bool IsUpside, string MatchedId, decimal Min, decimal Max)> containingRanges = rangedMatches
+                .Where(candidate => value >= candidate.Min && value < candidate.Max)
+                .ToList();
+            if (containingRanges.Count == 1)
+                return (containingRanges[0].IsUpside, containingRanges[0].MatchedId);
+
+            if (containingRanges.Count == 0)
+            {
+                List<(bool IsUpside, string MatchedId, decimal Min, decimal Max)> boundaryMatches = rangedMatches
+                    .Where(candidate => value == candidate.Max)
+                    .ToList();
+                if (boundaryMatches.Count == 1)
+                    return (boundaryMatches[0].IsUpside, boundaryMatches[0].MatchedId);
+            }
+
+            return matches[0];
         }
 
         private static string BuildLookupKey(string cleanedId, string type)

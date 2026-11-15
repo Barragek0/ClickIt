@@ -33,7 +33,8 @@ namespace ClickIt.Features.Observability
         int UpsideCount,
         int DownsideCount,
         IReadOnlyList<AltarWeightedModTelemetrySnapshot> Upsides,
-        IReadOnlyList<AltarWeightedModTelemetrySnapshot> Downsides)
+        IReadOnlyList<AltarWeightedModTelemetrySnapshot> Downsides,
+        IReadOnlyList<string> MatchTrace)
     {
         private static readonly IReadOnlyList<AltarWeightedModTelemetrySnapshot> EmptyMods = [];
 
@@ -43,7 +44,8 @@ namespace ClickIt.Features.Observability
                 UpsideCount: 0,
                 DownsideCount: 0,
                 Upsides: EmptyMods,
-                Downsides: EmptyMods);
+                Downsides: EmptyMods,
+                MatchTrace: []);
     }
 
     internal sealed record AltarWeightedModTelemetrySnapshot(
