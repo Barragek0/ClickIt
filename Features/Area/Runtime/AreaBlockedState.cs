@@ -11,15 +11,15 @@ namespace ClickIt.Features.Area.Runtime
         public RectangleF SkillsRectangle { get; set; }
         public RectangleF SkillsTertiaryRectangle { get; set; }
         public RectangleF ManaSquareRectangle { get; set; }
+        public RectangleF BuffsRectangle { get; set; }
+        public RectangleF DebuffsRectangle { get; set; }
         public RectangleF BuffsAndDebuffsRectangle { get; set; }
         public List<RectangleF> BuffsAndDebuffsRectangles { get; } = [];
         public RectangleF ChatPanelBlockedRectangle { get; set; }
         public RectangleF MapPanelBlockedRectangle { get; set; }
         public RectangleF XpBarBlockedRectangle { get; set; }
-        public RectangleF MirageBlockedRectangle { get; set; }
-        public RectangleF AltarBlockedRectangle { get; set; }
+        public RectangleF ButtonsBlockedRectangle { get; set; }
         public RectangleF RitualBlockedRectangle { get; set; }
-        public RectangleF SentinelBlockedRectangle { get; set; }
         public List<RectangleF> QuestTrackerBlockedRectangles { get; } = [];
         public long LastQuestTrackerRectanglesSuccessTimestampMs { get; set; }
         public long LastBlockedUiRectanglesRefreshTimestampMs { get; set; }
@@ -41,14 +41,14 @@ namespace ClickIt.Features.Area.Runtime
                 SkillsRectangle = SkillsRectangle,
                 SkillsTertiaryRectangle = SkillsTertiaryRectangle,
                 ManaSquareRectangle = ManaSquareRectangle,
+                BuffsRectangle = BuffsRectangle,
+                DebuffsRectangle = DebuffsRectangle,
                 BuffsAndDebuffsRectangle = BuffsAndDebuffsRectangle,
                 ChatPanelBlockedRectangle = ChatPanelBlockedRectangle,
                 MapPanelBlockedRectangle = MapPanelBlockedRectangle,
                 XpBarBlockedRectangle = XpBarBlockedRectangle,
-                MirageBlockedRectangle = MirageBlockedRectangle,
-                AltarBlockedRectangle = AltarBlockedRectangle,
+                ButtonsBlockedRectangle = ButtonsBlockedRectangle,
                 RitualBlockedRectangle = RitualBlockedRectangle,
-                SentinelBlockedRectangle = SentinelBlockedRectangle,
                 BuffsAndDebuffsRectangles = [.. BuffsAndDebuffsRectangles],
                 QuestTrackerBlockedRectangles = [.. QuestTrackerBlockedRectangles]
             };
@@ -67,14 +67,14 @@ namespace ClickIt.Features.Area.Runtime
             SkillsRectangle = snapshot.SkillsRectangle;
             SkillsTertiaryRectangle = snapshot.SkillsTertiaryRectangle;
             ManaSquareRectangle = snapshot.ManaSquareRectangle;
+            BuffsRectangle = snapshot.BuffsRectangle;
+            DebuffsRectangle = snapshot.DebuffsRectangle;
             BuffsAndDebuffsRectangle = snapshot.BuffsAndDebuffsRectangle;
             ChatPanelBlockedRectangle = snapshot.ChatPanelBlockedRectangle;
             MapPanelBlockedRectangle = snapshot.MapPanelBlockedRectangle;
             XpBarBlockedRectangle = snapshot.XpBarBlockedRectangle;
-            MirageBlockedRectangle = snapshot.MirageBlockedRectangle;
-            AltarBlockedRectangle = snapshot.AltarBlockedRectangle;
+            ButtonsBlockedRectangle = snapshot.ButtonsBlockedRectangle;
             RitualBlockedRectangle = snapshot.RitualBlockedRectangle;
-            SentinelBlockedRectangle = snapshot.SentinelBlockedRectangle;
 
             BuffsAndDebuffsRectangles.Clear();
             BuffsAndDebuffsRectangles.AddRange(snapshot.BuffsAndDebuffsRectangles);

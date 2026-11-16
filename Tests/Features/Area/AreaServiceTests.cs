@@ -316,7 +316,7 @@ namespace ClickIt.Tests.Features.Area
         }
 
         [TestMethod]
-        public void PointIsInClickableArea_ReturnsFalse_InAltarBlockedRectangle()
+        public void PointIsInClickableArea_ReturnsFalse_InButtonsBlockedRectangle()
         {
             var svc = new AreaService();
 
@@ -324,9 +324,9 @@ namespace ClickIt.Tests.Features.Area
             var health = new RectangleF(0, 290, 400, 300);
             var mana = new RectangleF(390, 290, 400, 300);
             var buffs = new RectangleF(0, 0, 30, 30);
-            var altarBlocked = new RectangleF(250, 120, 60, 70);
+            var buttonsBlocked = new RectangleF(250, 120, 60, 70);
 
-            ApplySnapshot(svc, full, health, mana, buffs, altarBlockedRectangle: altarBlocked);
+            ApplySnapshot(svc, full, health, mana, buffs, buttonsBlockedRectangle: buttonsBlocked);
 
             svc.PointIsInClickableArea(new Vector2(280, 150)).Should().BeFalse();
             svc.PointIsInClickableArea(new Vector2(230, 150)).Should().BeTrue();
@@ -347,23 +347,6 @@ namespace ClickIt.Tests.Features.Area
 
             svc.PointIsInClickableArea(new Vector2(300, 170)).Should().BeFalse();
             svc.PointIsInClickableArea(new Vector2(230, 170)).Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void PointIsInClickableArea_ReturnsFalse_InSentinelBlockedRectangle()
-        {
-            var svc = new AreaService();
-
-            var full = new RectangleF(0, 0, 400, 300);
-            var health = new RectangleF(0, 290, 400, 300);
-            var mana = new RectangleF(390, 290, 400, 300);
-            var buffs = new RectangleF(0, 0, 30, 30);
-            var sentinelBlocked = new RectangleF(200, 120, 70, 80);
-
-            ApplySnapshot(svc, full, health, mana, buffs, sentinelBlockedRectangle: sentinelBlocked);
-
-            svc.PointIsInClickableArea(new Vector2(230, 150)).Should().BeFalse();
-            svc.PointIsInClickableArea(new Vector2(300, 150)).Should().BeTrue();
         }
 
         [TestMethod]
@@ -429,7 +412,7 @@ namespace ClickIt.Tests.Features.Area
                 health,
                 mana,
                 buffs,
-                altarBlockedRectangle: new RectangleF(200, 100, 120, 60));
+                buttonsBlockedRectangle: new RectangleF(200, 100, 120, 60));
 
             // Absolute point maps to client (220,120) and should be blocked.
             svc.PointIsInClickableArea(new Vector2(320, 170)).Should().BeFalse();
@@ -467,9 +450,8 @@ namespace ClickIt.Tests.Features.Area
             RectangleF? chatPanelBlockedRectangle = null,
             RectangleF? mapPanelBlockedRectangle = null,
             RectangleF? xpBarBlockedRectangle = null,
-            RectangleF? altarBlockedRectangle = null,
+            RectangleF? buttonsBlockedRectangle = null,
             RectangleF? ritualBlockedRectangle = null,
-            RectangleF? sentinelBlockedRectangle = null,
             IReadOnlyList<RectangleF>? buffsAndDebuffsRectangles = null,
             IReadOnlyList<RectangleF>? questTrackerBlockedRectangles = null)
         {
@@ -488,9 +470,8 @@ namespace ClickIt.Tests.Features.Area
                 ChatPanelBlockedRectangle = chatPanelBlockedRectangle ?? RectangleF.Empty,
                 MapPanelBlockedRectangle = mapPanelBlockedRectangle ?? RectangleF.Empty,
                 XpBarBlockedRectangle = xpBarBlockedRectangle ?? RectangleF.Empty,
-                AltarBlockedRectangle = altarBlockedRectangle ?? RectangleF.Empty,
+                ButtonsBlockedRectangle = buttonsBlockedRectangle ?? RectangleF.Empty,
                 RitualBlockedRectangle = ritualBlockedRectangle ?? RectangleF.Empty,
-                SentinelBlockedRectangle = sentinelBlockedRectangle ?? RectangleF.Empty,
                 BuffsAndDebuffsRectangles = buffsAndDebuffsRectangles ?? [],
                 QuestTrackerBlockedRectangles = questTrackerBlockedRectangles ?? []
             });

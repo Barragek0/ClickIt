@@ -27,9 +27,13 @@ namespace ClickIt.Tests.Features.Area
             var provider = new AreaBlockedSnapshotProvider();
             var buffs = new List<RectangleF> { new(10, 10, 20, 20) };
             var quest = new List<RectangleF> { new(30, 30, 40, 40) };
+            RectangleF buffsRectangle = new(50, 50, 60, 60);
+            RectangleF debuffsRectangle = new(70, 70, 80, 80);
 
             provider.ApplySnapshot(new AreaBlockedSnapshot
             {
+                BuffsRectangle = buffsRectangle,
+                DebuffsRectangle = debuffsRectangle,
                 BuffsAndDebuffsRectangles = buffs,
                 QuestTrackerBlockedRectangles = quest
             });
@@ -38,6 +42,8 @@ namespace ClickIt.Tests.Features.Area
             quest.Clear();
             AreaBlockedSnapshot current = provider.CurrentSnapshot;
 
+            current.BuffsRectangle.Should().Be(buffsRectangle);
+            current.DebuffsRectangle.Should().Be(debuffsRectangle);
             current.BuffsAndDebuffsRectangles.Should().ContainSingle();
             current.QuestTrackerBlockedRectangles.Should().ContainSingle();
         }
@@ -110,18 +116,23 @@ namespace ClickIt.Tests.Features.Area
         }
 
         [TestMethod]
-        public void ApplyBuffAndDebuffRectangles_StoresAllRectangles_AndUsesFirstAsAggregate()
+        public void ApplyBuffAndDebuffRectangles_StoresSeparateRectangles_AndKeepsAggregateCollection()
         {
             var blockedState = new AreaBlockedState();
+            RectangleF buffs = new(1, 2, 3, 4);
+            RectangleF debuffs = new(5, 6, 7, 8);
 
             AreaBlockedSnapshotProvider.ApplyBuffAndDebuffRectangles(
                 blockedState,
-                [new RectangleF(1, 2, 3, 4), new RectangleF(5, 6, 7, 8)]);
+                buffs,
+                debuffs);
 
+            blockedState.BuffsRectangle.Should().Be(buffs);
+            blockedState.DebuffsRectangle.Should().Be(debuffs);
             blockedState.BuffsAndDebuffsRectangles.Should().HaveCount(2);
-            blockedState.BuffsAndDebuffsRectangles[0].Should().Be(new RectangleF(1, 2, 3, 4));
-            blockedState.BuffsAndDebuffsRectangles[1].Should().Be(new RectangleF(5, 6, 7, 8));
-            blockedState.BuffsAndDebuffsRectangle.Should().Be(new RectangleF(1, 2, 3, 4));
+            blockedState.BuffsAndDebuffsRectangles[0].Should().Be(buffs);
+            blockedState.BuffsAndDebuffsRectangles[1].Should().Be(debuffs);
+            blockedState.BuffsAndDebuffsRectangle.Should().Be(buffs);
         }
 
         [TestMethod]
@@ -130,11 +141,15 @@ namespace ClickIt.Tests.Features.Area
             var blockedState = new AreaBlockedState();
             blockedState.BuffsAndDebuffsRectangles.Add(new RectangleF(1, 2, 3, 4));
             blockedState.BuffsAndDebuffsRectangle = new RectangleF(1, 2, 3, 4);
+            blockedState.BuffsRectangle = new RectangleF(1, 2, 3, 4);
+            blockedState.DebuffsRectangle = new RectangleF(5, 6, 7, 8);
 
-            AreaBlockedSnapshotProvider.ApplyBuffAndDebuffRectangles(blockedState, []);
+            AreaBlockedSnapshotProvider.ApplyBuffAndDebuffRectangles(blockedState, RectangleF.Empty, RectangleF.Empty);
 
             blockedState.BuffsAndDebuffsRectangles.Should().BeEmpty();
             blockedState.BuffsAndDebuffsRectangle.Should().Be(RectangleF.Empty);
+            blockedState.BuffsRectangle.Should().Be(RectangleF.Empty);
+            blockedState.DebuffsRectangle.Should().Be(RectangleF.Empty);
         }
 
         [TestMethod]

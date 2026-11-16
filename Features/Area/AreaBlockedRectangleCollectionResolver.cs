@@ -2,18 +2,15 @@ namespace ClickIt.Features.Area
 {
     internal static class AreaBlockedRectangleCollectionResolver
     {
-        internal static List<RectangleF> ResolveBuffsAndDebuffsBlockedRectangles(GameController gameController)
+        internal static (RectangleF Buffs, RectangleF Debuffs) ResolveBuffsAndDebuffsBlockedRectangles(GameController gameController)
             => ResolveBuffsAndDebuffsBlockedRectanglesFromRoot(AreaUiSnapshotReader.TryGetIngameUiProperty(gameController, "Root"));
 
-        internal static List<RectangleF> ResolveBuffsAndDebuffsBlockedRectanglesFromRoot(object? root)
+        internal static (RectangleF Buffs, RectangleF Debuffs) ResolveBuffsAndDebuffsBlockedRectanglesFromRoot(object? root)
         {
-            List<RectangleF> blocked = new(2);
             if (!AreaUiNodeTraversal.TryGetChildNode(root, 1, out object? child1) || child1 == null)
-                return blocked;
+                return (RectangleF.Empty, RectangleF.Empty);
 
-            TryAddValidRectFromChild(child1, 23, blocked);
-            TryAddValidRectFromChild(child1, 24, blocked);
-            return blocked;
+            return (ResolveVisibleRectFromChild(child1, 24), ResolveVisibleRectFromChild(child1, 25));
         }
 
         internal static List<RectangleF> ResolveQuestTrackerBlockedRectangles(GameController gameController)
@@ -43,13 +40,18 @@ namespace ClickIt.Features.Area
             return blocked;
         }
 
-        private static void TryAddValidRectFromChild(object source, int childIndex, List<RectangleF> output)
+        private static RectangleF ResolveVisibleRectFromChild(object source, int childIndex)
         {
             if (!AreaUiNodeTraversal.TryGetChildNode(source, childIndex, out object? node) || node == null)
-                return;
+                return RectangleF.Empty;
 
-            if (AreaUiNodeTraversal.TryGetClientRect(node, out RectangleF rect) && rect.Width > 1f && rect.Height > 1f)
-                output.Add(rect);
+            if (!AreaUiNodeTraversal.TryReadVisibility(node, out bool isValid, out bool isVisible)
+                || !AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(isValid, isVisible))
+                return RectangleF.Empty;
+
+            return AreaUiNodeTraversal.TryGetClientRect(node, out RectangleF rect) && rect.Width > 1f && rect.Height > 1f
+                ? rect
+                : RectangleF.Empty;
         }
     }
 }

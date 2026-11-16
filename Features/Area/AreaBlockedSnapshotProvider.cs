@@ -146,10 +146,8 @@ namespace ClickIt.Features.Area
                 ? AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.MapPanel)
                 : RectangleF.Empty;
             _blockedState.XpBarBlockedRectangle = AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.XpBar);
-            _blockedState.MirageBlockedRectangle = AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.Mirage);
-            _blockedState.AltarBlockedRectangle = AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.Altar);
+            _blockedState.ButtonsBlockedRectangle = AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.Buttons);
             _blockedState.RitualBlockedRectangle = AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.Ritual);
-            _blockedState.SentinelBlockedRectangle = AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.Sentinel);
         }
 
         internal static (RectangleF fullScreen, RectangleF leftCombined, RectangleF rightCombined) ResolveMainUiRegions(RectangleF winRect)
@@ -181,8 +179,8 @@ namespace ClickIt.Features.Area
 
         private void RefreshBuffAndDebuffAreas(GameController gameController)
         {
-            List<RectangleF> rectangles = AreaBlockedRectangleCollectionResolver.ResolveBuffsAndDebuffsBlockedRectangles(gameController);
-            ApplyBuffAndDebuffRectangles(_blockedState, rectangles);
+            (RectangleF buffs, RectangleF debuffs) = AreaBlockedRectangleCollectionResolver.ResolveBuffsAndDebuffsBlockedRectangles(gameController);
+            ApplyBuffAndDebuffRectangles(_blockedState, buffs, debuffs);
         }
 
         internal static void ApplyQuestTrackerRectangles(AreaBlockedState blockedState, IReadOnlyList<RectangleF> current, long now)
@@ -205,10 +203,15 @@ namespace ClickIt.Features.Area
             }
         }
 
-        internal static void ApplyBuffAndDebuffRectangles(AreaBlockedState blockedState, IReadOnlyList<RectangleF> rectangles)
+        internal static void ApplyBuffAndDebuffRectangles(AreaBlockedState blockedState, RectangleF buffs, RectangleF debuffs)
         {
+            blockedState.BuffsRectangle = buffs;
+            blockedState.DebuffsRectangle = debuffs;
             blockedState.BuffsAndDebuffsRectangles.Clear();
-            blockedState.BuffsAndDebuffsRectangles.AddRange(rectangles);
+            if (buffs.Width > 1f && buffs.Height > 1f)
+                blockedState.BuffsAndDebuffsRectangles.Add(buffs);
+            if (debuffs.Width > 1f && debuffs.Height > 1f)
+                blockedState.BuffsAndDebuffsRectangles.Add(debuffs);
             blockedState.BuffsAndDebuffsRectangle = blockedState.BuffsAndDebuffsRectangles.Count > 0
                 ? blockedState.BuffsAndDebuffsRectangles[0]
                 : RectangleF.Empty;

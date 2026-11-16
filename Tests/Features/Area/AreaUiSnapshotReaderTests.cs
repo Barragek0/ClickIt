@@ -93,5 +93,6 @@ namespace ClickIt.Tests.Features.Area
         {
             public object? CurrentAreaHash { get; set; }
         }
+
     }
 }
