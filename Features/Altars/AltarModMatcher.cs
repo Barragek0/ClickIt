@@ -10,22 +10,49 @@ namespace ClickIt.Features.Altars
             matchedId = string.Empty;
             if (string.IsNullOrEmpty(mod)) return false;
 
-            string cleanedMod = NormalizeLetters(mod);
-            if (cleanedMod.Length == 0)
-                return false;
-
             string cleanedNegativeModType = NormalizeLetters(negativeModType);
             string modTarget = GetModTarget(cleanedNegativeModType);
             if (modTarget.Length == 0)
                 return false;
 
-            if (!ModLookup.TryGetValue(BuildLookupKey(cleanedMod, modTarget), out List<(bool IsUpside, string MatchedId)>? matches))
+            List<(bool IsUpside, string MatchedId)>? matches = null;
+            foreach (string cleanedMod in ExpandBracketAlternatives(mod)
+                         .Select(NormalizeLetters)
+                         .Where(candidate => candidate.Length > 0)
+                         .Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                if (ModLookup.TryGetValue(BuildLookupKey(cleanedMod, modTarget), out matches))
+                    break;
+            }
+
+            if (matches is null)
                 return false;
 
             (bool IsUpside, string MatchedId) match = SelectMatch(mod, matches);
             isUpside = match.IsUpside;
             matchedId = match.MatchedId;
             return true;
+        }
+
+        private static IEnumerable<string> ExpandBracketAlternatives(string value)
+        {
+            Match alternativeMatch = Regex.Match(value, @"\[(?<alternatives>[^\[\]]*\|[^\[\]]*)\]");
+            if (!alternativeMatch.Success)
+            {
+                yield return value;
+                yield break;
+            }
+
+            string prefix = value[..alternativeMatch.Index];
+            string suffix = value[(alternativeMatch.Index + alternativeMatch.Length)..];
+            string[] alternatives = alternativeMatch.Groups["alternatives"].Value
+                .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            foreach (string alternative in alternatives)
+            {
+                foreach (string expanded in ExpandBracketAlternatives(prefix + alternative + suffix))
+                    yield return expanded;
+            }
         }
 
         private static Dictionary<string, List<(bool IsUpside, string MatchedId)>> BuildModLookup()

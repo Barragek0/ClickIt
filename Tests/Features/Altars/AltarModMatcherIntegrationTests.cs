@@ -42,6 +42,20 @@ namespace ClickIt.Tests.Features.Altars
         }
 
         [TestMethod]
+        public void TryMatchMod_ThreadDuplication_ExpandsGameSingularPluralMarkup()
+        {
+            bool ok = AltarModMatcher.TryMatchMod(
+                "[Thread|Threads] dropped by slain Enemies have 15% chance to be Duplicated",
+                "Player gains:",
+                out bool isUpside,
+                out string matched);
+
+            ok.Should().BeTrue("the game exposes singular/plural markup literally in this altar option");
+            isUpside.Should().BeTrue();
+            matched.Should().Be("Player|Threads dropped by slain Enemies have #% chance to be Duplicated");
+        }
+
+        [TestMethod]
         public void TryMatchMod_BasicCurrencyDuplicateChance_UsesTheDisplayedRange()
         {
             bool lowRangeMatched = AltarModMatcher.TryMatchMod(
