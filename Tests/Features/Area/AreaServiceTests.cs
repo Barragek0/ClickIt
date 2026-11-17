@@ -350,6 +350,23 @@ namespace ClickIt.Tests.Features.Area
         }
 
         [TestMethod]
+        public void PointIsInClickableArea_ReturnsFalse_InSentinelBlockedRectangle()
+        {
+            var svc = new AreaService();
+
+            var full = new RectangleF(0, 0, 400, 300);
+            var health = new RectangleF(0, 290, 400, 300);
+            var mana = new RectangleF(390, 290, 400, 300);
+            var buffs = new RectangleF(0, 0, 30, 30);
+            var sentinelBlocked = new RectangleF(200, 120, 70, 80);
+
+            ApplySnapshot(svc, full, health, mana, buffs, sentinelBlockedRectangle: sentinelBlocked);
+
+            svc.PointIsInClickableArea(new Vector2(230, 150)).Should().BeFalse();
+            svc.PointIsInClickableArea(new Vector2(300, 150)).Should().BeTrue();
+        }
+
+        [TestMethod]
         public void PointIsInClickableArea_ReturnsFalse_InTertiaryFlaskAndSkillsRectangles()
         {
             var svc = new AreaService();
@@ -452,6 +469,7 @@ namespace ClickIt.Tests.Features.Area
             RectangleF? xpBarBlockedRectangle = null,
             RectangleF? buttonsBlockedRectangle = null,
             RectangleF? ritualBlockedRectangle = null,
+            RectangleF? sentinelBlockedRectangle = null,
             IReadOnlyList<RectangleF>? buffsAndDebuffsRectangles = null,
             IReadOnlyList<RectangleF>? questTrackerBlockedRectangles = null)
         {
@@ -472,6 +490,7 @@ namespace ClickIt.Tests.Features.Area
                 XpBarBlockedRectangle = xpBarBlockedRectangle ?? RectangleF.Empty,
                 ButtonsBlockedRectangle = buttonsBlockedRectangle ?? RectangleF.Empty,
                 RitualBlockedRectangle = ritualBlockedRectangle ?? RectangleF.Empty,
+                SentinelBlockedRectangle = sentinelBlockedRectangle ?? RectangleF.Empty,
                 BuffsAndDebuffsRectangles = buffsAndDebuffsRectangles ?? [],
                 QuestTrackerBlockedRectangles = questTrackerBlockedRectangles ?? []
             });

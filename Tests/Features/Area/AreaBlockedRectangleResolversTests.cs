@@ -11,18 +11,21 @@ namespace ClickIt.Tests.Features.Area
             RectangleF xpRect = new(12, 22, 32, 42);
             RectangleF buttonsRect = new(13, 23, 33, 43);
             RectangleF ritualRect = new(15, 25, 35, 45);
+            RectangleF sentinelRect = new(16, 26, 36, 46);
 
             AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreatePathRoot(chatRect, 1, 2, 2), AreaBlockedRectangleKind.ChatPanel).Should().Be(chatRect);
             AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreatePathRoot(mapRect, 2, 1), AreaBlockedRectangleKind.MapPanel).Should().Be(mapRect);
             AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreatePathRoot(xpRect, 0), AreaBlockedRectangleKind.XpBar).Should().Be(xpRect);
             AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreateVisiblePathRoot(buttonsRect, 7, 18), AreaBlockedRectangleKind.Buttons).Should().Be(buttonsRect);
             AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreateVisiblePathRoot(ritualRect, 7, 19, 0), AreaBlockedRectangleKind.Ritual).Should().Be(ritualRect);
+            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreatePathRoot(sentinelRect, 7, 19, 2, 0), AreaBlockedRectangleKind.Sentinel).Should().Be(sentinelRect);
 
             AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.ChatPanel).Should().Be("Chat");
             AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.MapPanel).Should().Be("Map");
             AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.XpBar).Should().Be("XP Bar");
             AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.Buttons).Should().Be("Buttons");
             AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.Ritual).Should().Be("Ritual");
+            AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.Sentinel).Should().Be("Sentinel");
         }
 
         [TestMethod]

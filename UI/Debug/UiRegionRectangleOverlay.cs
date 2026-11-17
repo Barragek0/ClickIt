@@ -19,6 +19,7 @@ namespace ClickIt.UI.Debug
         private static readonly Vector4 XpBarColor = ToVec4(Color.Orange);
         private static readonly Vector4 ButtonsColor = ToVec4(Color.Cyan);
         private static readonly Vector4 RitualColor = ToVec4(Color.LawnGreen);
+        private static readonly Vector4 SentinelColor = ToVec4(Color.LightCoral);
         private static readonly Vector4 QuestTrackerColor = ToVec4(Color.MediumPurple);
 
         internal void Render()
@@ -41,6 +42,7 @@ namespace ClickIt.UI.Debug
             DrawRect(draw, _areaService.XpBarBlockedRectangle, XpBarColor, AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.XpBar));
             DrawRect(draw, _areaService.ButtonsBlockedRectangle, ButtonsColor, AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.Buttons));
             DrawRect(draw, _areaService.RitualBlockedRectangle, RitualColor, AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.Ritual));
+            DrawRect(draw, _areaService.SentinelBlockedRectangle, SentinelColor, AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.Sentinel));
 
             DrawRect(draw, _areaService.BuffsRectangle, BuffsColor, "Buffs");
             DrawRect(draw, _areaService.DebuffsRectangle, DebuffsColor, "Debuffs");

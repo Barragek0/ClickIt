@@ -20,6 +20,7 @@ namespace ClickIt.Features.Area.Runtime
         public RectangleF XpBarBlockedRectangle { get; set; }
         public RectangleF ButtonsBlockedRectangle { get; set; }
         public RectangleF RitualBlockedRectangle { get; set; }
+        public RectangleF SentinelBlockedRectangle { get; set; }
         public List<RectangleF> QuestTrackerBlockedRectangles { get; } = [];
         public long LastQuestTrackerRectanglesSuccessTimestampMs { get; set; }
         public long LastBlockedUiRectanglesRefreshTimestampMs { get; set; }
@@ -49,6 +50,7 @@ namespace ClickIt.Features.Area.Runtime
                 XpBarBlockedRectangle = XpBarBlockedRectangle,
                 ButtonsBlockedRectangle = ButtonsBlockedRectangle,
                 RitualBlockedRectangle = RitualBlockedRectangle,
+                SentinelBlockedRectangle = SentinelBlockedRectangle,
                 BuffsAndDebuffsRectangles = [.. BuffsAndDebuffsRectangles],
                 QuestTrackerBlockedRectangles = [.. QuestTrackerBlockedRectangles]
             };
@@ -75,6 +77,7 @@ namespace ClickIt.Features.Area.Runtime
             XpBarBlockedRectangle = snapshot.XpBarBlockedRectangle;
             ButtonsBlockedRectangle = snapshot.ButtonsBlockedRectangle;
             RitualBlockedRectangle = snapshot.RitualBlockedRectangle;
+            SentinelBlockedRectangle = snapshot.SentinelBlockedRectangle;
 
             BuffsAndDebuffsRectangles.Clear();
             BuffsAndDebuffsRectangles.AddRange(snapshot.BuffsAndDebuffsRectangles);

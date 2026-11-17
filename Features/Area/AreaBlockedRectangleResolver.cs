@@ -7,6 +7,7 @@ namespace ClickIt.Features.Area
         XpBar,
         Buttons,
         Ritual,
+        Sentinel,
     }
 
     internal static class AreaBlockedRectangleResolver
@@ -19,6 +20,7 @@ namespace ClickIt.Features.Area
             ("XP Bar", "GameUI", [0], false),
             ("Buttons", "GameUI", [7, 18], true),
             ("Ritual", "GameUI", [7, 19, 0], true),
+            ("Sentinel", "GameUI", [7, 19, 2, 0], false),
         ];
 
         internal static RectangleF ResolveBlockedRectangle(GameController gameController, AreaBlockedRectangleKind kind)
