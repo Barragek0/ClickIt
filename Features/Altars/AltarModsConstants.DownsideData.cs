@@ -98,7 +98,7 @@ namespace ClickIt.Features.Altars
             ("Enemies within 4 metres Gain #% of their Physical Damage as Extra Cold Damage", "Enemies within 4 metres Gain 100%% of their Physical Damage as Extra Cold Damage", Player, 50),
             ("Enemies within 4 metres Gain #% of their Physical Damage as Extra Fire Damage", "Enemies within 4 metres Gain 100%% of their Physical Damage as Extra Fire Damage", Player, 50),
             ("Enemies within 4 metres Gain #% of their Physical Damage as Extra Lightning Damage", "Enemies within 4 metres Gain 100%% of their Physical Damage as Extra Lightning Damage", Player, 50),
-            ("Inflict # Grasping Vines on Hit", "Inflict 1 Grasping Vines on Hit", Minion, 10),
+            ("Inflict # Grasping Vines on Hit", "Inflict 1 Grasping Vine on Hit", Minion, 10),
             ("Enemies within 3.5 metres are Hindered, with #% reduced Movement Speed", "Enemies within 3.5 metres are Hindered, with 40%% reduced Movement Speed", Boss, 1),
         };
         #endregion

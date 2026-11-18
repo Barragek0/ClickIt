@@ -11,7 +11,8 @@ namespace ClickIt.Features.Altars
         {
             string cacheKey = $"{mod}|{negativeModType}";
 
-            if (TryGetCachedEntry(cacheKey, out (bool isUpside, string matchedId) cached))
+            if (TryGetCachedEntry(cacheKey, out (bool isUpside, string matchedId) cached)
+                && !string.IsNullOrEmpty(cached.matchedId))
             {
                 isUpside = cached.isUpside;
                 matchedId = cached.matchedId;
@@ -24,15 +25,22 @@ namespace ClickIt.Features.Altars
                         matchedId = $"{modTarget}|{matchedId}";
                 }
 
-                return !string.IsNullOrEmpty(matchedId);
+                return true;
             }
+
+            // Older catalog/matcher versions cached misses as empty results. Retry those against the current catalog so a newly supported spelling is not stuck as unmatched for the lifetime of this service.
+            lock (_modMatchCacheLock)
+                _modMatchCache.Remove(cacheKey);
 
             bool matched = AltarModMatcher.TryMatchMod(mod, negativeModType, out isUpside, out matchedId);
 
-            lock (_modMatchCacheLock)
+            if (matched)
             {
-                if (_modMatchCache.Count < 5000)
-                    _modMatchCache[cacheKey] = (isUpside, matchedId);
+                lock (_modMatchCacheLock)
+                {
+                    if (_modMatchCache.Count < 5000)
+                        _modMatchCache[cacheKey] = (isUpside, matchedId);
+                }
             }
 
             return matched;

@@ -13,6 +13,20 @@ namespace ClickIt.Tests.Features.Altars
             matched.Should().BeEmpty();
         }
 
+        [DataTestMethod]
+        [DataRow("Inflict 1 Grasping Vine on Hit")]
+        [DataRow("Inflict1GraspingVineonHit")]
+        [DataRow("Inflict1GraspingVinesonHit")]
+        public void TryMatchModCached_GraspingVineMinionMod_MatchesRawAndParserCleanedText(string modText)
+        {
+            var matcher = new AltarMatcher();
+            bool matched = matcher.TryMatchModCached(modText, "Eldritch Minions gain:", out bool isUpside, out string matchedId);
+
+            matched.Should().BeTrue("the UI can render singular while the parser strips spaces and the catalog uses plural");
+            isUpside.Should().BeFalse();
+            matchedId.Should().Be("Minion|Inflict # Grasping Vines on Hit");
+        }
+
         [TestMethod]
         public void NormalizeLetters_StripsNonLetters_AndPreservesLetterOrder()
         {

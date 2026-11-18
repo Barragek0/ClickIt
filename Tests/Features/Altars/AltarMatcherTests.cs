@@ -89,6 +89,21 @@ namespace ClickIt.Tests.Features.Altars
         }
 
         [TestMethod]
+        public void TryMatchModCached_RetriesOldNegativeEntryAgainstCurrentCatalog()
+        {
+            var matcher = new AltarMatcher();
+            const string modText = "Inflict 1 Grasping Vine on Hit";
+            const string negativeModType = "Eldritch Minions gain:";
+            matcher.SeedModMatchCacheEntry(modText, negativeModType, false, string.Empty);
+
+            bool matched = matcher.TryMatchModCached(modText, negativeModType, out bool isUpside, out string matchedId);
+
+            matched.Should().BeTrue();
+            isUpside.Should().BeFalse();
+            matchedId.Should().Be("Minion|Inflict # Grasping Vines on Hit");
+        }
+
+        [TestMethod]
         public void CleanAltarModsText_CachesResult_AfterFirstCall()
         {
             var matcher = new AltarMatcher();

@@ -17,6 +17,7 @@ namespace ClickIt.Features.Altars
 
             List<(bool IsUpside, string MatchedId)>? matches = null;
             foreach (string cleanedMod in ExpandBracketAlternatives(mod)
+                         .SelectMany(ExpandGraspingVineVariants)
                          .Select(NormalizeLetters)
                          .Where(candidate => candidate.Length > 0)
                          .Distinct(StringComparer.OrdinalIgnoreCase))
@@ -32,6 +33,17 @@ namespace ClickIt.Features.Altars
             isUpside = match.IsUpside;
             matchedId = match.MatchedId;
             return true;
+        }
+
+        private static IEnumerable<string> ExpandGraspingVineVariants(string value)
+        {
+            yield return value;
+
+            // The scan path strips spaces and numbers before matching, so normalize first. The altar catalog pluralizes this stat as "Vines", while the UI can render it as "Vine".
+            string compact = NormalizeLetters(value);
+            string pluralized = Regex.Replace(compact, @"GraspingVines?(?=onHit$)", "GraspingVines", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            if (!string.Equals(value, pluralized, StringComparison.Ordinal))
+                yield return pluralized;
         }
 
         private static IEnumerable<string> ExpandBracketAlternatives(string value)
