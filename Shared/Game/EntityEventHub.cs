@@ -1,6 +1,6 @@
 namespace ClickIt.Shared.Game;
 
-// ONE subscription to EntityAdded/EntityRemoved/OnAreaChange that classifies every entity ONCE (a single path read per event) into every tracked category, so N entity-tracking consumers cost ONE read per event instead of N. Shared static singleton: every consumer (blight, offscreen structures, settlers ore, shrines, ritual blockers) goes through the same handler, keeping the walking-triggered entity-event burst to one dynamic read on the main thread regardless of how many categories are registered. The shared reseed (a full retained-cache walk) refills every category in one pass. Consumers read their category's Snapshot()/Count/Any and call Reseed() when it is empty; per-controller rebinding keeps tests and plugin reloads isolated.
+// ONE subscription to EntityAdded/EntityRemoved/OnAreaChange classifies every entity ONCE (a single path read per event) into every tracked category, including Flame Link companions. Consumers reuse these sets instead of starting independent world scans. A shared retained-cache reseed refills every category in one pass; per-controller rebinding keeps tests and plugin reloads isolated.
 internal sealed class EntityEventHub
 {
     internal static EntityEventHub Instance { get; } = new();
@@ -12,6 +12,8 @@ internal sealed class EntityEventHub
     private readonly Dictionary<long, Entity> _shrines = [];
     private readonly Dictionary<long, Entity> _ritualBlockers = [];
     private readonly Dictionary<long, Entity> _lostShipment = [];
+    private readonly Dictionary<long, Entity> _mercenaries = [];
+    private readonly Dictionary<long, Entity> _animateGuardians = [];
     private GameController? _subscribedController;
     private bool _subscribed;
     private long _lastReseedMs;
@@ -26,6 +28,8 @@ internal sealed class EntityEventHub
     internal TrackedEntityView Shrines { get; }
     internal TrackedEntityView RitualBlockers { get; }
     internal TrackedEntityView LostShipment { get; }
+    internal TrackedEntityView Mercenaries { get; }
+    internal TrackedEntityView AnimateGuardians { get; }
 
     internal EntityEventHub()
     {
@@ -35,6 +39,8 @@ internal sealed class EntityEventHub
         Shrines = new TrackedEntityView(_lock, _shrines);
         RitualBlockers = new TrackedEntityView(_lock, _ritualBlockers);
         LostShipment = new TrackedEntityView(_lock, _lostShipment);
+        Mercenaries = new TrackedEntityView(_lock, _mercenaries);
+        AnimateGuardians = new TrackedEntityView(_lock, _animateGuardians);
     }
 
     // Returns the accumulated entity-event cost since the last poll and resets the accumulator.
@@ -93,6 +99,8 @@ internal sealed class EntityEventHub
             _shrines.Clear();
             _ritualBlockers.Clear();
             _lostShipment.Clear();
+            _mercenaries.Clear();
+            _animateGuardians.Clear();
         }
         Unsubscribe(gc);
     }
@@ -126,6 +134,8 @@ internal sealed class EntityEventHub
             _shrines.Clear();
             _ritualBlockers.Clear();
             _lostShipment.Clear();
+            _mercenaries.Clear();
+            _animateGuardians.Clear();
         }
     }
 
@@ -152,6 +162,8 @@ internal sealed class EntityEventHub
             _shrines.Clear();
             _ritualBlockers.Clear();
             _lostShipment.Clear();
+            _mercenaries.Clear();
+            _animateGuardians.Clear();
         }
         GameController? gc = _subscribedController;
         if (gc == null)
@@ -206,6 +218,8 @@ internal sealed class EntityEventHub
                 _shrines.Remove(id);
                 _ritualBlockers.Remove(id);
                 _lostShipment.Remove(id);
+                _mercenaries.Remove(id);
+                _animateGuardians.Remove(id);
             }
         }
         finally
@@ -226,6 +240,8 @@ internal sealed class EntityEventHub
             _shrines.Clear();
             _ritualBlockers.Clear();
             _lostShipment.Clear();
+            _mercenaries.Clear();
+            _animateGuardians.Clear();
         }
     }
 
@@ -240,6 +256,8 @@ internal sealed class EntityEventHub
         bool isShrine = IsShrineEntity(path, entity);
         bool isRitual = path.Contains(RitualBlockerMarker, StringComparison.Ordinal);
         bool isLostShipment = IsLostShipmentPath(path);
+        bool isMercenary = IsMercenaryPath(path);
+        bool isAnimateGuardian = IsAnimateGuardianPath(path);
         bool isOffscreen = IsOffscreenStructurePath(path) || isShrine;
         if (!isOffscreen)
         {
@@ -255,6 +273,8 @@ internal sealed class EntityEventHub
             if (isShrine) _shrines[id] = entity;
             if (isRitual) _ritualBlockers[id] = entity;
             if (isLostShipment) _lostShipment[id] = entity;
+            if (isMercenary) _mercenaries[id] = entity;
+            if (isAnimateGuardian) _animateGuardians[id] = entity;
         }
     }
 
@@ -290,24 +310,34 @@ internal sealed class EntityEventHub
         catch { return 0; }
     }
 
-    private const string BlightPathwayMetadata = "Metadata/Terrain/Leagues/Blight/Objects/BlightPathway";
-    private const string BlightPumpMetadata = "Metadata/Terrain/Leagues/Blight/Objects/BlightPump";
+    internal const string BlightObjectsMetadata = "Metadata/Terrain/Leagues/Blight/Objects/";
     private const string BlightTowerPathMarker = "BlightTower";
     private const string BlightFoundationPathMarker = "BlightFoundation";
     private const string ShrinePathMarker = "DarkShrine";
     private const string RitualBlockerMarker = "RitualBlocker";
     private const string LostShipmentCratePathMarker = "LostShipmentCrate";
     private const string LostShipmentLoosePathMarker = "LostShipment";
+    private const string MercenaryPathMarker = "Monsters/Mercenaries/Mercenary";
+    private const string AnimateGuardianPathMarker = "Monsters/AnimatedItem/AnimatedArmour";
 
     private static bool IsBlightPath(string path)
-        => path.Contains(BlightPathwayMetadata, StringComparison.OrdinalIgnoreCase)
-        || path.Contains(BlightPumpMetadata, StringComparison.OrdinalIgnoreCase)
+        => path.Contains(BlightObjectsMetadata, StringComparison.OrdinalIgnoreCase)
+        || (path.Contains("Blight", StringComparison.OrdinalIgnoreCase)
+            && (path.Contains("Spawner", StringComparison.OrdinalIgnoreCase)
+                || path.Contains("Portal", StringComparison.OrdinalIgnoreCase)))
         || path.Contains(BlightTowerPathMarker, StringComparison.OrdinalIgnoreCase)
         || path.Contains(BlightFoundationPathMarker, StringComparison.OrdinalIgnoreCase);
 
     internal static bool IsLostShipmentPath(string path)
         => path.Contains(LostShipmentCratePathMarker, StringComparison.OrdinalIgnoreCase)
         || path.Contains(LostShipmentLoosePathMarker, StringComparison.OrdinalIgnoreCase);
+
+    internal static bool IsMercenaryPath(string path)
+        => path.Contains(MercenaryPathMarker, StringComparison.OrdinalIgnoreCase)
+            && path.Contains("Allied", StringComparison.OrdinalIgnoreCase);
+
+    internal static bool IsAnimateGuardianPath(string path)
+        => path.Contains(AnimateGuardianPathMarker, StringComparison.OrdinalIgnoreCase);
 
     // Current-league shrines (e.g. Shrouded Shrine) carry the Shrine component but a path without "DarkShrine"; the component read is gated on a path hint to keep the event burst one read per entity.
     internal static bool IsShrineEntity(string path, Entity entity)
@@ -345,6 +375,17 @@ internal sealed class TrackedEntityView
     internal List<Entity> Snapshot()
     {
         lock (_lock) return [.. _entities.Values];
+    }
+
+    internal void CopyTo(List<Entity> destination)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+        lock (_lock)
+        {
+            destination.Clear();
+            foreach (Entity entity in _entities.Values)
+                destination.Add(entity);
+        }
     }
 
     internal int Count

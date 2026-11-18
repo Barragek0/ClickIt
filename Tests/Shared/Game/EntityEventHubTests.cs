@@ -112,6 +112,21 @@ namespace ClickIt.Tests.Shared.Game
         }
 
         [TestMethod]
+        [TestCategory("Scenario")]
+        public void Reseed_ClassifiesFlameLinkTargets_IntoTheirSeparateSharedViews()
+        {
+            Entity mercenary = EntityProbeFactory.Create(path: "Metadata/Monsters/Mercenaries/MercenaryRanger2Allied");
+            Entity hostileMercenary = EntityProbeFactory.Create(path: "Metadata/Monsters/Mercenaries/MercenaryRanger2");
+            Entity animateGuardian = EntityProbeFactory.Create(path: "Metadata/Monsters/AnimatedItem/AnimatedArmour");
+            GameController gc = ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(mercenary, hostileMercenary, animateGuardian);
+
+            EntityEventHub.Instance.EnsureSubscribed(gc);
+
+            EntityEventHub.Instance.Mercenaries.Snapshot().Should().ContainSingle().Which.Should().BeSameAs(mercenary);
+            EntityEventHub.Instance.AnimateGuardians.Snapshot().Should().ContainSingle().Which.Should().BeSameAs(animateGuardian);
+        }
+
+        [TestMethod]
         public void Reseed_IgnoresUnrelatedEntities()
         {
             Entity monster = EntityProbeFactory.Create(path: "Metadata/Monsters/Test");
