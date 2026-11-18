@@ -5,24 +5,28 @@ namespace ClickIt.Features.Area
         private readonly ClickItSettings? _settings = settings;
         private readonly AreaBlockedSnapshotProvider _blockedSnapshotProvider = new();
 
-        private readonly BlockedAreaEvaluatorPipeline _blockedAreaEvaluatorPipeline = new(
-            [
-                (snapshot, point) => BlockedAreaHitTestEngine.PointInBlockedUiRectangle(point, snapshot.HealthSquareRectangle, snapshot.FullScreenRectangle),
-                (snapshot, point) => BlockedAreaHitTestEngine.PointInBlockedUiRectangle(point, snapshot.FlaskRectangle, snapshot.FullScreenRectangle),
-                (snapshot, point) => BlockedAreaHitTestEngine.PointInBlockedUiRectangle(point, snapshot.FlaskTertiaryRectangle, snapshot.FullScreenRectangle),
-                (snapshot, point) => BlockedAreaHitTestEngine.PointInBlockedUiRectangle(point, snapshot.SkillsRectangle, snapshot.FullScreenRectangle),
-                (snapshot, point) => BlockedAreaHitTestEngine.PointInBlockedUiRectangle(point, snapshot.SkillsTertiaryRectangle, snapshot.FullScreenRectangle),
-                (snapshot, point) => BlockedAreaHitTestEngine.PointInBlockedUiRectangle(point, snapshot.ManaSquareRectangle, snapshot.FullScreenRectangle),
-                (snapshot, point) => BlockedAreaHitTestEngine.PointInBlockedUiRectangle(point, snapshot.BuffsAndDebuffsRectangle, snapshot.FullScreenRectangle),
-                (snapshot, point) => BlockedAreaHitTestEngine.PointInAnyBlockedUiRectangle(point, snapshot.BuffsAndDebuffsRectangles, snapshot.FullScreenRectangle),
-                (snapshot, point) => BlockedAreaHitTestEngine.PointInAnyBlockedUiRectangle(point, snapshot.QuestTrackerBlockedRectangles, snapshot.FullScreenRectangle),
-                (snapshot, point) => BlockedAreaHitTestEngine.PointInBlockedUiRectangle(point, snapshot.ChatPanelBlockedRectangle, snapshot.FullScreenRectangle),
-                (snapshot, point) => BlockedAreaHitTestEngine.PointInBlockedUiRectangle(point, snapshot.MapPanelBlockedRectangle, snapshot.FullScreenRectangle),
-                (snapshot, point) => BlockedAreaHitTestEngine.PointInBlockedUiRectangle(point, snapshot.XpBarBlockedRectangle, snapshot.FullScreenRectangle),
-                (snapshot, point) => BlockedAreaHitTestEngine.PointInBlockedUiRectangle(point, snapshot.ButtonsBlockedRectangle, snapshot.FullScreenRectangle),
-                (snapshot, point) => BlockedAreaHitTestEngine.PointInBlockedUiRectangle(point, snapshot.RitualBlockedRectangle, snapshot.FullScreenRectangle),
-                (snapshot, point) => BlockedAreaHitTestEngine.PointInBlockedUiRectangle(point, snapshot.SentinelBlockedRectangle, snapshot.FullScreenRectangle),
-            ]);
+        private static readonly Func<AreaBlockedSnapshot, RectangleF>[] s_blockedRectangles =
+        [
+            snapshot => snapshot.HealthSquareRectangle,
+            snapshot => snapshot.FlaskRectangle,
+            snapshot => snapshot.FlaskTertiaryRectangle,
+            snapshot => snapshot.SkillsRectangle,
+            snapshot => snapshot.SkillsTertiaryRectangle,
+            snapshot => snapshot.ManaSquareRectangle,
+            snapshot => snapshot.BuffsAndDebuffsRectangle,
+            snapshot => snapshot.ChatPanelBlockedRectangle,
+            snapshot => snapshot.MapPanelBlockedRectangle,
+            snapshot => snapshot.XpBarBlockedRectangle,
+            snapshot => snapshot.ButtonsBlockedRectangle,
+            snapshot => snapshot.RitualBlockedRectangle,
+            snapshot => snapshot.SentinelBlockedRectangle,
+        ];
+
+        private static readonly Func<AreaBlockedSnapshot, IReadOnlyList<RectangleF>>[] s_blockedCollections =
+        [
+            snapshot => snapshot.BuffsAndDebuffsRectangles,
+            snapshot => snapshot.QuestTrackerBlockedRectangles,
+        ];
 
         public RectangleF FullScreenRectangle => _blockedSnapshotProvider.CurrentSnapshot.FullScreenRectangle;
         public RectangleF HealthAndFlaskRectangle => _blockedSnapshotProvider.CurrentSnapshot.HealthAndFlaskRectangle;
@@ -70,7 +74,41 @@ namespace ClickIt.Features.Area
         }
 
         private bool IsBlockedByAreaEvaluatorPipeline(AreaBlockedSnapshot snapshot, Vector2 point)
-            => _blockedAreaEvaluatorPipeline.IsBlocked(snapshot, point);
+        {
+            foreach (var select in s_blockedRectangles)
+                if (BlockedAreaHitTestEngine.PointInBlockedUiRectangle(point, select(snapshot), snapshot.FullScreenRectangle))
+                    return true;
+            foreach (var select in s_blockedCollections)
+                if (BlockedAreaHitTestEngine.PointInAnyBlockedUiRectangle(point, select(snapshot), snapshot.FullScreenRectangle))
+                    return true;
+            return false;
+        }
+
+        internal bool IsClientRectangleClickable(GameController? controller, RectangleF region)
+        {
+            if (controller != null && IsBlockedUiSnapshotStale())
+                UpdateScreenAreas(controller);
+
+            AreaBlockedSnapshot snapshot = _blockedSnapshotProvider.CurrentSnapshot;
+            RectangleF window = snapshot.FullScreenRectangle;
+            if (!(region.Width > 0 && region.Height > 0 && region.Left >= 0 && region.Top >= 0
+                && region.Right <= window.Width && region.Bottom <= window.Height))
+                return false;
+
+            foreach (var select in s_blockedRectangles)
+                if (Overlaps(region, select(snapshot)))
+                    return false;
+            foreach (var select in s_blockedCollections)
+                foreach (RectangleF rectangle in select(snapshot))
+                    if (Overlaps(region, rectangle))
+                        return false;
+            return true;
+        }
+
+        private static bool Overlaps(RectangleF first, RectangleF second)
+            => second.Width > 0 && second.Height > 0
+                && first.Left <= second.Right && first.Right >= second.Left
+                && first.Top <= second.Bottom && first.Bottom >= second.Top;
 
         public bool PointIsInClickableArea(GameController? gameController, Vector2 point, bool forceBlockedUiRefresh = false)
         {

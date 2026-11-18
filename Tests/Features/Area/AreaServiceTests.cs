@@ -4,6 +4,20 @@ namespace ClickIt.Tests.Features.Area
     public class AreaServiceTests
     {
         [TestMethod]
+        public void PopupRegionRejectsObstructionBetweenClickableCorners()
+        {
+            var service = new AreaService();
+            service.ApplyBlockedSnapshot(new AreaBlockedSnapshot
+            {
+                FullScreenRectangle = new RectangleF(70, 90, 800, 600),
+                ButtonsBlockedRectangle = new RectangleF(190, 190, 20, 20)
+            });
+
+            service.IsClientRectangleClickable(null, new RectangleF(150, 150, 100, 100)).Should().BeFalse();
+            service.IsClientRectangleClickable(null, new RectangleF(260, 150, 100, 100)).Should().BeTrue();
+            service.IsClientRectangleClickable(null, new RectangleF(740, 150, 100, 100)).Should().BeFalse();
+        }
+        [TestMethod]
         public void PointIsInClickableArea_RespectsBlockedRegions()
         {
             var svc = new AreaService();
