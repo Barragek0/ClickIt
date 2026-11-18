@@ -6,6 +6,17 @@ namespace ClickIt.Tests.Features.Altars
         private static readonly RectangleF Window = new(100f, 100f, 1280f, 720f);
 
         [TestMethod]
+        public void SourceProjectionRejectsDistantAltarWithOptionIntersectingTheCorner()
+        {
+            RectangleF top = new(-201, -149, 492, 90);
+            RectangleF bottom = new(-229, 56, 549, 73);
+
+            LabelGeometry.IsRectOnScreen(bottom, Window).Should().BeTrue();
+            AltarOverlay.IsSourceNearOptions(new Vector2(-2310, -5215), top, bottom).Should().BeFalse();
+            AltarOverlay.IsSourceNearOptions(new Vector2(0, 0), top, bottom).Should().BeTrue();
+        }
+
+        [TestMethod]
         public void Draw_EnqueuesFrames_WhenBothModsRectsOnScreen()
         {
             var queue = new DeferredDrawQueue();

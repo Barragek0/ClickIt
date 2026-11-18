@@ -34,14 +34,18 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                     bottomDownsideWeights = localWeights.GetBottomDownsideWeights();
                 }
 
+                SecondaryAltarComponent? top = altar.TopMods;
+                SecondaryAltarComponent? bottom = altar.BottomMods;
+                string topText = ReadElementText(top?.Element);
+                string bottomText = ReadElementText(bottom?.Element);
                 projectedComponents.Add(new AltarComponentTelemetrySnapshot(
-                    Top: BuildAltarModSectionTelemetry("Top", altar.TopMods, topUpsideWeights, topDownsideWeights),
-                    Bottom: BuildAltarModSectionTelemetry("Bottom", altar.BottomMods, bottomUpsideWeights, bottomDownsideWeights),
+                    Top: BuildAltarModSectionTelemetry("Top", top, topText, topUpsideWeights, topDownsideWeights),
+                    Bottom: BuildAltarModSectionTelemetry("Bottom", bottom, bottomText, bottomUpsideWeights, bottomDownsideWeights),
                     RuntimeState: DescribeAltarRuntimeState(altar, weights, settings, gameController),
-                    TopRawText: ReadElementText(altar.TopMods?.Element),
-                    BottomRawText: ReadElementText(altar.BottomMods?.Element),
-                    TopCleanedText: ReadCleanedElementText(altar.TopMods?.Element),
-                    BottomCleanedText: ReadCleanedElementText(altar.BottomMods?.Element)));
+                    TopRawText: topText,
+                    BottomRawText: bottomText,
+                    TopCleanedText: CleanElementText(topText),
+                    BottomCleanedText: CleanElementText(bottomText)));
             }
 
             return new AltarTelemetrySnapshot(
@@ -58,6 +62,7 @@ namespace ClickIt.Features.Observability.TelemetryProjection
         private static AltarModSectionTelemetrySnapshot BuildAltarModSectionTelemetry(
             string sectionName,
             SecondaryAltarComponent? mods,
+            string rawText,
             decimal[]? upsideWeights,
             decimal[]? downsideWeights)
         {
@@ -70,14 +75,14 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                 DownsideCount: mods.Downsides?.Count ?? 0,
                 Upsides: BuildWeightedMods(mods.Upsides, upsideWeights),
                 Downsides: BuildWeightedMods(mods.Downsides, downsideWeights),
-                MatchTrace: BuildAltarMatchTrace(ReadElementText(mods.Element)));
+                MatchTrace: BuildAltarMatchTrace(rawText));
         }
 
-        private static IReadOnlyList<string> BuildAltarMatchTrace(string rawText)
+        internal static IReadOnlyList<string> BuildAltarMatchTrace(string? rawText)
         {
-            if (rawText.StartsWith("<read-error:", StringComparison.Ordinal)
-                || string.Equals(rawText, "<unavailable>", StringComparison.Ordinal)
-                || string.IsNullOrWhiteSpace(rawText))
+            if (string.IsNullOrWhiteSpace(rawText)
+                || rawText.StartsWith("<read-error:", StringComparison.Ordinal)
+                || string.Equals(rawText, "<unavailable>", StringComparison.Ordinal))
                 return [];
 
             string displayText = System.Text.RegularExpressions.Regex.Replace(rawText, "<[^>]*>", string.Empty)
@@ -117,14 +122,25 @@ namespace ClickIt.Features.Observability.TelemetryProjection
             RectangleF bottomRect = TryGetRect(altar.BottomMods?.Element);
             RectangleF windowRect = TryGetWindowRect(gameController);
             bool rectsValid = AltarChoiceEvaluator.IsValidRectangles(topRect, bottomRect);
-            bool onScreen = rectsValid && windowRect.Width > 0 && windowRect.Height > 0
+            bool overlayRectsValid = AltarOverlay.AreUsableOverlayRectangles(topRect, bottomRect);
+            bool modsVisible = TryRead(() => altar.TopMods?.Element?.IsVisible == true)
+                && TryRead(() => altar.BottomMods?.Element?.IsVisible == true);
+            bool onScreen = overlayRectsValid && windowRect.Width > 0 && windowRect.Height > 0
                 && (LabelGeometry.IsRectOnScreen(topRect, windowRect) || LabelGeometry.IsRectOnScreen(bottomRect, windowRect));
+            Entity? sourceEntity = altar.SourceEntity;
+            Vector2 sourcePoint = default;
+            bool sourceProjected = sourceEntity != null && AltarOverlay.TryProjectSource(gameController, sourceEntity, out sourcePoint);
+            bool sourceNearOptions = sourceProjected && overlayRectsValid && AltarOverlay.IsSourceNearOptions(sourcePoint, topRect, bottomRect);
+            string sourcePosition = sourceProjected ? $"({sourcePoint.X:F0},{sourcePoint.Y:F0})" : "unavailable";
             string choice = DescribeChoice(altar, weights, settings, topRect, bottomRect, rectsValid);
             string overlayGate = !modsElementsValid ? "rejected-invalid-elements"
+                : !modsVisible ? "rejected-hidden-elements"
                 : !weights.HasValue ? "rejected-no-weights"
-                : !rectsValid ? "rejected-invalid-rectangles"
+                : !overlayRectsValid ? "rejected-invalid-rectangles"
                 : windowRect.Width <= 0 || windowRect.Height <= 0 ? "unknown-window-rectangle"
                 : !onScreen ? "rejected-offscreen"
+                : sourceEntity != null && !sourceProjected ? "rejected-source-unavailable"
+                : sourceEntity != null && !sourceNearOptions ? "rejected-source-far-from-options"
                 : "would-draw";
 
             return $"type={altar.AltarType} cachedValid={cachedValid}; "
@@ -132,6 +148,7 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                 + $"bottomMods(unmatched={altar.BottomMods?.HasUnmatchedMods.ToString() ?? "null"}, {DescribeElement(altar.BottomMods?.Element)}); "
                 + $"topButton({DescribeElement(altar.TopButton?.Element)}); "
                 + $"bottomButton({DescribeElement(altar.BottomButton?.Element)}); "
+                + $"sourceScreen={sourcePosition}, window={windowRect.Width:F0}x{windowRect.Height:F0}; "
                 + $"choice={choice}, overlay={overlayGate}, automation={(cachedValid ? "eligible-for-next-check" : "blocked-by-validation")}, weights={FormatWeights(weights)}";
         }
 
@@ -231,7 +248,8 @@ namespace ClickIt.Features.Observability.TelemetryProjection
 
             try
             {
-                return element.GetText(4096);
+                // ExileCore can return null even while the element still reports IsValid.
+                return element.GetText(4096) ?? "<unavailable>";
             }
             catch (Exception ex)
             {
@@ -239,9 +257,8 @@ namespace ClickIt.Features.Observability.TelemetryProjection
             }
         }
 
-        private static string ReadCleanedElementText(Element? element)
+        private static string CleanElementText(string rawText)
         {
-            string rawText = ReadElementText(element);
             return rawText.StartsWith("<read-error:", StringComparison.Ordinal)
                 || string.Equals(rawText, "<unavailable>", StringComparison.Ordinal)
                     ? rawText

@@ -57,11 +57,11 @@ namespace ClickIt.Features.Altars
 
             foreach (PrimaryAltarComponent altar in altarSnapshot)
             {
-                RenderSingleAltar(ctx.DrawQueue, ctx.WindowArea, altar);
+                RenderSingleAltar(ctx.DrawQueue, ctx.WindowArea, ctx.GameController, altar);
             }
         }
 
-        private void RenderSingleAltar(DeferredDrawQueue drawQueue, RectangleF windowArea, PrimaryAltarComponent altar)
+        private void RenderSingleAltar(DeferredDrawQueue drawQueue, RectangleF windowArea, GameController? gameController, PrimaryAltarComponent altar)
         {
             // Mod recognition controls whether automation may choose, but it must not suppress the warning overlay for unmatched mods.
             if (!AreModElementsVisible(altar))
@@ -76,20 +76,26 @@ namespace ClickIt.Features.Altars
                 return;
             }
 
-            RectangleF topModsRect = altar.GetTopModsRect();
-            RectangleF bottomModsRect = altar.GetBottomModsRect();
-
-            if (!AreUsableOverlayRectangles(topModsRect, bottomModsRect))
+            if (!LabelGeometry.TryGetElementRect(altar.TopMods?.Element, out RectangleF topModsRect)
+                || !LabelGeometry.TryGetElementRect(altar.BottomMods?.Element, out RectangleF bottomModsRect)
+                || !AreUsableOverlayRectangles(topModsRect, bottomModsRect))
             {
                 return;
             }
 
             // Skip altars whose mods have left the window: the stale element rect would otherwise draw a box near a screen corner.
-            if (!LabelGeometry.IsRectOnScreen(topModsRect, windowArea)
-                && !LabelGeometry.IsRectOnScreen(bottomModsRect, windowArea))
+            if (windowArea.Width <= 0 || windowArea.Height <= 0
+                || (!LabelGeometry.IsRectOnScreen(topModsRect, windowArea) && !LabelGeometry.IsRectOnScreen(bottomModsRect, windowArea)))
             {
                 return;
             }
+
+            // Production altars come from ground labels. Their option elements can remain
+            // visible after the world object leaves view, so check the world projection too.
+            if (altar.SourceEntity is { } entity
+                && (!TryProjectSource(gameController, entity, out Vector2 source)
+                    || !IsSourceNearOptions(source, topModsRect, bottomModsRect)))
+                return;
 
             Vector2 topModsTopLeft = topModsRect.TopLeft;
             Vector2 bottomModsTopLeft = bottomModsRect.TopLeft;
@@ -98,6 +104,35 @@ namespace ClickIt.Features.Altars
             RenderChoiceEvaluation(drawQueue, evaluation, topModsRect, bottomModsRect, topModsTopLeft);
 
             DrawWeightTexts(drawQueue, altarWeights.Value, topModsTopLeft, bottomModsTopLeft);
+        }
+
+        internal static bool TryProjectSource(GameController? gameController, Entity entity, out Vector2 source)
+        {
+            source = default;
+            try
+            {
+                var camera = gameController?.IngameState?.Camera;
+                if (camera == null || !entity.IsValid)
+                    return false;
+
+                NumVector2 point = camera.WorldToScreen(entity.PosNum);
+                source = new(point.X, point.Y);
+                return float.IsFinite(point.X) && float.IsFinite(point.Y);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        internal static bool IsSourceNearOptions(Vector2 source, RectangleF top, RectangleF bottom)
+        {
+            float horizontalAllowance = SystemMath.Max(top.Width, bottom.Width) / 2f;
+            float verticalAllowance = bottom.Bottom - top.Top;
+            return source.X >= SystemMath.Min(top.Left, bottom.Left) - horizontalAllowance
+                && source.X <= SystemMath.Max(top.Right, bottom.Right) + horizontalAllowance
+                && source.Y >= top.Top - verticalAllowance
+                && source.Y <= bottom.Bottom + verticalAllowance;
         }
 
         private static bool AreModElementsVisible(PrimaryAltarComponent altar)

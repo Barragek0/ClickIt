@@ -74,19 +74,20 @@ namespace ClickIt.Features.Altars
 
         internal void ProcessLabels(List<LabelOnGround> altarLabels)
         {
-            List<(Element element, string path)> elementsToProcess = AltarScanner.CollectElementsFromLabels(altarLabels);
+            List<(Element element, string path, Entity? entity)> elementsToProcess = AltarScanner.CollectElementsWithEntities(altarLabels);
             _debugInfo.ElementsFound = elementsToProcess.Count;
             _debugInfo.AddDebugStage($"AltarScan: {elementsToProcess.Count} element(s) to process");
 
             _altarStore.RemoveWhere(AltarComponentValidation.ShouldRemoveInvalidCachedComponent);
 
-            foreach ((Element? element, string path) in elementsToProcess)
+            foreach ((Element? element, string path, Entity? entity) in elementsToProcess)
             {
                 if (element == null)
                     continue;
 
                 AltarType altarType = AltarScanner.DetermineAltarType(path);
                 PrimaryAltarComponent altarComponent = _componentFactory.CreateFromElement(element, altarType);
+                altarComponent.SourceEntity = entity;
 
                 if (!TryValidate(altarComponent))
                     continue;

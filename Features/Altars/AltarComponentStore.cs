@@ -60,6 +60,7 @@ namespace ClickIt.Features.Altars
                 existing.TopButton = fresh.TopButton;
                 existing.BottomMods = fresh.BottomMods;
                 existing.BottomButton = fresh.BottomButton;
+                existing.SourceEntity = fresh.SourceEntity;
                 existing.InvalidateCache();
                 return;
             }

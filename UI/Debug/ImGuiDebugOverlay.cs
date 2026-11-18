@@ -2244,6 +2244,7 @@ internal sealed class ImGuiDebugOverlay(
             {
                 AltarComponentTelemetrySnapshot comp = altar.Components[i];
                 sb.AppendLine($"  Altar #{i + 1}:");
+                sb.AppendLine($"    Runtime: {comp.RuntimeState}");
                 sb.AppendLine($"    Top ({comp.Top.SectionName}):");
                 sb.AppendLine($"      Raw UI Text: {FormatAltarDebugText(comp.TopRawText)}");
                 sb.AppendLine($"      Cleaned UI Text: {FormatAltarDebugText(comp.TopCleanedText)}");

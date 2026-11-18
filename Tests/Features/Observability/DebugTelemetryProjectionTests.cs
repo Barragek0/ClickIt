@@ -106,6 +106,14 @@ namespace ClickIt.Tests.Features.Observability
         }
 
         [TestMethod]
+        [TestCategory("Regression")]
+        public void BuildAltarMatchTrace_SkipsTextMissingDuringStreamOut()
+        {
+            DebugTelemetryProjection.BuildAltarMatchTrace(null).Should().BeEmpty();
+            DebugTelemetryProjection.BuildAltarMatchTrace("<unavailable>").Should().BeEmpty();
+        }
+
+        [TestMethod]
         public void Build_ProjectsAltarTelemetry_WhenAltarServiceIsAvailable()
         {
             AltarService altarService = TestBuilders.BuildTelemetryAltarService(

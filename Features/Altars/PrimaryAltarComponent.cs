@@ -17,6 +17,7 @@ namespace ClickIt.Features.Altars
         public AltarButton TopButton { get; set; }
         public SecondaryAltarComponent BottomMods { get; set; }
         public AltarButton BottomButton { get; set; }
+        internal Entity? SourceEntity { get; set; }
 
         private const int ValidationCacheKey = 0;
         private const int WeightCacheKey = 0;
