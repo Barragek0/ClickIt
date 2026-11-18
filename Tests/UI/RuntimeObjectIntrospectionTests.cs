@@ -256,6 +256,34 @@ namespace ClickIt.Tests.UI
         }
 
         [TestMethod]
+        public void WriteReportCoroutine_CountPhaseYieldsAfterSlowNodeBeforeNodeBudget()
+        {
+            using MemoryStream stream = new();
+            using StreamWriter writer = new(stream, new UTF8Encoding(false)) { AutoFlush = true };
+            object root = new { Child = new { Value = 1 } };
+            var options = RuntimeObjectIntrospectionOptions.Default with
+            {
+                ExtraChildrenProvider = value =>
+                {
+                    if (ReferenceEquals(value, root))
+                        Thread.Sleep(20);
+                    return null;
+                }
+            };
+
+            IEnumerator routine = RuntimeObjectIntrospection.WriteReportCoroutine(
+                root, writer, options, nodeBudgetPerYield: 500, maxSliceMsPerYield: 1, measureProgressTotal: true);
+
+            routine.MoveNext().Should().BeTrue("counting must yield after a slow node");
+            writer.Flush();
+            Encoding.UTF8.GetString(stream.ToArray()).Should().NotContain("Root.Child.Value",
+                "the writer has not started the second traversal");
+            while (routine.MoveNext()) { }
+            writer.Flush();
+            Encoding.UTF8.GetString(stream.ToArray()).Should().Contain("Root.Child.Value");
+        }
+
+        [TestMethod]
         public void BuildReport_IncludesExtraChildrenFromProvider()
         {
             object root = new { A = 1 };

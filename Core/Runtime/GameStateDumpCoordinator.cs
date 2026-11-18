@@ -23,6 +23,7 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
 {
     private const int MaxSteps = 64;
     private const long StallMs = 15000;
+    private const long DumpTimeLimitMs = 60000;
 
     // Comprehensive dump profile: the game object graph contains multi-MB members whose reflection reads would otherwise be staged and retained by the traversal — those are skipped outright (pathfinding grids, dat files, label lists: data we don't need for a state overview). Entity lists ARE walked, and every entity node additionally dumps its game components (Beam, Positioned, Render, ...) via ExtractEntityComponents, like the old EntityListWrapper dump. Back-references (element parent/root chains, game/player singletons, hovered/owned targets) point at already-walked parts of the graph and are skipped so the walk terminates. The node and elapsed bounds turn an unbounded game graph into a dump that always finishes. Entity components that only carry rendering/animation noise (the Actor subtree alone dwarfs every other component combined) are never added as dump children. Gameplay-relevant components (Render, Positioned, Stats, Life, Monster, BlightTower, Beam, Pathfinding, ...) are still included.
     private static readonly HashSet<string> SkippedComponentTypes = new(StringComparer.Ordinal)
@@ -30,16 +31,17 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
         "Actor",
     };
 
-    private static readonly RuntimeObjectIntrospectionOptions DumpOptions = new(
+    internal static readonly RuntimeObjectIntrospectionOptions DumpOptions = new(
         Title: "Structure-First Memory Dump",
         MaxDepth: 64,
         MaxCollectionItems: 100,
-        PriorityMembers: [],
+        // IngameUiElements has more readable members than the traversal's per-object limit. Keep GameUI in the dump so league encounter UI state (including Blight indicators) is visible even when world entities are streamed out.
+        PriorityMembers: ["GameUI"],
         MaxMembersPerObject: 20,
         IncludeNonPublicMembers: false,
         MaxValueChars: 256,
         MaxTotalNodes: 400000,
-        MaxElapsedMs: 180000,
+        MaxElapsedMs: 60000,
         ProgressNodeTotal: 400000,
         ExtraChildrenProvider: ExtractEntityComponents,
         SkipMemberNames:
@@ -62,6 +64,8 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
             // Entity-in-entity recursion: every buff re-expands the entity that applied it (its own buffs -> source entities -> ...) and the Animated component re-expands a full entity. Skipping these two members keeps the Buffs/Animated data but stops the exponential re-walk that dominates the dump.
             "SourceEntity",
             "BaseAnimatedObjectEntity",
+            // This host API getter can block indefinitely when traversed through ActorSkill.Actor during an entity buff dump.
+            "ActFiles",
             // Pure animation state under the Actor component, and area relation lists that re-expand whole WorldAreas.
             "AnimationController",
             "Connections",
@@ -134,7 +138,7 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
             AddStepCore($"Game state dump started ({targets.Length} area{(targets.Length == 1 ? "" : "s")})");
 
             runtime.GameStateDumpCoroutine = new Coroutine(
-                DumpCoroutine(targets),
+                DumpCoroutine(targets, DumpTimeLimitMs),
                 _dependencies.Owner,
                 PluginCoroutineNames.GameStateDump,
                 true)
@@ -146,8 +150,9 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
         }
     }
 
-    private IEnumerator DumpCoroutine(GameStateDumpTarget[] targets)
+    private IEnumerator DumpCoroutine(GameStateDumpTarget[] targets, long timeLimitMs)
     {
+        Stopwatch overallTime = Stopwatch.StartNew();
         // Stream every area's report straight into a dump file next to the plugin, so the report is never held in memory in full and cannot be silently truncated by the clipboard's size limit; the coroutine yields between node slices, keeping the runner responsive.
         string dumpName = targets.Length == 1 ? targets[0].ToString() : "All";
         string dumpPath = Path.Combine(PluginDirectory, $"{dumpName}-{DateTime.Now:yyyyMMdd-HHmmss}.txt");
@@ -176,6 +181,11 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
             AddStep($"Dump file: {dumpPath}");
             for (int i = 0; i < targets.Length; i++)
             {
+                if (overallTime.ElapsedMilliseconds >= timeLimitMs)
+                {
+                    FinishTimedOut(writer, dumpPath);
+                    yield break;
+                }
                 GameStateDumpTarget target = targets[i];
                 int areaIndex = i;
                 _lastProgressBucket = -1;
@@ -206,29 +216,43 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
                         totalNodes += nodes;
                         areaNodes = nodes;
                     },
-                    maxSliceMsPerYield: 20,
-                    measureProgressTotal: true);
+                    maxSliceMsPerYield: 5);
 
                 bool cancelled = false;
                 long sliceStart = Stopwatch.GetTimestamp();
                 long sliceAllocStart = GC.GetAllocatedBytesForCurrentThread();
-                while (routine.MoveNext())
+                while (true)
                 {
                     if (IsCancelRequested())
                     {
                         cancelled = true;
                         break;
                     }
+                    if (overallTime.ElapsedMilliseconds >= timeLimitMs)
+                    {
+                        (routine as IDisposable)?.Dispose();
+                        FinishTimedOut(writer, dumpPath);
+                        yield break;
+                    }
+                    if (!routine.MoveNext())
+                        break;
                     RecordDumpSlice(sliceStart, sliceAllocStart);
                     sliceStart = Stopwatch.GetTimestamp();
                     sliceAllocStart = GC.GetAllocatedBytesForCurrentThread();
                     yield return null;
                 }
                 RecordDumpSlice(sliceStart, sliceAllocStart);
+                (routine as IDisposable)?.Dispose();
                 if (cancelled)
                 {
                     AddStep("Cancelled by user");
                     SetFinished("Game state dump cancelled");
+                    yield break;
+                }
+
+                if (overallTime.ElapsedMilliseconds >= timeLimitMs)
+                {
+                    FinishTimedOut(writer, dumpPath);
                     yield break;
                 }
 
@@ -249,6 +273,19 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
                 SetFinished("Game state dump failed");
             }
         }
+    }
+
+    private void FinishTimedOut(StreamWriter writer, string dumpPath)
+    {
+        const string message = "Dump stopped: overall 60-second time limit reached; remaining data was not captured.";
+        if (!TryWriteLine(writer, $"\n{message}\n"))
+        {
+            lock (_stateLock) _errors.Add("Could not write the time-limit marker to the dump file.");
+            SetFinished($"Dump timed out; could not write the time-limit marker to {dumpPath}");
+            return;
+        }
+        AddStep(message);
+        SetFinished($"Partial dump written to {dumpPath} (60-second time limit)");
     }
 
     private bool IsCancelRequested()

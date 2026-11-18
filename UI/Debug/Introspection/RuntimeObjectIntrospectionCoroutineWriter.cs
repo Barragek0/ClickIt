@@ -89,6 +89,8 @@ namespace ClickIt.UI.Debug.Introspection
                 RuntimeObjectTraversalEngine counter = new(root, normalized, enforceElapsedBudget: true);
                 int countedSinceYield = 0;
                 int previousCounted = 0;
+                int countSliceMs = SystemMath.Max(1, maxSliceMsPerYield);
+                Stopwatch countSlice = Stopwatch.StartNew();
                 while (!counter.IsFinished)
                 {
                     _ = counter.ProcessNext();
@@ -96,10 +98,11 @@ namespace ClickIt.UI.Debug.Introspection
                         countedSinceYield += counter.TotalProcessedNodes - previousCounted;
                     previousCounted = counter.TotalProcessedNodes;
 
-                    if (countedSinceYield >= budget)
+                    if (countedSinceYield >= budget || countSlice.ElapsedMilliseconds >= countSliceMs)
                     {
                         countedSinceYield = 0;
                         SafeInvokeProgress(onProgress, CountPhaseProgress(counter.TotalProcessedNodes, normalized.MaxTotalNodes));
+                        countSlice.Restart();
                         yield return null;
                     }
                 }
