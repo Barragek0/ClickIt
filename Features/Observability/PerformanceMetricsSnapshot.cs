@@ -158,7 +158,6 @@ namespace ClickIt.Features.Observability
         TimingMetricsSnapshot UltimatumOverlay,
         TimingMetricsSnapshot StrongboxOverlay,
         TimingMetricsSnapshot PathfindingOverlay,
-        TimingMetricsSnapshot HarvestOverlay,
         TimingMetricsSnapshot BlightOverlay,
         TimingMetricsSnapshot ClickHotkeyToggle = default,
         TimingMetricsSnapshot InventoryFullWarning = default,
@@ -172,11 +171,11 @@ namespace ClickIt.Features.Observability
         TimingMetricsSnapshot BlightCoroutine = default,
         TimingMetricsSnapshot UltimatumCoroutine = default,
         TimingMetricsSnapshot LabelOverlayCoroutine = default,
+        TimingMetricsSnapshot SkillAutomationCoroutine = default,
         TimingMetricsSnapshot AltarProcessing = default,
         TimingMetricsSnapshot BlightProcessing = default,
         TimingMetricsSnapshot ClickProcessing = default,
         TimingMetricsSnapshot FlareProcessing = default,
-        TimingMetricsSnapshot HarvestProcessing = default,
         TimingMetricsSnapshot LabelProcessing = default,
         TimingMetricsSnapshot PathfindingProcessing = default,
         TimingMetricsSnapshot StrongboxProcessing = default,
@@ -210,7 +209,6 @@ namespace ClickIt.Features.Observability
                 RenderSection.UltimatumOverlay => UltimatumOverlay,
                 RenderSection.StrongboxOverlay => StrongboxOverlay,
                 RenderSection.PathfindingOverlay => PathfindingOverlay,
-                RenderSection.HarvestOverlay => HarvestOverlay,
                 RenderSection.BlightOverlay => BlightOverlay,
                 RenderSection.ClickHotkeyToggle => ClickHotkeyToggle,
                 RenderSection.InventoryFullWarning => InventoryFullWarning,
@@ -229,7 +227,6 @@ namespace ClickIt.Features.Observability
                 ProcessingSection.Blight => BlightProcessing,
                 ProcessingSection.Click => ClickProcessing,
                 ProcessingSection.Flare => FlareProcessing,
-                ProcessingSection.Harvest => HarvestProcessing,
                 ProcessingSection.Label => LabelProcessing,
                 ProcessingSection.Pathfinding => PathfindingProcessing,
                 ProcessingSection.Strongbox => StrongboxProcessing,
@@ -250,6 +247,7 @@ namespace ClickIt.Features.Observability
                 TimingChannel.Blight => BlightCoroutine,
                 TimingChannel.Ultimatum => UltimatumCoroutine,
                 TimingChannel.LabelOverlay => LabelOverlayCoroutine,
+                TimingChannel.SkillAutomation => SkillAutomationCoroutine,
                 TimingChannel.Render => Render,
                 TimingChannel.Unknown => default,
                 _ => default,
@@ -268,6 +266,7 @@ namespace ClickIt.Features.Observability
                 Aggregate(BlightCoroutine);
                 Aggregate(UltimatumCoroutine);
                 Aggregate(LabelOverlayCoroutine);
+                Aggregate(SkillAutomationCoroutine);
                 return new TimingMetricsSnapshot(last, avg, max, channels);
 
                 void Aggregate(TimingMetricsSnapshot s)
@@ -297,6 +296,7 @@ namespace ClickIt.Features.Observability
                 Aggregate(BlightCoroutine);
                 Aggregate(UltimatumCoroutine);
                 Aggregate(LabelOverlayCoroutine);
+                Aggregate(SkillAutomationCoroutine);
                 return new TimingMetricsSnapshot(last, avg, max, channels);
 
                 void Aggregate(TimingMetricsSnapshot s)
@@ -326,7 +326,6 @@ namespace ClickIt.Features.Observability
                 Aggregate(BlightProcessing);
                 Aggregate(ClickProcessing);
                 Aggregate(FlareProcessing);
-                Aggregate(HarvestProcessing);
                 Aggregate(LabelProcessing);
                 Aggregate(PathfindingProcessing);
                 Aggregate(StrongboxProcessing);
@@ -363,7 +362,6 @@ namespace ClickIt.Features.Observability
                 Add(RenderSection.DebugOverlay);
                 Add(RenderSection.FrameFlush);
                 Add(RenderSection.TextFlush);
-                Add(RenderSection.HarvestOverlay);
                 Add(RenderSection.InventoryFullWarning);
                 Add(RenderSection.LazyMode);
                 Add(RenderSection.PathfindingOverlay);
@@ -434,7 +432,6 @@ namespace ClickIt.Features.Observability
                 Aggregate(BlightProcessing);
                 Aggregate(ClickProcessing);
                 Aggregate(FlareProcessing);
-                Aggregate(HarvestProcessing);
                 Aggregate(LabelProcessing);
                 Aggregate(PathfindingProcessing);
                 Aggregate(StrongboxProcessing);

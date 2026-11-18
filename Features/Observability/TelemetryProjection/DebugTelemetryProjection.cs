@@ -16,7 +16,8 @@ namespace ClickIt.Features.Observability.TelemetryProjection
             InputHandler? inputHandler,
             ClickItSettings? settings,
             TimeCache<List<LabelOnGround>>? cachedLabels,
-            ErrorHandler? errorHandler)
+            ErrorHandler? errorHandler,
+            FlameLinkAutomationService? skillAutomationService = null)
         {
             ClickTelemetrySnapshot clickTelemetry = BuildClickTelemetry(
                 clickAutomationPort,
@@ -34,6 +35,8 @@ namespace ClickIt.Features.Observability.TelemetryProjection
             InventoryTelemetrySnapshot inventoryTelemetry = BuildInventoryTelemetry(inventoryProbeService);
             AltarTelemetrySnapshot altarTelemetry = BuildAltarTelemetry(altarService, weightCalculator, settings, gameController);
             HoveredItemMetadataTelemetrySnapshot hoveredItemTelemetry = BuildHoveredItemMetadataTelemetry(gameController);
+            SkillAutomationTelemetrySnapshot skillAutomationTelemetry = skillAutomationService?.GetDebugSnapshot()
+                ?? SkillAutomationTelemetrySnapshot.Empty;
 
             return new DebugTelemetrySnapshot(
                 Click: clickTelemetry,
@@ -44,7 +47,11 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                 Errors: errorTelemetry,
                 Inventory: inventoryTelemetry,
                 Altar: altarTelemetry,
-                HoveredItem: hoveredItemTelemetry);
+                HoveredItem: hoveredItemTelemetry,
+                SkillAutomation: skillAutomationTelemetry)
+            {
+                CraftingTrail = clickAutomationSupport?.GetCraftingTrail() ?? []
+            };
         }
 
         private static LabelTelemetrySnapshot BuildLabelTelemetry(LabelDebugService? labelDebugService)

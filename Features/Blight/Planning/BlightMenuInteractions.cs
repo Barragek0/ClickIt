@@ -1,12 +1,20 @@
 namespace ClickIt.Features.Blight.Planning;
 
-// Menu structure: Child[0].Child[3] is the 6-child tower type/upgrade menu; Child[0].Child[2] = build icon, Child[0].Child[3] = upgrade icon; a specialization upgrade (Fireball 3→4) has NO sub-menu.
+// Child[0].Child[2] opens the foundation menu. Child[0].Child[3] holds the build and upgrade slots.
 internal static class BlightMenuInteractions
 {
     internal static bool IsTowerMenuOpen(Element labelElement)
     {
-        List<Element>? children = GetVisibleMenuChildren(labelElement, 3);
-        return children is { Count: > 0 };
+        try
+        {
+            Element? menu = GetMenuChildElement(labelElement, 3);
+            long count = menu?.ChildCount ?? 0;
+            for (int i = 0; i < count; i++)
+                if (menu!.GetChildAtIndex(i)?.IsVisible == true)
+                    return true;
+            return false;
+        }
+        catch { return false; }
     }
 
     internal static bool CanAffordBuild(Element labelElement)
@@ -21,38 +29,7 @@ internal static class BlightMenuInteractions
         catch { return false; }
     }
 
-    internal static NumVector2? GetTowerMenuChildClickPosition(
-        Element labelElement, BlightTowerType towerType)
-    {
-        // The tower-type slot is a child of the tower/upgrade menu: Child[0].Child[3].Child[(int)towerType]. (Order confirmed in-game: Chilling=0, ShockNova=1, Empowering=2, Seismic=3, Summoning=4, Fireball=5.)
-        try
-        {
-            Element? menu = GetMenuChildElement(labelElement, 3);
-            if (menu == null || (int)towerType >= menu.ChildCount) return null;
-            Element? slot = menu.GetChildAtIndex((int)towerType);
-            return slot == null ? null : Center(slot.GetClientRect());
-        }
-        catch { return null; }
-    }
-
-    internal static NumVector2? GetSpecializationChildClickPosition(Element labelElement, int childIndex)
-    {
-        if (childIndex < 0)
-            return null;
-        try
-        {
-            Element? menu = GetMenuChildElement(labelElement, 3);
-            if (menu == null || childIndex >= menu.ChildCount)
-                return null;
-            Element? child = menu.GetChildAtIndex(childIndex);
-            if (child == null || !child.IsVisible)
-                return null;
-            return Center(child.GetClientRect());
-        }
-        catch { return null; }
-    }
-
-    private static string? ReadUpgradeResultTowerId(Element child)
+    internal static string? ReadUpgradeResultTowerId(Element child)
     {
         try
         {
@@ -151,37 +128,46 @@ internal static class BlightMenuInteractions
     internal static int CountVisibleUpgradeButtons(Element labelElement)
         => GetVisibleMenuChildren(labelElement, 3)?.Count ?? 0;
 
-    internal static (NumVector2 Position, string? UpgradeId)? GetFirstVisibleUpgradeButton(Element labelElement)
+    internal static (string? UpgradeId, Element Button)? GetPlainUpgradeButton(Element labelElement)
     {
-        List<Element>? children = GetVisibleMenuChildren(labelElement, 3);
-        if (children == null || children.Count == 0)
+        Element? button = GetMenuSlot(labelElement, 0);
+        if (button?.IsVisible != true)
             return null;
 
-        Element? first = children[0];
-        return (Center(first.GetClientRect()), ReadUpgradeResultTowerId(first));
+        return (ReadUpgradeResultTowerId(button), button);
     }
-
-    internal static NumVector2? GetBuildIconClickPosition(Element labelElement)
-        => TryGetMenuChildCenter(labelElement, 2);
-
-    internal static NumVector2? GetUpgradeIconClickPosition(Element labelElement)
-        => TryGetMenuChildCenter(labelElement, 3);
-
-    // The menu region (build icon Child[2] / upgrade icon Child[3]) is bigger than the icon but still doesn't cover the whole sub-menu, so the region we require to be fully on-screen and clickable is the step's icon rect enlarged by ~30% around its center.
-    internal const float MenuRegionEnlargeRatio = 1.3f;
 
     // The walk-ready region uses the step's own icon: build (Child[2]) for unbuilt foundations, upgrade (Child[3]) for built towers — a foundation has no upgrade button.
     internal static int MenuChildIndexForStep(BlightPlanAction action)
         => action == BlightPlanAction.Upgrade ? 3 : 2;
 
-    internal static RectangleF? GetMenuChildRect(Element labelElement, int childIndex)
+    internal static Element? GetMenuSlot(Element labelElement, int slotIndex)
     {
         try
         {
-            return GetMenuChildElement(labelElement, childIndex)?.GetClientRect();
+            Element? menu = GetMenuChildElement(labelElement, 3);
+            return menu != null && slotIndex >= 0 && slotIndex < menu.ChildCount
+                ? menu.GetChildAtIndex(slotIndex)
+                : null;
         }
         catch { return null; }
     }
+
+    internal static bool TryReadBuildCost(Element labelElement, out int cost)
+    {
+        cost = -1;
+        // The Chilling slot displays the initial build cost at Label[0][3][0][2][0].
+        Element? slot = GetMenuSlot(labelElement, (int)BlightTowerType.Chilling);
+        return slot?.IsVisible == true
+            && DynamicAccess.TryGetChildAtIndex(slot, 2, out object? costContainer)
+            && DynamicAccess.TryGetChildAtIndex(costContainer, 0, out object? rawCost)
+            && rawCost is Element { IsVisible: true } costLabel
+            && DynamicAccess.TryReadString(costLabel, static node => node.Text, out string text)
+            && TryParseBuildCost(text, out cost);
+    }
+
+    internal static bool TryParseBuildCost(string? text, out int cost)
+        => int.TryParse(text, out cost) && cost >= 0;
 
     internal static Element? GetMenuChildElement(Element labelElement, int childIndex)
     {
@@ -220,30 +206,31 @@ internal static class BlightMenuInteractions
         catch { return null; }
     }
 
-    internal static RectangleF? GetMenuRegionRect(Element labelElement, int childIndex)
-    {
-        RectangleF? rect = GetMenuChildRect(labelElement, childIndex);
-        return rect == null ? null : EnlargeRectKeepingCenter(rect.Value, MenuRegionEnlargeRatio);
-    }
+    internal static int GetStepSlotIndex(BlightPlanStep step, int specialization)
+        => step.Action == BlightPlanAction.Build
+            ? (int)step.TowerType
+            : step.IsSpecializationStep && specialization >= 0
+                ? BlightTowerData.GetSpecializationMenuChildIndex(step.TowerType, (TowerSpecialization)specialization)
+                : 0;
 
-    internal static RectangleF EnlargeRectKeepingCenter(RectangleF rect, float ratio)
-    {
-        NumVector2 c = Center(rect);
-        float halfW = (rect.Width / 2f) * ratio;
-        float halfH = (rect.Height / 2f) * ratio;
-        return new RectangleF(c.X - halfW, c.Y - halfH, halfW * 2f, halfH * 2f);
-    }
-
-    private static NumVector2 Center(RectangleF rect)
-        => new(rect.X + (rect.Width / 2f), rect.Y + (rect.Height / 2f));
-
-    private static NumVector2? TryGetMenuChildCenter(Element labelElement, int childIndex)
+    internal static RectangleF? GetControlRect(Element? element)
     {
         try
         {
-            Element? child = GetMenuChildElement(labelElement, childIndex);
-            return child == null ? null : Center(child.GetClientRect());
+            RectangleF? rect = element?.GetClientRect();
+            return rect is { Width: > 0, Height: > 0 } ? rect : null;
         }
         catch { return null; }
+    }
+
+    internal static bool IsHoverInside(Element? hover, Element expected)
+    {
+        long address = expected.Address;
+        if (address == 0)
+            return false;
+        for (int depth = 0; depth < 12 && hover != null && hover.Address != 0; depth++, hover = hover.Parent)
+            if (hover.Address == address)
+                return true;
+        return false;
     }
 }

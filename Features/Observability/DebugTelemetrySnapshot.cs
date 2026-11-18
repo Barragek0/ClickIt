@@ -9,8 +9,11 @@ namespace ClickIt.Features.Observability
         ErrorTelemetrySnapshot Errors,
         InventoryTelemetrySnapshot Inventory,
         AltarTelemetrySnapshot Altar,
-        HoveredItemMetadataTelemetrySnapshot HoveredItem)
+        HoveredItemMetadataTelemetrySnapshot HoveredItem,
+        SkillAutomationTelemetrySnapshot SkillAutomation)
     {
+        internal IReadOnlyList<string> CraftingTrail { get; init; } = [];
+
         public static readonly DebugTelemetrySnapshot Empty = new(
             Click: ClickTelemetrySnapshot.Empty,
             Label: LabelTelemetrySnapshot.Empty,
@@ -20,6 +23,7 @@ namespace ClickIt.Features.Observability
             Errors: ErrorTelemetrySnapshot.Empty,
             Inventory: InventoryTelemetrySnapshot.Empty,
             Altar: AltarTelemetrySnapshot.Empty,
-            HoveredItem: HoveredItemMetadataTelemetrySnapshot.Empty);
+            HoveredItem: HoveredItemMetadataTelemetrySnapshot.Empty,
+            SkillAutomation: SkillAutomationTelemetrySnapshot.Empty);
     }
 }

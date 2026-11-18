@@ -45,7 +45,8 @@ namespace ClickIt.Core.Bootstrap
                 core.PerformanceMonitor,
                 freezeDebugTelemetrySnapshot))
             {
-                BlightChestDebug = core.BlightService.BlightChestDebug
+                BlightChestDebug = core.BlightService.BlightChestDebug,
+                HarvestUpgrade = core.HarvestUpgrade
             };
             return port;
         }

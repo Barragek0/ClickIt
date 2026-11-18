@@ -4,6 +4,98 @@ namespace ClickIt.Tests.Features.Blight;
 public class BlightBranchesTests
 {
     [TestMethod]
+    public void AngledDuplicateBeamGap_JoinsConnectedJunctionWithoutFollowingBackwardsEndpoint()
+    {
+        NumVector2[] starts = [new(265.2f, 640.9f), new(262.5f, 630.5f),
+            new(264.5f, 621.5f), new(264.5f, 621.5f), new(269.5f, 621.5f), new(268.5f, 610f)];
+        NumVector2[] ends = [new(262.5f, 630.5f), new(252, 621.8f),
+            new(269.5f, 621.5f), new(269.4f, 621.5f), new(280, 621.5f), new(268.5f, 620f)];
+        BlightPathwayIcon[] icons = [.. starts.Select((start, i) => new BlightPathwayIcon(i, start, 2,
+            BlightHelpers.GridToWorld(start), BlightHelpers.GridToWorld(ends[i]), []))];
+        LaneCoverageResult[] coverage = Coverage(-2, 0, -2, -2, 3, 0);
+        List<PumpBranch> branches = [new(0, new NumVector2(273, 712))];
+
+        LaneCoverageResult[] noDuplicate = (LaneCoverageResult[])coverage.Clone();
+        noDuplicate[3] = noDuplicate[3] with { ParentIndex = 4 };
+        BlightBranches.AttachBeamEndpointGaps(noDuplicate, icons, starts, branches, new(273, 712))
+            .Should().BeFalse("a single nearby fragment does not establish a junction");
+
+        LaneCoverageResult[] noJunction = (LaneCoverageResult[])coverage.Clone();
+        noJunction[1] = noJunction[1] with { ParentIndex = -2 };
+        BlightBranches.AttachBeamEndpointGaps(noJunction, icons, starts, branches, new(273, 712))
+            .Should().BeFalse("a nearby endpoint without a connected continuation is ambiguous");
+
+        BlightBranches.AttachBeamEndpointGaps(coverage, icons, starts, branches, new(273, 712))
+            .Should().BeTrue();
+        coverage[2].ParentIndex.Should().Be(0);
+        coverage[3].ParentIndex.Should().Be(0);
+        coverage[4].ParentIndex.Should().Be(3);
+    }
+
+    [TestMethod]
+    public void EndpointGapFromDump_ReconnectsPortalRouteWithoutRequiringAnotherSeismic()
+    {
+        List<BlightPathwayIcon> icons = [];
+        AddPath([(630.5f, 634.5f), (636.5f, 629.5f), (647.6f, 628.2f), (654.9f, 626.8f),
+            (665.5f, 623.5f), (675.4f, 622.2f), (682.1f, 621.8f), (692.5f, 621.5f),
+            (703.0f, 621.5f), (710.0f, 621.5f), (720.5f, 621.5f), (730.9f, 621.5f),
+            (737.6f, 621.5f), (747.5f, 621.5f)]);
+        AddPath([(644.5f, 701.5f), (650.9f, 709.5f), (652.6f, 713.5f), (651.5f, 717.5f)]);
+        AddPath([(655.5f, 713.5f), (652.1f, 717.8f), (649.4f, 722.2f), (644.5f, 731.5f),
+            (650.4f, 742.0f), (653.1f, 749.0f), (655.5f, 759.5f)]);
+        AddPath([(630.5f, 634.5f), (625.5f, 633.5f), (616.5f, 640.8f), (612.5f, 646.2f),
+            (609.5f, 655.5f), (617.0f, 666.0f), (620.0f, 673.0f), (621.5f, 683.5f),
+            (627.6f, 692.8f), (632.9f, 697.2f), (642.5f, 701.5f), (650.9f, 710.6f),
+            (654.6f, 716.9f), (657.5f, 726.5f), (668.0f, 732.8f), (675.0f, 735.2f),
+            (685.5f, 736.5f), (696.0f, 737.9f), (703.0f, 740.6f), (713.5f, 747.5f)]);
+        NumVector2[] positions = [.. icons.Select(icon => icon.GridPos)];
+        int[] parents = [.. icons.Select(icon => icon.Parents.Length == 0 ? -1 : icon.Parents[0])];
+        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(positions, static _ => default, parents);
+        NumVector2 pump = new(637, 651);
+        List<PumpBranch> branches = BlightBranches.FindPumpBranches(coverage, pump, positions, null);
+        BlightBranches.AttachUnassignedLanes(coverage, positions, branches);
+        BlightBranches.AttachParallelLanes(coverage, positions, branches);
+        coverage[16].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel);
+
+        Dictionary<NumVector2, string> portals = new() { [new(655, 759)] = "BlightPortalMinion" };
+        BlightCachedTower[] towers =
+        [
+            new(new(629, 669), BlightTowerType.Seismic, 3),
+            new(new(643, 691), BlightTowerType.Chilling, 3),
+            new(new(690, 611), BlightTowerType.Chilling, 3),
+            new(new(640, 745), BlightTowerType.Seismic)
+        ];
+        TowerBuildRule meteor = new ChillingSeismicMeteorStrategy().GetRule(BlightTowerType.Fireball)!.Value;
+        var before = BlightLockdownPlanner.FindLanes(icons, portals, coverage, out _);
+        BlightLockdownPlanner.Build(towers, before, meteor, 1, pump).Steps
+            .Should().Contain(step => step.Action == BlightPlanAction.Build && step.TowerType == BlightTowerType.Seismic);
+
+        BlightPathwayIcon[] crossing = [.. icons];
+        crossing[16] = crossing[16] with { BeamEnd = BlightHelpers.GridToWorld(new(661, 713.5f)) };
+        BlightBranches.AttachBeamEndpointGaps((LaneCoverageResult[])coverage.Clone(), crossing, positions, branches, pump)
+            .Should().BeFalse("a nearby crossing does not provide evidence of a continuation");
+
+        BlightBranches.AttachBeamEndpointGaps(coverage, icons, positions, branches, pump).Should().BeTrue();
+        coverage[16].ParentIndex.Should().Be(15);
+        var repaired = BlightLockdownPlanner.FindLanes(icons, portals, coverage, out _);
+        repaired.Should().HaveCount(3);
+        BlightLockdownPlanner.Build(towers, repaired, meteor, 2, pump).Steps
+            .Should().NotContain(step => step.Action == BlightPlanAction.Build && step.TowerType == BlightTowerType.Seismic);
+
+        void AddPath((float X, float Y)[] points)
+        {
+            for (int i = 0; i + 1 < points.Length; i++)
+            {
+                NumVector2 start = new(points[i].X, points[i].Y);
+                NumVector2 end = new(points[i + 1].X, points[i + 1].Y);
+                int index = icons.Count;
+                icons.Add(new BlightPathwayIcon(index, start, 2, BlightHelpers.GridToWorld(start),
+                    BlightHelpers.GridToWorld(end), i == 0 ? [] : [index - 1]));
+            }
+        }
+    }
+
+    [TestMethod]
     public void AttachUnassignedLanes_ReparentsOrphanChain_AndRebuildRestoresMidpointAndCoverage()
     {
         // A lane (0->1->2) plus a chain head (3) whose beam link is broken (orphan): the attach pass re-parents it under the lane end (2). Re-running ComputeCoverage with the attached parents gives the segment a real midpoint instead of the orphan (0,0) default so the debug tree, lane labels, and coverage propagation all reflect the joined lane.

@@ -9,7 +9,8 @@ namespace ClickIt.Features.Click.Interaction
         bool AllowWhenHotkeyInactive,
         bool AvoidCursorMove,
         string OutsideWindowLogMessage,
-        IntervalKind Interval = IntervalKind.Click);
+        IntervalKind Interval = IntervalKind.Click,
+        Func<Element?, bool>? ValidateSettledHover = null);
 
     internal readonly record struct InteractionExecutionRuntimeDependencies(
         Func<string, bool> EnsureCursorInsideGameWindowForClick,
@@ -17,7 +18,8 @@ namespace ClickIt.Features.Click.Interaction
         Action<string> DebugLog,
         Func<Vector2, Element?, GameController?, bool, bool, bool, IntervalKind, bool> PerformLockedClick,
         Func<Vector2, Element?, GameController?, bool, bool, bool, bool> PerformLockedHoldClick,
-        Action RecordClickInterval);
+        Action RecordClickInterval,
+        Func<Vector2, GameController?, IntervalKind, Func<Element?, bool>, bool, bool>? PerformGuardedClick = null);
 
     internal interface IInteractionExecutionRuntime
     {
@@ -44,7 +46,10 @@ namespace ClickIt.Features.Click.Interaction
             }
 
             // Only treat the interaction as executed when the executor actually sent the click — internal rejections must not run the success aftermath.
-            bool clicked = request.UseHoldClick
+            bool clicked = request.ValidateSettledHover is { } validate
+                ? !request.UseHoldClick && _dependencies.PerformGuardedClick?.Invoke(
+                    request.ClickPosition, request.Controller, request.Interval, validate, request.AllowWhenHotkeyInactive) == true
+                : request.UseHoldClick
                 ? _dependencies.PerformLockedHoldClick(
                     request.ClickPosition,
                     request.ExpectedElement,

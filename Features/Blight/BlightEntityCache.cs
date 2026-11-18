@@ -20,6 +20,8 @@ internal sealed class BlightEntityCache
     private readonly BlightEncounter _encounter;
 
     internal event Action? ClearRequested;
+    internal event Action? TransientClearRequested;
+    internal event Action<BlightAreaKey>? AreaChanged;
     internal event Action? EncounterEnded;
     internal event Action? DataChanged;
 
@@ -46,6 +48,7 @@ internal sealed class BlightEntityCache
     private long _lastFullRefreshEntityScanMs;
     private long _lastRefreshDebugTimestampMs;
     private long _lastAreaHash = long.MinValue;
+    private long _lastAreaInstanceId = long.MinValue;
 
     private const string BlightFoundationPathMarker = "BlightFoundation";
     private const string BlightTowerPathMarker = "BlightTower";
@@ -86,6 +89,15 @@ internal sealed class BlightEntityCache
     // Reused per-scan scratch buffers (the scan runs on a single coroutine thread), so a steady-state scan does not re-allocate the saved-state map and local result lists every 200ms.
     private readonly Dictionary<NumVector2, (BlightTowerType Type, int Level, BlightTowerType Planned)> _scanSavedState = [];
     private readonly List<Entity> _scanLocalPathways = [];
+    private readonly Dictionary<NumVector2, string> _scanLocalPortals = [];
+    private readonly Dictionary<NumVector2, string> _portals = [];
+    internal int LaneLayoutVersion { get; private set; }
+
+    internal Dictionary<NumVector2, string> GetPortalIcons()
+    {
+        lock (_blightDataLock)
+            return new(_portals);
+    }
     private readonly List<(Entity Entity, string TowerId)> _scanLocalTowers = [];
     private readonly List<BlightCachedTower> _scanLocalKnown = [];
 
@@ -207,6 +219,31 @@ internal sealed class BlightEntityCache
         }
 
         return new BlightPathwayIcon((int)entity.Id, grid, visualState, beamStart, beamEnd, []);
+    }
+
+    private void CollectPortal(Entity entity, string? path)
+    {
+        if (path?.Contains("Blight", StringComparison.OrdinalIgnoreCase) != true
+            || path.Contains(BlightPumpMetadata, StringComparison.OrdinalIgnoreCase)
+            || path.Contains(BlightFoundationEntityMetadata, StringComparison.OrdinalIgnoreCase)
+            || path.Contains(BlightTowerPathMarker, StringComparison.OrdinalIgnoreCase)
+            || !IsEntityCurrentlyValid(entity))
+            return;
+
+        try
+        {
+            // Spawner markers are separate from the portals and do not identify immunity.
+            string? name = entity.GetComponent<MinimapIcon>()?.Name;
+            if (name?.StartsWith("BlightPortal", StringComparison.Ordinal) != true)
+                return;
+            NumVector2 position = BlightHelpers.GetGridPosition(entity);
+            if (position != NumVector2.Zero)
+                _scanLocalPortals[position] = name;
+        }
+        catch
+        {
+            // A streamed-out portal keeps its last confirmed icon.
+        }
     }
 
     // The lane's own StateMachine "visual" state is the authoritative render signal: visual == 1 (spawned, not yet sending enemies) and visual == 2 (actively sending) both show the lane, visual == 3 (all enemies sent, inactive) hides it. Returns the visual value when readable, else 0 (unknown — treated as hidden).
@@ -588,6 +625,8 @@ internal sealed class BlightEntityCache
         lock (_blightDataLock)
         {
             sb.AppendLine($"Tracked pathway entities: {_pathwayEntities.Count}, persisted icons: {_persistedIcons.Count}, snapshot icons: {_iconPathwaySnapshot.Count}");
+            foreach ((NumVector2 position, string name) in _portals)
+                sb.AppendLine($"  portal ({position.X:F1},{position.Y:F1}) {name}");
             for (int p = 0; p < _pathwayEntities.Count; p++)
             {
                 Entity e = _pathwayEntities[p];
@@ -618,6 +657,11 @@ internal sealed class BlightEntityCache
                 sb.Append($" act={(icon.IsActive ? 1 : 0)}");
                 sb.Append($" beamStart=({start.X:F1},{start.Y:F1}) beamEnd=({end.X:F1},{end.Y:F1})");
                 sb.Append($" parents=[{string.Join(",", icon.Parents)}]");
+                if (!_coverageDirty && _cachedCoverage?.Length == _iconPathwaySnapshot.Count)
+                {
+                    LaneCoverageResult segment = _cachedCoverage[p];
+                    sb.Append($" coverageParent={segment.ParentIndex} control={segment.ControlRequired}");
+                }
                 sb.Append('\n');
             }
         }
@@ -645,15 +689,16 @@ internal sealed class BlightEntityCache
     private LaneCoverageResult[] ComputeIconLaneCoverage()
     {
         BlightPathwayIcon[] iconsSnapshot;
+        Dictionary<NumVector2, string> portals;
         lock (_blightDataLock)
         {
             if (_iconPathwaySnapshot.Count < 2)
                 return [];
             iconsSnapshot = [.. _iconPathwaySnapshot];
+            portals = new(_portals);
         }
 
-        Func<NumVector2, (bool chilling, bool seismic, bool fireball, bool empowering, bool shockNova, bool summoning)> probe
-            = BuildCoverageProbe(out _, out _);
+        var probe = BuildCoverageProbe();
 
         NumVector2[] positions = new NumVector2[iconsSnapshot.Length];
         int[] parents = new int[iconsSnapshot.Length];
@@ -674,13 +719,13 @@ internal sealed class BlightEntityCache
         NumVector2? pumpPos = PumpGridPosition;
         (bool, bool, bool) CoverProbe(NumVector2 m)
         {
-            (bool c, bool s, bool f, _, _, _) = probe(m);
+            (bool c, bool s, bool f, _, _, _, _, _, _) = probe(m);
             return (c, s, f);
         }
-        (bool, bool, bool) SupportProbe(NumVector2 m)
+        (bool, bool, bool, bool, bool, bool) SupportProbe(NumVector2 m)
         {
-            (_, _, _, bool e, bool sn, bool su) = probe(m);
-            return (e, sn, su);
+            (_, _, _, bool e, bool sn, bool su, bool ec, bool es, bool est) = probe(m);
+            return (e, sn, su, ec, es, est);
         }
         LaneCoverageResult[] result = BlightLaneTopology.ComputeCoverage(positions, CoverProbe, parents, SupportProbe, allParents);
 
@@ -690,6 +735,7 @@ internal sealed class BlightEntityCache
             List<PumpBranch> branches = BlightBranches.FindPumpBranches(result, pumpPos, positions, CachedBranchAnchors);
             bool attachedAny = BlightBranches.AttachUnassignedLanes(result, positions, branches);
             attachedAny |= BlightBranches.AttachParallelLanes(result, positions, branches);
+            attachedAny |= BlightBranches.AttachBeamEndpointGaps(result, iconsSnapshot, positions, branches, pumpPos.Value);
             if (attachedAny)
             {
                 // Rebuild with the attached parent tree so the re-parented chain gets a real midpoint (an orphan attached to a lane end otherwise keeps the (0,0) default), freshly probed coverage flags, and propagation through the joined tree.
@@ -699,6 +745,7 @@ internal sealed class BlightEntityCache
             }
         }
 
+        BlightLockdownPlanner.MarkControlRoutes(iconsSnapshot, portals, result);
         lock (_blightDataLock)
         {
             // The icon snapshot keeps the RAW beam web (Parents) — the overlay draws the primary edge from the coverage tree (coverage[i].ParentIndex, gap-closing attached links included) and every extra parent edge from Parents[1..], so no post-attach sync of the snapshot's parents is needed.
@@ -711,92 +758,79 @@ internal sealed class BlightEntityCache
         return result;
     }
 
-    // Snapshot the tower state and build the per-midpoint coverage probe under the data lock; the returned closure is safe to call without the lock because it only touches the copied arrays.
-    private Func<NumVector2, (bool chilling, bool seismic, bool fireball, bool empowering, bool shockNova, bool summoning)> BuildCoverageProbe(
-        out (Entity Entity, string TowerId, int RadiusSq)[] towersSnapshot,
-        out (NumVector2 Pos, BlightTowerType Type, int RadiusSq)[] cachedBuilt)
+    private Func<NumVector2, (bool chilling, bool seismic, bool fireball, bool empowering, bool shockNova, bool summoning,
+        bool empoweredChilling, bool empoweredSummoning, bool empoweredSeismic)> BuildCoverageProbe()
     {
-        // Local copies so the returned closure never captures the out parameters (forbidden in C#).
-        (Entity Entity, string TowerId, int RadiusSq)[] towers;
-        (NumVector2 Pos, BlightTowerType Type, int RadiusSq)[] built;
+        List<(NumVector2 Position, BlightTowerType Type, int RadiusSq, bool BuffsTowers)> towers = [];
         lock (_blightDataLock)
         {
-            (Entity Entity, string TowerId)[] rawTowers = [.. _towerEntities];
-            towersSnapshot = new (Entity, string, int)[rawTowers.Length];
-            for (int t = 0; t < rawTowers.Length; t++)
+            HashSet<NumVector2> loadedPositions = [];
+            foreach ((Entity entity, string id) in _towerEntities)
             {
-                int actualRadius = GetTowerRadiusCached(rawTowers[t].TowerId);
-                int coverageRadius = BlightService.GetCoverageRadius(actualRadius);
-                towersSnapshot[t] = (rawTowers[t].Entity, rawTowers[t].TowerId, coverageRadius * coverageRadius);
+                NumVector2 position = BlightHelpers.GetGridPosition(entity);
+                loadedPositions.Add(position);
+                if (BlightHelpers.MapTowerIdToType(id) is not { } type)
+                    continue;
+                int radius = BlightService.GetCoverageRadius(GetTowerRadiusCached(id));
+                towers.Add((position, type, radius * radius,
+                    type == BlightTowerType.Empowering && !BlightTowerData.IsSpecializationTowerId(id)));
             }
 
-            // Use the tower's ACTUAL dat radius when captured from a loaded entity; the linear estimate can exceed the real radius and would falsely mark segments covered.
-            List<(NumVector2, BlightTowerType, int)> builtList = [];
-            for (int i = 0; i < _knownTowers.Count; i++)
+            foreach (BlightCachedTower tower in _knownTowers)
             {
-                if (_knownTowers[i].UpgradeLevel > 0)
-                {
-                    int r = _knownTowers[i].Radius > 0
-                        ? _knownTowers[i].Radius
-                        : BlightService.GetRadiusForLevel(_knownTowers[i].TowerType, _knownTowers[i].UpgradeLevel);
-                    int coverageRadius = BlightService.GetCoverageRadius(r);
-                    builtList.Add((_knownTowers[i].WorldPosition, _knownTowers[i].TowerType, coverageRadius * coverageRadius));
-                }
+                if (tower.UpgradeLevel <= 0 || loadedPositions.Contains(tower.WorldPosition))
+                    continue;
+                int actualRadius = tower.Radius > 0
+                    ? tower.Radius
+                    : BlightService.GetRadiusForLevel(tower.TowerType, tower.UpgradeLevel);
+                int radius = BlightService.GetCoverageRadius(actualRadius);
+                towers.Add((tower.WorldPosition, tower.TowerType, radius * radius,
+                    tower.TowerType == BlightTowerType.Empowering && tower.UpgradeLevel <= 3));
             }
-            cachedBuilt = [.. builtList];
-            towers = towersSnapshot;
-            built = cachedBuilt;
-
-            // Loaded towers' entity-based radius is authoritative — skip their cached fallback to avoid inflated coverage.
-            HashSet<NumVector2> loadedTowerPositions = [];
-            for (int t = 0; t < towers.Length; t++)
-            {
-                Entity te = towers[t].Entity;
-                loadedTowerPositions.Add(BlightHelpers.GetGridPosition(te));
-            }
-
-            (bool chilling, bool seismic, bool fireball, bool empowering, bool shockNova, bool summoning) Probe(NumVector2 midpoint)
-            {
-                bool hasChilling = false, hasSeismic = false, hasFireball = false;
-                bool hasEmpowering = false, hasShockNova = false, hasSummoning = false;
-
-                void Mark(BlightTowerType? type)
-                {
-                    if (type == BlightTowerType.Chilling) hasChilling = true;
-                    else if (type == BlightTowerType.Seismic) hasSeismic = true;
-                    else if (type == BlightTowerType.Fireball) hasFireball = true;
-                    else if (type == BlightTowerType.Empowering) hasEmpowering = true;
-                    else if (type == BlightTowerType.ShockNova) hasShockNova = true;
-                    else if (type == BlightTowerType.Summoning) hasSummoning = true;
-                }
-
-                void MarkAt(float x, float y, int radiusSq, BlightTowerType? type)
-                {
-                    float dx = x - midpoint.X;
-                    float dy = y - midpoint.Y;
-                    if ((dx * dx) + (dy * dy) <= radiusSq)
-                        Mark(type);
-                }
-
-                for (int t = 0; t < towers.Length; t++)
-                {
-                    (Entity te, string tid, int rSq) = towers[t];
-                    NumVector2 grid = BlightHelpers.GetGridPosition(te);
-                    MarkAt(grid.X, grid.Y, rSq, BlightHelpers.MapTowerIdToType(tid));
-                }
-                // Also check cached built towers so streamed-out towers keep their coverage; skip loaded ones already checked.
-                for (int c = 0; c < built.Length; c++)
-                {
-                    (NumVector2 pos, BlightTowerType type, int rSq) = built[c];
-                    if (loadedTowerPositions.Contains(pos))
-                        continue;
-                    MarkAt(pos.X, pos.Y, rSq, type);
-                }
-                return (hasChilling, hasSeismic, hasFireball, hasEmpowering, hasShockNova, hasSummoning);
-            }
-
-            return Probe;
         }
+
+        // Resolve tower-to-tower support once, then use the same cached positions and
+        // radii for every beam midpoint. An Empowering Tower can sit off the lane.
+        var supports = towers.Where(tower => tower.BuffsTowers).ToArray();
+        bool[] empowered = new bool[towers.Count];
+        for (int i = 0; i < towers.Count; i++)
+        {
+            var tower = towers[i];
+            if (tower.Type is BlightTowerType.Chilling or BlightTowerType.Summoning or BlightTowerType.Seismic)
+                empowered[i] = supports.Any(support => NumVector2.DistanceSquared(tower.Position, support.Position) <= support.RadiusSq);
+        }
+
+        return midpoint =>
+        {
+            bool chilling = false, seismic = false, fireball = false, empowering = false, shockNova = false, summoning = false;
+            bool empoweredChilling = false, empoweredSummoning = false, empoweredSeismic = false;
+            for (int i = 0; i < towers.Count; i++)
+            {
+                var tower = towers[i];
+                if (NumVector2.DistanceSquared(tower.Position, midpoint) > tower.RadiusSq)
+                    continue;
+                switch (tower.Type)
+                {
+                    case BlightTowerType.Chilling:
+                        chilling = true;
+                        empoweredChilling |= empowered[i];
+                        break;
+                    case BlightTowerType.Seismic:
+                        seismic = true;
+                        empoweredSeismic |= empowered[i];
+                        break;
+                    case BlightTowerType.Fireball: fireball = true; break;
+                    case BlightTowerType.Empowering: empowering = true; break;
+                    case BlightTowerType.ShockNova: shockNova = true; break;
+                    case BlightTowerType.Summoning:
+                        summoning = true;
+                        empoweredSummoning |= empowered[i];
+                        break;
+                }
+            }
+
+            return (chilling, seismic, fireball, empowering, shockNova, summoning, empoweredChilling, empoweredSummoning, empoweredSeismic);
+        };
     }
 
     internal static int ComputeCoverageDataSignature(
@@ -843,9 +877,16 @@ internal sealed class BlightEntityCache
     {
         _gameController = gameController;
 
-        if (!_settings.ClickBlightTowers.Value || gameController == null)
+        if (!_settings.ClickBlightTowers.Value)
         {
             ClearRequested?.Invoke();
+            return;
+        }
+
+        if (gameController == null)
+        {
+            // A missing controller during an area transition is temporary. Drop entity references, but let the service retain the encounter latch for this map instance.
+            TransientClearRequested?.Invoke();
             return;
         }
 
@@ -861,10 +902,27 @@ internal sealed class BlightEntityCache
         long currentAreaHash = AreaUiSnapshotReader.TryReadCurrentAreaHash(gameController, out long areaHash)
             ? areaHash
             : long.MinValue;
-        if (AreaChangeRules.HasAreaHashChanged(currentAreaHash, _lastAreaHash))
+        long currentAreaInstanceId = long.MinValue;
+        try
+        {
+            if (gameController.Area?.CurrentArea is { } currentArea)
+                currentAreaInstanceId = Convert.ToInt64(currentArea.InstanceId);
+        }
+        catch
+        {
+        }
+
+        bool areaHashChanged = AreaChangeRules.HasAreaHashChanged(currentAreaHash, _lastAreaHash);
+        bool areaInstanceChanged = currentAreaInstanceId != long.MinValue
+            && currentAreaInstanceId != _lastAreaInstanceId;
+        if (areaHashChanged || areaInstanceChanged)
         {
             _lastAreaHash = currentAreaHash;
-            ClearRequested?.Invoke();
+            _lastAreaInstanceId = currentAreaInstanceId;
+            if (currentAreaInstanceId != long.MinValue)
+                AreaChanged?.Invoke(new BlightAreaKey(currentAreaHash, currentAreaInstanceId));
+            else
+                ClearRequested?.Invoke();
         }
 
         EnsureEntityEventSubscription(gameController);
@@ -905,6 +963,7 @@ internal sealed class BlightEntityCache
         bool pumpFound = false;
 
         _scanLocalPathways.Clear();
+        _scanLocalPortals.Clear();
         _scanLocalTowers.Clear();
         _scanLocalKnown.Clear();
         Entity? localPump = null;
@@ -983,6 +1042,7 @@ internal sealed class BlightEntityCache
                 else
                 {
                     ClassifyStructure(entity, path);
+                    CollectPortal(entity, path);
                 }
             }
         }
@@ -1001,6 +1061,7 @@ internal sealed class BlightEntityCache
                 else
                 {
                     ClassifyStructure(entity, path);
+                    CollectPortal(entity, path);
                 }
                 return false;
             });
@@ -1094,6 +1155,15 @@ internal sealed class BlightEntityCache
                 _persistedIcons[icon.Id] = icon;
             }
             _iconPathwaySnapshot.AddRange(DedupePathwayIcons(_persistedIcons.Values));
+            foreach ((NumVector2 position, string name) in _scanLocalPortals)
+            {
+                if (!_portals.TryGetValue(position, out string? existing) || existing != name)
+                {
+                    _portals[position] = name;
+                    LaneLayoutVersion++;
+                    _coverageDirty = true;
+                }
+            }
             int[][] parents = ComputePathwayParents(_iconPathwaySnapshot);
             for (int p = 0; p < _iconPathwaySnapshot.Count; p++)
                 _iconPathwaySnapshot[p] = _iconPathwaySnapshot[p] with { Parents = parents[p] };
@@ -1559,6 +1629,9 @@ internal sealed class BlightEntityCache
             _knownTowers.Clear();
             _pathwayEntities.Clear();
             _persistedIcons.Clear();
+            _portals.Clear();
+            _cachedIconPathwaySnapshot = null;
+            LaneLayoutVersion++;
             _iconPathwaySnapshot.Clear();
             _activePathwayCount = 0;
             EntityEventHub.Instance.Blight.Clear();

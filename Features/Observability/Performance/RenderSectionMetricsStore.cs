@@ -10,7 +10,6 @@ namespace ClickIt.Features.Observability.Performance
         private readonly RollingSampleBuffer _textFlush = new();
         private readonly RollingSampleBuffer _pathfindingOverlay = new();
         private readonly RollingSampleBuffer _frameFlush = new();
-        private readonly RollingSampleBuffer _harvestOverlay = new();
         private readonly RollingSampleBuffer _blightOverlay = new();
         private readonly RollingSampleBuffer _clickHotkeyToggle = new();
         private readonly RollingSampleBuffer _inventoryFullWarning = new();
@@ -45,9 +44,6 @@ namespace ClickIt.Features.Observability.Performance
                 case RenderSection.FrameFlush:
                     _frameFlush.Record(ms);
                     break;
-                case RenderSection.HarvestOverlay:
-                    _harvestOverlay.Record(ms);
-                    break;
                 case RenderSection.BlightOverlay:
                     _blightOverlay.Record(ms);
                     break;
@@ -81,7 +77,6 @@ namespace ClickIt.Features.Observability.Performance
                 RenderSection.PathfindingOverlay => _pathfindingOverlay.Stats,
                 RenderSection.TextFlush => _textFlush.Stats,
                 RenderSection.FrameFlush => _frameFlush.Stats,
-                RenderSection.HarvestOverlay => _harvestOverlay.Stats,
                 RenderSection.BlightOverlay => _blightOverlay.Stats,
                 RenderSection.ClickHotkeyToggle => _clickHotkeyToggle.Stats,
                 RenderSection.InventoryFullWarning => _inventoryFullWarning.Stats,

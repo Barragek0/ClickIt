@@ -1,4 +1,4 @@
-namespace ClickIt.Tests.UI;
+﻿namespace ClickIt.Tests.UI;
 
 [TestClass]
 public class PerformanceTableRowsTests
@@ -15,7 +15,7 @@ public class PerformanceTableRowsTests
             "Debug",
             "Flush.Frame",
             "Flush.Text",
-            "Harvest",
+
             "Inv.Full",
             "Lazy",
             "Pathfinding",
@@ -83,6 +83,7 @@ public class PerformanceTableRowsTests
             ("Sleep", true),
             ("Flare", false),
             ("Label Overlay", false),
+            ("Skill Automation", false),
             ("Ultimatum", false),
         ];
 
@@ -101,12 +102,16 @@ public class PerformanceTableRowsTests
         monitor.StopCoroutineTiming(TimingChannel.Altar);
         monitor.StartCoroutineTiming(TimingChannel.Blight);
         monitor.StopCoroutineTiming(TimingChannel.Blight);
+        monitor.StartCoroutineTiming(TimingChannel.SkillAutomation);
+        monitor.StopCoroutineTiming(TimingChannel.SkillAutomation);
         PerformanceMetricsSnapshot perf = monitor.GetDebugSnapshot();
 
         PerformanceTableRows.Coroutine
             .First(r => r.Label == "Altar").Get(perf).Should().Be(perf.AltarCoroutine);
         PerformanceTableRows.Coroutine
             .First(r => r.Label == "Blight").Get(perf).Should().Be(perf.BlightCoroutine);
+        PerformanceTableRows.Coroutine
+            .First(r => r.Label == "Skill Automation").Get(perf).Should().Be(perf.SkillAutomationCoroutine);
         PerformanceTableRows.Coroutine
             .First(r => r.Label == "Processing").Get(perf).Should().Be(perf.GetProcessingSection(ProcessingSection.Click));
     }
@@ -122,7 +127,6 @@ public class PerformanceTableRowsTests
             ("Click", ProcessingSection.Click),
             ("Dump", ProcessingSection.GameStateDump),
             ("Flare", ProcessingSection.Flare),
-            ("Harvest", ProcessingSection.Harvest),
             ("Label Scan", ProcessingSection.Label),
             ("Manual Hover", ProcessingSection.ManualUiHover),
             ("Pathfinding", ProcessingSection.Pathfinding),
@@ -147,7 +151,6 @@ public class PerformanceTableRowsTests
             ("Click", ProcessingSection.Click, PerfBreakdownKind.Click),
             ("Dump", ProcessingSection.GameStateDump, PerfBreakdownKind.None),
             ("Flare", ProcessingSection.Flare, PerfBreakdownKind.None),
-            ("Harvest", ProcessingSection.Harvest, PerfBreakdownKind.None),
             ("Label Scan", ProcessingSection.Label, PerfBreakdownKind.None),
             ("Manual Hover", ProcessingSection.ManualUiHover, PerfBreakdownKind.None),
             ("Pathfinding", ProcessingSection.Pathfinding, PerfBreakdownKind.Generic),
@@ -172,7 +175,6 @@ public class PerformanceTableRowsTests
             ("Click", ProcessingSection.Click, PerfBreakdownKind.Click),
             ("Dump", ProcessingSection.GameStateDump, PerfBreakdownKind.None),
             ("Flare", ProcessingSection.Flare, PerfBreakdownKind.None),
-            ("Harvest", ProcessingSection.Harvest, PerfBreakdownKind.None),
             ("Label Scan", ProcessingSection.Label, PerfBreakdownKind.LabelScan),
             ("Manual Hover", ProcessingSection.ManualUiHover, PerfBreakdownKind.None),
             ("Pathfinding", ProcessingSection.Pathfinding, PerfBreakdownKind.Generic),

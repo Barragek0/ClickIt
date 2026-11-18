@@ -161,8 +161,7 @@ namespace ClickIt.Features.Labels.Classification
         }
 
         internal static bool IsHarvestPath(string path)
-            => path.Contains("Harvest/Irrigator", StringComparison.OrdinalIgnoreCase)
-               || path.Contains("Harvest/Extractor", StringComparison.OrdinalIgnoreCase);
+            => path.Contains("Harvest/Objects/HarvestEncounterTree", StringComparison.OrdinalIgnoreCase);
 
         internal static bool IsSettlersOrePath(string path)
         {

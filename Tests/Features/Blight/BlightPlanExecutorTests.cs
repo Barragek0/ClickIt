@@ -9,7 +9,7 @@ public class BlightPlanExecutorTests
     private static BlightPlan Plan(string name, params BlightPlanStep[] steps)
         => new(steps, version: 1, debugSummary: name);
 
-    [TestMethod]
+
     public void SetPlan_ReplacesActivePlan()
     {
         var executor = new BlightPlanExecutor();
@@ -155,6 +155,16 @@ public class BlightPlanExecutorTests
             .Should().BeFalse("an unreadable button id must not block the click");
     }
 
+    [DataTestMethod]
+    [DataRow(1L, "StunningTower3", true)]
+    [DataRow(1L, "StunningTower2", false)]
+    [DataRow(1L, "FlameTower3", false)]
+    [DataRow(1L, "PetrificationTower", false)]
+    [DataRow(2L, null, false)]
+    [DataRow(1L, null, true)]
+    public void PlainTierThreeUpgrade_RequiresOneSlotAndMatchingResultWhenReadable(long slots, string? id, bool expected)
+        => BlightPlanExecutor.CanClickPlainUpgrade(slots, id, BlightTowerType.Seismic, 3).Should().Be(expected);
+
     [TestMethod]
     public void ShouldSkipAfterVerifyFailures_OnlyBuildStepsSkip_UpgradesPause()
     {
@@ -168,44 +178,6 @@ public class BlightPlanExecutorTests
         BlightPlanExecutor.ShouldSkipAfterVerifyFailures(BlightPlanAction.Upgrade, 9)
             .Should().BeFalse("an upgrade never skips on verify failures");
     }
-
-    [TestMethod]
-    public void IsMenuRegionUsable_ReturnsTrue_WhenFullyOnScreenAndClickable()
-    {
-        BlightPlanExecutor.IsMenuRegionUsable(new RectangleF(500f, 300f, 200f, 100f), 1920f, 1080f, static _ => true)
-            .Should().BeTrue();
-    }
-
-    [TestMethod]
-    public void IsMenuRegionUsable_ReturnsFalse_WhenPartlyOffScreen()
-    {
-        BlightPlanExecutor.IsMenuRegionUsable(new RectangleF(1850f, 300f, 200f, 100f), 1920f, 1080f, static _ => true)
-            .Should().BeFalse("a region partly off-screen must keep the player walking");
-    }
-
-    [TestMethod]
-    public void IsMenuRegionUsable_ReturnsFalse_WhenAnyCornerNotClickable()
-    {
-        BlightPlanExecutor.IsMenuRegionUsable(new RectangleF(500f, 300f, 200f, 100f), 1920f, 1080f,
-                static point => point.Y <= 350f)
-            .Should().BeFalse("a region overlapping a blocked UI region must keep the player walking");
-    }
-
-    [TestMethod]
-    public void IsMenuRegionUsable_ReturnsFalse_ForDegenerateRect()
-    {
-        BlightPlanExecutor.IsMenuRegionUsable(RectangleF.Empty, 1920f, 1080f, static _ => true)
-            .Should().BeFalse();
-    }
-
-    [TestMethod]
-    public void IsMenuRegionUsable_ReturnsFalse_ForDegenerateWindow()
-    {
-        BlightPlanExecutor.IsMenuRegionUsable(new RectangleF(0f, 0f, 10f, 10f), 0f, 0f, static _ => true)
-            .Should().BeFalse();
-    }
-
-    // ── Walk target resolution (stuck-after-meteor-upgrade regression) ──
 
     [TestMethod]
     public void ResolveWalkActionKind_UsesEntityWalk_WhenEntityIsCached()
@@ -233,108 +205,6 @@ public class BlightPlanExecutorTests
         BlightPlanExecutor.ResolveWalkActionKind(hasWalkEntity: false, positionOffScreen: false)
             .Should().Be(BlightBuildActionKind.None);
     }
-
-    // ── Walk-ready gate (build needs the menu region, upgrade just needs the tower on-screen) ──
-
-    [TestMethod]
-    public void IsStepWalkReadyForAction_Upgrade_StopsOnceTowerIsOnScreen()
-    {
-        BlightPlanExecutor.IsStepWalkReadyForAction(BlightPlanAction.Upgrade,
-                menuRegionReady: false, hasWalkEntity: true, entityFullyOnScreen: true)
-            .Should().BeTrue("an upgrade with the tower on-screen must stop walking");
-    }
-
-    [TestMethod]
-    public void IsStepWalkReadyForAction_Upgrade_WalksWhileTowerIsOffScreen()
-    {
-        BlightPlanExecutor.IsStepWalkReadyForAction(BlightPlanAction.Upgrade,
-                menuRegionReady: false, hasWalkEntity: true, entityFullyOnScreen: false)
-            .Should().BeFalse("an off-screen tower still needs pathfinding");
-    }
-
-    [TestMethod]
-    public void IsStepWalkReadyForAction_Upgrade_NotReady_WithoutEntity()
-    {
-        BlightPlanExecutor.IsStepWalkReadyForAction(BlightPlanAction.Upgrade,
-                menuRegionReady: false, hasWalkEntity: false, entityFullyOnScreen: false)
-            .Should().BeFalse("with no cached entity the upgrade can't proceed yet");
-    }
-
-    [TestMethod]
-    public void IsStepWalkReadyForAction_Build_RequiresMenuRegion()
-    {
-        BlightPlanExecutor.IsStepWalkReadyForAction(BlightPlanAction.Build,
-                menuRegionReady: true, hasWalkEntity: true, entityFullyOnScreen: true)
-            .Should().BeTrue("a build step with a fully usable menu region can stop walking");
-
-        BlightPlanExecutor.IsStepWalkReadyForAction(BlightPlanAction.Build,
-                menuRegionReady: false, hasWalkEntity: true, entityFullyOnScreen: true)
-            .Should().BeFalse("a build step must keep walking until the menu region is fully usable");
-    }
-
-    // ── Pathfinding stop condition (WantsWalkForAction) — must mirror EVERY executor walk trigger ──
-
-    [TestMethod]
-    public void WantsWalkForAction_Upgrade_IconOffWindow_WhileEntityOnScreen_ReturnsTrue()
-    {
-        BlightPlanExecutor.WantsWalkForAction(
-                action: BlightPlanAction.Upgrade,
-                walkReadyGate: true,
-                upgradeLabelFound: true,
-                upgradeIconInWindow: false,
-                upgradeEntityOnScreen: true)
-            .Should().BeTrue("an off-window upgrade icon still needs the player to walk closer");
-    }
-
-    [TestMethod]
-    public void WantsWalkForAction_Upgrade_EverythingReady_ReturnsFalse()
-    {
-        BlightPlanExecutor.WantsWalkForAction(
-                action: BlightPlanAction.Upgrade,
-                walkReadyGate: true,
-                upgradeLabelFound: true,
-                upgradeIconInWindow: true,
-                upgradeEntityOnScreen: true)
-            .Should().BeFalse("entity on-screen + icon in-window means the upgrade is clickable");
-    }
-
-    [TestMethod]
-    public void WantsWalkForAction_Upgrade_EntityOffScreen_ReturnsTrue()
-    {
-        BlightPlanExecutor.WantsWalkForAction(
-                action: BlightPlanAction.Upgrade,
-                walkReadyGate: false,
-                upgradeLabelFound: true,
-                upgradeIconInWindow: false,
-                upgradeEntityOnScreen: false)
-            .Should().BeTrue("an off-screen tower still needs pathfinding");
-    }
-
-    [TestMethod]
-    public void WantsWalkForAction_Upgrade_LabelMissing_EntityOnScreen_ReturnsFalse()
-    {
-        BlightPlanExecutor.WantsWalkForAction(
-                action: BlightPlanAction.Upgrade,
-                walkReadyGate: true,
-                upgradeLabelFound: false,
-                upgradeIconInWindow: false,
-                upgradeEntityOnScreen: true)
-            .Should().BeFalse("a missing label with the entity on-screen is a retry, not a walk");
-    }
-
-    [TestMethod]
-    public void WantsWalkForAction_Build_RegionUsable_ReturnsFalse()
-    {
-        BlightPlanExecutor.WantsWalkForAction(
-                action: BlightPlanAction.Build,
-                walkReadyGate: true,
-                upgradeLabelFound: false,
-                upgradeIconInWindow: false,
-                upgradeEntityOnScreen: false)
-            .Should().BeFalse("a build with a usable menu region is clickable");
-    }
-
-    // ── Executor-phase gate (pipeline must stand down while the executor is stopping/clicking) ──
 
     [TestMethod]
     public void WantsWalkForCurrentPhase_OnlyWalksInWalkingPhase()

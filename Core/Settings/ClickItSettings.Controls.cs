@@ -97,6 +97,12 @@ namespace ClickIt
         public RangeNode<int> OffscreenShieldChargePostCastClickDelayMs { get; set; } = new RangeNode<int>(100, 0, 1000);
 
         [IgnoreMenu]
+        public ToggleNode CastFlameLinkOnMercenaries { get; set; } = new ToggleNode(false);
+
+        [IgnoreMenu]
+        public ToggleNode CastFlameLinkOnAnimateGuardian { get; set; } = new ToggleNode(false);
+
+        [IgnoreMenu]
         [JsonIgnore]
         public CustomNode PathfindingSliderWidthEnd { get; internal set; } = new();
 

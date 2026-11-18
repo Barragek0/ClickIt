@@ -204,20 +204,17 @@ internal interface IBlightTowerStrategy
     /// <summary>One-line description of what the strategy does.</summary>
     string Description { get; }
 
-    /// <summary>Colour used for lanes that follow this strategy's coverage plan.</summary>
-    Color DefaultLaneColor { get; }
-
     /// <summary>The ordered list of tower build rules that make up this strategy.</summary>
     IReadOnlyList<TowerBuildRule> Rules { get; }
 
     /// <summary>Whether the plan groups build steps by proximity so the pathfinder can walk between nearby towers first.</summary>
     bool GroupStepsByProximity => true;
 
+    /// <summary>Use the phased lockdown plan that adapts tower placement to portal immunities.</summary>
+    bool UsesPhasedLockdown => false;
+
     /// <summary>Returns the rule that controls the given tower type, or null if the strategy does not build it.</summary>
     TowerBuildRule? GetRule(BlightTowerType type);
-
-    /// <summary>The colour for a lane segment given its current coverage state (e.g. protected, threatened, uncovered).</summary>
-    Color GetLaneColor(LaneCoverageResult segment);
 
     /// <summary>Range-circle colour drawn around a built tower. Defaults to the shared tower palette.</summary>
     Color GetTowerRangeColor(BlightTowerType towerType)

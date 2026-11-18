@@ -8,6 +8,7 @@ namespace ClickIt.Features.Observability
         private readonly ClickItSettings _settings;
         private readonly DebugSnapshotChannel<ClickDebugSnapshot, ClickDebugSnapshot> _clickDebugChannel;
         private readonly DebugSnapshotChannel<RuntimeDebugLogSnapshot, string> _runtimeDebugLogChannel;
+        private readonly DebugSnapshotChannel<RuntimeDebugLogSnapshot, string> _craftingLogChannel;
         private readonly DebugSnapshotChannel<UltimatumDebugSnapshot, UltimatumDebugEvent> _ultimatumDebugChannel;
 
         public ClickTelemetryStore(ClickItSettings settings)
@@ -22,17 +23,8 @@ namespace ClickIt.Features.Observability
                 static snapshot => snapshot,
                 dedupKeyExtractor: static snapshot => $"{snapshot.Stage} | {snapshot.Notes}");
 
-            _runtimeDebugLogChannel = new DebugSnapshotChannel<RuntimeDebugLogSnapshot, string>(
-                RuntimeDebugLogSnapshot.Empty,
-                RuntimeDebugLogTrailCapacity,
-                static (snapshot, sequence) => snapshot with { Sequence = sequence },
-                static snapshot => $"{snapshot.Sequence:00000} {snapshot.Message}",
-                static message => new RuntimeDebugLogSnapshot(
-                    HasData: true,
-                    Message: message,
-                    Sequence: 0,
-                    TimestampMs: Environment.TickCount64),
-                dedupKeyExtractor: static snapshot => snapshot.Message);
+            _runtimeDebugLogChannel = CreateLogChannel(RuntimeDebugLogTrailCapacity);
+            _craftingLogChannel = CreateLogChannel(40);
 
             _ultimatumDebugChannel = new DebugSnapshotChannel<UltimatumDebugSnapshot, UltimatumDebugEvent>(
                 UltimatumDebugSnapshot.Empty,
@@ -52,6 +44,15 @@ namespace ClickIt.Features.Observability
         public RuntimeDebugLogSnapshot GetLatestRuntimeDebugLog() => _runtimeDebugLogChannel.GetLatest();
 
         public IReadOnlyList<string> GetLatestRuntimeDebugLogTrail() => _runtimeDebugLogChannel.GetTrail();
+        internal IReadOnlyList<string> GetCraftingTrail() => _craftingLogChannel.GetTrail();
+        internal void PublishCraftingLog(string message) => _craftingLogChannel.PublishEvent(message);
+
+        private static DebugSnapshotChannel<RuntimeDebugLogSnapshot, string> CreateLogChannel(int capacity)
+            => new(RuntimeDebugLogSnapshot.Empty, capacity,
+                static (snapshot, sequence) => snapshot with { Sequence = sequence },
+                static snapshot => $"{snapshot.Sequence:00000} {snapshot.Message}",
+                static message => new RuntimeDebugLogSnapshot(true, message, 0, Environment.TickCount64),
+                dedupKeyExtractor: static snapshot => snapshot.Message);
 
         public UltimatumDebugSnapshot GetLatestUltimatumDebug() => _ultimatumDebugChannel.GetLatest();
 

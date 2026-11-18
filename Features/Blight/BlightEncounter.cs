@@ -1,17 +1,76 @@
 namespace ClickIt.Features.Blight;
 
-// Encounter is ACTIVE while the pump is present, valid, and not completed (StateMachine not in "success"/"fail"), and pathway entities have spawned. When the pump streams out (absent or invalid) its StateMachine is unreadable, so liveness falls back to the lanes' own StateMachines — the same data the game uses to render the encounter: flowing lanes (pending > 0) prove the encounter is still running, while a ran-then-stopped web means it has ended. A never-started (build-phase) encounter stays alive until the pump is readable again. A pump last seen completed (success/fail/pending==0) ends the encounter even after it streams out.
+internal readonly record struct BlightAreaKey(long AreaHash, long InstanceId);
+
+// The pump is authoritative when readable. A confirmed state is remembered by map hash and instance id across death/return transitions, so the same map can resume even when its pump and lanes have not streamed in.
 internal sealed class BlightEncounter
 {
+    private const int MaxRememberedAreas = 16;
+    private readonly LinkedList<BlightAreaKey> _areaStateOrder = [];
+    private readonly Dictionary<BlightAreaKey, (EncounterSnapshot Snapshot, LinkedListNode<BlightAreaKey> Node)> _areaStates = [];
+    private BlightAreaKey? _currentArea;
+    private readonly Lock _areaLock = new();
+    private volatile int _towerBuildCost = -1;
     private volatile bool _sawRunning;
     private volatile bool _pumpCompleted;
+    private volatile bool _wasConfirmedActive;
+    private bool _restoredActiveState;
 
-    // Latched once the encounter positively ends (pump completed, or ran-then-stopped). Retained lanes/pathways and a streamed-out pump must NEVER re-activate the encounter in the same area (the game re-renders the web when the player walks far from the pump, which would otherwise flip the state back to active and resume a stale build plan). Only Reset() - fired on area change / explicit clear - clears the latch so a NEW encounter can start.
+    // A positive completion stays latched for this map instance. Switching away stores the latch; returning to another instance cannot inherit it.
     private volatile bool _ended;
     private volatile bool _isActive;
 
     // Written by the scan thread (Update), read by the click pipeline (IsEncounterActive) - volatile so the click thread never observes a stale activation/end.
     internal bool IsActive { get => _isActive; private set => _isActive = value; }
+    internal bool HasFreeTowerConstruction => _towerBuildCost == 0;
+
+    internal BlightAreaKey? GetAreaAwaitingTowerCost()
+    {
+        lock (_areaLock)
+            return _towerBuildCost < 0 ? _currentArea : null;
+    }
+
+    internal bool TryRecordTowerBuildCost(BlightAreaKey area, int cost)
+    {
+        lock (_areaLock)
+        {
+            if (_currentArea != area || _towerBuildCost >= 0 || cost < 0)
+                return false;
+            _towerBuildCost = cost;
+            return true;
+        }
+    }
+
+    internal void SwitchArea(BlightAreaKey area)
+    {
+        lock (_areaLock)
+            SwitchAreaCore(area);
+    }
+
+    private void SwitchAreaCore(BlightAreaKey area)
+    {
+        if (_currentArea == area)
+            return;
+
+        SaveCurrentAreaState();
+        _currentArea = area;
+        IsActive = false;
+
+        if (_areaStates.TryGetValue(area, out (EncounterSnapshot Snapshot, LinkedListNode<BlightAreaKey> Node) saved))
+        {
+            _sawRunning = saved.Snapshot.SawRunning;
+            _pumpCompleted = saved.Snapshot.PumpCompleted;
+            _wasConfirmedActive = saved.Snapshot.WasConfirmedActive;
+            _ended = saved.Snapshot.Ended;
+            _towerBuildCost = saved.Snapshot.TowerBuildCost;
+            _restoredActiveState = _wasConfirmedActive && !_ended;
+            _areaStateOrder.Remove(saved.Node);
+            _areaStateOrder.AddLast(saved.Node);
+            return;
+        }
+
+        ResetCurrentState();
+    }
 
     internal bool Update(Entity? pump, int pathwayCount, int activePathwayCount, bool pumpCompleted)
     {
@@ -37,6 +96,7 @@ internal sealed class BlightEncounter
             // Positive proof the encounter ended: a readable pump reporting success/fail/pending==0.
             _sawRunning = false;
             _ended = true;
+            _wasConfirmedActive = false;
             IsActive = false;
             return wasActive;
         }
@@ -45,14 +105,28 @@ internal sealed class BlightEncounter
         {
             // A readable, not-completed pump with lanes is active (build phase or running) — the pump is authoritative while in range. "Running" is only latched by flowing lanes below.
             IsActive = true;
+            _wasConfirmedActive = true;
             return false;
         }
 
         if (pumpValid)
         {
+            if (_wasConfirmedActive)
+            {
+                IsActive = true;
+                return false;
+            }
             // Valid pump but no lanes yet (encounter starting) — not active, not ended.
             IsActive = false;
             return wasActive && !IsActive;
+        }
+
+        // Retained lane visuals can reappear after returning to a completed map.
+        // They may sustain a confirmed encounter, but cannot establish a new one.
+        if (!wasActive && !_wasConfirmedActive)
+        {
+            IsActive = false;
+            return false;
         }
 
         // Pump streamed out (absent or invalid) — its StateMachine is unreadable, so fall back to the lanes' live StateMachine (the encounter's own activity signal).
@@ -61,14 +135,21 @@ internal sealed class BlightEncounter
             // Lanes still flowing prove the encounter is still running — keep it active regardless of the pump's readability (the player may have briefly walked out of pump range).
             _sawRunning = true;
             IsActive = true;
+            _wasConfirmedActive = true;
             return false;
         }
 
         if (_sawRunning)
         {
+            if (_restoredActiveState)
+            {
+                IsActive = true;
+                return false;
+            }
             // The encounter ran and its lanes have all stopped while the pump was away: it has ended.
             _sawRunning = false;
             _ended = true;
+            _wasConfirmedActive = false;
             IsActive = false;
             return wasActive;
         }
@@ -77,6 +158,7 @@ internal sealed class BlightEncounter
         {
             // The pump reported completion (success/fail/pending==0) before it streamed out: the encounter has ended even though the retained lanes would otherwise keep it alive.
             _ended = true;
+            _wasConfirmedActive = false;
             IsActive = false;
             return wasActive;
         }
@@ -84,6 +166,14 @@ internal sealed class BlightEncounter
         if (pathwayCount > 0)
         {
             // An encounter exists (lanes retained) but has never run and the pump is unreadable — don't clear a possibly still-building encounter; re-reading the pump on return resolves the state. (Unreachable once _ended is latched.)
+            IsActive = true;
+            _wasConfirmedActive = true;
+            return false;
+        }
+
+        if (_wasConfirmedActive)
+        {
+            // Entity lists may be empty immediately after death/area return; resume the last confirmed state for this same map instance.
             IsActive = true;
             return false;
         }
@@ -95,11 +185,52 @@ internal sealed class BlightEncounter
 
     internal void Reset()
     {
+        lock (_areaLock)
+        {
+            _areaStateOrder.Clear();
+            _areaStates.Clear();
+            ResetCurrentState();
+        }
+    }
+
+    private void SaveCurrentAreaState()
+    {
+        if (_currentArea is not { } area)
+            return;
+
+        EncounterSnapshot snapshot = new(_sawRunning, _pumpCompleted, _wasConfirmedActive || IsActive, _ended, _towerBuildCost);
+        if (_areaStates.TryGetValue(area, out (EncounterSnapshot Snapshot, LinkedListNode<BlightAreaKey> Node) existing))
+        {
+            _areaStates[area] = (snapshot, existing.Node);
+            _areaStateOrder.Remove(existing.Node);
+            _areaStateOrder.AddLast(existing.Node);
+            return;
+        }
+
+        LinkedListNode<BlightAreaKey> node = _areaStateOrder.AddLast(area);
+        _areaStates.Add(area, (snapshot, node));
+        while (_areaStates.Count > MaxRememberedAreas)
+        {
+            LinkedListNode<BlightAreaKey>? oldest = _areaStateOrder.First;
+            if (oldest == null)
+                break;
+            _areaStateOrder.RemoveFirst();
+            _areaStates.Remove(oldest.Value);
+        }
+    }
+
+    private void ResetCurrentState()
+    {
         _sawRunning = false;
         _pumpCompleted = false;
+        _wasConfirmedActive = false;
+        _restoredActiveState = false;
         _ended = false;
+        _towerBuildCost = -1;
         IsActive = false;
     }
+
+    private readonly record struct EncounterSnapshot(bool SawRunning, bool PumpCompleted, bool WasConfirmedActive, bool Ended, int TowerBuildCost);
 
     // A pump that has streamed out (IsValid false or absent) can't be verified as still active; fail-closed.
     internal static bool IsPumpCurrentlyValid(Entity? pump)

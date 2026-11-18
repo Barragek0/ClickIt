@@ -53,28 +53,6 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void Execute_VisibleHarvestClick_ReportsActionable()
-        {
-            LabelOnGround harvestLabel = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
-            InteractionExecutionEngine engine = CreateEngine(
-                getHarvestLabelToClick: () => harvestLabel,
-                labelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(
-                    labelInteractionPort: ClickTestServiceFactory.CreateNoOpLabelInteractionPort(),
-                    tryResolveClickPosition: static (_, _, _, _) => (true, new Vector2(10f, 10f)),
-                    executeInteraction: static _ => true,
-                    isClickableInEitherSpace: static (_, _) => true,
-                    isInsideWindowInEitherSpace: static _ => true,
-                    groundItemsVisible: static () => true));
-
-            ExecutionResult result = engine.Execute(
-                CreateContext(groundItemsVisible: true),
-                new ClickCandidates(null, null, null, null),
-                CreateDecision(trySettlers: false, tryLostShipment: false, tryShrine: false, groundItemsVisible: true));
-
-            result.ShouldRunPostActions.Should().BeFalse();
-        }
-
-        [TestMethod]
         public void Execute_VisibleLabelClick_ReportsActionableAndPostActions()
         {
             LabelOnGround label = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
@@ -606,7 +584,6 @@ namespace ClickIt.Tests.Features.Click
             Action<string>? debugLog = null,
             Action<string>? holdDebugTelemetryAfterSuccess = null,
             ClickDebugPublicationService? clickDebugPublisher = null,
-            Func<LabelOnGround?>? getHarvestLabelToClick = null,
             ClickItSettings? settingsOverride = null)
         {
             ClickItSettings settings = settingsOverride ?? new();
@@ -646,7 +623,6 @@ namespace ClickIt.Tests.Features.Click
                     OffscreenPathing: offscreenPathing),
                 Mechanics: new ClickMechanicDependencies(
                     AltarAutomation: null!,
-                    GetHarvestLabelToClick: getHarvestLabelToClick,
                     TryProgressBlightBuilding: null,
                     GetBlightPathfindTarget: null,
                     IsBlightEncounterActive: null)));

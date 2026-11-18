@@ -90,11 +90,8 @@ namespace ClickIt.Features.Labels.Application
 
             if (captureDebug)
             {
-                string harvestDebug = clickSettings.HarvestLabelSelectionBlocked
-                    ? " harvPref=BLOCKED"
-                    : string.Empty;
                 PublishSelectionLifecycleDebug("SelectionRequested", allLabels, start, end,
-                    $"start={startIndex} maxCount={maxCount}{harvestDebug}");
+                    $"start={startIndex} maxCount={maxCount}");
             }
 
             LabelOnGround? selected = SelectNextLabelByPriority(allLabels, start, end, clickSettings, isAcceptable);

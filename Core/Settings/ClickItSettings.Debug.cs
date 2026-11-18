@@ -56,10 +56,16 @@ namespace ClickIt
         public ToggleNode DebugShowPathfinding { get; set; } = new ToggleNode(false);
 
         [IgnoreMenu]
+        public ToggleNode DebugShowSkillAutomation { get; set; } = new ToggleNode(false);
+
+        [IgnoreMenu]
         public ToggleNode DebugShowUltimatum { get; set; } = new ToggleNode(false);
 
         [IgnoreMenu]
         public ToggleNode DebugShowClicking { get; set; } = new ToggleNode(false);
+
+        [IgnoreMenu]
+        public ToggleNode DebugShowCrafting { get; set; } = new ToggleNode(false);
 
         [IgnoreMenu]
         public ToggleNode DebugShowRecentErrors { get; set; } = new ToggleNode(true);

@@ -28,15 +28,16 @@ namespace ClickIt.Core.Bootstrap
 
             AltarChoiceEvaluator altarChoiceEvaluator = new(settings, logMessage);
             overlayRenderHost.Register(new AltarOverlay(core.WeightCalculator, altarChoiceEvaluator, core.AltarService, logMessage));
-            overlayRenderHost.Register(new HarvestOverlay(core.HarvestService));
             overlayRenderHost.Register(new LazyModeOverlay(core.InputHandler, core.LazyModeBlockerService));
             overlayRenderHost.Register(new ClickHotkeyToggleOverlay(core.InputHandler));
-            overlayRenderHost.Register(new InventoryFullWarningOverlay(core.AreaService, core.InventoryProbeService.GetLatestDebug));
+            overlayRenderHost.Register(new InventoryFullWarningOverlay(
+                core.AreaService, core.InventoryProbeService.GetLatestDebug,
+                core.HarvestUpgrade is { } harvestUpgrade ? harvestUpgrade.GetWarning : null));
             overlayRenderHost.Register(new PathfindingOverlay(core.PathfindingService));
             overlayRenderHost.Register(new BlightOverlay(core.BlightService));
             overlayRenderHost.Register(new PerformanceInGameOverlay(core.PerformanceMonitor.GetDebugSnapshot, () => AreaService.IsInMap(plugin.GameController)));
 
-            ImGuiDebugOverlay guiDebugOverlay = new(settings, core.PerformanceMonitor, core.BlightService, new PluginDebugTelemetrySource(plugin), core.HarvestService);
+            ImGuiDebugOverlay guiDebugOverlay = new(settings, core.PerformanceMonitor, core.BlightService, new PluginDebugTelemetrySource(plugin));
 
             UiRegionRectangleOverlay uiRegionRectangleOverlay = new(settings, core.AreaService);
 

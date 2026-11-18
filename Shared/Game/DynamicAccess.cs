@@ -44,7 +44,7 @@ namespace ClickIt.Shared.Game
         private static long _tryGetTicks;
 
         // Per-feature attribution: DlrReadScope sets the ambient section on the current thread so each read is charged to the feature doing the work. Array index = ProcessingSection value; 0 (Unknown) is the un-attributed "Other" bucket.
-        internal const int DlrSectionCount = 13;
+        internal const int DlrSectionCount = 12;
         [field: ThreadStatic]
         internal static int CurrentDlrSection { get; set; }
         private static readonly long[] _sectionDlrCalls = new long[DlrSectionCount];

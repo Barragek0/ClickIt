@@ -4,6 +4,46 @@ namespace ClickIt.Tests.Features.Blight;
 public class BlightOverlayTests
 {
     [TestMethod]
+    public void MeteorLaneUsesTowerColourThenOrangeThenGreenWhenAllRolesAreCovered()
+    {
+        var strategy = new ChillingSeismicMeteorStrategy();
+        Color orange = new(255, 128, 0, 100);
+        Color green = new(0, 200, 0, 100);
+        LaneCoverageResult chilling = new(0, true, default, HasChilling: true);
+
+        BlightOverlay.LaneColorFor(default, strategy).Should().Be(new Color(200, 60, 60, 100));
+        BlightOverlay.LaneColorFor(chilling, strategy).Should().Be(IBlightTowerStrategy.DefaultTowerColor(BlightTowerType.Chilling));
+        BlightOverlay.LaneColorFor(new(0, true, default, HasSeismic: true), strategy).Should().Be(new Color(255, 189, 43, 100));
+        BlightOverlay.LaneColorFor(chilling with { HasFireball = true }, strategy).Should().Be(orange);
+        BlightOverlay.LaneColorFor(chilling with { HasEmpoweredChilling = true }, strategy).Should().Be(orange);
+        BlightOverlay.LaneColorFor(chilling with { HasEmpowering = true, HasFireball = true }, strategy)
+            .Should().Be(orange, "an Empowering Tower that does not reach the Chilling Tower is insufficient");
+
+        LaneCoverageResult completed = chilling with { HasEmpoweredChilling = true, HasFireball = true };
+        BlightOverlay.LaneColorFor(completed with { ControlRequired = BlightControl.Chilling }, strategy).Should().Be(green);
+        BlightOverlay.LaneColorFor(completed, strategy).Should().Be(orange);
+        BlightOverlay.LaneColorFor(completed with { HasSeismic = true, HasEmpoweredSeismic = true }, strategy).Should().Be(green);
+    }
+
+    [TestMethod]
+    public void ArcAndScoutLanesUseTheirOwnDamageAndSupportRequirements()
+    {
+        Color orange = new(255, 128, 0, 100);
+        Color green = new(0, 200, 0, 100);
+        var arc = new LockdownArcStrategy();
+        LaneCoverageResult lockdown = new(0, true, default, HasChilling: true, HasFireball: true, HasEmpoweredChilling: true, ControlRequired: BlightControl.Chilling);
+
+        BlightOverlay.LaneColorFor(lockdown, arc).Should().Be(orange, "Fireball cannot fill the Arc role");
+        BlightOverlay.LaneColorFor(lockdown with { HasFireball = false, HasShockNova = true }, arc).Should().Be(green);
+
+        var scouts = new EmpoweredScoutsStrategy();
+        LaneCoverageResult scout = new(0, false, default, HasSummoning: true, ControlRequired: BlightControl.Seismic);
+        BlightOverlay.LaneColorFor(scout, scouts).Should().Be(IBlightTowerStrategy.DefaultTowerColor(BlightTowerType.Summoning));
+        BlightOverlay.LaneColorFor(scout with { HasEmpowering = true }, scouts).Should().Be(orange);
+        BlightOverlay.LaneColorFor(scout with { HasEmpoweredSummoning = true }, scouts).Should().Be(green);
+    }
+
+    [TestMethod]
     public void GetFoundationColour_UnbuiltFoundation_IsDefaultGrey()
     {
         Color dot = new TestStrategy().GetFoundationColour(hasTower: false, BlightTowerType.Chilling);
@@ -225,7 +265,7 @@ public class BlightOverlayTests
         IBlightTowerStrategy.DefaultTowerColor(BlightTowerType.Summoning).Should().Be(
             new Color(184, 107, 255, 100), "the Summoning/Scout family is purple, matching the description colouring");
         IBlightTowerStrategy.DefaultTowerColor(BlightTowerType.Seismic).Should().Be(
-            new Color(255, 128, 26, 100), "Seismic is orange, matching the description colouring");
+            new Color(255, 189, 43, 100), "Seismic is golden yellow, matching the description colouring");
         IBlightTowerStrategy.DefaultTowerColor(BlightTowerType.Chilling).Should().Be(
             new Color(77, 158, 255, 100), "Chilling is blue, matching the description colouring");
         IBlightTowerStrategy.DefaultTowerColor(BlightTowerType.Empowering).Should().Be(
@@ -325,11 +365,9 @@ public class BlightOverlayTests
 
         public string Name => "Test";
         public string Description => "";
-        public Color DefaultLaneColor => Color.White;
         public IReadOnlyList<TowerBuildRule> Rules => [];
 
         public TowerBuildRule? GetRule(BlightTowerType type) => null;
-        public Color GetLaneColor(LaneCoverageResult segment) => Color.White;
 
         public Color GetFoundationColour(bool hasTower, BlightTowerType currentType)
             => hasTower ? SeismicColor : IBlightTowerStrategy.DefaultFoundationColour;

@@ -14,6 +14,12 @@ namespace ClickIt.Features.Labels.Inventory
         public bool ShouldAllowWorldItemWhenInventoryFull(Entity groundItem, GameController? gameController)
             => _pickupPolicy.ShouldAllowWorldItemWhenInventoryFull(groundItem, gameController);
 
+        internal IReadOnlyList<Entity> ReadCurrentInventoryItems(GameController gameController)
+        {
+            _itemEntityService.TryEnumerateInventoryItemEntities(gameController, out IReadOnlyList<Entity> items, refresh: true);
+            return items;
+        }
+
         public bool ShouldAllowClosedDoorPastMechanic(GameController? gameController)
         {
             bool hasStoneOfPassageInInventory = HasMetadataPathInInventory(gameController);

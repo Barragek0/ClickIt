@@ -1,4 +1,4 @@
-namespace ClickIt.Tests.Features.Observability.Performance
+﻿namespace ClickIt.Tests.Features.Observability.Performance
 {
     [TestClass]
     public class SectionMetricsStoreTests
@@ -38,16 +38,16 @@ namespace ClickIt.Tests.Features.Observability.Performance
         [TestMethod]
         public void GetStats_IsPerValue_ForOutOfOrderEnumValues()
         {
-            // RenderSection values are 0-14 contiguous but declared out of order (TextFlush=7, FrameFlush=8, HarvestOverlay=9...) - array indexing by the numeric value must keep them separate.
+            // RenderSection values are 0-13 contiguous but declared out of order (TextFlush=7, FrameFlush=8, BlightOverlay=9...) - array indexing by the numeric value must keep them separate.
             var store = new SectionMetricsStore<RenderSection>();
             store.Record(RenderSection.TextFlush, 3.0);
             store.Record(RenderSection.FrameFlush, 4.0);
-            store.Record(RenderSection.HarvestOverlay, 5.0);
+            store.Record(RenderSection.BlightOverlay, 5.0);
 
             store.GetStats(RenderSection.TextFlush).SampleCount.Should().Be(1);
             store.GetStats(RenderSection.TextFlush).LastMs.Should().Be(3.0);
             store.GetStats(RenderSection.FrameFlush).LastMs.Should().Be(4.0);
-            store.GetStats(RenderSection.HarvestOverlay).LastMs.Should().Be(5.0);
+            store.GetStats(RenderSection.BlightOverlay).LastMs.Should().Be(5.0);
         }
     }
 }

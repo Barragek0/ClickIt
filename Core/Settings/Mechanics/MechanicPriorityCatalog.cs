@@ -22,7 +22,7 @@ namespace ClickIt.Core.Settings.Mechanics
             new(MechanicIds.AreaTransitions, "Area Transitions"),
             new(MechanicIds.LabyrinthTrials, "Labyrinth Trials"),
             new(MechanicIds.CraftingRecipes, "Crafting Recipes"),
-            new(MechanicIds.Harvest, "Nearest Harvest Plot"),
+            new(MechanicIds.Harvest, "Harvest Encounter"),
             new(MechanicIds.Sanctum, "Sanctum"),
             new(MechanicIds.Betrayal, "Betrayal"),
             new(MechanicIds.Blight, "Blight"),

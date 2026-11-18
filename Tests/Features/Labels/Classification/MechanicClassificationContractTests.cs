@@ -7,7 +7,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
             (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
 
         [DataTestMethod]
-        [DataRow("Metadata/Terrain/Harvest/Irrigator", MechanicIds.Harvest)]
+        [DataRow("Metadata/Terrain/Leagues/Harvest/Objects/HarvestEncounterTree", MechanicIds.Harvest)]
         [DataRow("Metadata/Terrain/DelveMineral/Node", MechanicIds.DelveSulphiteVeins)]
         [DataRow("Metadata/Terrain/Sanctum/Door", MechanicIds.Sanctum)]
         [DataRow("Metadata/Terrain/BetrayalMakeChoice/Some", MechanicIds.Betrayal)]

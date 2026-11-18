@@ -7,6 +7,7 @@ namespace ClickIt.UI.Settings.Panels
         public void Draw()
         {
             DrawControlsSection();
+            DrawSkillAutomationSection();
             DrawPathfindingSection();
             DrawLazyModeSection();
         }
@@ -55,6 +56,43 @@ namespace ClickIt.UI.Settings.Panels
             SettingsUiRenderHelpers.DrawToggleNodeControl("Use Movement Skills for Offscreen Pathfinding##ControlsPathfindingUseMovementSkills", _settings.UseMovementSkillsForOffscreenPathfinding, "When enabled, the plugin will attempt to use an equipped movement skill keybind while pathing to offscreen targets. Supports common travel/blink gems when they are off cooldown and have a keyboard keybind.");
 
             ImGui.TreePop();
+        }
+
+        private void DrawSkillAutomationSection()
+        {
+            if (!ImGui.TreeNodeEx("Skill Automation##ControlsSkillAutomation", ImGuiTreeNodeFlags.DefaultOpen))
+                return;
+
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1.0f, 0.52f, 0.18f, 1.0f));
+            bool flameLinkOpen = ImGui.TreeNodeEx("Flame Link##ControlsSkillAutomationFlameLink", ImGuiTreeNodeFlags.DefaultOpen);
+            ImGui.PopStyleColor();
+            SettingsUiRenderHelpers.DrawInlineTooltip("Automatically casts Flame Link on enabled targets, even when the Click Hotkey is not held. Keeps recasting until each target has Flame Link.");
+
+            if (flameLinkOpen)
+            {
+                DrawSkillAutomationToggle(
+                    "ControlsFlameLinkMercenaries",
+                    "Mercenaries",
+                    _settings.CastFlameLinkOnMercenaries);
+                DrawSkillAutomationToggle(
+                    "ControlsFlameLinkAnimateGuardian",
+                    "Animate Guardian",
+                    _settings.CastFlameLinkOnAnimateGuardian);
+
+                ImGui.TreePop();
+            }
+
+            ImGui.TreePop();
+        }
+
+        private static void DrawSkillAutomationToggle(string id, string label, ToggleNode node)
+        {
+            bool value = node.Value;
+            if (ImGui.Checkbox($"##{id}", ref value))
+                node.Value = value;
+
+            ImGui.SameLine();
+            ImGui.TextUnformatted(label);
         }
 
         private void DrawLazyModeSection()

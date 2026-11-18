@@ -139,7 +139,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
         [TestMethod]
         public void PathHelpers_DetectHarvestAndSettlersOrePaths()
         {
-            var rh1 = MechanicClassifier.IsHarvestPath("Some/Harvest/Irrigator/Path");
+            var rh1 = MechanicClassifier.IsHarvestPath("Metadata/Harvest/Objects/HarvestEncounterTree");
             rh1.Should().BeTrue();
             var rh2 = MechanicClassifier.IsHarvestPath("Nothing/Here");
             rh2.Should().BeFalse();

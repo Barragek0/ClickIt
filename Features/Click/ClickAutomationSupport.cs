@@ -25,6 +25,15 @@ namespace ClickIt.Features.Click
         internal IReadOnlyList<string> GetLatestRuntimeDebugLogTrail()
             => _dependencies.TelemetryStore.GetLatestRuntimeDebugLogTrail();
 
+        internal IReadOnlyList<string> GetCraftingTrail()
+            => _dependencies.TelemetryStore.GetCraftingTrail();
+
+        internal void CraftingLog(Func<string> message)
+        {
+            if (_dependencies.Settings.DebugMode.Value)
+                _dependencies.TelemetryStore.PublishCraftingLog(message());
+        }
+
         internal UltimatumDebugSnapshot GetLatestUltimatumDebug()
             => _dependencies.TelemetryStore.GetLatestUltimatumDebug();
 

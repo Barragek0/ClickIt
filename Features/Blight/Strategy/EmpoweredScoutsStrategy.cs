@@ -38,7 +38,6 @@ internal sealed class EmpoweredScoutsStrategy : IBlightTowerStrategy
         "Recommended ring anoints:\n" +
         "- Teal + Violet -> Scout Tower (+25% range)\n" +
         "- Amber + Amber -> Scout Tower (+25% damage)";
-    public Color DefaultLaneColor => new(194, 200, 0, 57);
     public IReadOnlyList<TowerBuildRule> Rules => s_rules;
 
     public TowerBuildRule? GetRule(BlightTowerType type)
@@ -48,9 +47,4 @@ internal sealed class EmpoweredScoutsStrategy : IBlightTowerStrategy
                 return s_rules[i];
         return null;
     }
-
-    public Color GetLaneColor(LaneCoverageResult segment)
-        => segment.HasSummoning
-            ? new Color(0, 200, 0, 100)   // green = scout coverage
-            : new Color(200, 60, 60, 100); // red = uncovered
 }

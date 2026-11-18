@@ -21,7 +21,7 @@ namespace ClickIt.Features.Observability.Performance
 
         private static ChannelTiming[] CreateChannels()
         {
-            ChannelTiming[] channels = new ChannelTiming[8];
+            ChannelTiming[] channels = new ChannelTiming[9];
             for (int i = 0; i < channels.Length; i++)
                 channels[i] = new ChannelTiming();
             return channels;
@@ -155,6 +155,7 @@ namespace ClickIt.Features.Observability.Performance
                 "blight" => TimingChannel.Blight,
                 "ultimatum" => TimingChannel.Ultimatum,
                 "labeloverlay" => TimingChannel.LabelOverlay,
+                "skillautomation" => TimingChannel.SkillAutomation,
                 "render" => TimingChannel.Render,
                 _ => TimingChannel.Unknown,
             };

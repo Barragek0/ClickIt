@@ -14,7 +14,8 @@ namespace ClickIt.Core.Runtime
         Func<InputHandler?> GetInputHandler,
         Func<ClickItSettings?> GetSettings,
         Func<TimeCache<List<LabelOnGround>>?> GetCachedLabels,
-        Func<ErrorHandler?> GetErrorHandler);
+        Func<ErrorHandler?> GetErrorHandler,
+        Func<FlameLinkAutomationService?>? GetSkillAutomationService = null);
 
     internal sealed class PluginDebugTelemetryService(PluginDebugTelemetryProjectionSources projectionSources)
     {
@@ -67,6 +68,7 @@ namespace ClickIt.Core.Runtime
                 _projectionSources.GetInputHandler(),
                 _projectionSources.GetSettings(),
                 _projectionSources.GetCachedLabels(),
-                _projectionSources.GetErrorHandler());
+                _projectionSources.GetErrorHandler(),
+                _projectionSources.GetSkillAutomationService?.Invoke());
     }
 }

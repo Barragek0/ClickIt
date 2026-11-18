@@ -46,7 +46,7 @@ namespace ClickIt.Core.Lifecycle
             LockManager.Instance = null;
 
             LabelElementSearch.ClearThreadLocalStorage();
-            MovementSkillMath.ClearThreadSkillBarEntriesBuffer();
+            SkillBarBindingResolver.ClearThreadSkillBarEntriesBuffer();
             ShrineService.ClearThreadLocalStorageForCurrentThread();
             ClickAutomationPort.ClearThreadLocalStorageForCurrentThread();
             owner.State.Services.InventoryInteractionPolicy?.ClearForShutdown();
@@ -58,7 +58,7 @@ namespace ClickIt.Core.Lifecycle
         }
 
         private static Coroutine?[] TrackedCoroutines(PluginContext state)
-            => [state.Runtime.AltarCoroutine, state.Runtime.ClickLabelCoroutine, state.Runtime.ManualUiHoverCoroutine, state.Runtime.DelveFlareCoroutine, state.Runtime.GameStateDumpCoroutine, state.Runtime.AreaBlockedUiRefreshCoroutine];
+            => [state.Runtime.AltarCoroutine, state.Runtime.ClickLabelCoroutine, state.Runtime.ManualUiHoverCoroutine, state.Runtime.DelveFlareCoroutine, state.Runtime.FlameLinkAutomationCoroutine, state.Runtime.GameStateDumpCoroutine, state.Runtime.AreaBlockedUiRefreshCoroutine];
 
         private static void StopTrackedCoroutines(PluginContext state)
         {
@@ -82,6 +82,7 @@ namespace ClickIt.Core.Lifecycle
             runtime.ClickLabelCoroutine = null;
             runtime.ManualUiHoverCoroutine = null;
             runtime.DelveFlareCoroutine = null;
+            runtime.FlameLinkAutomationCoroutine = null;
             runtime.GameStateDumpCoroutine = null;
             runtime.AreaBlockedUiRefreshCoroutine = null;
         }

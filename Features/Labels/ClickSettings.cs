@@ -49,6 +49,5 @@ namespace ClickIt.Features.Labels
         public IReadOnlySet<string> IgnoreDistanceMechanicIds { get; set; }
         public IReadOnlyDictionary<string, int> IgnoreDistanceWithinByMechanicId { get; set; }
         public int MechanicPriorityDistancePenalty { get; set; }
-        public bool HarvestLabelSelectionBlocked { get; set; }
     }
 }

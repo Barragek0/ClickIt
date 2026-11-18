@@ -6,6 +6,12 @@ namespace ClickIt.Features.Click.Interaction
 
         internal object ElementLock { get; } = new();
 
+        internal bool PerformGuardedClick(Vector2 point, GameController? controller, IntervalKind interval, Func<Element?, bool> validate, bool allowWhenHotkeyInactive)
+        {
+            using (LockManager.AcquireStatic(ElementLock))
+                return _interactionExecutor.PerformClick(point, gameController: controller, allowWhenHotkeyInactive: allowWhenHotkeyInactive, interval: interval, validateSettledHover: validate);
+        }
+
         internal bool PerformClick(
             Vector2 clickPos,
             Element? expectedElement,

@@ -11,6 +11,8 @@ namespace ClickIt.Core.Runtime
         private readonly Func<IEnumerator> _clickLabelStep;
         private readonly Func<IEnumerator> _manualUiHoverStep;
         private readonly Func<IEnumerator> _flareStep;
+        private readonly Func<IEnumerator> _flameLinkStep;
+        private FlameLinkAutomationService? _flameLinkAutomationService;
         private long _lastCanClickFailureLogTimestampMs;
 
         public PluginLoopHost(
@@ -27,6 +29,7 @@ namespace ClickIt.Core.Runtime
             _clickLabelStep = ClickLabel;
             _manualUiHoverStep = ProcessManualUiHoverClick;
             _flareStep = ProcessFlare;
+            _flameLinkStep = ProcessFlameLinkAutomation;
         }
         private const int ClickIdleWaitMs = 50;
         private const int ClickFrequencyWaitMaxMs = 100;
@@ -76,6 +79,10 @@ namespace ClickIt.Core.Runtime
             _state.Runtime.DelveFlareCoroutine = new Coroutine(FlareCoroutine(), plugin, PluginCoroutineNames.DelveFlare, true);
             _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.DelveFlareCoroutine);
             _state.Runtime.DelveFlareCoroutine.Priority = CoroutinePriority.Normal;
+
+            _state.Runtime.FlameLinkAutomationCoroutine = new Coroutine(FlameLinkAutomationCoroutine(), plugin, PluginCoroutineNames.FlameLinkAutomation, true);
+            _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.FlameLinkAutomationCoroutine);
+            _state.Runtime.FlameLinkAutomationCoroutine.Priority = CoroutinePriority.Normal;
 
             // Overlay API: owns the per-overlay refresh coroutines (cadence + timing + error routing).
             _state.Rendering.OverlayRenderHost?.StartAll(
@@ -235,8 +242,6 @@ namespace ClickIt.Core.Runtime
                 yield break;
             }
 
-            // Harvest labels are processed in the render path (PluginRenderHost) so the overlay renders correctly and the click path reads the decision via GetLabelToClick without needing to reprocess labels.
-
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
             long clickStart = Stopwatch.GetTimestamp();
             long clickAllocStart = GC.GetAllocatedBytesForCurrentThread();
@@ -313,6 +318,49 @@ namespace ClickIt.Core.Runtime
                 yield return Guarded(_flareStep, "Flare");
                 yield return new WaitTime(100);
             }
+        }
+
+        private IEnumerator FlameLinkAutomationCoroutine()
+        {
+            if (_state.Runtime.IsShuttingDown) yield break;
+
+            while (!_state.Runtime.IsShuttingDown)
+            {
+                if (!_settings.Enable)
+                {
+                    yield return new WaitTime(250);
+                    continue;
+                }
+
+                yield return Guarded(_flameLinkStep, "FlameLink");
+                yield return new WaitTime((int)FlameLinkAutomationPolicy.PollIntervalMs);
+            }
+        }
+
+        private IEnumerator ProcessFlameLinkAutomation()
+        {
+            InputHandler? inputHandler = _state.Services.InputHandler;
+            if (inputHandler == null)
+                yield break;
+
+            _flameLinkAutomationService ??= new FlameLinkAutomationService(
+                _settings,
+                _gameController,
+                inputHandler,
+                point => _state.Services.AreaService?.PointIsInClickableArea(_gameController, point, forceBlockedUiRefresh: false) == true,
+                message => _errorHandler.LogMessage(message, 5));
+            _state.Services.FlameLinkAutomationService = _flameLinkAutomationService;
+            PerformanceMonitor? performanceMonitor = _state.Services.PerformanceMonitor;
+            performanceMonitor?.StartCoroutineTiming(TimingChannel.SkillAutomation);
+            try
+            {
+                _flameLinkAutomationService.Update();
+            }
+            finally
+            {
+                performanceMonitor?.StopCoroutineTiming(TimingChannel.SkillAutomation);
+            }
+            yield break;
         }
 
         // The whole body runs synchronously (the only yield is the post-use cooldown), so timing is recorded here around the actual work — measuring around `yield return Guarded(...)` in the caller instead would span the coroutine scheduler's frame gap and report ~16ms of noise.

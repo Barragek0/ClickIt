@@ -1,4 +1,4 @@
-namespace ClickIt.Tests.Shared.Game
+﻿namespace ClickIt.Tests.Shared.Game
 {
     [TestClass]
     public class ClickableLabelPolicyTests
@@ -23,23 +23,9 @@ namespace ClickIt.Tests.Shared.Game
         }
 
         [TestMethod]
-        public void IsValidClickableLabelCore_HarvestRequiresVisibleRootElement()
+        public void IsValidClickableLabelCore_HarvestEncounterTreeIsClickableWithoutRootChildCheck()
         {
-            const string clickableHarvestPath = "Metadata/Terrain/Leagues/Harvest/Irrigator";
-
-            bool blocked = ClickableLabelPolicy.IsValidClickableLabelCore(
-                labelNotNull: true,
-                itemNotNull: true,
-                isVisible: true,
-                labelElementValid: true,
-                inClickableArea: true,
-                type: EntityType.WorldItem,
-                path: clickableHarvestPath,
-                chestOpenOnDamage: false,
-                hasEssenceImprisonment: false,
-                harvestRootElementVisible: false);
-
-            blocked.Should().BeFalse();
+            const string clickableHarvestPath = "Metadata/Terrain/Leagues/Harvest/Objects/HarvestEncounterTree";
 
             bool allowed = ClickableLabelPolicy.IsValidClickableLabelCore(
                 labelNotNull: true,
@@ -50,14 +36,13 @@ namespace ClickIt.Tests.Shared.Game
                 type: EntityType.WorldItem,
                 path: clickableHarvestPath,
                 chestOpenOnDamage: false,
-                hasEssenceImprisonment: false,
-                harvestRootElementVisible: true);
+                hasEssenceImprisonment: false);
 
             allowed.Should().BeTrue();
         }
 
         [TestMethod]
-        public void IsValidClickableLabelCore_NonHarvestIgnoresRootElementVisibility()
+        public void IsValidClickableLabelCore_NonHarvestPathIsClickable()
         {
             const string nonHarvestPath = "Metadata/Terrain/Leagues/Ritual/SomeObject";
 
@@ -70,8 +55,7 @@ namespace ClickIt.Tests.Shared.Game
                 type: EntityType.WorldItem,
                 path: nonHarvestPath,
                 chestOpenOnDamage: false,
-                hasEssenceImprisonment: false,
-                harvestRootElementVisible: false);
+                hasEssenceImprisonment: false);
 
             result.Should().BeTrue();
         }
@@ -99,8 +83,7 @@ namespace ClickIt.Tests.Shared.Game
                 type: EntityType.WorldItem,
                 path: "Metadata/Terrain/Leagues/Ritual/SomeObject",
                 chestOpenOnDamage: false,
-                hasEssenceImprisonment: false,
-                harvestRootElementVisible: true);
+                hasEssenceImprisonment: false);
 
             result.Should().Be(expected);
         }
@@ -117,8 +100,7 @@ namespace ClickIt.Tests.Shared.Game
                 type: EntityType.WorldItem,
                 path: "Metadata/Terrain/Leagues/Ritual/SomeObject",
                 chestOpenOnDamage: false,
-                hasEssenceImprisonment: false,
-                harvestRootElementVisible: true);
+                hasEssenceImprisonment: false);
 
             result.Should().BeFalse();
         }
@@ -135,8 +117,7 @@ namespace ClickIt.Tests.Shared.Game
                 type: EntityType.Monster,
                 path: "Metadata/MiscellaneousObjects/Door/TempleDoor",
                 chestOpenOnDamage: false,
-                hasEssenceImprisonment: false,
-                harvestRootElementVisible: true);
+                hasEssenceImprisonment: false);
 
             result.Should().BeTrue();
         }
@@ -153,8 +134,7 @@ namespace ClickIt.Tests.Shared.Game
                 type: EntityType.Monster,
                 path: "Metadata/Monsters/NotClickable",
                 chestOpenOnDamage: false,
-                hasEssenceImprisonment: true,
-                harvestRootElementVisible: true);
+                hasEssenceImprisonment: true);
 
             result.Should().BeTrue();
         }
@@ -171,8 +151,7 @@ namespace ClickIt.Tests.Shared.Game
                 type: EntityType.Monster,
                 path: "Metadata/Monsters/NotClickable",
                 chestOpenOnDamage: false,
-                hasEssenceImprisonment: false,
-                harvestRootElementVisible: true);
+                hasEssenceImprisonment: false);
 
             result.Should().BeFalse();
         }
@@ -187,8 +166,8 @@ namespace ClickIt.Tests.Shared.Game
         [DataRow("Metadata/Heist/Objects/Level/Door_Basic", true)]
         [DataRow("Metadata/Heist/Objects/Level/DoorSecretLaboratory", true)]
         [DataRow("Metadata/Heist/Objects/Level/Hazards/Strength_SmashMarker", true)]
-        [DataRow("Metadata/Terrain/Leagues/Harvest/Extractor", true)]
-        [DataRow("Metadata/Terrain/Leagues/Harvest/IrrigatorTierTwo", true)]
+        [DataRow("Metadata/Terrain/Leagues/Harvest/Objects/HarvestEncounterTree", true)]
+        [DataRow("Metadata/Terrain/Leagues/Harvest/Objects/Harvest/Extractor", false)]
         [DataRow("Metadata/Terrain/Leagues/Sanctum/Start", true)]
         [DataRow("Metadata/Terrain/Leagues/Blight/BlightPump", true)]
         [DataRow("Metadata/Leagues/Ultimatum/Objects/UltimatumChallengeInteractable", true)]

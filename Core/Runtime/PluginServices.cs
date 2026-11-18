@@ -22,8 +22,8 @@ namespace ClickIt.Core.Runtime
         public PathfindingService? PathfindingService { get; set; }
         public AlertService? AlertService { get; set; }
         public InputHandler? InputHandler { get; set; }
+        internal FlameLinkAutomationService? FlameLinkAutomationService { get; set; }
         public WeightCalculator? WeightCalculator { get; set; }
-        public HarvestService? HarvestService { get; set; }
         public BlightService? BlightService { get; set; }
 
         internal void Clear()
@@ -44,8 +44,8 @@ namespace ClickIt.Core.Runtime
             PathfindingService = null;
             AlertService = null;
             InputHandler = null;
+            FlameLinkAutomationService = null;
             WeightCalculator = null;
-            HarvestService = null;
             BlightService = null;
         }
     }

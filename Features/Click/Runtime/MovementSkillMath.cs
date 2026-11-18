@@ -4,7 +4,6 @@ namespace ClickIt.Features.Click.Runtime
     {
         internal const int RecastDelayMs = 450;
         internal const int CastDelayMs = 200;
-        internal const int KeyTapDelayMs = 30;
         internal const int ShieldChargePostCastClickBlockMs = 100;
         private const int DefaultPostCastClickBlockMs = 120;
         private const int LeapSlamPostCastClickBlockMs = 230;
@@ -65,9 +64,6 @@ namespace ClickIt.Features.Click.Runtime
             "QuickStepGem",
             "slow_dodge"
         ];
-
-        [ThreadStatic]
-        private static List<object?>? _threadSkillBarEntriesBuffer;
 
         private readonly record struct MovementSkillTimingProfile(int PostCastClickBlockMs, int StatusPollExtraMs, bool DisableStatusPoll);
 
@@ -183,56 +179,6 @@ namespace ClickIt.Features.Click.Runtime
             }
 
             return false;
-        }
-
-        internal static bool TryMapKeyTextToKeys(string? keyText, out Keys key)
-        {
-            key = Keys.None;
-            if (string.IsNullOrWhiteSpace(keyText))
-                return false;
-
-            string normalized = keyText.Trim().ToUpperInvariant();
-            string[] modifierSplit = normalized.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (modifierSplit.Length > 0)
-                normalized = modifierSplit[^1];
-
-            normalized = normalized.Replace(" ", string.Empty);
-
-            if (normalized is "LMB" or "RMB" or "MMB" or "MOUSE4" or "MOUSE5")
-                return false;
-
-            if (normalized.Length == 1)
-            {
-                char c = normalized[0];
-                if (c is >= 'A' and <= 'Z')
-                {
-                    key = Keys.A + (c - 'A');
-                    return true;
-                }
-
-                if (c is >= '0' and <= '9')
-                {
-                    key = Keys.D0 + (c - '0');
-                    return true;
-                }
-            }
-
-            if (normalized.StartsWith('F') && int.TryParse(normalized[1..], out int fNum) && fNum >= 1 && fNum <= 24)
-            {
-                key = Keys.F1 + (fNum - 1);
-                return true;
-            }
-
-            return Enum.TryParse(normalized, ignoreCase: true, out key);
-        }
-
-        internal static List<object?> GetThreadSkillBarEntriesBuffer(int capacity)
-            => _threadSkillBarEntriesBuffer ??= new List<object?>(SystemMath.Max(1, capacity));
-
-        internal static void ClearThreadSkillBarEntriesBuffer()
-        {
-            _threadSkillBarEntriesBuffer?.Clear();
-            _threadSkillBarEntriesBuffer = null;
         }
 
         private static MovementSkillTimingProfile ResolveMovementSkillTimingProfile(string? movementSkillInternalName)

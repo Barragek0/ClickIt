@@ -36,15 +36,17 @@ internal sealed class ChillingSeismicMeteorStrategy : IBlightTowerStrategy
     ];
 
     public string Name => "Empowered Lockdown + Meteor";
+    public bool UsesPhasedLockdown => true;
     public string Description =>
         "Rules in order of priority:\n" +
-        "-> Builds Chilling and Seismic Towers to cover every lane.\n" +
-        "-> Builds Empowering Towers to buff Chilling and Seismic.\n" +
-        "-> Builds Meteor Towers for damage.\n\n" +
+        "-> Builds Tier 1 Chilling and Seismic Towers where effective.\n" +
+        "-> Rushes support and upgrades for the control tower on immune lanes.\n" +
+        "-> Upgrades Chilling, then Seismic to Tier 3 on ordinary lanes.\n" +
+        "-> Builds and upgrades Empowering Towers to support both control types.\n" +
+        "-> Covers every lane segment with Meteors, closest foundations to the pump first.\n\n" +
         "Recommended ring anoints:\n" +
         "- Silver + Opalescent -> Chilling Tower (Chilling Beams)\n" +
         "- Indigo + Violet -> Meteor Tower (Burning Ground)\n";
-    public Color DefaultLaneColor => new(194, 200, 0, 57);
     public IReadOnlyList<TowerBuildRule> Rules => s_rules;
 
     public TowerBuildRule? GetRule(BlightTowerType type)
@@ -53,16 +55,5 @@ internal sealed class ChillingSeismicMeteorStrategy : IBlightTowerStrategy
             if (s_rules[i].TowerType == type)
                 return s_rules[i];
         return null;
-    }
-
-    public Color GetLaneColor(LaneCoverageResult segment)
-    {
-        if (segment.HasChilling && segment.HasSeismic)
-            return new Color(0, 200, 0, 100);   // green = both types covered
-        if (segment.HasChilling)
-            return new Color(50, 130, 255, 100); // blue = only chilling
-        if (segment.HasSeismic)
-            return new Color(255, 128, 0, 100);  // orange = only seismic
-        return new Color(200, 60, 60, 100);      // red = uncovered
     }
 }

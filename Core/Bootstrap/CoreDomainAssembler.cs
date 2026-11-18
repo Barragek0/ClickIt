@@ -16,9 +16,9 @@ namespace ClickIt.Core.Bootstrap
         InputHandler InputHandler,
         PathfindingService PathfindingService,
         WeightCalculator WeightCalculator,
-        HarvestService HarvestService,
         BlightService BlightService,
-        DeferredDrawQueue DeferredDrawQueue);
+        DeferredDrawQueue DeferredDrawQueue,
+        HarvestEncounterUpgrade? HarvestUpgrade = null);
 
     internal static class CoreDomainAssembler
     {
@@ -65,8 +65,6 @@ namespace ClickIt.Core.Bootstrap
                 bytes => performanceMonitor.RecordAllocation(ProcessingSection.Pathfinding, bytes),
                 (ReadOnlySpan<long> bytes, ReadOnlySpan<double> ms) => performanceMonitor.RecordBreakdown(ProcessingSection.Pathfinding, bytes, ms));
             WeightCalculator weightCalculator = new(settings);
-            HarvestService harvestService = new(settings);
-
             DeferredDrawQueue deferredDrawQueue = new();
 
             BlightService blightService = new(
@@ -74,7 +72,8 @@ namespace ClickIt.Core.Bootstrap
                 point => areaService.PointIsInClickableArea(gameController, point),
                 (ReadOnlySpan<long> bytes, ReadOnlySpan<double> ms) => performanceMonitor.RecordBreakdown(ProcessingSection.Blight, bytes, ms),
                 (bytes, ms) => performanceMonitor.RecordBreakdownStage(ProcessingSection.Blight, PerformanceMonitor.BlightEventsStageIndex, bytes, ms),
-                (bytes, ms) => performanceMonitor.RecordBreakdownStage(ProcessingSection.Blight, PerformanceMonitor.BlightEventsStageIndex, bytes, ms));
+                (bytes, ms) => performanceMonitor.RecordBreakdownStage(ProcessingSection.Blight, PerformanceMonitor.BlightEventsStageIndex, bytes, ms),
+                region => areaService.IsClientRectangleClickable(gameController, region));
 
             return new CoreDomainServices(
                 performanceMonitor,
@@ -92,9 +91,9 @@ namespace ClickIt.Core.Bootstrap
                 inputHandler,
                 pathfindingService,
                 weightCalculator,
-                harvestService,
                 blightService,
-                deferredDrawQueue);
+                deferredDrawQueue,
+                new HarvestEncounterUpgrade(settings, labelFilterPort.InventoryInteractionPolicy));
         }
     }
 }

@@ -1044,6 +1044,46 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
+        [TestCategory("Regression")]
+        public void BlightWalkRejectsAuguryHoverAndTriesOtherRecentlyUnblockedPoints()
+        {
+            OffscreenPathingCoordinator.IsAuguryCardHoverPath("Metadata/Terrain/Leagues/Augury/Objects/AuguryCardObject").Should().BeTrue();
+            OffscreenPathingCoordinator.IsAuguryCardHoverPath("metadata/terrain/leagues/augury/object/augurycardobject").Should().BeTrue();
+            OffscreenPathingCoordinator.IsAuguryCardHoverPath(null).Should().BeFalse();
+            OffscreenPathingCoordinator.IsAuguryCardHoverPath("Metadata/Terrain/Leagues/Augury/Objects/AnotherObject").Should().BeFalse();
+
+            (Vector2 Point, long Time)[] rejected = [(new(620, 300), 1000), (new(604, 218), 1100)];
+            bool found = OffscreenPathingCoordinator.TryResolveBlightWalkPoint(new(400, 300), new(800, 300),
+                null, null, 1000, 800, point => !OffscreenPathingCoordinator.IsRecentlyRejectedBlightPoint(point, rejected, 1200), null, out Vector2 click);
+            found.Should().BeTrue();
+            click.Y.Should().BeGreaterThan(300);
+            OffscreenPathingCoordinator.IsRecentlyRejectedBlightPoint(new(620, 300), rejected, 3201).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void BlightWalkUsesShortApproachForClippedPopupAndAvoidsTheStraightClickWhenBlocked()
+        {
+            Vector2 player = new(400, 300);
+            RectangleF popup = new(655, 200, 160, 160);
+            bool found = OffscreenPathingCoordinator.TryResolveBlightWalkPoint(player, new Vector2(730, 280),
+                null, popup, 800, 600, point => point.Y != 300f,
+                projected => projected.Right <= 800 && projected.Left >= 0, out Vector2 click);
+
+            found.Should().BeTrue();
+            click.X.Should().BeGreaterThan(player.X);
+            click.Y.Should().NotBe(player.Y);
+            Vector2.Distance(player, click).Should().BeApproximately(80f, 0.01f);
+        }
+
+        [TestMethod]
+        public void BlightWalkDoesNotReturnAnUncheckedFallbackWhenEveryCandidateIsBlocked()
+        {
+            OffscreenPathingCoordinator.TryResolveBlightWalkPoint(new Vector2(400, 300),
+                new Vector2(900, 300), null, null, 800, 600, static _ => false, null, out _)
+                .Should().BeFalse();
+        }
+
+        [TestMethod]
         public void ResolveSafeClickAlongPath_ReturnsClickablePointTowardPlayer_WhenAllPointsClickable()
         {
             Vector2 target = new(1303f, 199f);

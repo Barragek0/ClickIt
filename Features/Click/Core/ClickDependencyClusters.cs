@@ -34,7 +34,6 @@ namespace ClickIt.Features.Click.Core
 
     internal readonly record struct ClickMechanicDependencies(
         AltarAutomationService AltarAutomation,
-        Func<LabelOnGround?>? GetHarvestLabelToClick,
         Func<BlightBuildAction>? TryProgressBlightBuilding,
         Func<Entity?>? GetBlightPathfindTarget,
         Func<bool>? IsBlightEncounterActive);

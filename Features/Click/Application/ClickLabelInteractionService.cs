@@ -11,13 +11,18 @@ namespace ClickIt.Features.Click.Application
         Func<bool> GroundItemsVisible,
         Action<Func<string>> DebugLog,
         ElementTreeInspector? BlightChestDebug = null,
-        Action<string>? LogError = null);
+        Action<string>? LogError = null,
+        HarvestEncounterUpgrade? HarvestUpgrade = null,
+        Action<Func<string>>? CraftingLog = null);
 
     internal sealed class ClickLabelInteractionService(ClickLabelInteractionServiceDependencies dependencies)
     {
         private const long BlightChestDebugCaptureIntervalMs = 500;
         private readonly ClickLabelInteractionServiceDependencies _dependencies = dependencies;
         private long _lastBlightChestDebugCaptureTimestampMs;
+        private long _lastActionRowDebugTimestampMs;
+
+        internal void LogLabelAction(Func<string> message) => _dependencies.CraftingLog?.Invoke(message);
 
         internal bool ExecuteInteraction(
             Vector2 clickPos,
@@ -28,7 +33,8 @@ namespace ClickIt.Features.Click.Application
             bool allowWhenHotkeyInactive = false,
             bool avoidCursorMove = false,
             string? outsideWindowLogMessage = null,
-            IntervalKind interval = IntervalKind.Click)
+            IntervalKind interval = IntervalKind.Click,
+            Func<Element?, bool>? validateSettledHover = null)
         {
             return _dependencies.ExecuteInteraction(new InteractionExecutionRequest(
                 ClickPosition: clickPos,
@@ -42,11 +48,9 @@ namespace ClickIt.Features.Click.Application
                     ?? (useHoldClick
                         ? "[PerformLabelHoldClick] Skipping hold click - cursor outside PoE window"
                         : "[PerformLabelClick] Skipping label click - cursor outside PoE window"),
-                Interval: interval));
+                Interval: interval,
+                ValidateSettledHover: validateSettledHover));
         }
-
-        private static bool ShouldSkipUiHoverVerification(string? mechanicId)
-            => string.Equals(mechanicId, MechanicIds.Harvest, StringComparison.OrdinalIgnoreCase);
 
         internal float? TryGetCursorDistanceSquaredToEntity(Entity? entity, Vector2 cursorAbsolute, Vector2 windowTopLeft)
         {
@@ -66,36 +70,168 @@ namespace ClickIt.Features.Click.Application
             }
         }
 
-        internal bool TryCorruptEssence(LabelOnGround label, Vector2 windowTopLeft)
+        internal bool TryCorruptEssence(LabelOnGround label, string? mechanicId, Vector2 windowTopLeft)
         {
-            if (_dependencies.Settings.ClickEssences && _dependencies.LabelInteractionPort.ShouldCorruptEssence(label))
-            {
-                Vector2? corruptionPos = EssenceService.GetCorruptionClickPosition(label, windowTopLeft);
-                if (corruptionPos.HasValue)
-                {
-                    string labelPath = ResolveLabelItemPath(label, explicitPath: null);
-                    bool corruptionPointInWindow = _dependencies.IsInsideWindowInEitherSpace(corruptionPos.Value);
-                    bool corruptionPointClickable = _dependencies.IsClickableInEitherSpace(corruptionPos.Value, labelPath);
-                    if (!ClickLabelSelectionMath.ShouldAttemptSpecialEssenceCorruption(corruptionPointInWindow, corruptionPointClickable))
-                    {
-                        _dependencies.DebugLog(() => "[ProcessRegularClick] Essence corruption point not actionable yet; allowing regular click/pathing flow");
-                        return false;
-                    }
+            return string.Equals(mechanicId, MechanicIds.Essences, StringComparison.OrdinalIgnoreCase)
+                && _dependencies.Settings.ClickEssences.Value
+                && _dependencies.LabelInteractionPort.ShouldCorruptEssence(label)
+                && TryClickLabelAction(label, windowTopLeft, LabelActionButtons.VaalOrb,
+                    alternateRowIndex: 2,
+                    canStillClick: () => _dependencies.Settings.ClickEssences.Value
+                        && _dependencies.LabelInteractionPort.ShouldCorruptEssence(label)) == LabelActionResult.Clicked;
+        }
 
-                    _dependencies.DebugLog(() => $"[ProcessRegularClick] Corruption click at {corruptionPos.Value}");
-                    return _dependencies.ExecuteInteraction(new InteractionExecutionRequest(
-                        ClickPosition: corruptionPos.Value,
-                        ExpectedElement: null,
-                        Controller: _dependencies.GameController,
-                        UseHoldClick: false,
-                        ForceUiHoverVerification: false,
-                        AllowWhenHotkeyInactive: false,
-                        AvoidCursorMove: false,
-                        OutsideWindowLogMessage: "[TryCorruptEssence] Skipping corruption click - cursor outside PoE window"));
-                }
+        internal enum LabelActionResult { Clicked, NoMatch, Unavailable }
+
+        // A tooltip can be empty until the cursor enters its icon. Use the guarded
+        // dispatcher to move and settle the cursor, and only authorize input on a match.
+        internal LabelActionResult TryClickLabelAction(LabelOnGround label, Vector2 windowTopLeft, string tooltipName,
+            int rowIndex = LabelActionButtons.DefaultRowIndex, int? alternateRowIndex = null,
+            bool allowWhenHotkeyInactive = false, Func<bool>? canStillClick = null)
+        {
+            object? root = LabelActionButtons.ReadVisibleLabelRoot(label);
+            string path = ResolveLabelItemPath(label, explicitPath: null);
+            long searchDeadline = Environment.TickCount64 + 1_000;
+            LabelActionResult result = TryRow(rowIndex);
+            if (result != LabelActionResult.Clicked && alternateRowIndex is { } alternate)
+            {
+                LabelActionResult alternateResult = TryRow(alternate);
+                if (alternateResult == LabelActionResult.Clicked || result == LabelActionResult.NoMatch)
+                    result = alternateResult;
             }
 
-            return false;
+            if (result != LabelActionResult.Clicked)
+            {
+                long now = Environment.TickCount64;
+                if (_dependencies.Settings.DebugMode.Value && now - _lastActionRowDebugTimestampMs >= 500)
+                {
+                    _lastActionRowDebugTimestampMs = now;
+                    LogLabelAction(() => $"[Label action] '{tooltipName}' search: {result}. {LabelActionButtons.DescribeRow(root, rowIndex)}");
+                }
+            }
+            return result;
+
+            LabelActionResult TryRow(int row)
+            {
+                int count = LabelActionButtons.CountButtons(root, row);
+                bool unreadable = count == 0;
+                for (int index = 0; index < count; index++)
+                {
+                    if (Environment.TickCount64 >= searchDeadline || canStillClick?.Invoke() == false)
+                        return LabelActionResult.Unavailable;
+
+                    if (LabelActionButtons.ReadVisibleButton(root, row, index) is not Element { Address: not 0 } button)
+                        continue;
+
+                    if (!TryGetActionButtonBounds(button, out RectangleF rect))
+                    {
+                        unreadable = true;
+                        continue;
+                    }
+
+                    Vector2 point = rect.Center + windowTopLeft;
+                    if (!_dependencies.IsInsideWindowInEitherSpace(point) || !_dependencies.IsClickableInEitherSpace(point, path))
+                    {
+                        unreadable = true;
+                        continue;
+                    }
+
+                    long address = button.Address;
+                    string? observedTitle = null;
+                    string outcome = "input rejected before hover check";
+                    bool sent = ExecuteInteraction(point, button, _dependencies.GameController, useHoldClick: false,
+                        allowWhenHotkeyInactive: allowWhenHotkeyInactive,
+                        validateSettledHover: hover =>
+                        {
+                            // The dispatcher already gave hover a frame to settle. Allow a
+                            // little longer for the tooltip's child tree to populate.
+                            long deadline = Environment.TickCount64 + 120;
+                            while (true)
+                            {
+                                var state = _dependencies.GameController.IngameState;
+                                if (state == null || _dependencies.GameController.Window?.IsForeground() != true)
+                                {
+                                    outcome = "game state unavailable or window lost focus";
+                                    return false;
+                                }
+                                if (!LabelActionButtons.IsHoverOnButton(hover, address))
+                                {
+                                    outcome = "hover did not reach the icon";
+                                    if (Environment.TickCount64 >= deadline)
+                                        return false;
+                                    ClickPipelineTiming.Sleep(10);
+                                    hover = state.UIHoverElement;
+                                    continue;
+                                }
+                                if (LabelActionButtons.ReadVisibleButton(LabelActionButtons.ReadVisibleLabelRoot(label), row, index)
+                                        is not Element current || current.Address != address
+                                    || !TryGetActionButtonBounds(current, out RectangleF currentRect)
+                                    || !LabelClickPointSearch.IsPointInsideRect(point - windowTopLeft, currentRect))
+                                {
+                                    outcome = "icon moved or changed";
+                                    return false;
+                                }
+
+                                observedTitle = LabelActionButtons.ReadTitle(current);
+                                if (observedTitle != null)
+                                {
+                                    if (!string.Equals(observedTitle, tooltipName, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        outcome = "different currency";
+                                        return false;
+                                    }
+                                    outcome = "matching title, input guard rejected";
+                                    SystemDrawingPoint cursor = Mouse.GetCursorPosition();
+                                    return LabelClickPointSearch.IsPointInsideRect(new Vector2(cursor.X, cursor.Y) - windowTopLeft, currentRect)
+                                        && _dependencies.IsClickableInEitherSpace(point, path)
+                                        && (canStillClick?.Invoke() ?? true);
+                                }
+                                if (Environment.TickCount64 >= deadline)
+                                {
+                                    outcome = "tooltip did not populate before timeout";
+                                    return false;
+                                }
+
+                                ClickPipelineTiming.Sleep(10);
+                                hover = state.UIHoverElement;
+                            }
+                        });
+                    LogLabelAction(() => $"[Label action] Row {row} button {index}: expected '{tooltipName}', read '{observedTitle ?? "<unreadable>"}' ({(sent ? "sent" : outcome)})");
+                    if (sent)
+                        return LabelActionResult.Clicked;
+
+                    // An expected button that failed validation must not be replaced
+                    // with a different action.
+                    if (string.Equals(observedTitle, tooltipName, StringComparison.OrdinalIgnoreCase))
+                        return LabelActionResult.Unavailable;
+                    unreadable |= observedTitle == null;
+                }
+
+                return unreadable ? LabelActionResult.Unavailable : LabelActionResult.NoMatch;
+            }
+        }
+
+        private static bool TryGetActionButtonBounds(Element button, out RectangleF rect)
+        {
+            try
+            {
+                rect = button.GetClientRect();
+                return rect.Width > 0 && rect.Height > 0 && float.IsFinite(rect.Center.X) && float.IsFinite(rect.Center.Y);
+            }
+            catch
+            {
+                rect = default;
+                return false;
+            }
+        }
+
+        internal bool TryHandleHarvestUpgrade(LabelOnGround label, string? mechanicId, Vector2 windowTopLeft,
+            out bool readyToOpenUpgradedTree, bool allowWhenHotkeyInactive = false)
+        {
+            readyToOpenUpgradedTree = false;
+            return string.Equals(mechanicId, MechanicIds.Harvest, StringComparison.OrdinalIgnoreCase)
+                && _dependencies.HarvestUpgrade?.TryHandle(label, windowTopLeft, _dependencies.GameController,
+                    this, allowWhenHotkeyInactive, out readyToOpenUpgradedTree) == true;
         }
 
         internal bool PerformLabelClick(
@@ -119,8 +255,9 @@ namespace ClickIt.Features.Click.Application
                 forceUiHoverVerification);
         }
 
-        internal bool PerformMechanicClick(Vector2 clickPos, IntervalKind interval = IntervalKind.Click)
-            => ExecuteInteraction(clickPos, null, _dependencies.GameController, false, interval: interval);
+        internal bool PerformMechanicClick(Vector2 clickPos, IntervalKind interval = IntervalKind.Click, Func<Element?, bool>? validateSettledHover = null)
+            => ExecuteInteraction(clickPos, null, _dependencies.GameController, false,
+                interval: interval, validateSettledHover: validateSettledHover);
 
         internal bool PerformMechanicInteraction(Vector2 clickPos, bool useHoldClick)
             => ExecuteInteraction(clickPos, null, _dependencies.GameController, useHoldClick);
@@ -128,19 +265,19 @@ namespace ClickIt.Features.Click.Application
         internal bool PerformManualCursorInteraction(Vector2 clickPos, bool useHoldClick)
             => ExecuteInteraction(clickPos, null, _dependencies.GameController, useHoldClick, allowWhenHotkeyInactive: true, avoidCursorMove: true);
 
-        internal bool PerformResolvedLabelInteraction(Vector2 clickPos, LabelOnGround label, string? mechanicId)
+        internal bool PerformResolvedLabelInteraction(Vector2 clickPos, LabelOnGround label, string? mechanicId,
+            bool allowWhenHotkeyInactive = false)
         {
             CaptureBlightChestDebug(label, mechanicId, "click", requireChestMechanic: true);
             return ExecuteInteraction(
                 clickPos,
-                ShouldSkipUiHoverVerification(mechanicId)
-                    ? null
-                    : DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
-                        ? rawLabel as Element
-                        : null,
+                DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
+                    ? rawLabel as Element
+                    : null,
                 _dependencies.GameController,
                 SettlersMechanicPolicy.RequiresHoldClick(mechanicId),
-                forceUiHoverVerification: OffscreenPathingMath.ShouldForceUiHoverVerificationForLabel(label));
+                forceUiHoverVerification: OffscreenPathingMath.ShouldForceUiHoverVerificationForLabel(label),
+                allowWhenHotkeyInactive: allowWhenHotkeyInactive);
         }
 
         private void CaptureBlightChestDebug(LabelOnGround? label, string? mechanicId, string reason, bool requireChestMechanic)

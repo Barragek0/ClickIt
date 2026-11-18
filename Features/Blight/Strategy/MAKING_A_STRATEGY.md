@@ -21,7 +21,6 @@ internal sealed class MyStrategy : IBlightTowerStrategy
 
     public string Name => "My Strategy";                 // shown in the settings dropdown
     public string Description => "What it does.";         // shown in the settings panel
-    public Color DefaultLaneColor => new(194, 200, 0, 57); // lane color before coverage
 
     public IReadOnlyList<TowerBuildRule> Rules => s_rules;
 
@@ -31,14 +30,6 @@ internal sealed class MyStrategy : IBlightTowerStrategy
             if (s_rules[i].TowerType == type)
                 return s_rules[i];
         return null;
-    }
-
-    public Color GetLaneColor(LaneCoverageResult segment)
-    {
-        // Color each lane segment in the debug overlay.
-        if (segment.HasChilling && segment.HasSeismic)
-            return new Color(0, 200, 0, 100);   // fully covered = green
-        return new Color(200, 60, 60, 100);     // uncovered = red
     }
 
     // GetFoundationColour / GetFoundationOutline / GetTowerRangeColor are all
@@ -187,17 +178,16 @@ selected.
 - [ ] A class implementing `IBlightTowerStrategy` in `Features/Blight/Strategy/`.
 - [ ] `Name` — short, shown in the dropdown.
 - [ ] `Description` — what it builds and recommended ring anoints.
-- [ ] `DefaultLaneColor` — a `Color` for unanalysed lanes.
 - [ ] `Rules` — at least **one** rule.  Every rule has `SetTower`, `SetPriority`,
       and `SetMaxUpgradeLevel`.
 - [ ] `GetRule(type)` — return the rule for a type, else `null`.
-- [ ] `GetLaneColor(segment)` — green when covered, red when not (or any scheme
-      you prefer).
+- [ ] List each required tower type in `Rules`. The shared lane overlay uses the same
+      coverage colours for every strategy and counts each type once.
 - [ ] Optional: `GetFoundationColour(hasTower, type)`,
       `GetFoundationOutline(plannedType)`, and `GetTowerRangeColor(type)` —
       colours for the tower dots and range circles in the overlay.  The
-      interface defaults map Chilling=blue, ShockNova=purple, Empowering=green,
-      Seismic=amber, Summoning=orange, Fireball=red (all matching the lane
+      interface defaults map Chilling=blue, ShockNova=yellow, Empowering=green,
+      Seismic=gold, Summoning=purple, Fireball=red (all matching the lane
       palette).  Every dot is a full circle: unbuilt foundations use
       `GetFoundationOutline` (the planned type's colour), built towers use
       `GetFoundationColour(hasTower: true)` (their current type's colour), and

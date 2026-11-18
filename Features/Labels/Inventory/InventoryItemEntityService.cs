@@ -18,10 +18,10 @@ namespace ClickIt.Features.Labels.Inventory
                 RequireNonNegativeAge: true,
                 RequirePositiveCachedTimestamp: true));
 
-        public bool TryEnumerateInventoryItemEntities(GameController? gameController, out IReadOnlyList<Entity> items)
+        public bool TryEnumerateInventoryItemEntities(GameController? gameController, out IReadOnlyList<Entity> items, bool refresh = false)
         {
             long now = Environment.TickCount64;
-            if (TryGetCachedInventoryItems(gameController, now, out IReadOnlyList<Entity> cachedItems))
+            if (!refresh && TryGetCachedInventoryItems(gameController, now, out IReadOnlyList<Entity> cachedItems))
             {
                 items = cachedItems;
                 return items.Count > 0;

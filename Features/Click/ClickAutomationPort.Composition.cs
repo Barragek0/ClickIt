@@ -12,7 +12,8 @@ namespace ClickIt.Features.Click
             ClickAutomationSupport.DebugLog,
             LockedInteractionDispatcher.PerformClick,
             LockedInteractionDispatcher.PerformHoldClick,
-            _performanceMonitor.RecordClickInterval));
+            _performanceMonitor.RecordClickInterval,
+            LockedInteractionDispatcher.PerformGuardedClick));
 
         private AltarAutomationService AltarAutomation => field ??= new(new AltarAutomationServiceDependencies(
             _settings,
@@ -68,7 +69,9 @@ namespace ClickIt.Features.Click
             _groundItemsVisible,
             ClickAutomationSupport.DebugLog,
             BlightChestDebug,
-            message => _errorHandler.LogError(message)));
+            message => _errorHandler.LogError(message),
+            HarvestUpgrade,
+            ClickAutomationSupport.CraftingLog));
 
         private ChestLootSettlementTracker ChestLootSettlement => field ??= new(new ChestLootSettlementTrackerDependencies(
             _settings,
@@ -122,7 +125,10 @@ namespace ClickIt.Features.Click
             ClickDebugPublisher,
             PointIsInClickableArea,
             _clickSuccessAnchor,
-            pos => IsBlightBuildOrUpgradeIconAt(pos)));
+            IsBlightBuildOrUpgradeIconAt,
+            IsBlightActive: () => IsBlightEncounterActive?.Invoke() == true,
+            IsSafeBlightWalkHover: (point, hover, drift) => !IsBlightTowerUiAt(point, hover, drift),
+            IsBlightMenuRegionClickable: region => IsBlightMenuRegionClickable?.Invoke(region) == true));
 
         private ClickRuntimeEngine RegularClick => field ??= new(new ClickRuntimeEngineDependencies(
             Telemetry: new ClickTelemetryDependencies(
@@ -138,7 +144,7 @@ namespace ClickIt.Features.Click
                 SpecialLabelInteraction, LabelInteraction, ChestLootSettlement),
             Pathing: new ClickPathingDependencies(_pathfindingService, PathfindingLabelSuppression, OffscreenPathing),
             Mechanics: new ClickMechanicDependencies(
-                AltarAutomation, GetHarvestLabelToClick, TryProgressBlightBuilding, GetBlightPathfindTarget, IsBlightEncounterActive)));
+                AltarAutomation, TryProgressBlightBuilding, GetBlightPathfindTarget, IsBlightEncounterActive)));
 
         private MovementSkillCoordinator MovementSkills => field ??= new(new MovementSkillCoordinatorDependencies(
             _settings,

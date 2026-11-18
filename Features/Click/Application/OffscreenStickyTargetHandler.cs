@@ -174,6 +174,9 @@ namespace ClickIt.Features.Click.Application
                 return false;
             }
 
+            if (_dependencies.LabelInteraction.TryHandleHarvestUpgrade(stickyLabel, mechanicId, windowTopLeft, out _))
+                return true;
+
             bool clickedLabel = _dependencies.LabelInteraction.PerformResolvedLabelInteraction(clickPos, stickyLabel, mechanicId);
             if (!clickedLabel)
             {

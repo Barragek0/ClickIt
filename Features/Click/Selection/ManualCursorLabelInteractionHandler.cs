@@ -29,7 +29,9 @@ namespace ClickIt.Features.Click.Selection
                 return _dependencies.AltarAutomation.TryClickManualCursorPreferredAltarOption(cursorAbsolute, windowTopLeft);
             }
 
-            if (_dependencies.LabelInteraction.TryCorruptEssence(hoveredLabel, windowTopLeft))
+            if (_dependencies.LabelInteraction.TryHandleHarvestUpgrade(hoveredLabel, mechanicId, windowTopLeft,
+                out bool readyToOpenUpgradedTree, allowWhenHotkeyInactive: true)
+                || _dependencies.LabelInteraction.TryCorruptEssence(hoveredLabel, mechanicId, windowTopLeft))
                 return true;
 
             if (_dependencies.Settings.IsInitialUltimatumClickEnabled() && UltimatumLabelMath.IsUltimatumLabel(hoveredLabel))
@@ -39,7 +41,9 @@ namespace ClickIt.Features.Click.Selection
             if (!resolved)
                 return false;
 
-            bool clicked = _dependencies.LabelInteraction.PerformManualCursorInteraction(clickPos, SettlersMechanicPolicy.RequiresHoldClick(mechanicId));
+            bool clicked = readyToOpenUpgradedTree
+                ? _dependencies.LabelInteraction.PerformResolvedLabelInteraction(clickPos, hoveredLabel, mechanicId, allowWhenHotkeyInactive: true)
+                : _dependencies.LabelInteraction.PerformManualCursorInteraction(clickPos, SettlersMechanicPolicy.RequiresHoldClick(mechanicId));
             if (!clicked)
                 return false;
 

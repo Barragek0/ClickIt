@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using NumVec2 = System.Numerics.Vector2;
 using NumVec4 = System.Numerics.Vector4;
 using static ClickIt.Shared.Diagnostics.DebugUiPalette;
@@ -9,8 +9,7 @@ internal sealed class ImGuiDebugOverlay(
     ClickItSettings settings,
     PerformanceMonitor? performanceMonitor = null,
     BlightService? blight = null,
-    IDebugTelemetrySource? telemetrySource = null,
-    HarvestService? harvest = null)
+    IDebugTelemetrySource? telemetrySource = null)
 {
     private const string WindowTitle = "ClickIt Debug Info";
     private const float WindowMinWidth = 1240f;
@@ -19,15 +18,14 @@ internal sealed class ImGuiDebugOverlay(
     private static readonly NumVec4 CLime = Vec4(Color.Lime);
     private static readonly NumVec4 CGold = Vec4(Color.Gold);
     private static readonly NumVec4 CLightBlue = Vec4(Color.LightBlue);
-    private static readonly NumVec4 CBuildAction = Vec4(new Color(0, 190, 0));     // deep green — plan BUILD
-    private static readonly NumVec4 CUpgradeAction = Vec4(new Color(255, 80, 80)); // red — plan UPGRADE
-    private static readonly NumVec4 CSpecialAction = Vec4(new Color(0, 200, 200)); // cyan — plan 3->4 SPECIALIZATION
+    private static readonly NumVec4 CBuildAction = Vec4(new Color(0, 190, 0));     // deep green â€” plan BUILD
+    private static readonly NumVec4 CUpgradeAction = Vec4(new Color(255, 80, 80)); // red â€” plan UPGRADE
+    private static readonly NumVec4 CSpecialAction = Vec4(new Color(0, 200, 200)); // cyan â€” plan 3->4 SPECIALIZATION
 
     private readonly ClickItSettings _settings = settings;
     private readonly PerformanceMonitor? _performanceMonitor = performanceMonitor;
     private readonly BlightService? _blight = blight;
     private readonly IDebugTelemetrySource? _telemetrySource = telemetrySource;
-    private readonly HarvestService? _harvest = harvest;
     private DebugTelemetrySnapshot? _lastSnapshot;
     private PerformanceMetricsSnapshot _lastPerformance;
     private long _lastPerformanceSnapshotMs;
@@ -41,8 +39,10 @@ internal sealed class ImGuiDebugOverlay(
         Performance,
         Errors,
         Clicking,
+        Crafting,
         Labels,
         Pathfinding,
+        SkillAutomation,
         Ultimatum,
         Altar,
         HoveredItem,
@@ -50,7 +50,7 @@ internal sealed class ImGuiDebugOverlay(
         Blight
     }
 
-    private readonly DebugSection[] _sectionOrder = new DebugSection[11];
+    private readonly DebugSection[] _sectionOrder = new DebugSection[13];
 
     private int CollectEnabledSections()
     {
@@ -59,8 +59,10 @@ internal sealed class ImGuiDebugOverlay(
         if (_settings.DebugShowPerformance.Value) _sectionOrder[count++] = DebugSection.Performance;
         if (_settings.DebugShowRecentErrors.Value) _sectionOrder[count++] = DebugSection.Errors;
         if (_settings.DebugShowClicking.Value) _sectionOrder[count++] = DebugSection.Clicking;
+        if (_settings.DebugShowCrafting.Value) _sectionOrder[count++] = DebugSection.Crafting;
         if (_settings.DebugShowLabels.Value) _sectionOrder[count++] = DebugSection.Labels;
         if (_settings.DebugShowPathfinding.Value) _sectionOrder[count++] = DebugSection.Pathfinding;
+        if (_settings.DebugShowSkillAutomation.Value) _sectionOrder[count++] = DebugSection.SkillAutomation;
         if (_settings.DebugShowUltimatum.Value) _sectionOrder[count++] = DebugSection.Ultimatum;
         if (_settings.DebugShowAltarDetection.Value || _settings.DebugShowAltarService.Value)
             _sectionOrder[count++] = DebugSection.Altar;
@@ -78,8 +80,10 @@ internal sealed class ImGuiDebugOverlay(
             case DebugSection.Performance: RenderPerformanceSection(); break;
             case DebugSection.Errors: RenderErrorsSection(); break;
             case DebugSection.Clicking: RenderClickSection(); break;
+            case DebugSection.Crafting: RenderCraftingSection(); break;
             case DebugSection.Labels: RenderLabelsSection(); break;
             case DebugSection.Pathfinding: RenderPathfindingSection(); break;
+            case DebugSection.SkillAutomation: RenderSkillAutomationSection(); break;
             case DebugSection.Ultimatum: RenderUltimatumSection(); break;
             case DebugSection.Altar: RenderAltarSection(); break;
             case DebugSection.HoveredItem: RenderHoveredItemSection(); break;
@@ -214,8 +218,10 @@ internal sealed class ImGuiDebugOverlay(
         ToolbarToggle("Performance", _settings.DebugShowPerformance);
         ToolbarToggle("Errors", _settings.DebugShowRecentErrors);
         ToolbarToggle("Click", _settings.DebugShowClicking);
+        ToolbarToggle("Crafting", _settings.DebugShowCrafting);
         ToolbarToggle("Labels", _settings.DebugShowLabels);
         ToolbarToggle("Pathfinding", _settings.DebugShowPathfinding);
+        ToolbarToggle("Skill Automation", _settings.DebugShowSkillAutomation);
         ToolbarToggle("Ultimatum", _settings.DebugShowUltimatum);
         ToolbarToggle("Hovered", _settings.DebugShowHoveredItemMetadata);
         ToolbarToggle("Inventory", _settings.DebugShowInventoryPickup);
@@ -1052,6 +1058,43 @@ internal sealed class ImGuiDebugOverlay(
         RenderTrail("Recent Events", pf.RecentEvents, 20);
     }
 
+    private void RenderSkillAutomationSection()
+    {
+        if (!ImGui.CollapsingHeader("Skill Automation", ImGuiTreeNodeFlags.DefaultOpen))
+            return;
+
+        SkillAutomationTelemetrySnapshot data = (_lastSnapshot ?? DebugTelemetrySnapshot.Empty).SkillAutomation;
+        if (!data.ServiceAvailable)
+        {
+            ImGui.TextColored(CMuted, data.Status);
+            return;
+        }
+
+        ImGui.TextWrapped($"Settings: Mercenaries={BoolStr(data.CastOnMercenaries)} Animate Guardian={BoolStr(data.CastOnAnimateGuardian)}");
+        ImGui.TextColored(data.AutomationAllowed ? CGreen : CMuted, $"State: {data.Status}");
+        DataRows(
+        [
+            ("Input Safety", data.AutomationAllowed ? "Allowed" : "Waiting", data.AutomationAllowed ? CGreen : CWarn),
+            ("Tracked Mercenaries", data.MercenaryCount.ToString(), CWhite),
+            ("Tracked Animate Guardians", data.AnimateGuardianCount.ToString(), CWhite),
+            ("Targets With Cast Attempts", data.TargetsWithCastAttempts.ToString(), CWhite),
+            ("Target ID", data.TargetEntityId > 0 ? data.TargetEntityId.ToString() : "<none>", CInfo),
+            ("Target Buff", data.TargetBuffState.ToString(), data.TargetBuffState == FlameLinkTargetBuffState.Missing ? CWarn : CWhite),
+            ("Cast Attempts", data.TargetCastAttempts.ToString(), CWhite),
+            ("Skill Binding", string.IsNullOrWhiteSpace(data.SkillBinding) ? "<unresolved>" : data.SkillBinding, CWhite),
+            ("Skill Runtime Flags", data.SkillRuntimeState, CWhite),
+            ("Position Check", string.IsNullOrWhiteSpace(data.PositionCheck) ? "<not checked>" : data.PositionCheck, CWhite),
+            ("Last Action", string.IsNullOrWhiteSpace(data.LastAction) ? "<none>" : data.LastAction, CWhite),
+        ]);
+
+        if (!string.IsNullOrWhiteSpace(data.TargetPath))
+            ImGui.TextWrapped($"Target Path: {data.TargetPath}");
+        if (data.HasTargetPosition)
+        {
+            ImGui.TextWrapped($"Target Position: client=({data.TargetClientPosition.X:F1},{data.TargetClientPosition.Y:F1}) screen=({data.TargetScreenPosition.X:F1},{data.TargetScreenPosition.Y:F1})");
+        }
+    }
+
     private void RenderUltimatumSection()
     {
         if (!ImGui.CollapsingHeader("Ultimatum", ImGuiTreeNodeFlags.DefaultOpen))
@@ -1583,7 +1626,7 @@ internal sealed class ImGuiDebugOverlay(
         NumVec4 SegTextColor(LaneCoverageResult seg)
         {
             if (seg.IsPhantom) return CWhite;
-            Color c = strategy.GetLaneColor(seg);
+            Color c = BlightCoverageFlags.GetLaneColor(seg, strategy);
             return Vec4(new Color(c.R, c.G, c.B, (byte)255));
         }
 
@@ -1686,14 +1729,15 @@ internal sealed class ImGuiDebugOverlay(
                 AppendPerformance(sb);
                 AppendErrors(sb);
                 AppendClick(sb);
+                AppendCrafting(sb);
                 AppendLabels(sb);
                 AppendPathfinding(sb);
+                AppendSkillAutomation(sb);
                 AppendUltimatum(sb);
                 AppendAltar(sb);
                 AppendHoveredItem(sb);
                 AppendInventory(sb);
                 AppendBlight(sb);
-                AppendHarvest(sb);
             }
             catch
             {
@@ -2015,6 +2059,34 @@ internal sealed class ImGuiDebugOverlay(
         sb.AppendLine();
     }
 
+    private void RenderCraftingSection()
+    {
+        if (!ImGui.CollapsingHeader("Crafting", ImGuiTreeNodeFlags.DefaultOpen))
+            return;
+
+        ImGui.TextWrapped(GetCraftingSettingsText());
+        IReadOnlyList<string> trail = _lastSnapshot?.CraftingTrail ?? [];
+        if (trail.Count == 0)
+            ImGui.TextDisabled("No crafting attempts recorded");
+        else
+            RenderTrail("Recent actions", trail, 20);
+    }
+
+    private void AppendCrafting(System.Text.StringBuilder sb)
+    {
+        sb.AppendLine("--- Crafting ---");
+        sb.AppendLine($"  {GetCraftingSettingsText()}");
+        IReadOnlyList<string> trail = _lastSnapshot?.CraftingTrail ?? [];
+        if (trail.Count == 0)
+            sb.AppendLine("  No crafting attempts recorded");
+        else
+            AppendTrailSb(sb, "  Recent actions", trail, 40);
+        sb.AppendLine();
+    }
+
+    private string GetCraftingSettingsText()
+        => $"Harvest: {_settings.ClickHarvest.Value} | Upgrade Magic: {_settings.HarvestIdentifyScourAlchMagic.Value} | Alch Normal: {_settings.HarvestAlchNormal.Value} | Essences: {_settings.ClickEssences.Value}";
+
     private void AppendClick(System.Text.StringBuilder sb)
     {
         sb.AppendLine("--- Click ---");
@@ -2112,6 +2184,26 @@ internal sealed class ImGuiDebugOverlay(
             AppendTrailSb(sb, "  Recent Stages", pf.OffscreenMovementTrail, 40);
             AppendTrailSb(sb, "  Recent Events", pf.RecentEvents, 40);
         }
+        sb.AppendLine();
+    }
+
+    private void AppendSkillAutomation(System.Text.StringBuilder sb)
+    {
+        sb.AppendLine("--- Skill Automation ---");
+        SkillAutomationTelemetrySnapshot data = (_lastSnapshot ?? DebugTelemetrySnapshot.Empty).SkillAutomation;
+        sb.AppendLine($"  Service Available: {data.ServiceAvailable}");
+        sb.AppendLine($"  Settings: castOnMercenaries={data.CastOnMercenaries} castOnAnimateGuardian={data.CastOnAnimateGuardian}");
+        sb.AppendLine($"  Automation Allowed: {data.AutomationAllowed}");
+        sb.AppendLine($"  Status: {data.Status}");
+        sb.AppendLine($"  Tracked Targets: mercenaries={data.MercenaryCount} animateGuardians={data.AnimateGuardianCount}");
+        sb.AppendLine($"  Cast Tracking: targetsWithAttemptHistory={data.TargetsWithCastAttempts}");
+        sb.AppendLine($"  Target: id={(data.TargetEntityId > 0 ? data.TargetEntityId.ToString() : "<none>")} path={(string.IsNullOrWhiteSpace(data.TargetPath) ? "<none>" : data.TargetPath)} buff={data.TargetBuffState} attempts={data.TargetCastAttempts}");
+        sb.AppendLine($"  Skill Binding: {(string.IsNullOrWhiteSpace(data.SkillBinding) ? "<unresolved>" : data.SkillBinding)}");
+        sb.AppendLine($"  Skill Runtime Flags: {data.SkillRuntimeState}");
+        sb.AppendLine($"  Position Check: {(string.IsNullOrWhiteSpace(data.PositionCheck) ? "<not checked>" : data.PositionCheck)}");
+        sb.AppendLine($"  Last Action: {(string.IsNullOrWhiteSpace(data.LastAction) ? "<none>" : data.LastAction)}");
+        if (data.HasTargetPosition)
+            sb.AppendLine($"  Position: client=({data.TargetClientPosition.X:F1},{data.TargetClientPosition.Y:F1}) screen=({data.TargetScreenPosition.X:F1},{data.TargetScreenPosition.Y:F1})");
         sb.AppendLine();
     }
 
@@ -2407,37 +2499,6 @@ internal sealed class ImGuiDebugOverlay(
         sb.AppendLine("Blight Chest Debug (latest):");
         ElementTreeDebugUi.AppendToDump(sb, _blight.BlightChestDebug);
 
-        sb.AppendLine();
-    }
-
-    private void AppendHarvest(System.Text.StringBuilder sb)
-    {
-        sb.AppendLine("--- Harvest ---");
-        if (_harvest == null) { sb.AppendLine("(unavailable)"); sb.AppendLine(); return; }
-
-        sb.AppendLine($"  Settings: click={_settings.ClickHarvest.Value} showEst={_settings.ShowHarvestLifeforceEstimation.Value} higher={_settings.ClickHigherHarvestEstimate.Value} debug={_settings.DebugShowHarvest.Value}");
-
-        IReadOnlyList<HarvestPlotEstimate> estimates = _harvest.CurrentEstimates;
-        sb.AppendLine($"  Estimates: {estimates.Count}");
-        for (int i = 0; i < estimates.Count; i++)
-        {
-            HarvestPlotEstimate e = estimates[i];
-            string path = DynamicAccess.TryGetLabelItemOnGround(e.Label, out Entity? item)
-                && DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
-                ? resolvedPath
-                : "?";
-            bool boundsEmpty = e.LabelBounds == RectangleF.Empty || e.LabelBounds.IsEmpty;
-            sb.AppendLine($"    [{i}] {path} seeds={e.SeedRows.Count} est={e.EstimatedLifeforce:F1} bounds={(boundsEmpty ? "EMPTY" : $"({e.LabelBounds.X:F0},{e.LabelBounds.Y:F0},{e.LabelBounds.Width:F0}x{e.LabelBounds.Height:F0})")}");
-        }
-
-        HarvestDecision decision = _harvest.CurrentDecision;
-        string chosen = decision.ChosenLabel != null
-            ? (DynamicAccess.TryGetLabelItemOnGround(decision.ChosenLabel, out Entity? chosenItem)
-                && DynamicAccess.TryReadString(chosenItem, DynamicAccessProfiles.Path, out string chosenPath)
-                ? chosenPath
-                : "set")
-            : "null";
-        sb.AppendLine($"  Decision: {decision.Outcome} chosen={chosen} top={decision.TopEstimate:F1} bottom={decision.BottomEstimate:F1} blocked={decision.IsHarvestClickBlocked}");
         sb.AppendLine();
     }
 

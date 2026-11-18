@@ -7,7 +7,7 @@ namespace ClickIt.Tests.Features.Mechanics
             (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
 
         [DataTestMethod]
-        [DataRow("Metadata/Terrain/Harvest/Irrigator", MechanicIds.Harvest)]
+        [DataRow("Metadata/Terrain/Leagues/Harvest/Objects/HarvestEncounterTree", MechanicIds.Harvest)]
         [DataRow("Metadata/Terrain/BetrayalMakeChoice/Some", MechanicIds.Betrayal)]
         [DataRow("Metadata/Terrain/BlightPump/Some", MechanicIds.Blight)]
         [DataRow("Metadata/Terrain/Delve/Objects/Encounter/Node", MechanicIds.DelveEncounterInitiators)]
@@ -43,7 +43,7 @@ namespace ClickIt.Tests.Features.Mechanics
 
             string? mechanicId = InteractionMechanicRuleCatalog.TryResolve(
                 settings,
-                "Metadata/Harvest/Irrigator/DelveMineral",
+                "Metadata/Harvest/Objects/HarvestEncounterTree/DelveMineral",
                 DummyLabel,
                 gameController: null,
                 CreateInventoryInteractionPolicy());

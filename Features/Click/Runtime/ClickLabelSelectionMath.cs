@@ -20,9 +20,6 @@ namespace ClickIt.Features.Click.Runtime
                 && path.Contains("strongbox", StringComparison.OrdinalIgnoreCase);
         }
 
-        internal static bool ShouldAttemptSpecialEssenceCorruption(bool corruptionPointInWindow, bool corruptionPointClickable)
-            => corruptionPointInWindow && corruptionPointClickable;
-
         internal static bool IsLabelSuppressionTriad(bool leverSuppressed, bool ultimatumSuppressed, bool fullyOverlapped)
             => leverSuppressed || ultimatumSuppressed || fullyOverlapped;
 

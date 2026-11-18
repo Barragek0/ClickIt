@@ -16,15 +16,12 @@ namespace ClickIt.Shared.Game
             return false;
         }
 
-        internal static bool IsValidClickableLabelCore(bool labelNotNull, bool itemNotNull, bool isVisible, bool labelElementValid, bool inClickableArea, EntityType type, string? path, bool chestOpenOnDamage, bool hasEssenceImprisonment, bool harvestRootElementVisible)
+        internal static bool IsValidClickableLabelCore(bool labelNotNull, bool itemNotNull, bool isVisible, bool labelElementValid, bool inClickableArea, EntityType type, string? path, bool chestOpenOnDamage, bool hasEssenceImprisonment)
         {
             if (!labelNotNull || !itemNotNull || !isVisible || !labelElementValid)
                 return false;
 
             string resolvedPath = path ?? string.Empty;
-            if (IsHarvestPath(resolvedPath) && !harvestRootElementVisible)
-                return false;
-
             if (!inClickableArea)
                 return false;
 
@@ -68,9 +65,6 @@ namespace ClickIt.Shared.Game
             string path = DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
                 ? resolvedPath
                 : string.Empty;
-            if (IsHarvestPath(path) && !IsHarvestRootElementVisible(label))
-                return false;
-
             if (!IsLabelInClickableArea(label, pointIsInClickableArea))
                 return false;
 
@@ -100,7 +94,7 @@ namespace ClickIt.Shared.Game
             return path.Contains(Constants.DelveMineral)
                 || path.Contains(Constants.DelveEncounter)
                 || path.Contains(Constants.AzuriteEncounterController)
-                  || IsHarvestPath(path)
+                  || path.Contains("Harvest/Objects/HarvestEncounterTree", StringComparison.OrdinalIgnoreCase)
                 || path.Contains(Constants.CleansingFireAltar)
                 || path.Contains(Constants.TangleAltar)
                 || path.Contains(Constants.CraftingUnlocks)
@@ -185,20 +179,10 @@ namespace ClickIt.Shared.Game
             return false;
         }
 
-        private static bool IsHarvestPath(string path)
-            => path.Contains("Harvest/Irrigator") || path.Contains("Harvest/Extractor");
-
         private static bool IsHeistDoorPath(string path)
             => !string.IsNullOrWhiteSpace(path)
                && path.Contains("Heist/Objects/Level/Door", StringComparison.OrdinalIgnoreCase)
                && !path.Contains(Constants.HeistDoorBasic, StringComparison.OrdinalIgnoreCase);
-
-        private static bool IsHarvestRootElementVisible(LabelOnGround label)
-            => TryGetLabelRoot(label, out object? root)
-                && DynamicAccess.TryGetChildAtIndex(root, 0, out object? rawChild)
-                && rawChild != null
-                && DynamicAccess.TryReadBool(rawChild, DynamicAccessProfiles.IsVisible, out bool isVisible)
-                && isVisible;
 
         private static bool TryGetLabelRoot(LabelOnGround? label, out object? root)
         {

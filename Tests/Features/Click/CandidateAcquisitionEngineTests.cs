@@ -109,7 +109,6 @@ namespace ClickIt.Tests.Features.Click
                     OffscreenPathing: null!),
                 Mechanics: new ClickMechanicDependencies(
                     AltarAutomation: null!,
-                    GetHarvestLabelToClick: null,
                     TryProgressBlightBuilding: null,
                     GetBlightPathfindTarget: null,
                     IsBlightEncounterActive: null)));

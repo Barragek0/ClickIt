@@ -15,4 +15,7 @@ internal readonly record struct BlightBuildAction(
     Vector2 ClickPosition = default,
     string? DebugMessage = null,
     NumVector2 GridPosition = default,
-    bool IsMenuClick = false);
+    bool IsMenuClick = false,
+    RectangleF? WalkRegion = null,
+    Func<Element?, bool>? ValidateHover = null,
+    Action? OnRejected = null);

@@ -118,7 +118,6 @@ namespace ClickIt.Core.Bootstrap
             services.ShrineService = core.ShrineService;
             services.InputHandler = core.InputHandler;
             services.PathfindingService = core.PathfindingService;
-            services.HarvestService = core.HarvestService;
             services.BlightService = core.BlightService;
         }
 
@@ -133,31 +132,12 @@ namespace ClickIt.Core.Bootstrap
             services.AlertService = alertService;
             services.WeightCalculator = weightCalculator;
 
-            if (services.HarvestService != null)
-                clickAutomationPort.GetHarvestLabelToClick
-                    = () => services.HarvestService.GetLabelToClick();
 
             if (services.BlightService != null)
             {
                 clickAutomationPort.TryProgressBlightBuilding
-                    = () =>
-                    {
-                        BlightBuildAction action = services.BlightService.TryProgressBlightBuilding(
-                            services.CachedLabels?.Value);
-
-                        // Skip non-clickable positions without resetting progress; blight menu clicks fail-closed on a stale resolved position.
-                        if (action is { Kind: BlightBuildActionKind.ClickPosition } blightClick
-                            && (blightClick.IsMenuClick
-                                ? !clickAutomationPort.IsBlightTowerUiAt(blightClick.ClickPosition)
-                                : !clickAutomationPort.PointIsInClickableArea(
-                                    blightClick.ClickPosition, "blight")))
-                        {
-                            return new BlightBuildAction(BlightBuildActionKind.None,
-                                DebugMessage: "Click position not clickable - waiting");
-                        }
-
-                        return action;
-                    };
+                    = () => services.BlightService.TryProgressBlightBuilding(services.CachedLabels?.Value);
+                clickAutomationPort.IsBlightMenuRegionClickable = services.BlightService.IsMenuRegionClickable;
                 clickAutomationPort.GetBlightPathfindTarget
                     = () => services.BlightService.GetPathfindingTargetEntity();
                 clickAutomationPort.IsBlightEncounterActive

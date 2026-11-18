@@ -1,4 +1,4 @@
-namespace ClickIt.Tests.Shared.Diagnostics
+﻿namespace ClickIt.Tests.Shared.Diagnostics
 {
     [TestClass]
     public class DeferredQueuesTests
@@ -340,17 +340,17 @@ namespace ClickIt.Tests.Shared.Diagnostics
         public void DeferredDrawQueue_EnqueueText_Flush_AttributesElapsedPerSection()
         {
             var queue = new DeferredDrawQueue();
-            queue.CurrentSection = RenderSection.BlightOverlay;
+            queue.CurrentSection = RenderSection.AltarOverlay;
             queue.EnqueueText("lane", new Vector2(1, 2), Color.White, 12);
-            queue.CurrentSection = RenderSection.HarvestOverlay;
+            queue.CurrentSection = RenderSection.BlightOverlay;
             queue.EnqueueText("plot", new Vector2(3, 4), Color.White, 12);
 
             var reported = new List<(RenderSection Section, double Ms)>();
             var graphics = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));
             queue.Flush(graphics, (section, ms) => reported.Add((section, ms)));
 
+            reported.Should().Contain(entry => entry.Section == RenderSection.AltarOverlay);
             reported.Should().Contain(entry => entry.Section == RenderSection.BlightOverlay);
-            reported.Should().Contain(entry => entry.Section == RenderSection.HarvestOverlay);
         }
 
         [TestMethod]

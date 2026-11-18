@@ -7,7 +7,6 @@ namespace ClickIt.Features.Observability.Performance
         private readonly PeriodTrackedBuffer _blight = new();
         private readonly PeriodTrackedBuffer _click = new();
         private readonly PeriodTrackedBuffer _flare = new();
-        private readonly PeriodTrackedBuffer _harvest = new();
         private readonly PeriodTrackedBuffer _label = new();
         private readonly PeriodTrackedBuffer _pathfinding = new();
         private readonly PeriodTrackedBuffer _strongbox = new();
@@ -31,9 +30,6 @@ namespace ClickIt.Features.Observability.Performance
                     break;
                 case ProcessingSection.Flare:
                     _flare.Record(ms);
-                    break;
-                case ProcessingSection.Harvest:
-                    _harvest.Record(ms);
                     break;
                 case ProcessingSection.Label:
                     _label.Record(ms);
@@ -70,7 +66,6 @@ namespace ClickIt.Features.Observability.Performance
                 ProcessingSection.Blight => _blight.Stats,
                 ProcessingSection.Click => _click.Stats,
                 ProcessingSection.Flare => _flare.Stats,
-                ProcessingSection.Harvest => _harvest.Stats,
                 ProcessingSection.Label => _label.Stats,
                 ProcessingSection.Pathfinding => _pathfinding.Stats,
                 ProcessingSection.Strongbox => _strongbox.Stats,

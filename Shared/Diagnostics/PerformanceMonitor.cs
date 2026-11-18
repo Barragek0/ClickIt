@@ -9,7 +9,8 @@ namespace ClickIt.Shared.Diagnostics
         Render = 4,
         Blight = 5,
         Ultimatum = 6,
-        LabelOverlay = 7
+        LabelOverlay = 7,
+        SkillAutomation = 8
     }
 
     public enum RenderSection
@@ -21,12 +22,11 @@ namespace ClickIt.Shared.Diagnostics
         UltimatumOverlay = 4,
         StrongboxOverlay = 5,
         PathfindingOverlay = 6,
-        HarvestOverlay = 9,
-        BlightOverlay = 10,
-        ClickHotkeyToggle = 11,
-        InventoryFullWarning = 12,
-        UiRegionRectangle = 13,
-        PerformanceOverlay = 14,
+        BlightOverlay = 9,
+        ClickHotkeyToggle = 10,
+        InventoryFullWarning = 11,
+        UiRegionRectangle = 12,
+        PerformanceOverlay = 13,
         TextFlush = 7,
         FrameFlush = 8
     }
@@ -39,14 +39,13 @@ namespace ClickIt.Shared.Diagnostics
         Blight = 2,
         Click = 3,
         Flare = 4,
-        Harvest = 5,
-        Label = 6,
-        Pathfinding = 7,
-        Strongbox = 8,
-        Ultimatum = 9,
-        AreaBlockedUi = 10,
-        ManualUiHover = 11,
-        GameStateDump = 12
+        Label = 5,
+        Pathfinding = 6,
+        Strongbox = 7,
+        Ultimatum = 8,
+        AreaBlockedUi = 9,
+        ManualUiHover = 10,
+        GameStateDump = 11
     }
 
     // Periodic-work cadence markers: the measured time between consecutive occurrences of the same event (click run, blight refresh, label scan, blocked-UI refresh, ultimatum poll, flare poll), shown in the perf tables so the real in-game cadence is visible next to the configured targets.
@@ -240,7 +239,6 @@ namespace ClickIt.Shared.Diagnostics
                 MapRenderSection(RenderSection.UltimatumOverlay),
                 MapRenderSection(RenderSection.StrongboxOverlay),
                 MapRenderSection(RenderSection.PathfindingOverlay),
-                MapRenderSection(RenderSection.HarvestOverlay),
                 MapRenderSection(RenderSection.BlightOverlay),
                 MapRenderSection(RenderSection.ClickHotkeyToggle),
                 MapRenderSection(RenderSection.InventoryFullWarning),
@@ -254,11 +252,11 @@ namespace ClickIt.Shared.Diagnostics
                 MapTimingChannel(TimingChannel.Blight),
                 MapTimingChannel(TimingChannel.Ultimatum),
                 MapTimingChannel(TimingChannel.LabelOverlay),
+                SkillAutomationCoroutine: MapTimingChannel(TimingChannel.SkillAutomation),
                 MapProcessingSection(ProcessingSection.Altar),
                 MapProcessingSection(ProcessingSection.Blight),
                 MapProcessingSection(ProcessingSection.Click),
                 MapProcessingSection(ProcessingSection.Flare),
-                MapProcessingSection(ProcessingSection.Harvest),
                 MapProcessingSection(ProcessingSection.Label),
                 MapProcessingSection(ProcessingSection.Pathfinding),
                 MapProcessingSection(ProcessingSection.Strongbox),

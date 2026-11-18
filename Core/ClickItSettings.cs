@@ -158,14 +158,21 @@ namespace ClickIt
         [Menu("Legion Pillars", "Click legion encounter pillars.", 13, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickLegionPillars { get; set; } = new ToggleNode(true);
-        [Menu("Harvest", "Click the best harvest plot based on estimated lifeforce.", 14, 1400)]
+        [Menu("Harvest", "Click Harvest encounter trees to start the encounter.", 14, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickHarvest { get; set; } = new ToggleNode(true);
 
-        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        [IgnoreMenu]
+        public ToggleNode HarvestIdentifyScourAlchMagic { get; set; } = new ToggleNode(false);
+
+        [IgnoreMenu]
+        public ToggleNode HarvestAlchNormal { get; set; } = new ToggleNode(false);
+
+        // Keep obsolete keys readable from existing settings files; Harvest no longer uses pricing or estimate options.
+        [IgnoreMenu]
         public ToggleNode ShowHarvestLifeforceEstimation { get; set; } = new ToggleNode(true);
 
-        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        [IgnoreMenu]
         public ToggleNode ClickHigherHarvestEstimate { get; set; } = new ToggleNode(true);
 
         [Menu("Sanctum", "Click sanctum related stuff", 15, 1400)]

@@ -1,4 +1,4 @@
-namespace ClickIt.Shared.Rendering
+﻿namespace ClickIt.Shared.Rendering
 {
     internal enum DeferredDrawKind
     {
@@ -142,7 +142,7 @@ namespace ClickIt.Shared.Rendering
                 _pendingCount = 0;
             }
 
-            // Per-section flush accumulation. RenderSection values are small (0..14); the bucket array is reused across flushes (render-thread-only) so this hot path stays allocation-free.
+            // Per-section flush accumulation. RenderSection values are small (0..13); the bucket array is reused across flushes (render-thread-only) so this hot path stays allocation-free.
             double[] sectionMs = _flushSectionMs;
             Array.Clear(sectionMs, 0, sectionMs.Length);
 
@@ -221,7 +221,7 @@ namespace ClickIt.Shared.Rendering
                     center.X + (MathF.Cos(a) * radius),
                     center.Y + (MathF.Sin(a) * radius));
             }
-            // ExileCore's DrawConvexPolyFilled reads points.Length, so pass only the filled prefix — passing the whole preallocated buffer feeds it stale (0,0) tail points and draws spurious lines from the top-left of the screen to every disc.
+            // ExileCore's DrawConvexPolyFilled reads points.Length, so pass only the filled prefix; the remaining buffer contains stale points.
             graphics.DrawConvexPolyFilled(buffer[..(count + 1)], color);
         }
 

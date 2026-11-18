@@ -1,11 +1,11 @@
-namespace ClickIt.Tests.Features.Click
+namespace ClickIt.Tests.Features.Skills
 {
     [TestClass]
-    public class MovementSkillBindingResolverTests
+    public class SkillBarBindingResolverTests
     {
         [TestCleanup]
         public void TestCleanup()
-            => MovementSkillMath.ClearThreadSkillBarEntriesBuffer();
+            => SkillBarBindingResolver.ClearThreadSkillBarEntriesBuffer();
 
         [TestMethod]
         public void TryFindReadyMovementSkillBinding_UsesChildPathFallback_ForKeyResolution()
@@ -33,7 +33,7 @@ namespace ClickIt.Tests.Features.Click
                 }
             };
 
-            bool resolved = MovementSkillBindingResolver.TryFindReadyMovementSkillBinding(skillBar, out MovementSkillBinding binding, out string diagnostic);
+            bool resolved = SkillBarBindingResolver.TryFindReadyMovementSkillBinding(skillBar, out SkillBinding binding, out string diagnostic);
 
             resolved.Should().BeTrue();
             binding.BoundKey.Should().Be(Keys.Q);
@@ -85,21 +85,55 @@ namespace ClickIt.Tests.Features.Click
                 }
             };
 
-            bool resolved = MovementSkillBindingResolver.TryFindReadyMovementSkillBinding(skillBar, out MovementSkillBinding binding, out string diagnostic);
+            bool resolved = SkillBarBindingResolver.TryFindReadyMovementSkillBinding(skillBar, out SkillBinding binding, out string diagnostic);
 
             resolved.Should().BeFalse();
             binding.BoundKey.Should().Be(Keys.None);
             binding.InternalName.Should().BeNull();
             diagnostic.Should().Contain("entries=5");
             diagnostic.Should().Contain("null=1");
-            diagnostic.Should().Contain("nonMovement=1");
+            diagnostic.Should().Contain("nonMatching=1");
             diagnostic.Should().Contain("onCooldown=1");
             diagnostic.Should().Contain("missingKeyText=1");
             diagnostic.Should().Contain("unsupportedOrMouseKey=1");
         }
 
         [TestMethod]
-        public void TryResolveMovementSkillRuntimeState_ReadsNestedSkillObject()
+        [TestCategory("Scenario")]
+        public void TryFindReadySkillBinding_MatchesFlameLinkAndIgnoresOtherSkills()
+        {
+            var skillBar = new FakeSkillBar
+            {
+                Skills = new object?[]
+                {
+                    new FakeSkillEntry { Skill = new FakeSkill { InternalName = "spark" }, KeyText = "Q" },
+                    new FakeSkillEntry { Skill = new FakeSkill { InternalName = "flame_link" }, KeyText = "E" }
+                }
+            };
+
+            bool resolved = SkillBarBindingResolver.TryFindReadySkillBinding(skillBar, "flame_link", out SkillBinding binding, out string diagnostic);
+
+            resolved.Should().BeTrue();
+            binding.BoundKey.Should().Be(Keys.E);
+            binding.InternalName.Should().Be("flame_link");
+            diagnostic.Should().Contain("flame_link");
+        }
+
+        [TestMethod]
+        [TestCategory("Boundary")]
+        public void TryMapKeyTextToKeys_ParsesKeyboardBinds_AndRejectsMouseOnlyBinds()
+        {
+            SkillBarBindingResolver.TryMapKeyTextToKeys("Q", out Keys q).Should().BeTrue();
+            q.Should().Be(Keys.Q);
+
+            SkillBarBindingResolver.TryMapKeyTextToKeys("F5", out Keys f5).Should().BeTrue();
+            f5.Should().Be(Keys.F5);
+
+            SkillBarBindingResolver.TryMapKeyTextToKeys("RMB", out _).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void TryResolveSkillRuntimeState_ReadsNestedSkillObject()
         {
             var entry = new FakeSkillEntry
             {
@@ -111,7 +145,7 @@ namespace ClickIt.Tests.Features.Click
                 }
             };
 
-            bool resolved = MovementSkillBindingResolver.TryResolveMovementSkillRuntimeState(entry, out bool isUsing, out bool? allowedToCast, out bool? canBeUsed);
+            bool resolved = SkillBarBindingResolver.TryResolveSkillRuntimeState(entry, out bool isUsing, out bool? allowedToCast, out bool? canBeUsed);
 
             resolved.Should().BeTrue();
             isUsing.Should().BeTrue();

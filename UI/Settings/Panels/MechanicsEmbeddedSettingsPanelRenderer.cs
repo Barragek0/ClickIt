@@ -7,7 +7,6 @@ namespace ClickIt.UI.Settings.Panels
         StrongboxFilterPanelRenderer strongboxFilterPanelRenderer,
         UltimatumSettingsPanelRenderer ultimatumSettingsPanelRenderer,
         AltarSettingsPanelRenderer altarSettingsPanelRenderer,
-        HarvestSettingsPanelRenderer harvestSettingsPanelRenderer,
         BlightSettingsPanelRenderer blightSettingsPanelRenderer)
     {
         private readonly ClickItSettings _settings = settings;
@@ -16,7 +15,6 @@ namespace ClickIt.UI.Settings.Panels
         private readonly StrongboxFilterPanelRenderer _strongboxFilterPanelRenderer = strongboxFilterPanelRenderer;
         private readonly UltimatumSettingsPanelRenderer _ultimatumSettingsPanelRenderer = ultimatumSettingsPanelRenderer;
         private readonly AltarSettingsPanelRenderer _altarSettingsPanelRenderer = altarSettingsPanelRenderer;
-        private readonly HarvestSettingsPanelRenderer _harvestSettingsPanelRenderer = harvestSettingsPanelRenderer;
         private readonly BlightSettingsPanelRenderer _blightSettingsPanelRenderer = blightSettingsPanelRenderer;
 
         private readonly struct ChestDropSettleSettingsDescriptor(
@@ -57,7 +55,16 @@ namespace ClickIt.UI.Settings.Panels
                 DrawStrongboxSettings();
 
             else if (string.Equals(entryId, MechanicIds.Harvest, StringComparison.OrdinalIgnoreCase))
-                _harvestSettingsPanelRenderer.DrawPanel();
+            {
+                SettingsUiRenderHelpers.DrawToggleNodeControl(
+                    "Identify > Scour > Alch if Magic##HarvestIdentifyScourAlchMagic",
+                    _settings.HarvestIdentifyScourAlchMagic,
+                    "When enabled, identify magic Harvest encounters, scour them to normal, then use an Alchemy Orb before opening them. Requires Scrolls of Wisdom, Orbs of Scouring, and Orbs of Alchemy in your inventory.");
+                SettingsUiRenderHelpers.DrawToggleNodeControl(
+                    "Alch if Normal##HarvestAlchNormal",
+                    _settings.HarvestAlchNormal,
+                    "Use an Orb of Alchemy on Normal Harvest encounters before opening them.");
+            }
 
             else if (string.Equals(entryId, MechanicIds.Blight, StringComparison.OrdinalIgnoreCase))
                 _blightSettingsPanelRenderer.DrawPanel();

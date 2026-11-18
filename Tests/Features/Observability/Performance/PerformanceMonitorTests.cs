@@ -1,4 +1,4 @@
-namespace ClickIt.Tests.Features.Observability.Performance
+﻿namespace ClickIt.Tests.Features.Observability.Performance
 {
     [TestClass]
     public class PerformanceMonitorTests
@@ -151,24 +151,18 @@ namespace ClickIt.Tests.Features.Observability.Performance
         }
 
         [TestMethod]
-        public void RenderSectionTiming_HarvestAndBlight_FlowThroughStoreAndSnapshot()
+        public void RenderSectionTiming_Blight_FlowsThroughStoreAndSnapshot()
         {
             var monitor = new PerformanceMonitor(new ClickItSettings());
 
-            monitor.RecordRenderSectionTiming(RenderSection.HarvestOverlay, 3.2);
             monitor.RecordRenderSectionTiming(RenderSection.BlightOverlay, 5.4);
 
-            (double LastMs, double AverageMs, double MaxMs, long SampleCount) harvestStats = monitor.GetRenderSectionStats(RenderSection.HarvestOverlay);
             (double LastMs, double AverageMs, double MaxMs, long SampleCount) blightStats = monitor.GetRenderSectionStats(RenderSection.BlightOverlay);
             PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
 
-            harvestStats.LastMs.Should().Be(3.2);
-            harvestStats.SampleCount.Should().Be(1);
             blightStats.LastMs.Should().Be(5.4);
             blightStats.SampleCount.Should().Be(1);
 
-            snapshot.GetRenderSection(RenderSection.HarvestOverlay).LastMs.Should().Be(3.2);
-            snapshot.GetRenderSection(RenderSection.HarvestOverlay).SampleCount.Should().Be(1);
             snapshot.GetRenderSection(RenderSection.BlightOverlay).LastMs.Should().Be(5.4);
             snapshot.GetRenderSection(RenderSection.BlightOverlay).SampleCount.Should().Be(1);
         }
@@ -195,11 +189,11 @@ namespace ClickIt.Tests.Features.Observability.Performance
         {
             var monitor = new PerformanceMonitor(new ClickItSettings());
 
-            monitor.AccumulateRenderSectionFlush(RenderSection.HarvestOverlay, 3.0);
+            monitor.AccumulateRenderSectionFlush(RenderSection.BlightOverlay, 3.0);
             monitor.CompleteRenderSectionFrame();
 
-            monitor.GetRenderSectionStats(RenderSection.HarvestOverlay).LastMs.Should().Be(3.0);
-            monitor.GetRenderSectionStats(RenderSection.HarvestOverlay).SampleCount.Should().Be(1);
+            monitor.GetRenderSectionStats(RenderSection.BlightOverlay).LastMs.Should().Be(3.0);
+            monitor.GetRenderSectionStats(RenderSection.BlightOverlay).SampleCount.Should().Be(1);
         }
 
         [TestMethod]
@@ -650,7 +644,7 @@ namespace ClickIt.Tests.Features.Observability.Performance
             PerformanceMetricsSnapshot snapshot = new(
                 Fps: fps, Render: default, LazyMode: default, DebugOverlay: default,
                 AltarOverlay: default, UltimatumOverlay: default, StrongboxOverlay: default,
-                PathfindingOverlay: default, HarvestOverlay: default, BlightOverlay: default,
+                PathfindingOverlay: default, BlightOverlay: default,
                 TextFlush: default, FrameFlush: default,
                 AltarCoroutine: altar, ClickCoroutine: click,
                 FlareCoroutine: default, BlightCoroutine: default,
@@ -675,7 +669,7 @@ namespace ClickIt.Tests.Features.Observability.Performance
             PerformanceMetricsSnapshot snapshot = new(
                 Fps: fps, Render: default, LazyMode: default, DebugOverlay: default,
                 AltarOverlay: default, UltimatumOverlay: default, StrongboxOverlay: default,
-                PathfindingOverlay: default, HarvestOverlay: default, BlightOverlay: default,
+                PathfindingOverlay: default, BlightOverlay: default,
                 TextFlush: default, FrameFlush: default,
                 AltarCoroutine: altar, ClickCoroutine: click,
                 FlareCoroutine: default, BlightCoroutine: default,
@@ -704,7 +698,7 @@ namespace ClickIt.Tests.Features.Observability.Performance
             PerformanceMetricsSnapshot snapshot = new(
                 Fps: fps, Render: default, LazyMode: default, DebugOverlay: default,
                 AltarOverlay: default, UltimatumOverlay: default, StrongboxOverlay: default,
-                PathfindingOverlay: default, HarvestOverlay: default, BlightOverlay: default,
+                PathfindingOverlay: default, BlightOverlay: default,
                 TextFlush: default, FrameFlush: default,
                 AltarCoroutine: default, ClickCoroutine: default,
                 FlareCoroutine: default, BlightCoroutine: default,
@@ -726,7 +720,7 @@ namespace ClickIt.Tests.Features.Observability.Performance
             PerformanceMetricsSnapshot snapshot = new(
                 Fps: fps, Render: default, LazyMode: default, DebugOverlay: default,
                 AltarOverlay: default, UltimatumOverlay: default, StrongboxOverlay: default,
-                PathfindingOverlay: default, HarvestOverlay: default, BlightOverlay: default,
+                PathfindingOverlay: default, BlightOverlay: default,
                 TextFlush: default, FrameFlush: default,
                 AltarCoroutine: default, ClickCoroutine: default,
                 FlareCoroutine: default, BlightCoroutine: default,
@@ -773,7 +767,7 @@ namespace ClickIt.Tests.Features.Observability.Performance
             stats.SampleCount.Should().Be(1000);
             stats.LastMs.Should().Be(2.0);
             stats.MaxMs.Should().Be(2.0);
-            // The 1000-sample cap drops the first sample and the average covers only the most recent 50 samples (49×1.0 + 1×2.0) so the table reacts quickly instead of averaging everything.
+            // The 1000-sample cap drops the first sample and the average covers only the most recent 50 samples (49Ã—1.0 + 1Ã—2.0) so the table reacts quickly instead of averaging everything.
             stats.AverageMs.Should().BeApproximately(1.02, 0.0001);
         }
 

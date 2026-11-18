@@ -374,7 +374,7 @@ public class BlightLaneCoverageTests
             positions,
             _ => (true, false, false),
             ChainParents(positions.Count),
-            getSupportCoverage: _ => (true, true, true));
+            getSupportCoverage: _ => (true, true, true, true, true, true));
 
         for (int i = 1; i <= 4; i++)
         {
@@ -382,6 +382,8 @@ public class BlightLaneCoverageTests
             coverage[i].HasEmpowering.Should().BeTrue($"seg {i} Empowering");
             coverage[i].HasShockNova.Should().BeTrue($"seg {i} ShockNova");
             coverage[i].HasSummoning.Should().BeTrue($"seg {i} Summoning");
+            coverage[i].HasEmpoweredChilling.Should().BeTrue($"seg {i} Empowered Chilling");
+            coverage[i].HasEmpoweredSummoning.Should().BeTrue($"seg {i} Empowered Summoning");
         }
     }
 

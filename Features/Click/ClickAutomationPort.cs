@@ -25,7 +25,7 @@ namespace ClickIt.Features.Click
         // Keep the constructor eager only for the small set of always-on host dependencies; heavier mechanic/runtime owners stay lazy.
         internal static void ClearThreadLocalStorageForCurrentThread()
         {
-            MovementSkillMath.ClearThreadSkillBarEntriesBuffer();
+            SkillBarBindingResolver.ClearThreadSkillBarEntriesBuffer();
         }
 
         private readonly ClickItSettings _settings;
@@ -48,11 +48,12 @@ namespace ClickIt.Features.Click
         private readonly ClickRuntimeState _runtimeState = new();
         private readonly MechanicPriorityContextProvider _mechanicPriorityContextProvider;
 
-        internal Func<LabelOnGround?>? GetHarvestLabelToClick { get; set; }
         internal Func<BlightBuildAction>? TryProgressBlightBuilding { get; set; }
         internal Func<Entity?>? GetBlightPathfindTarget { get; set; }
         internal Func<bool>? IsBlightEncounterActive { get; set; }
+        internal Func<RectangleF, bool>? IsBlightMenuRegionClickable { get; set; }
         internal ElementTreeInspector? BlightChestDebug { get; set; }
+        internal HarvestEncounterUpgrade? HarvestUpgrade { get; init; }
 
         internal Func<Vector2, string, bool> PointIsInClickableArea { get; }
         internal Func<Vector2, string, bool> ForceRefreshPointIsInClickableArea { get; }
@@ -145,90 +146,49 @@ namespace ClickIt.Features.Click
         private IReadOnlyList<LabelOnGround>? GetLabelsForRegularSelection()
             => VisibleLabelSnapshots.GetCachedLabels();
 
-        // Pathfinding safety: blight build/upgrade icons are padded UNCLICKABLE BOXES (pure geometry, no UIHover).
-        private bool IsBlightBuildOrUpgradeIconAt(Vector2 screenPos, float paddingPx = BlightIconBoxPadding)
+        private bool IsBlightBuildOrUpgradeIconAt(Vector2 screenPos)
+            => IsBlightTowerUiAt(screenPos, null, 0f);
+
+        internal bool IsBlightTowerUiAt(Vector2 screenPos, Element? hover, float predictedDrift)
         {
             IReadOnlyList<LabelOnGround>? labels = GetLabelsForRegularSelection();
-            if (labels == null || labels.Count == 0)
-                return false;
+            if (labels == null)
+                return true;
 
+            float padding = BlightIconBoxPadding + predictedDrift;
             for (int i = 0; i < labels.Count; i++)
             {
                 LabelOnGround? label = labels[i];
                 if (label == null || !BlightEntityCache.IsBlightFoundationOrTowerLabel(label))
                     continue;
 
-                Element? labelElement = BlightEntityCache.ResolveLabelElement(label);
-                if (labelElement == null)
+                Element? element = BlightEntityCache.ResolveLabelElement(label);
+                if (element == null)
                     continue;
-
-                if (IsBlightIconAt(labelElement, 2, screenPos, paddingPx)
-                    || IsBlightIconAt(labelElement, 3, screenPos, paddingPx))
+                if (BlightMenuInteractions.IsHoverInside(hover, element))
                     return true;
-            }
 
-            return false;
-        }
-
-        private static bool IsBlightIconAt(Element labelElement, int childIndex, Vector2 screenPos, float paddingPx)
-        {
-            RectangleF? iconRect = BlightMenuInteractions.GetMenuChildRect(labelElement, childIndex);
-            if (iconRect == null)
-                return false;
-            RectangleF padded = new(
-                iconRect.Value.X - paddingPx,
-                iconRect.Value.Y - paddingPx,
-                iconRect.Value.Width + (paddingPx * 2f),
-                iconRect.Value.Height + (paddingPx * 2f));
-            return PointInRect(padded, screenPos);
-        }
-
-        // Fail-closed pre-click check for blight MENU clicks: the click point must still be over the tower's menu UI (rect-based, no UIHover).
-        internal bool IsBlightTowerUiAt(Vector2 screenPos)
-        {
-            IReadOnlyList<LabelOnGround>? labels = GetLabelsForRegularSelection();
-            if (labels == null || labels.Count == 0)
-                return false;
-
-            for (int i = 0; i < labels.Count; i++)
-            {
-                LabelOnGround? label = labels[i];
-                if (label == null || !BlightEntityCache.IsBlightFoundationOrTowerLabel(label))
-                    continue;
-
-                Element? labelElement = BlightEntityCache.ResolveLabelElement(label);
-                if (labelElement == null)
-                    continue;
-
-                if (IsBlightIconAt(labelElement, 2, screenPos, 0f)
-                    || IsBlightIconAt(labelElement, 3, screenPos, 0f)
-                    || IsBlightMenuSlotAt(labelElement, screenPos))
-                    return true;
-            }
-
-            return false;
-        }
-
-        // True when the point is inside any VISIBLE child of the tower menu (Child[0].Child[3].Child[i]) — the tower-type build slots and specialization buttons, which extend beyond the upgrade icon's own rect.
-        private static bool IsBlightMenuSlotAt(Element labelElement, Vector2 screenPos)
-        {
-            Element? menu = BlightMenuInteractions.GetMenuChildElement(labelElement, 3);
-            if (menu == null)
-                return false;
-            try
-            {
-                for (int i = 0; i < menu.ChildCount; i++)
+                for (int childIndex = 2; childIndex <= 3; childIndex++)
                 {
-                    Element? child = menu.GetChildAtIndex(i);
-                    if (child == null || !child.IsVisible)
-                        continue;
-                    RectangleF rect = child.GetClientRect();
-                    if (PointInRect(rect, screenPos))
+                    Element? control = BlightMenuInteractions.GetMenuChildElement(element, childIndex);
+                    if (control?.IsVisible == true && IsNearBlightControl(control, screenPos, padding))
                         return true;
                 }
+                if (BlightMenuInteractions.GetVisibleMenuChildren(element, 3) is { } slots)
+                    foreach (Element slot in slots)
+                        if (IsNearBlightControl(slot, screenPos, padding))
+                            return true;
             }
-            catch { }
+
             return false;
+        }
+
+        private static bool IsNearBlightControl(Element control, Vector2 point, float padding)
+        {
+            RectangleF rect = control.GetClientRect();
+            return rect.Width > 0 && rect.Height > 0 && PointInRect(
+                new RectangleF(rect.X - padding, rect.Y - padding,
+                    rect.Width + (padding * 2f), rect.Height + (padding * 2f)), point);
         }
 
         // Padding around a blight build/upgrade icon that makes it an unclickable box — a click that lands in or near the icon is treated as an accidental icon click.

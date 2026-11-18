@@ -20,30 +20,5 @@ namespace ClickIt.Features.Essence
 
             return LabelElementSearch.ElementContainsAnyStrings(label, selectedEssences);
         }
-
-        public static Vector2? GetCorruptionClickPosition(LabelOnGround label, Vector2 windowTopLeft)
-        {
-            Element? corruptElement = TryResolveCorruptionElement(label);
-            if (corruptElement == null)
-                return null;
-            Vector2 offset = new(Random.Shared.Next(0, 2), Random.Shared.Next(0, 2));
-            return corruptElement.GetClientRect().Center + windowTopLeft + offset;
-        }
-
-        private static Element? TryResolveCorruptionElement(LabelOnGround? label)
-        {
-            if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel))
-                return null;
-
-            object? current = rawLabel;
-            int[] childPath = [2, 0, 0];
-            for (int i = 0; i < childPath.Length; i++)
-            {
-                if (!DynamicAccess.TryGetChildAtIndex(current, childPath[i], out current) || current == null)
-                    return null;
-            }
-
-            return current as Element;
-        }
     }
 }

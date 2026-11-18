@@ -8,24 +8,19 @@ namespace ClickIt.Features.Labels.Selection
                 ? resolvedPath
                 : string.Empty;
 
-            // Fast path: WorldItem entities without harvest or settlers markers are always targetable.
-            // This skips the expensive DLR reads in harvest visibility and settlers targetability checks
-            // for the common case (85%+ of labels are WorldItems).
+            // Fast path: WorldItem entities without settlers markers are always targetable.
+            // This skips the expensive DLR reads in settlers targetability checks for the common case.
             EntityType type = DynamicAccess.TryGetDynamicValue(item, DynamicAccessProfiles.Type, out object? rawType)
                 && rawType is EntityType resolvedType
                 ? resolvedType
                 : default;
 
             if (type == EntityType.WorldItem
-                && !MechanicClassifier.IsHarvestPath(path)
                 && !MechanicClassifier.IsSettlersOrePath(path)
                 && !MechanicClassifier.IsSettlersPetrifiedWoodPath(path))
             {
                 return true;
             }
-
-            if (!ShouldAllowHarvestRootElementVisibility(path, IsHarvestRootElementVisibleForClick(label)))
-                return false;
 
             if (!RequiresTargetabilityGate(path))
                 return true;
@@ -34,14 +29,6 @@ namespace ClickIt.Features.Labels.Selection
 
             ResolveLabelEntityTargetableForClick(label, out bool hasLabelEntityTargetable, out bool labelEntityTargetable);
             return ShouldAllowPetrifiedWoodTargetability(hasLabelEntityTargetable, labelEntityTargetable);
-        }
-
-        public static bool ShouldAllowHarvestRootElementVisibility(string? path, bool harvestRootElementVisible)
-        {
-            if (string.IsNullOrWhiteSpace(path) || !MechanicClassifier.IsHarvestPath(path))
-                return true;
-
-            return harvestRootElementVisible;
         }
 
         public static bool RequiresTargetabilityGate(string path)
@@ -78,16 +65,6 @@ namespace ClickIt.Features.Labels.Selection
             }
         }
 
-        private static bool IsHarvestRootElementVisibleForClick(LabelOnGround label)
-        {
-            if (!TryResolveLabelRootChild(label, out object? rawChild) || rawChild == null)
-            {
-                return false;
-            }
-
-            return DynamicAccess.TryReadBool(rawChild, DynamicAccessProfiles.IsVisible, out bool isVisible) && isVisible;
-        }
-
         private static bool TryResolveLabelBackedEntityTargetable(LabelOnGround label, out bool labelEntityTargetable, out bool hasLabelEntityTargetable)
         {
             labelEntityTargetable = true;
@@ -104,13 +81,6 @@ namespace ClickIt.Features.Labels.Selection
                 && DynamicAccess.TryGetDynamicValue(rawLabelElement, DynamicAccessProfiles.Entity, out object? rawElementEntity)
                 && TryResolveLabelEntityTargetableFromRaw(rawElementEntity, out labelEntityTargetable, out hasLabelEntityTargetable)
                 && hasLabelEntityTargetable;
-        }
-
-        private static bool TryResolveLabelRootChild(LabelOnGround label, out object? rawChild)
-        {
-            rawChild = null;
-            return DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
-                && DynamicAccess.TryGetDynamicValue(rawLabel, DynamicAccessProfiles.FirstChild, out rawChild);
         }
 
         private static bool TryResolveLabelEntityTargetableFromRaw(object? rawLabelEntity, out bool labelEntityTargetable, out bool hasLabelEntityTargetable)

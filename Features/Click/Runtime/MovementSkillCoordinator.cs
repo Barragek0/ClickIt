@@ -66,7 +66,7 @@ namespace ClickIt.Features.Click.Runtime
             }
 
             object? skillBar = _dependencies.GameController?.IngameState?.IngameUi?.SkillBar;
-            if (!MovementSkillBindingResolver.TryFindReadyMovementSkillBinding(skillBar, out MovementSkillBinding binding, out string skillSearchDebug))
+            if (!SkillBarBindingResolver.TryFindReadyMovementSkillBinding(skillBar, out SkillBinding binding, out string skillSearchDebug))
             {
                 debugReason = $"Skipped: no ready movement skill key found. {skillSearchDebug}";
                 return false;
@@ -84,7 +84,7 @@ namespace ClickIt.Features.Click.Runtime
                 ClickPipelineTiming.Sleep(10);
             }
 
-            Keyboard.KeyPress(binding.BoundKey, MovementSkillMath.KeyTapDelayMs);
+            Keyboard.KeyPress(binding.BoundKey, SkillBarBindingResolver.KeyTapDelayMs);
             _dependencies.RuntimeState.LastMovementSkillUseTimestampMs = now;
             int postCastClickBlockMs = ResolveMovementSkillPostCastClickBlockMsForCast(binding.InternalName);
             _dependencies.RuntimeState.MovementSkillPostCastClickBlockUntilTimestampMs = postCastClickBlockMs > 0 ? now + postCastClickBlockMs : 0;
@@ -115,7 +115,7 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
             }
 
-            if (!MovementSkillBindingResolver.TryResolveMovementSkillRuntimeState(_dependencies.RuntimeState.LastUsedMovementSkillEntry, out bool isUsing, out bool? allowedToCast, out bool? canBeUsed))
+            if (!SkillBarBindingResolver.TryResolveSkillRuntimeState(_dependencies.RuntimeState.LastUsedMovementSkillEntry, out bool isUsing, out bool? allowedToCast, out bool? canBeUsed))
                 return false;
 
             if (isUsing)

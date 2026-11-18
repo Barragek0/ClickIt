@@ -4,6 +4,7 @@ public sealed class BlightService
 {
     private readonly ClickItSettings _settings;
     private readonly Func<Vector2, bool> _isPointInClickableArea;
+    private readonly Func<RectangleF, bool>? _isMenuRegionClickable;
     private readonly BreakdownRecorder? _recordBreakdown;
     private readonly Action<long, double>? _recordExecutorStage;
     private GameController? _gameController;
@@ -26,14 +27,18 @@ public sealed class BlightService
         Func<Vector2, bool>? isPointInClickableArea = null,
         BreakdownRecorder? recordBreakdown = null,
         Action<long, double>? recordExecutorStage = null,
-        Action<long, double>? recordEventStage = null)
+        Action<long, double>? recordEventStage = null,
+        Func<RectangleF, bool>? isMenuRegionClickable = null)
     {
         _settings = settings;
         _isPointInClickableArea = isPointInClickableArea ?? (static _ => true);
+        _isMenuRegionClickable = isMenuRegionClickable;
         _recordBreakdown = recordBreakdown;
         _recordExecutorStage = recordExecutorStage;
         _cache = new BlightEntityCache(settings, _debugEvents, _encounter, recordEventStage);
         _cache.ClearRequested += Clear;
+        _cache.TransientClearRequested += ClearTransientData;
+        _cache.AreaChanged += HandleAreaChanged;
         _cache.EncounterEnded += ClearAfterEncounterEnd;
         _cache.DataChanged += HandleCacheDataChanged;
     }
@@ -47,6 +52,8 @@ public sealed class BlightService
         => _cache.DisposeForShutdown();
 
     internal bool IsPointInClickableArea(Vector2 point) => _isPointInClickableArea(point);
+    internal bool IsMenuRegionClickable(RectangleF region) => _isMenuRegionClickable?.Invoke(region) == true;
+    internal bool CanPathfind => _settings.BlightPathfindToBuild.Value;
 
     internal IBlightTowerStrategy CurrentStrategy => BlightStrategyResolver.Resolve(_settings);
 
@@ -226,6 +233,7 @@ public sealed class BlightService
     private int _planVersion;
     private int _lastPlannedTowerCount;
     private int _lastPlannedPathwayCount;
+    private int _lastPlannedLaneLayoutVersion;
     private int _lastPlannedBuiltCount;
     private string _lastPlannedBuiltSignature = string.Empty;
 
@@ -326,6 +334,19 @@ public sealed class BlightService
     internal void UpdateKnownTowerLevel(NumVector2 position, BlightTowerType type, int upgradeLevel)
         => _cache.UpdateKnownTowerLevel(position, type, upgradeLevel);
 
+    // Called only in the selection phase of a foundation build, after the menu has opened.
+    internal bool TryEnableFreeTowerConstruction(Element label)
+    {
+        if (!CurrentStrategy.UsesPhasedLockdown || _encounter.GetAreaAwaitingTowerCost() is not { } area
+            || !BlightMenuInteractions.TryReadBuildCost(label, out int cost)
+            || !_encounter.TryRecordTowerBuildCost(area, cost) || cost != 0)
+            return false;
+
+        AddExecutorEvent("Build cost is 0; rushing lockdown towers to tier 3");
+        RebuildPlan();
+        return true;
+    }
+
     private void HandleCacheDataChanged()
     {
         if (IsEncounterActive && _cache.KnownTowerCount > 0 && ShouldRebuildPlan())
@@ -341,6 +362,7 @@ public sealed class BlightService
 
         _lastPlannedTowerCount = _cache.KnownTowerCount;
         _lastPlannedPathwayCount = _cache.PathwayCount;
+        _lastPlannedLaneLayoutVersion = _cache.LaneLayoutVersion;
         _lastPlannedBuiltCount = builtCount;
         _lastPlannedBuiltSignature = BuiltTowerSignature(_cache.KnownTowers);
 
@@ -365,6 +387,7 @@ public sealed class BlightService
             : null;
 
         List<NumVector2>? pathwayPositions = _cache.GetAlignedPathways(coverage);
+        NumVector2 layoutOffset = default;
 
         // Coordinate-space correction: terrain objects (pump/pathways) can report local-space positions offset from world space by thousands of units — apply the foundation-centroid offset only when it is large.
         IReadOnlyList<BlightCachedTower> towerSnapshot = KnownTowers;
@@ -383,13 +406,28 @@ public sealed class BlightService
             float oy = cy - pumpPos.Value.Y;
             if ((ox * ox) + (oy * oy) > 400f * 400f)
             {
+                layoutOffset = new NumVector2(ox, oy);
                 for (int i = 0; i < pathwayPositions.Count; i++)
                     pathwayPositions[i] = new NumVector2(pathwayPositions[i].X + ox, pathwayPositions[i].Y + oy);
                 pumpPos = new NumVector2(pumpPos.Value.X + ox, pumpPos.Value.Y + oy);
             }
         }
 
-        BlightPlan plan = BlightPlanner.Build(KnownTowers, coverage, CurrentStrategy.Rules, _planVersion, pumpPos, playerPos, pathwayPositions, _cache.CachedBranchAnchors, CurrentStrategy.GroupStepsByProximity);
+        IBlightTowerStrategy strategy = CurrentStrategy;
+        BlightPlan plan;
+        if (strategy.UsesPhasedLockdown)
+        {
+            var lanes = BlightLockdownPlanner.FindLanes(_cache.IconPathwaySnapshot, _cache.GetPortalIcons(),
+                coverage, out HashSet<NumVector2> damageSegments, layoutOffset);
+            plan = BlightLockdownPlanner.Build(towerSnapshot, lanes, strategy.Rules.First(rule => rule.Specialization >= 0),
+                _planVersion, playerPos ?? pumpPos ?? default, pumpPos, damageSegments,
+                freeConstruction: _encounter.HasFreeTowerConstruction);
+        }
+        else
+        {
+            plan = BlightPlanner.Build(towerSnapshot, coverage, strategy.Rules, _planVersion,
+                pumpPos, playerPos, pathwayPositions, _cache.CachedBranchAnchors, strategy.GroupStepsByProximity);
+        }
 
         _cache.ApplyPlannedTowerTypes(plan);
 
@@ -405,6 +443,7 @@ public sealed class BlightService
     {
         // Rebuild when pathway, tower, built-count, or built-tower LEVEL data has changed.
         return _lastPlannedPathwayCount != _cache.PathwayCount
+            || (CurrentStrategy.UsesPhasedLockdown && _lastPlannedLaneLayoutVersion != _cache.LaneLayoutVersion)
             || _lastPlannedTowerCount != _cache.KnownTowerCount
             || _lastPlannedBuiltCount != _cache.BuiltTowerCount
             || !string.Equals(_lastPlannedBuiltSignature, BuiltTowerSignature(_cache.KnownTowers), StringComparison.Ordinal);
@@ -458,6 +497,25 @@ public sealed class BlightService
     {
         _cache.ClearData();
         _encounter.Reset();
+        ResetPlanState();
+    }
+
+    private void HandleAreaChanged(BlightAreaKey area)
+    {
+        _cache.ClearData();
+        _encounter.SwitchArea(area);
+        ResetPlanState();
+    }
+
+    private void ClearTransientData()
+    {
+        // GameController can be unavailable briefly between areas. Clear stale entity references and plans, but preserve the per-map encounter state so a completed blight stays ended across the transition.
+        _cache.ClearData();
+        ResetPlanState();
+    }
+
+    private void ResetPlanState()
+    {
         ResetInteractionState();
         _executor.ClearPlan();
 

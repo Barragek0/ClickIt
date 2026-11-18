@@ -305,7 +305,6 @@ namespace ClickIt.Tests.Core.Bootstrap
                 InputHandler: new InputHandler(settings),
                 PathfindingService: CreateOpaque<PathfindingService>(),
                 WeightCalculator: CreateOpaque<WeightCalculator>(),
-                HarvestService: new HarvestService(settings),
                 BlightService: new BlightService(settings),
                 DeferredDrawQueue: new DeferredDrawQueue());
         }

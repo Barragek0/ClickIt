@@ -4,22 +4,16 @@ namespace ClickIt.Features.Click.Core
     {
         private readonly ClickRuntimeEngineDependencies _dependencies = dependencies;
 
-        // Let the game register the hover on the blight menu button before the click lands — clicking too soon after the cursor arrives can miss the element (the UIHover read is unreliable for a freshly-moved cursor).
-        private const int BlightMenuClickSettleMs = 60;
-
         private void RecordStage(int stageIndex, long bytes, double ms)
             => _dependencies.Telemetry.RecordBreakdownStage?.Invoke(stageIndex, bytes, ms);
 
         public ExecutionResult Execute(ClickTickContext context, ClickCandidates candidates, DecisionResult decision)
         {
-            // Ordered decision chain (mechanics → harvest → blight → label → walk).
+            // Ordered decision chain (mechanics → blight → label → walk).
             if (TryHandleBlightBlocking())
                 return StopExecution();
 
             if (TryExecuteMechanicSelections(context, candidates, decision, hiddenFallback: !decision.GroundItemsVisible))
-                return StopExecution();
-
-            if (decision.GroundItemsVisible && TryClickChosenHarvestLabel(context))
                 return StopExecution();
 
             if (TryProgressBlightBuilding())
@@ -133,12 +127,14 @@ namespace ClickIt.Features.Click.Core
 
         private bool WalkTowardEntity(Entity entity, string? mechanicId)
         {
-            if (!_dependencies.Policy.Settings.WalkTowardOffscreenLabels.Value)
+            bool blight = mechanicId == MechanicIds.Blight;
+            if (blight ? !_dependencies.Policy.Settings.BlightPathfindToBuild.Value
+                : !_dependencies.Policy.Settings.WalkTowardOffscreenLabels.Value)
                 return false;
 
             _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage(
                 "WalkTowardEntity", $"Pathfinding toward entity", mechanicId ?? string.Empty);
-            return _dependencies.Pathing.OffscreenPathing.TryWalkTowardOffscreenTarget(entity);
+            return _dependencies.Pathing.OffscreenPathing.TryWalkTowardOffscreenTarget(entity, walkingToBlightTower: blight);
         }
 
         // Unified click-vs-walk decision for a selected label, shared by the visible and hidden ground-item paths: click the label in place when its click point resolves into a clickable area; otherwise pathfind toward its entity. When it resolves clickable, the client-space click point is also returned so the caller does not resolve it a second time.
@@ -259,31 +255,6 @@ namespace ClickIt.Features.Click.Core
             return HandleVisibleLabel(context, candidates, nextLabelItem, hasClickableClickPos, clientClickPos);
         }
 
-        private bool TryClickChosenHarvestLabel(ClickTickContext context)
-        {
-            if (_dependencies.Mechanics.GetHarvestLabelToClick == null)
-                return false;
-
-            LabelOnGround? chosen = _dependencies.Mechanics.GetHarvestLabelToClick();
-            if (chosen == null)
-                return false;
-
-            (bool resolved, Vector2 clickPos) = _dependencies.Selection.LabelInteraction.TryResolveLabelClickPositionResult(
-                chosen, MechanicIds.Harvest, context.WindowTopLeft, context.AllLabels);
-            if (!resolved)
-            {
-                _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage(
-                    "HarvestResolveFailed", "Could not resolve harvest plot click position", MechanicIds.Harvest);
-                return false;
-            }
-
-            _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage(
-                "HarvestClickDirect", $"Direct harvest click ({clickPos.X:0.0},{clickPos.Y:0.0})", MechanicIds.Harvest);
-
-            return _dependencies.Selection.LabelInteraction.PerformResolvedLabelInteraction(
-                clickPos, chosen, MechanicIds.Harvest);
-        }
-
         private bool TryProgressBlightBuilding()
         {
             if (_dependencies.Mechanics.TryProgressBlightBuilding == null)
@@ -299,10 +270,17 @@ namespace ClickIt.Features.Click.Core
                         "BlightBuildClick", $"{action.DebugMessage} ({clickPos.X:0.0},{clickPos.Y:0.0})", MechanicIds.Blight);
                     if (action.IsMenuClick)
                     {
-                        // Let the game register the hover on the menu button before the click lands — clicking too soon after the cursor arrives can miss the element entirely.
-                        ClickPipelineTiming.Sleep(BlightMenuClickSettleMs);
+                        bool clicked = action.ValidateHover != null && _dependencies.Selection.LabelInteraction
+                            .PerformMechanicClick(clickPos, validateSettledHover: action.ValidateHover);
+                        if (!clicked)
+                        {
+                            action.OnRejected?.Invoke();
+                            _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage(
+                                "BlightMenuClickRejected", "The planned tower control did not pass pre-click validation.", MechanicIds.Blight);
+                        }
                     }
-                    _dependencies.Selection.LabelInteraction.PerformMechanicClick(clickPos);
+                    else
+                        _dependencies.Pathing.OffscreenPathing.TryBlightGroundClick(clickPos, IntervalKind.Click);
                     return true;
 
                 case BlightBuildActionKind.WalkToTarget:
@@ -314,7 +292,8 @@ namespace ClickIt.Features.Click.Core
                         {
                             _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage(
                                 "BlightBuildWalk", "walkTarget found, calling WalkTowardEntity", MechanicIds.Blight);
-                            WalkTowardEntity(walkTarget, MechanicIds.Blight);
+                            _dependencies.Pathing.OffscreenPathing.TryWalkTowardOffscreenTarget(
+                                walkTarget, walkingToBlightTower: true, blightRegion: action.WalkRegion);
                         }
                         else
                         {
@@ -328,7 +307,7 @@ namespace ClickIt.Features.Click.Core
                 case BlightBuildActionKind.WalkToPosition:
                     _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage(
                         "BlightBuildWalk", action.DebugMessage ?? "Walking toward foundation position", MechanicIds.Blight);
-                    _dependencies.Pathing.OffscreenPathing.TryWalkTowardGridPosition(action.GridPosition);
+                    _dependencies.Pathing.OffscreenPathing.TryWalkTowardGridPosition(action.GridPosition, action.WalkRegion);
                     return true;
 
                 case BlightBuildActionKind.Complete:
@@ -414,7 +393,8 @@ namespace ClickIt.Features.Click.Core
                 return StopExecution();
             }
 
-            if (_dependencies.Selection.SpecialLabelInteraction.TryHandle(nextLabel, context.WindowTopLeft))
+            if (_dependencies.Selection.LabelInteraction.TryHandleHarvestUpgrade(nextLabel, candidates.NextLabelMechanicId, context.WindowTopLeft, out _)
+                || _dependencies.Selection.SpecialLabelInteraction.TryHandle(nextLabel, candidates.NextLabelMechanicId, context.WindowTopLeft))
             {
                 _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage("SpecialLabelHandled", "Special label handling consumed click tick", candidates.NextLabelMechanicId);
                 return StopExecution();

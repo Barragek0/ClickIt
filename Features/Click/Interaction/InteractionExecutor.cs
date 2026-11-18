@@ -23,7 +23,8 @@ namespace ClickIt.Features.Click.Interaction
             bool forceUiHoverVerification = false,
             bool allowWhenHotkeyInactive = false,
             bool avoidCursorMove = false,
-            IntervalKind interval = IntervalKind.Click)
+            IntervalKind interval = IntervalKind.Click,
+            Func<Element?, bool>? validateSettledHover = null)
         {
             _clickSleepStartMs = ClickPipelineTiming.ReadSleepTimeMs();
             if (!TryPrepareClickExecution(
@@ -37,7 +38,7 @@ namespace ClickIt.Features.Click.Interaction
                 "InteractionExecutor: UIHover verification failed for current mode. Skipping click.",
                 logExpectedElementMissing: true,
                 out Stopwatch swTotal,
-                out SystemDrawingPoint before))
+                out SystemDrawingPoint before, validateSettledHover))
                 return false;
 
 
@@ -168,7 +169,8 @@ namespace ClickIt.Features.Click.Interaction
             string hoverMismatchMessage,
             bool logExpectedElementMissing,
             out Stopwatch swTotal,
-            out SystemDrawingPoint before)
+            out SystemDrawingPoint before,
+            Func<Element?, bool>? validateSettledHover = null)
         {
             swTotal = Stopwatch.StartNew();
             before = Mouse.GetCursorPosition();
@@ -199,9 +201,33 @@ namespace ClickIt.Features.Click.Interaction
             if (!avoidCursorMove && !Mouse.DisableNativeInput)
                 Input.SetCursorPos(new NumVector2(executionPosition.X, executionPosition.Y));
 
-            ClickPipelineTiming.Sleep(_settings?.LazyMode?.Value == true ? _settings.LazyModeUIHoverSleep.Value : 10);
+            int settleMs = _settings?.LazyMode?.Value == true ? _settings.LazyModeUIHoverSleep.Value : 10;
+            ClickPipelineTiming.Sleep(validateSettledHover == null ? settleMs : SystemMath.Max(settleMs, 60));
 
-            Element? uiHover = gameController?.IngameState?.UIHoverElement;
+            Element? uiHover;
+            if (validateSettledHover != null)
+            {
+                try
+                {
+                    var state = gameController?.IngameState;
+                    if (state == null || !validateSettledHover(state.UIHoverElement)
+                        || ShouldSkipClickWhenNotLazyAndHotkeyInactive(_settings?.LazyMode?.Value == true, _isClickHotkeyActive(), allowWhenHotkeyInactive))
+                    {
+                        RestoreCursorIfLazyMode(before, gameController);
+                        swTotal.Stop();
+                        return false;
+                    }
+                }
+                catch
+                {
+                    RestoreCursorIfLazyMode(before, gameController);
+                    swTotal.Stop();
+                    return false;
+                }
+                return true;
+            }
+
+            uiHover = gameController?.IngameState?.UIHoverElement;
             bool lazyModeEnabled = _settings?.LazyMode?.Value == true;
             bool verifyUiHoverWhenNotLazy = _settings?.VerifyUIHoverWhenNotLazy?.Value != false;
             ulong expectedAddress = unchecked((ulong)(expectedElement?.Address ?? 0));

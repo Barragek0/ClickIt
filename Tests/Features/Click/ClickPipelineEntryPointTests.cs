@@ -37,7 +37,6 @@ public class ClickPipelineEntryPointTests
         AssertPropertyExists("ForceRefreshPointIsInClickableArea");
 
         // Delegate wiring points consumed by the bootstrapper.
-        AssertPropertyExists("GetHarvestLabelToClick");
         AssertPropertyExists("TryProgressBlightBuilding");
         AssertPropertyExists("GetBlightPathfindTarget");
         AssertPropertyExists("IsBlightEncounterActive");

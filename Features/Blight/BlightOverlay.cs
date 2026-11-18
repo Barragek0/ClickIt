@@ -38,6 +38,9 @@ namespace ClickIt.Features.Blight
         // Per-frame icon screen-visibility arrays (reused across frames; resized on snapshot change).
         private bool[]? _iconMapVis;
         private bool[]? _iconWorldVis;
+        private LaneCoverageResult[]? _colorCacheCoverage;
+        private IBlightTowerStrategy? _colorCacheStrategy;
+        private Color[]? _laneColors;
 
         // Lane-label render cache rebuilt only when the coverage reference or strategy changes.
         private LaneCoverageResult[]? _labelCacheCoverage;
@@ -178,7 +181,7 @@ namespace ClickIt.Features.Blight
             => isCurrentStep || pendingStepCount > 0;
 
         internal static Color LaneColorFor(LaneCoverageResult segment, IBlightTowerStrategy strategy)
-            => strategy.GetLaneColor(segment);
+            => BlightCoverageFlags.GetLaneColor(segment, strategy);
 
         private static void DrawTowerDot(DeferredDrawQueue queue, NumVector2 center, float radius, BlightCachedTower ft, bool hasTower, IBlightTowerStrategy strategy)
         {
@@ -243,8 +246,6 @@ namespace ClickIt.Features.Blight
                 && pos.Y >= -MapCullMargin && pos.Y <= ctx.WindowSize.Height + MapCullMargin;
         }
 
-        private static readonly Color ActivePathwayColor = new(0, 255, 120, 200);
-
         // Only flowing lanes render; during the build phase (no lane active yet) every lane draws.
         private void DrawIconPathways(RenderContext ctx, DeferredDrawQueue queue)
         {
@@ -262,7 +263,7 @@ namespace ClickIt.Features.Blight
                 }
             }
 
-            // Per-segment coverage colours; fall back to green while coverage lags the icon scan.
+            // Use the same per-segment coverage colours on the map and in the world.
             (NumVector2[] Pathways, LaneCoverageResult[] Coverage)? bundle = _blightService.TryGetRenderBundle();
             NumVector2[]? beamPaths = null;
             LaneCoverageResult[]? coverage = null;
@@ -272,7 +273,7 @@ namespace ClickIt.Features.Blight
                 if (bundle.Value.Coverage.Length == icons.Count)
                     coverage = bundle.Value.Coverage;
             }
-            IBlightTowerStrategy strategy = _blightService.CurrentStrategy;
+            Color[]? colors = coverage != null ? GetLaneColors(coverage, _blightService.CurrentStrategy) : null;
 
             // Precompute each icon's map/world screen visibility once so edge culling never re-projects the same beam anchor (hundreds of edges share few anchor points).
             EnsureIconVisArrays(icons.Count);
@@ -295,7 +296,7 @@ namespace ClickIt.Features.Blight
                 {
                     BlightPathwayIcon to = icons[next];
                     if (drawAll || to.IsActive)
-                        EnqueueLaneEdge(ctx, queue, beamPaths, icons, i, next, coverage, strategy, _iconMapVis!, _iconWorldVis!);
+                        EnqueueLaneEdge(ctx, queue, beamPaths, icons, i, next, colors, _iconMapVis!, _iconWorldVis!);
                 }
 
                 // Draw every extra beam parent at a convergence junction (the tree keeps only Parents[0]).
@@ -311,12 +312,26 @@ namespace ClickIt.Features.Blight
                         BlightPathwayIcon to = icons[p];
                         if (!drawAll && !to.IsActive)
                             continue;
-                        EnqueueLaneEdge(ctx, queue, beamPaths, icons, i, p, coverage, strategy, _iconMapVis!, _iconWorldVis!);
+                        EnqueueLaneEdge(ctx, queue, beamPaths, icons, i, p, colors, _iconMapVis!, _iconWorldVis!);
                     }
                 }
             }
 
             DrawPathwayArrows(ctx, queue, beamPaths, coverage);
+        }
+
+        private Color[] GetLaneColors(LaneCoverageResult[] coverage, IBlightTowerStrategy strategy)
+        {
+            if (!ReferenceEquals(_colorCacheCoverage, coverage) || !ReferenceEquals(_colorCacheStrategy, strategy))
+            {
+                if (_laneColors == null || _laneColors.Length != coverage.Length)
+                    _laneColors = new Color[coverage.Length];
+                for (int i = 0; i < coverage.Length; i++)
+                    _laneColors[i] = LaneColorFor(coverage[i], strategy);
+                _colorCacheCoverage = coverage;
+                _colorCacheStrategy = strategy;
+            }
+            return _laneColors!;
         }
 
         // Map-only arrows per lane icon colored by visual state (1 red spawning, 2 green sending, 3 none).
@@ -409,8 +424,7 @@ namespace ClickIt.Features.Blight
             IReadOnlyList<BlightPathwayIcon> icons,
             int fromIdx,
             int toIdx,
-            LaneCoverageResult[]? coverage,
-            IBlightTowerStrategy strategy,
+            Color[]? colors,
             bool[] mapVis,
             bool[] worldVis)
         {
@@ -422,7 +436,7 @@ namespace ClickIt.Features.Blight
             if (toPos == from)
                 return;  // co-located twin merged into this node — the edge is zero-length
 
-            Color laneColor = coverage != null ? LaneColorFor(coverage[fromIdx], strategy) : ActivePathwayColor;
+            Color laneColor = colors?[fromIdx] ?? BlightCoverageFlags.UncoveredLaneColor;
 
             // Cull map edges to the visible map using the per-icon precomputed visibility.
             if (ctx.LargeMapOpen && (mapVis[fromIdx] || mapVis[toIdx]))

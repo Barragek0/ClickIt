@@ -439,6 +439,7 @@ namespace ClickIt.Tests.Features.Click.Interaction
                 hoverMismatchMessage,
                 logExpectedElementMissing,
                 null,
+                null,
                 null
             ];
 

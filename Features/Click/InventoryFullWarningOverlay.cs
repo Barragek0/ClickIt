@@ -22,13 +22,16 @@ namespace ClickIt.Features.Click
 
         private readonly AreaService? _areaService;
         private readonly Func<InventoryDebugSnapshot>? _getLatestInventoryDebug;
+        private readonly Func<string?>? _getHarvestCurrencyWarning;
         private long _lastInventoryFullBlockedTimestampMs;
         private long _lastProcessedInventoryDebugSequence = long.MinValue;
 
-        public InventoryFullWarningOverlay(AreaService? areaService, Func<InventoryDebugSnapshot>? getLatestInventoryDebug)
+        public InventoryFullWarningOverlay(AreaService? areaService, Func<InventoryDebugSnapshot>? getLatestInventoryDebug,
+            Func<string?>? getHarvestCurrencyWarning = null)
         {
             _areaService = areaService;
             _getLatestInventoryDebug = getLatestInventoryDebug;
+            _getHarvestCurrencyWarning = getHarvestCurrencyWarning;
         }
 
         public string Name => "InventoryFullWarning";
@@ -61,7 +64,9 @@ namespace ClickIt.Features.Click
 
             _lastProcessedInventoryDebugSequence = snapshot.Sequence;
 
-            if (!ShouldShowInventoryFullWarning(now, _lastInventoryFullBlockedTimestampMs))
+            bool showInventoryWarning = ShouldShowInventoryFullWarning(now, _lastInventoryFullBlockedTimestampMs);
+            string? harvestWarning = _getHarvestCurrencyWarning?.Invoke();
+            if (!showInventoryWarning && harvestWarning == null)
                 return;
 
             RectangleF windowRect = ctx.WindowArea;
@@ -70,27 +75,34 @@ namespace ClickIt.Features.Click
             Vector2? playerFeetScreen = TryResolvePlayerFeetWarningPosition(ctx.GameController);
             Vector2 pos = ResolveInventoryFullWarningPosition(windowRect, leftTertiary, rightTertiary, playerFeetScreen);
 
-            EnqueueBoldWarningText(ctx.DrawQueue, pos);
+            if (showInventoryWarning)
+                EnqueueBoldWarningText(ctx.DrawQueue, pos, InventoryFullWarningText, InventoryFullWarningTextSize);
+
+            if (harvestWarning != null)
+            {
+                Vector2 harvestPos = showInventoryWarning ? pos + new Vector2(0, InventoryFullWarningTextSize) : pos;
+                EnqueueBoldWarningText(ctx.DrawQueue, harvestPos, harvestWarning, 32);
+            }
         }
 
-        private void EnqueueBoldWarningText(DeferredDrawQueue drawQueue, Vector2 centerPosition)
+        private static void EnqueueBoldWarningText(DeferredDrawQueue drawQueue, Vector2 centerPosition, string text, int textSize)
         {
             for (int i = 0; i < BoldTextOffsets.Length; i++)
             {
                 Vector2 offsetPosition = centerPosition + BoldTextOffsets[i];
                 drawQueue.EnqueueText(
-                    InventoryFullWarningText,
+                    text,
                     offsetPosition,
                     Color.Black,
-                    InventoryFullWarningTextSize,
+                    textSize,
                     FontAlign.Center);
             }
 
             drawQueue.EnqueueText(
-                InventoryFullWarningText,
+                text,
                 centerPosition,
                 Color.OrangeRed,
-                InventoryFullWarningTextSize,
+                textSize,
                 FontAlign.Center);
         }
 

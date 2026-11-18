@@ -1,4 +1,4 @@
-namespace ClickIt.Tests.UI
+﻿namespace ClickIt.Tests.UI
 {
     [TestClass]
     public class MeasurementCompletenessTests
@@ -9,14 +9,14 @@ namespace ClickIt.Tests.UI
         {
             int valueCount = Enum.GetValues<ProcessingSection>().Length;
 
-            valueCount.Should().Be(13, "ProcessingSection is Unknown + 12 sections (Altar/Blight/Click/Flare/Harvest/Label/Pathfinding/Strongbox/Ultimatum/AreaBlockedUi/ManualUiHover/GameStateDump)");
+            valueCount.Should().Be(12, "ProcessingSection is Unknown + 11 sections (Altar/Blight/Click/Flare/Label/Pathfinding/Strongbox/Ultimatum/AreaBlockedUi/ManualUiHover/GameStateDump)");
             DynamicAccess.DlrSectionCount.Should().Be(valueCount, "DynamicAccess sizes its per-section DLR counters from the ProcessingSection cardinality");
         }
 
         [TestMethod]
         public void TimingChannel_Count_IsRendered()
         {
-            Enum.GetValues<TimingChannel>().Length.Should().Be(8, "TimingChannel is Unknown + 7 channels (Click/Altar/Flare/Render/Blight/Ultimatum/LabelOverlay)");
+            Enum.GetValues<TimingChannel>().Length.Should().Be(9, "TimingChannel is Unknown + 8 channels (Click/Altar/Flare/Render/Blight/Ultimatum/LabelOverlay/SkillAutomation)");
         }
 
         [TestMethod]

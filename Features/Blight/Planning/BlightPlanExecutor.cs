@@ -164,12 +164,19 @@ internal sealed class BlightPlanExecutor
 
         if (_phase == Phase.Walking)
         {
-            bool walkReady = IsStepWalkReady(labels, gc, service);
+            if (s.Action == BlightPlanAction.Upgrade && GetTowerRank(service, s.FoundationPosition).Effective >= s.TargetLevel)
+                return AdvanceStep(service, s, $"Step already complete: {s.TowerType} lvl {s.TargetLevel}");
+
+            RectangleF? controlRect = gc == null ? null : GetStepControlRect(labels, s, service);
+            bool walkReady = controlRect is { } rect && service.IsMenuRegionClickable(rect);
 
             if (!walkReady)
             {
+                if (!service.CanPathfind)
+                    return new BlightBuildAction(BlightBuildActionKind.None, DebugMessage: "Tower control blocked; pathfinding disabled");
+
                 service.AddDebugStage($"Executor: WALK - walking to {s.Action} {s.TowerType} at ({s.FoundationPosition.X:F0},{s.FoundationPosition.Y:F0})");
-                BlightBuildAction action = ResolveWalkAction(s, service, gc);
+                BlightBuildAction action = ResolveWalkAction(s, service, gc, controlRect);
 
                 // Only Build steps skip after a bounded wait — a foundation with no entity has nothing to click. Upgrade steps keep waiting for the entity to reappear.
                 if (action.Kind == BlightBuildActionKind.None)
@@ -255,6 +262,10 @@ internal sealed class BlightPlanExecutor
         {
             if (s.Action == BlightPlanAction.Upgrade)
             {
+                (_, _, int effectiveRank) = GetTowerRank(service, s.FoundationPosition);
+                if (effectiveRank >= s.TargetLevel)
+                    return AdvanceStep(service, s, $"Step already complete: {s.TowerType} lvl {s.TargetLevel}");
+
                 // Upgrade is a single click on the upgrade icon (Child[3]); Fireball 3→4 opens a spec menu.
                 if (BlightMenuInteractions.IsTowerMenuOpen(labelElement))
                 {
@@ -287,17 +298,13 @@ internal sealed class BlightPlanExecutor
                             DebugMessage: $"Cannot afford upgrade ({s.TowerType} lvl {s.TargetLevel}) - waiting for currency");
                     }
 
-                    NumVector2? upgradeClickPos = BlightMenuInteractions.GetUpgradeIconClickPosition(labelElement);
-                    if (upgradeClickPos == null)
+                    Element? upgradeIcon = BlightMenuInteractions.GetMenuChildElement(labelElement, 3);
+                    if (upgradeIcon == null)
                         return Fail("Upgrade icon not found");
 
-                    if (!IsPositionInWindow(new Vector2(upgradeClickPos.Value.X, upgradeClickPos.Value.Y), gc))
-                        return WalkCloser(service, gc, s, "Executor: OPEN - upgrade icon off-screen, walking closer");
-
-                    service.AddDebugStage($"Executor: OPEN - clicking upgrade icon at ({upgradeClickPos.Value.X:F0},{upgradeClickPos.Value.Y:F0})");
-                    LogMenuState(service, labelElement, $"open-upgrade {s.TowerType}->lvl{s.TargetLevel}");
-                    return MenuClick(Phase.SelectSpecialization, new Vector2(upgradeClickPos.Value.X, upgradeClickPos.Value.Y),
-                        $"Upgrade {s.TowerType} - lvl {s.TargetLevel}", gc);
+                    return MenuClick(Phase.SelectSpecialization,
+                        $"Upgrade {s.TowerType} - lvl {s.TargetLevel}", gc, service, s, labelElement,
+                        upgradeIcon, opensUpgrade: true);
                 }
             }
 
@@ -341,19 +348,15 @@ internal sealed class BlightPlanExecutor
                     return new BlightBuildAction(BlightBuildActionKind.None,
                         DebugMessage: "Waiting for tower sub-menu...");
                 }
-                _lastBuildMenuClickTimestampMs = nowMs;
-
-                NumVector2? buildIconPos = BlightMenuInteractions.GetBuildIconClickPosition(labelElement);
-                if (buildIconPos == null)
+                Element? buildIcon = BlightMenuInteractions.GetMenuChildElement(labelElement, 2);
+                if (buildIcon == null)
                     return Fail("Build icon not found");
 
-                Vector2 clickPos = new(buildIconPos.Value.X, buildIconPos.Value.Y);
-                if (!IsPositionInWindow(clickPos, gc))
-                    return WalkCloser(service, gc, s, "Executor: OPEN - build icon off-screen, walking closer");
-
-                service.AddDebugStage($"Executor: OPEN - clicking build icon at ({clickPos.X:F0},{clickPos.Y:F0})");
-                LogMenuState(service, labelElement, $"open-build {s.TowerType}");
-                return MenuClick(Phase.OpenMenu, clickPos, "Open tower menu (build icon)", gc);
+                BlightBuildAction open = MenuClick(Phase.OpenMenu, "Open tower menu (build icon)", gc, service, s,
+                    labelElement, buildIcon);
+                if (open.IsMenuClick)
+                    _lastBuildMenuClickTimestampMs = nowMs;
+                return open;
             }
         }
 
@@ -363,8 +366,12 @@ internal sealed class BlightPlanExecutor
 
         if (_phase == Phase.SelectTower)
         {
-            NumVector2? towerClickPos = BlightMenuInteractions.GetTowerMenuChildClickPosition(labelElement, s.TowerType);
-            if (towerClickPos == null)
+            if (service.TryEnableFreeTowerConstruction(labelElement))
+                return new BlightBuildAction(BlightBuildActionKind.None, DebugMessage: "Free towers detected; replanned upgrades");
+
+            int slotIndex = BlightMenuInteractions.GetStepSlotIndex(s, -1);
+            Element? towerSlot = BlightMenuInteractions.GetMenuSlot(labelElement, slotIndex);
+            if (towerSlot?.IsVisible != true)
             {
                 long childCount = 0;
                 try
@@ -381,13 +388,7 @@ internal sealed class BlightPlanExecutor
                 return Fail($"Tower type {s.TowerType} not found in menu");
             }
 
-            if (!IsPositionInWindow(new Vector2(towerClickPos.Value.X, towerClickPos.Value.Y), gc))
-                return WalkCloser(service, gc, s, "Executor: SELECT - build menu button off-screen, walking closer");
-
-            service.AddDebugStage($"Executor: SELECT - clicking {s.TowerType} in build menu at ({towerClickPos.Value.X:F0},{towerClickPos.Value.Y:F0})");
-            LogMenuState(service, labelElement, $"select-tower {s.TowerType}->lvl{s.TargetLevel}");
-            return MenuClick(Phase.WaitVerify, new Vector2(towerClickPos.Value.X, towerClickPos.Value.Y),
-                $"Build {s.TowerType} - lvl {s.TargetLevel}", gc);
+            return MenuClick(Phase.WaitVerify, $"Build {s.TowerType} - lvl {s.TargetLevel}", gc, service, s, labelElement, towerSlot);
         }
 
         if (_phase == Phase.SelectSpecialization)
@@ -436,7 +437,7 @@ internal sealed class BlightPlanExecutor
                     }
 
                     // Plain upgrade — the at-target guard already ran, so click the next-tier button.
-                    (NumVector2 Position, string? UpgradeId)? plain = BlightMenuInteractions.GetFirstVisibleUpgradeButton(labelElement);
+                    var plain = BlightMenuInteractions.GetPlainUpgradeButton(labelElement);
                     if (plain == null)
                     {
                         // No visible button — can't afford the tier: pause for currency.
@@ -463,25 +464,17 @@ internal sealed class BlightPlanExecutor
                         }
                     }
 
-                    if (!IsPositionInWindow(new Vector2(plain.Value.Position.X, plain.Value.Position.Y), gc))
-                        return WalkCloser(service, gc, s, "Executor: SPEC - upgrade button off-screen, walking closer");
-
-                    service.AddDebugStage($"Executor: SPEC - plain upgrade, clicking next-tier button ('{plain.Value.UpgradeId ?? "?"}') at ({plain.Value.Position.X:F0},{plain.Value.Position.Y:F0})");
-                    LogMenuState(service, labelElement, $"plain-upgrade {s.TowerType}->lvl{s.TargetLevel}");
-                    return MenuClick(Phase.WaitVerify, new Vector2(plain.Value.Position.X, plain.Value.Position.Y),
-                        $"Upgrade {s.TowerType} - lvl {s.TargetLevel}", gc);
+                    return MenuClick(Phase.WaitVerify,
+                        $"Upgrade {s.TowerType} - lvl {s.TargetLevel}", gc, service, s, labelElement, plain.Value.Button);
                 }
 
                 // Prefer the catalog menu index for every type; the UpgradeResult dat read is unreliable in this build.
                 TowerSpecialization spec = (TowerSpecialization)specIndex;
-                int menuIndex = BlightTowerData.GetSpecializationMenuChildIndex(s.TowerType, spec);
+                int menuIndex = BlightMenuInteractions.GetStepSlotIndex(s, specIndex);
                 string targetTowerId = BlightTowerData.GetSpecializationTowerId(s.TowerType, spec);
 
-                NumVector2? specPos = menuIndex >= 0
-                    ? BlightMenuInteractions.GetSpecializationChildClickPosition(labelElement, menuIndex)
-                    : null;
-
-                if (specPos is null)
+                Element? specSlot = BlightMenuInteractions.GetMenuSlot(labelElement, menuIndex);
+                if (specSlot?.IsVisible != true)
                 {
                     // Spec button not visible — can't afford the 3→4 upgrade: pause for currency.
                     service.AddDebugStage($"Executor: SPEC - '{targetTowerId}' (specIndex={specIndex}) not visible - waiting for currency");
@@ -489,13 +482,9 @@ internal sealed class BlightPlanExecutor
                         DebugMessage: $"Cannot afford specialization '{targetTowerId}' - waiting for currency");
                 }
 
-                if (!IsPositionInWindow(new Vector2(specPos.Value.X, specPos.Value.Y), gc))
-                    return WalkCloser(service, gc, s, "Executor: SPEC - specialization button off-screen, walking closer");
-
-                service.AddDebugStage($"Executor: SPEC - clicking '{targetTowerId}' (specIndex={specIndex}) at ({specPos.Value.X:F0},{specPos.Value.Y:F0})");
-                LogMenuState(service, labelElement, $"spec {targetTowerId} for {s.TowerType}->lvl{s.TargetLevel}");
-                return MenuClick(Phase.WaitVerify, new Vector2(specPos.Value.X, specPos.Value.Y),
-                    $"Select spec {targetTowerId} for {s.TowerType} - lvl {s.TargetLevel}", gc);
+                return MenuClick(Phase.WaitVerify,
+                    $"Select spec {targetTowerId} for {s.TowerType} - lvl {s.TargetLevel}", gc, service, s, labelElement,
+                    specSlot);
             }
         }
 
@@ -565,30 +554,21 @@ internal sealed class BlightPlanExecutor
         catch { return null; }
     }
 
-    private static bool IsPositionInWindow(Vector2 screenPos, GameController? gc)
-    {
-        if (gc == null) return false;
-        try
-        {
-            Size2F win = gc.Window.GetWindowRectangleTimeCache.Size;
-            return screenPos.X >= 0 && screenPos.Y >= 0
-                && screenPos.X <= win.Width && screenPos.Y <= win.Height;
-        }
-        catch { return false; }
-    }
-
     // Resolves the executor's walk need: walk to the entity when cached, else to the persisted position when off-screen (the entity walk returns no target for a streamed-out foundation).
-    private static BlightBuildAction ResolveWalkAction(BlightPlanStep step, BlightService service, GameController? gc)
+    private BlightBuildAction ResolveWalkAction(BlightPlanStep step, BlightService service, GameController? gc, RectangleF? blockedControl = null)
     {
+        if (!service.CanPathfind)
+            return new BlightBuildAction(BlightBuildActionKind.None, DebugMessage: "Blight tower pathfinding disabled");
         bool hasWalkEntity = service.GetBestEntityAtPosition(step.FoundationPosition) != null;
         bool positionOffScreen = gc != null && IsGridPositionOffScreen(gc, step.FoundationPosition);
         return ResolveWalkActionKind(hasWalkEntity, positionOffScreen) switch
         {
             BlightBuildActionKind.WalkToTarget => new BlightBuildAction(BlightBuildActionKind.WalkToTarget,
-                DebugMessage: $"Walking to ({step.FoundationPosition.X:F0},{step.FoundationPosition.Y:F0})"),
+                DebugMessage: $"Walking to ({step.FoundationPosition.X:F0},{step.FoundationPosition.Y:F0})",
+                GridPosition: step.FoundationPosition, WalkRegion: blockedControl),
             BlightBuildActionKind.WalkToPosition => new BlightBuildAction(BlightBuildActionKind.WalkToPosition,
                 DebugMessage: $"Walking toward ({step.FoundationPosition.X:F0},{step.FoundationPosition.Y:F0})",
-                GridPosition: step.FoundationPosition),
+                GridPosition: step.FoundationPosition, WalkRegion: blockedControl),
             _ => new BlightBuildAction(BlightBuildActionKind.None,
                 DebugMessage: "Foundation not yet scannable, waiting..."),
         };
@@ -615,78 +595,37 @@ internal sealed class BlightPlanExecutor
     }
 
 
-    // A rect is usable (no walk needed) only when it is ENTIRELY on-screen with every corner clickable; walk until the whole rect (UI zone / obscuring label free) is in a clickable spot.
-    private static bool IsMenuRegionUsable(RectangleF rect, GameController? gc, BlightService service)
-    {
-        if (gc == null) return false;
-        try
-        {
-            Size2F win = gc.Window.GetWindowRectangleTimeCache.Size;
-            return IsMenuRegionUsable(rect, win.Width, win.Height, service.IsPointInClickableArea);
-        }
-        catch { return false; }
-    }
-
-    internal static bool IsMenuRegionUsable(RectangleF rect, float windowWidth, float windowHeight, Func<Vector2, bool> isPointInClickableArea)
-    {
-        if (windowWidth <= 0f || windowHeight <= 0f || rect.Width <= 0f || rect.Height <= 0f)
-            return false;
-
-        if (rect.X < 0f || rect.Y < 0f || rect.Right > windowWidth || rect.Bottom > windowHeight)
-            return false;
-
-        return isPointInClickableArea(new Vector2(rect.X, rect.Y))
-            && isPointInClickableArea(new Vector2(rect.Right, rect.Y))
-            && isPointInClickableArea(new Vector2(rect.X, rect.Bottom))
-            && isPointInClickableArea(new Vector2(rect.Right, rect.Bottom));
-    }
-
-    // Build steps click the build icon (opens the tower sub-menu); upgrade steps are a single icon click, so the tower on-screen is enough. Build readiness = the step's menu region is usable.
-    internal static bool IsStepWalkReadyForAction(
-        BlightPlanAction action, bool menuRegionReady, bool hasWalkEntity, bool entityFullyOnScreen)
-        => action == BlightPlanAction.Upgrade
-            ? hasWalkEntity && entityFullyOnScreen
-            : menuRegionReady;
-
     internal bool IsStepWalkReady(
         IReadOnlyList<LabelOnGround>? labels,
         GameController? gc,
         BlightService service)
     {
-        if (gc == null) return false;
-        BlightPlanStep? step = CurrentPlan?.CurrentStep;
-        if (step == null) return false;
+        return gc != null && CurrentPlan?.CurrentStep is { } step
+            && GetStepControlRect(labels, step, service) is { } region
+            && service.IsMenuRegionClickable(region);
+    }
 
-        if (step.Value.Action == BlightPlanAction.Upgrade)
-        {
-            // Upgrade is a single icon click (no sub-menu), so the tower on-screen is enough; labels aren't needed here.
-            Entity? entity = service.GetBestEntityAtPosition(step.Value.FoundationPosition);
-            return IsStepWalkReadyForAction(step.Value.Action,
-                menuRegionReady: false,
-                hasWalkEntity: entity != null,
-                entityFullyOnScreen: entity != null && service.IsEntityFullyOnScreen(entity));
-        }
+    private RectangleF? GetStepControlRect(IReadOnlyList<LabelOnGround>? labels, BlightPlanStep step, BlightService service)
+    {
+        if (labels == null || labels.Count == 0 || FindLabelAt(labels, step.FoundationPosition, service) is not { } label)
+            return null;
+        return BlightMenuInteractions.GetControlRect(ResolveApproachControl(label, step, service));
+    }
 
-        if (labels == null || labels.Count == 0) return false;
-        Element? labelEl = FindLabelAt(labels, step.Value.FoundationPosition, service);
-        if (labelEl == null) return false;
-        int childIndex = BlightMenuInteractions.MenuChildIndexForStep(step.Value.Action);
-        // The sub-menu opens around the icon, so BOTH the step's icon AND the enlarged menu region must be entirely on-screen and clickable before the walk stops.
-        RectangleF? iconRect = BlightMenuInteractions.GetMenuChildRect(labelEl, childIndex);
-        RectangleF? menuRect = BlightMenuInteractions.GetMenuRegionRect(labelEl, childIndex);
-        bool menuReady = menuRect != null && IsMenuRegionUsable(menuRect.Value, gc, service)
-            && iconRect != null && IsMenuRegionUsable(iconRect.Value, gc, service);
-        return IsStepWalkReadyForAction(step.Value.Action,
-            menuRegionReady: menuReady,
-            hasWalkEntity: true,
-            entityFullyOnScreen: false);
+    private static Element? ResolveApproachControl(Element label, BlightPlanStep step, BlightService service)
+    {
+        if (!BlightMenuInteractions.IsTowerMenuOpen(label))
+            return BlightMenuInteractions.GetMenuChildElement(label, BlightMenuInteractions.MenuChildIndexForStep(step.Action));
+
+        int specialization = step.IsSpecializationStep ? service.GetSpecialization(step.TowerType) : -1;
+        return BlightMenuInteractions.GetMenuSlot(label, BlightMenuInteractions.GetStepSlotIndex(step, specialization));
     }
 
     // The pipeline's pathfinding stop condition mirrors EVERY way the executor asks to walk closer.
     internal bool WantsWalkForCurrentStep(
         GameController? gc, BlightService service, IReadOnlyList<LabelOnGround>? labels)
     {
-        if (gc == null || CurrentPlan == null || CurrentPlan.IsComplete)
+        if (gc == null || !service.CanPathfind || CurrentPlan == null || CurrentPlan.IsComplete)
             return false;
         BlightPlanStep? step = CurrentPlan.CurrentStep;
         if (step == null)
@@ -696,39 +635,9 @@ internal sealed class BlightPlanExecutor
         if (!WantsWalkForCurrentPhase(_phase))
             return false;
 
-        bool walkReadyGate = IsStepWalkReady(labels, gc, service);
-        if (step.Value.Action != BlightPlanAction.Upgrade)
-            return WantsWalkForAction(step.Value.Action, walkReadyGate, upgradeLabelFound: false, upgradeIconInWindow: false, upgradeEntityOnScreen: false);
-
-        Element? labelEl = FindLabelAt(labels ?? [], step.Value.FoundationPosition, service);
-        Entity? entity = service.GetBestEntityAtPosition(step.Value.FoundationPosition);
-        bool iconInWindow = labelEl != null
-            && BlightMenuInteractions.GetUpgradeIconClickPosition(labelEl) is { } iconPos
-            && IsPositionInWindow(new Vector2(iconPos.X, iconPos.Y), gc);
-        return WantsWalkForAction(step.Value.Action, walkReadyGate,
-            upgradeLabelFound: labelEl != null,
-            upgradeIconInWindow: iconInWindow,
-            upgradeEntityOnScreen: entity != null && service.IsEntityFullyOnScreen(entity));
+        return !IsStepWalkReady(labels, gc, service);
     }
 
-    // Pure walk decision for the pathfinding stop condition; upgrades also need the upgrade icon on-screen.
-    internal static bool WantsWalkForAction(
-        BlightPlanAction action,
-        bool walkReadyGate,
-        bool upgradeLabelFound,
-        bool upgradeIconInWindow,
-        bool upgradeEntityOnScreen)
-    {
-        if (!walkReadyGate)
-            return true;
-        if (action != BlightPlanAction.Upgrade)
-            return false;
-        if (!upgradeLabelFound)
-            return !upgradeEntityOnScreen;
-        return !upgradeIconInWindow;
-    }
-
-    // True only while the executor is actively walking; every other phase needs the player stopped.
     internal static bool WantsWalkForCurrentPhase(Phase phase) => phase == Phase.Walking;
 
     private BlightBuildAction Fail(string reason)
@@ -786,25 +695,79 @@ internal sealed class BlightPlanExecutor
     }
 
     // The step's click target is off-screen or the label is missing — rewind to Walking so the player approaches closer before the next attempt.
-    private BlightBuildAction WalkCloser(BlightService service, GameController? gc, BlightPlanStep s, string message)
+    private BlightBuildAction WalkCloser(BlightService service, GameController? gc, BlightPlanStep s, string message, RectangleF? blockedControl = null)
     {
         service.AddDebugStage(message);
         _phase = Phase.Walking;
-        return ResolveWalkAction(s, service, gc);
+        return ResolveWalkAction(s, service, gc, blockedControl);
     }
 
     // Safety: never click a menu slot while the player is moving — a stale screen rect could build a different tower.
-    private BlightBuildAction MenuClick(Phase nextPhase, Vector2 clickPos, string message, GameController? gc)
+    private BlightBuildAction MenuClick(Phase nextPhase, string message, GameController? gc,
+        BlightService service, BlightPlanStep step, Element label, Element? expected, bool opensUpgrade = false)
     {
-        if (gc != null && IsPlayerMoving(gc))
+        if (gc?.Player == null || expected == null || IsPlayerMoving(gc))
         {
             _phase = Phase.StopPlayer;
             return new BlightBuildAction(BlightBuildActionKind.None,
                 DebugMessage: "Player still moving - waiting to stop before menu click");
         }
+        if (BlightMenuInteractions.GetControlRect(expected) is not { } controlRect)
+            return Fail("Tower control has no readable rectangle");
+        if (!service.IsMenuRegionClickable(controlRect))
+            return WalkCloser(service, gc, step, $"Executor: blocked control - {message}", controlRect);
+
+        Vector2 clickPos = controlRect.Center;
+        LogMenuState(service, label, message);
         _phaseStartTimestamp = Stopwatch.GetTimestamp();
         _phase = nextPhase;
-        return new BlightBuildAction(BlightBuildActionKind.ClickPosition, clickPos, message, IsMenuClick: true);
+        NumVector2 playerPosition = gc.Player.GridPosNum;
+        BlightPlan? plan = CurrentPlan;
+        return new BlightBuildAction(BlightBuildActionKind.ClickPosition, clickPos, message, IsMenuClick: true,
+            ValidateHover: hover =>
+            {
+                if (!ReferenceEquals(plan, CurrentPlan)
+                    || NumVector2.DistanceSquared(playerPosition, gc.Player.GridPosNum) > 0.01f
+                    || !expected.IsVisible
+                    || BlightMenuInteractions.GetControlRect(expected) is not { } region
+                    || !region.Contains(clickPos)
+                    || !BlightMenuInteractions.IsHoverInside(hover, expected)
+                    || !service.IsMenuRegionClickable(region))
+                    return false;
+
+                if (step.Action != BlightPlanAction.Upgrade)
+                    return true;
+
+                (int rank, _, int effective) = GetTowerRank(service, step.FoundationPosition);
+                if (rank != step.TargetLevel - 1 || effective >= step.TargetLevel)
+                    return false;
+
+                if (opensUpgrade)
+                    return !BlightMenuInteractions.IsTowerMenuOpen(label);
+
+                if (step.IsSpecializationStep)
+                {
+                    string? id = BlightMenuInteractions.ReadUpgradeResultTowerId(expected);
+                    int specialization = service.GetSpecialization(step.TowerType);
+                    return specialization >= 0 && (id == null || string.Equals(id,
+                        BlightTowerData.GetSpecializationTowerId(step.TowerType, (TowerSpecialization)specialization),
+                        StringComparison.OrdinalIgnoreCase));
+                }
+
+                // A hidden second specialization option can leave only one visible child.
+                return BlightMenuInteractions.GetPlainUpgradeButton(label) is { } button
+                    && button.Button.Address == expected.Address
+                    && CanClickPlainUpgrade(BlightMenuInteractions.GetMenuChildElement(label, 3)?.ChildCount ?? 0,
+                        button.UpgradeId, step.TowerType, step.TargetLevel);
+            },
+            OnRejected: () =>
+            {
+                if (ReferenceEquals(plan, CurrentPlan))
+                {
+                    _phase = Phase.Walking;
+                    _lastBuildMenuClickTimestampMs = 0;
+                }
+            });
     }
 
     internal void Reset()
@@ -897,6 +860,12 @@ internal sealed class BlightPlanExecutor
     // A plain upgrade must never click a spec button — that button means the tower is already at max plain, so the step is complete and clicking would over-upgrade it.
     internal static bool ShouldSkipPlainUpgradeClick(string? upgradeButtonId)
         => upgradeButtonId != null && BlightTowerData.IsSpecializationTowerId(upgradeButtonId);
+
+    internal static bool CanClickPlainUpgrade(long childCount, string? id, BlightTowerType type, int targetLevel)
+        => childCount == 1 && targetLevel is 2 or 3
+            && (id == null || (!ShouldSkipPlainUpgradeClick(id)
+                && BlightTowerData.MapTowerIdToType(id) == type
+                && id.EndsWith(targetLevel == 2 ? '2' : '3')));
 
     // Verify-failure skip is BUILD-only; an unconfirmed upgrade is a pause, never a skip.
     internal static bool ShouldSkipAfterVerifyFailures(BlightPlanAction action, int consecutiveFailures)

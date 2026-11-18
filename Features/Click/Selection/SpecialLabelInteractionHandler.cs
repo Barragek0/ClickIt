@@ -11,7 +11,7 @@ namespace ClickIt.Features.Click.Selection
     {
         private readonly SpecialLabelInteractionHandlerDependencies _dependencies = dependencies;
 
-        public bool TryHandle(LabelOnGround nextLabel, Vector2 windowTopLeft)
+        public bool TryHandle(LabelOnGround nextLabel, string? mechanicId, Vector2 windowTopLeft)
         {
             if (nextLabel == null)
                 return false;
@@ -26,7 +26,7 @@ namespace ClickIt.Features.Click.Selection
                 return true;
             }
 
-            if (_dependencies.LabelInteraction.TryCorruptEssence(nextLabel, windowTopLeft))
+            if (_dependencies.LabelInteraction.TryCorruptEssence(nextLabel, mechanicId, windowTopLeft))
                 return true;
 
             if (!_dependencies.Settings.IsInitialUltimatumClickEnabled() || !UltimatumLabelMath.IsUltimatumLabel(nextLabel))

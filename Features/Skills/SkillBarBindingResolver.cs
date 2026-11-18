@@ -1,10 +1,42 @@
-namespace ClickIt.Features.Click.Runtime
+namespace ClickIt.Features.Skills
 {
-    internal readonly record struct MovementSkillBinding(Keys BoundKey, string InternalName, object? Entry);
+    internal readonly record struct SkillBinding(Keys BoundKey, string InternalName, object? Entry);
 
-    internal static class MovementSkillBindingResolver
+    internal static class SkillBarBindingResolver
     {
-        internal static bool TryFindReadyMovementSkillBinding(object? skillBar, out MovementSkillBinding binding, out string diagnostic)
+        internal const int KeyTapDelayMs = 30;
+
+        [ThreadStatic]
+        private static List<object?>? _threadSkillBarEntriesBuffer;
+
+        internal static bool TryFindReadyMovementSkillBinding(object? skillBar, out SkillBinding binding, out string diagnostic)
+            => TryFindReadySkillBindingCore(skillBar, null, MovementSkillMath.IsMovementSkillInternalName, "movement skill", out binding, out diagnostic);
+
+        internal static bool TryFindReadySkillBinding(object? skillBar, string skillInternalName, out SkillBinding binding, out string diagnostic)
+        {
+            if (string.IsNullOrWhiteSpace(skillInternalName))
+            {
+                binding = default;
+                diagnostic = "Skill internal name is empty.";
+                return false;
+            }
+
+            return TryFindReadySkillBindingCore(
+                skillBar,
+                skillInternalName,
+                null,
+                skillInternalName,
+                out binding,
+                out diagnostic);
+        }
+
+        private static bool TryFindReadySkillBindingCore(
+            object? skillBar,
+            string? expectedSkillName,
+            Func<string, bool>? isWantedSkill,
+            string skillDescription,
+            out SkillBinding binding,
+            out string diagnostic)
         {
             binding = default;
 
@@ -21,7 +53,7 @@ namespace ClickIt.Features.Click.Runtime
             }
 
             int nullEntries = 0;
-            int nonMovementEntries = 0;
+            int nonMatchingEntries = 0;
             int cooldownEntries = 0;
             int missingKeyEntries = 0;
             int unsupportedKeyEntries = 0;
@@ -35,9 +67,9 @@ namespace ClickIt.Features.Click.Runtime
                     continue;
                 }
 
-                if (!TryResolveMovementSkillInternalName(entry, out string internalName))
+                if (!TryResolveSkillInternalName(entry, expectedSkillName, isWantedSkill, out string internalName))
                 {
-                    nonMovementEntries++;
+                    nonMatchingEntries++;
                     continue;
                 }
 
@@ -53,22 +85,22 @@ namespace ClickIt.Features.Click.Runtime
                     continue;
                 }
 
-                if (!MovementSkillMath.TryMapKeyTextToKeys(keyText, out Keys parsedKey))
+                if (!TryMapKeyTextToKeys(keyText, out Keys parsedKey))
                 {
                     unsupportedKeyEntries++;
                     continue;
                 }
 
-                binding = new MovementSkillBinding(parsedKey, internalName, entry);
-                diagnostic = $"Matched movement skill '{internalName}' on key text '{keyText}'.";
+                binding = new SkillBinding(parsedKey, internalName, entry);
+                diagnostic = $"Matched {skillDescription} '{internalName}' on key text '{keyText}'.";
                 return true;
             }
 
-            diagnostic = $"entries={skillEntries.Count}, null={nullEntries}, nonMovement={nonMovementEntries}, onCooldown={cooldownEntries}, missingKeyText={missingKeyEntries}, unsupportedOrMouseKey={unsupportedKeyEntries}";
+            diagnostic = $"entries={skillEntries.Count}, null={nullEntries}, nonMatching={nonMatchingEntries}, onCooldown={cooldownEntries}, missingKeyText={missingKeyEntries}, unsupportedOrMouseKey={unsupportedKeyEntries}";
             return false;
         }
 
-        internal static bool TryResolveMovementSkillRuntimeState(object? entry, out bool isUsing, out bool? allowedToCast, out bool? canBeUsed)
+        internal static bool TryResolveSkillRuntimeState(object? entry, out bool isUsing, out bool? allowedToCast, out bool? canBeUsed)
         {
             isUsing = false;
             allowedToCast = null;
@@ -113,7 +145,7 @@ namespace ClickIt.Features.Click.Runtime
             if (skillsCollection is not IEnumerable enumerable)
                 return false;
 
-            List<object?> list = MovementSkillMath.GetThreadSkillBarEntriesBuffer(16);
+            List<object?> list = GetThreadSkillBarEntriesBuffer(16);
             list.Clear();
             foreach (object? entry in enumerable)
                 list.Add(entry);
@@ -122,19 +154,29 @@ namespace ClickIt.Features.Click.Runtime
             return entries.Count > 0;
         }
 
-        private static bool TryResolveMovementSkillInternalName(object entry, out string internalName)
+        private static bool TryResolveSkillInternalName(
+            object entry,
+            string? expectedSkillName,
+            Func<string, bool>? isWantedSkill,
+            out string internalName)
         {
             internalName = string.Empty;
 
             object skillObject = ResolveSkillObject(entry);
-            return TryResolveMovementSkillNameCandidate(skillObject, entry, out internalName, s => s.InternalName)
-                || TryResolveMovementSkillNameCandidate(skillObject, entry, out internalName, s => s.Name)
-                || TryResolveMovementSkillNameCandidate(skillObject, entry, out internalName, s => s.Id)
-                || TryResolveMovementSkillNameCandidate(skillObject, entry, out internalName, s => s.SkillId)
-                || TryResolveMovementSkillNameCandidate(skillObject, entry, out internalName, s => s.MetadataId);
+            return TryResolveSkillNameCandidate(skillObject, entry, expectedSkillName, isWantedSkill, out internalName, s => s.InternalName)
+                || TryResolveSkillNameCandidate(skillObject, entry, expectedSkillName, isWantedSkill, out internalName, s => s.Name)
+                || TryResolveSkillNameCandidate(skillObject, entry, expectedSkillName, isWantedSkill, out internalName, s => s.Id)
+                || TryResolveSkillNameCandidate(skillObject, entry, expectedSkillName, isWantedSkill, out internalName, s => s.SkillId)
+                || TryResolveSkillNameCandidate(skillObject, entry, expectedSkillName, isWantedSkill, out internalName, s => s.MetadataId);
         }
 
-        private static bool TryResolveMovementSkillNameCandidate(object skillObject, object entry, out string internalName, Func<dynamic, object?> accessor)
+        private static bool TryResolveSkillNameCandidate(
+            object skillObject,
+            object entry,
+            string? expectedSkillName,
+            Func<string, bool>? isWantedSkill,
+            out string internalName,
+            Func<dynamic, object?> accessor)
         {
             internalName = string.Empty;
 
@@ -143,11 +185,89 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
 
 
-            if (!MovementSkillMath.IsMovementSkillInternalName(candidate))
+            bool matches = expectedSkillName != null
+                ? SkillNamesMatch(candidate, expectedSkillName)
+                : isWantedSkill?.Invoke(candidate) == true;
+            if (!matches)
                 return false;
 
             internalName = candidate;
             return true;
+        }
+
+        private static bool SkillNamesMatch(string candidate, string expected)
+        {
+            int candidateIndex = 0;
+            int expectedIndex = 0;
+            while (true)
+            {
+                while (candidateIndex < candidate.Length && IsSkillNameSeparator(candidate[candidateIndex]))
+                    candidateIndex++;
+                while (expectedIndex < expected.Length && IsSkillNameSeparator(expected[expectedIndex]))
+                    expectedIndex++;
+
+                if (candidateIndex >= candidate.Length || expectedIndex >= expected.Length)
+                    return candidateIndex >= candidate.Length && expectedIndex >= expected.Length;
+
+                if (char.ToUpperInvariant(candidate[candidateIndex]) != char.ToUpperInvariant(expected[expectedIndex]))
+                    return false;
+
+                candidateIndex++;
+                expectedIndex++;
+            }
+        }
+
+        private static bool IsSkillNameSeparator(char value)
+            => value is '_' or '-' or ' ';
+
+        internal static bool TryMapKeyTextToKeys(string? keyText, out Keys key)
+        {
+            key = Keys.None;
+            if (string.IsNullOrWhiteSpace(keyText))
+                return false;
+
+            string normalized = keyText.Trim().ToUpperInvariant();
+            string[] modifierSplit = normalized.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (modifierSplit.Length > 0)
+                normalized = modifierSplit[^1];
+
+            normalized = normalized.Replace(" ", string.Empty);
+
+            if (normalized is "LMB" or "RMB" or "MMB" or "MOUSE4" or "MOUSE5")
+                return false;
+
+            if (normalized.Length == 1)
+            {
+                char c = normalized[0];
+                if (c is >= 'A' and <= 'Z')
+                {
+                    key = Keys.A + (c - 'A');
+                    return true;
+                }
+
+                if (c is >= '0' and <= '9')
+                {
+                    key = Keys.D0 + (c - '0');
+                    return true;
+                }
+            }
+
+            if (normalized.StartsWith('F') && int.TryParse(normalized[1..], out int fNum) && fNum >= 1 && fNum <= 24)
+            {
+                key = Keys.F1 + (fNum - 1);
+                return true;
+            }
+
+            return Enum.TryParse(normalized, ignoreCase: true, out key);
+        }
+
+        internal static List<object?> GetThreadSkillBarEntriesBuffer(int capacity)
+            => _threadSkillBarEntriesBuffer ??= new List<object?>(SystemMath.Max(1, capacity));
+
+        internal static void ClearThreadSkillBarEntriesBuffer()
+        {
+            _threadSkillBarEntriesBuffer?.Clear();
+            _threadSkillBarEntriesBuffer = null;
         }
 
         private static bool IsSkillEntryOnCooldown(object entry)

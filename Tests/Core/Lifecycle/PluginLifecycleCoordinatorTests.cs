@@ -15,14 +15,14 @@ namespace ClickIt.Tests.Core.Lifecycle
         public void TestInitialize()
         {
             LabelElementSearch.ClearThreadLocalStorage();
-            MovementSkillMath.ClearThreadSkillBarEntriesBuffer();
+            SkillBarBindingResolver.ClearThreadSkillBarEntriesBuffer();
         }
 
         [TestCleanup]
         public void TestCleanup()
         {
             LabelElementSearch.ClearThreadLocalStorage();
-            MovementSkillMath.ClearThreadSkillBarEntriesBuffer();
+            SkillBarBindingResolver.ClearThreadSkillBarEntriesBuffer();
         }
 
         [TestMethod]
@@ -36,7 +36,7 @@ namespace ClickIt.Tests.Core.Lifecycle
             GetThreadLocalElementsList().Value!.Add(null!);
             GetThreadLocalElementsList().Value!.Count.Should().BeGreaterThan(0);
 
-            List<object?> primedSkillBarBuffer = MovementSkillMath.GetThreadSkillBarEntriesBuffer(4);
+            List<object?> primedSkillBarBuffer = SkillBarBindingResolver.GetThreadSkillBarEntriesBuffer(4);
             primedSkillBarBuffer.Add(new object());
             primedSkillBarBuffer.Should().HaveCount(1);
 
@@ -48,7 +48,7 @@ namespace ClickIt.Tests.Core.Lifecycle
             plugin.State.Runtime.IsShuttingDown.Should().BeTrue();
             GetThreadLocalElementsList().Value!.Count.Should().Be(0);
 
-            List<object?> freshSkillBarBuffer = MovementSkillMath.GetThreadSkillBarEntriesBuffer(1);
+            List<object?> freshSkillBarBuffer = SkillBarBindingResolver.GetThreadSkillBarEntriesBuffer(1);
             freshSkillBarBuffer.Should().BeEmpty();
             freshSkillBarBuffer.Should().NotBeSameAs(primedSkillBarBuffer);
 

@@ -350,9 +350,17 @@ internal static class BlightBranches
                         if (d > parallelDistance * parallelDistance || d < 0.0001f)
                             continue;
                         laneDir /= laneLen;
-                        if (Math.Abs(NumVector2.Dot(chainDir, laneDir)) < alignmentCos)
+                        float alignment = NumVector2.Dot(chainDir, laneDir);
+                        if (Math.Abs(alignment) < alignmentCos)
                             continue;
-                        if (d < bestScore) { bestScore = d; best = a; }
+                        if (d < bestScore)
+                        {
+                            bestScore = d;
+                            float along = NumVector2.Dot(positions[seg] - positions[pa], laneDir);
+                            // If the fragment starts partway along a forward beam, join
+                            // its upstream anchor so the synthetic edge doesn't double back.
+                            best = alignment >= alignmentCos && along >= 0f && along < laneLen ? pa : a;
+                        }
                     }
                 }
                 if (best >= 0)
@@ -367,6 +375,112 @@ internal static class BlightBranches
             }
         }
         return attachedAny;
+    }
+
+    // Last resort for the head of a chain which still has no path to the pump.
+    // Use the game's outward beam direction, including the end of terminal beams
+    // that have no next icon. Proximity by itself can join distinct crossing lanes.
+    internal static bool AttachBeamEndpointGaps(
+        LaneCoverageResult[] coverage,
+        IReadOnlyList<BlightPathwayIcon> icons,
+        IReadOnlyList<NumVector2> positions,
+        List<PumpBranch> branches,
+        NumVector2 pump)
+    {
+        const float maximumGap = 6f;
+        const float minimumAlignment = 0.85f;
+        bool[] assigned = BuildAssignedMask(coverage, branches);
+        List<int> roots = FindUnassignedRoots(coverage, assigned);
+        if (roots.Count == 0)
+            return false;
+
+        List<List<int>> children = BuildAttachChildren(coverage);
+        bool attached = false;
+        foreach (int root in roots)
+        {
+            if (assigned[root] || icons[root].BeamStart == default || icons[root].BeamEnd == default)
+                continue;
+            NumVector2 start = positions[root];
+            if (SqDist(start, pump) <= PumpBranchMaxDistanceSq)
+                continue;
+            NumVector2 heading = BlightHelpers.WorldToGrid(icons[root].BeamEnd) - start;
+            if (heading.LengthSquared() < 1f)
+                continue;
+            heading = NumVector2.Normalize(heading);
+
+            int best = -1;
+            float bestGap = float.PositiveInfinity;
+            for (int candidate = 0; candidate < icons.Count; candidate++)
+            {
+                BlightPathwayIcon beam = icons[candidate];
+                if (!assigned[candidate] || beam.BeamStart == default || beam.BeamEnd == default)
+                    continue;
+                NumVector2 end = BlightHelpers.WorldToGrid(beam.BeamEnd);
+                float gap = SqDist(start, end);
+                if (gap > maximumGap * maximumGap || gap >= bestGap)
+                    continue;
+                NumVector2 direction = end - positions[candidate];
+                if (direction.LengthSquared() < 1f || NumVector2.Dot(heading, NumVector2.Normalize(direction)) < minimumAlignment)
+                    continue;
+                best = candidate;
+                bestGap = gap;
+            }
+
+            if (best < 0)
+                continue;
+            ReparentUnder(coverage, children, assigned, root, best);
+            attached = true;
+        }
+
+        // Some junctions have a longer missing section and two copies of the
+        // detached beam. Only use this weaker angle test when both copies and
+        // an existing connected junction corroborate the connection.
+        bool[] junctionCandidates = (bool[])assigned.Clone();
+        foreach (int root in roots)
+        {
+            if (assigned[root] || icons[root].BeamStart == default || icons[root].BeamEnd == default)
+                continue;
+            NumVector2 start = positions[root];
+            if (SqDist(start, pump) <= PumpBranchMaxDistanceSq)
+                continue;
+            NumVector2 end = BlightHelpers.WorldToGrid(icons[root].BeamEnd);
+            NumVector2 heading = end - start;
+            if (heading.LengthSquared() < 1f)
+                continue;
+            heading = NumVector2.Normalize(heading);
+            bool hasDuplicate = roots.Any(other => other != root &&
+                icons[other].BeamStart != default && icons[other].BeamEnd != default &&
+                SqDist(start, positions[other]) <= 1f &&
+                SqDist(end, BlightHelpers.WorldToGrid(icons[other].BeamEnd)) <= 1f);
+            if (!hasDuplicate)
+                continue;
+
+            int best = -1;
+            float bestGap = 100f;
+            for (int candidate = 0; candidate < icons.Count; candidate++)
+            {
+                if (!junctionCandidates[candidate] || icons[candidate].BeamEnd == default)
+                    continue;
+                NumVector2 junction = BlightHelpers.WorldToGrid(icons[candidate].BeamEnd);
+                NumVector2 gap = start - junction;
+                float distance = gap.LengthSquared();
+                if (distance < 1f || distance > bestGap ||
+                    NumVector2.Dot(heading, gap / MathF.Sqrt(distance)) < 0.15f)
+                    continue;
+                // A connected continuation identifies a real junction rather
+                // than an arbitrary beam endpoint near an unrelated lane.
+                if (!children[candidate].Any(child => junctionCandidates[child] &&
+                    SqDist(positions[child], junction) <= 1f))
+                    continue;
+                best = candidate;
+                bestGap = distance;
+            }
+            if (best < 0)
+                continue;
+            ReparentUnder(coverage, children, assigned, root, best);
+            attached = true;
+        }
+        return attached;
     }
 
     // Segments already claimed by a branch (the union of every branch's subtree). BranchSegments walks a branch's subtree but excludes the branch's own orphan root, so those roots are marked assigned here too — they anchor a branch and are never unassigned.

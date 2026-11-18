@@ -383,8 +383,8 @@ namespace ClickIt.Tests.Features.Labels.Classification
         }
 
         [DataTestMethod]
-        [DataRow("Metadata/Terrain/Leagues/Harvest/Objects/Harvest/Irrigator", true)]
-        [DataRow("Metadata/Terrain/Leagues/Harvest/Objects/Harvest/Extractor", true)]
+        [DataRow("Metadata/Terrain/Leagues/Harvest/Objects/HarvestEncounterTree", true)]
+        [DataRow("Metadata/Terrain/Leagues/Harvest/Objects/Harvest/Extractor", false)]
         [DataRow("Metadata/Terrain/Leagues/Harvest/Objects/Collector", false)]
         public void IsHarvestPath_ReturnsExpected(string path, bool expected)
         {

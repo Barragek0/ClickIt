@@ -10,7 +10,7 @@ namespace ClickIt.Tests.Features.Click
             settings.ClickInitialUltimatum.Value = false;
             var handler = CreateHandler(settings, altarSnapshot: []);
 
-            bool handled = handler.TryHandle(null!, Vector2.Zero);
+            bool handled = handler.TryHandle(null!, null, Vector2.Zero);
 
             handled.Should().BeFalse();
         }
@@ -22,7 +22,7 @@ namespace ClickIt.Tests.Features.Click
             settings.ClickInitialUltimatum.Value = true;
             var handler = CreateHandler(settings, altarSnapshot: []);
 
-            bool handled = handler.TryHandle(null!, Vector2.Zero);
+            bool handled = handler.TryHandle(null!, null, Vector2.Zero);
 
             handled.Should().BeFalse();
         }
@@ -37,7 +37,7 @@ namespace ClickIt.Tests.Features.Click
             LabelOnGround altarLabel = OffscreenStickyTargetGraphShaper.CreateVisibleLabel(altar);
             var handler = CreateHandler(settings, altarSnapshot: []);
 
-            bool handled = handler.TryHandle(altarLabel, Vector2.Zero);
+            bool handled = handler.TryHandle(altarLabel, MechanicIds.AltarsEaterOfWorlds, Vector2.Zero);
 
             handled.Should().BeTrue();
         }

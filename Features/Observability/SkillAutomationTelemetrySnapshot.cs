@@ -1,0 +1,44 @@
+namespace ClickIt.Features.Observability;
+
+internal sealed record SkillAutomationTelemetrySnapshot(
+    bool ServiceAvailable,
+    bool CastOnMercenaries,
+    bool CastOnAnimateGuardian,
+    bool AutomationAllowed,
+    string Status,
+    int MercenaryCount,
+    int AnimateGuardianCount,
+    int TargetsWithCastAttempts,
+    long TargetEntityId,
+    string TargetPath,
+    FlameLinkTargetBuffState TargetBuffState,
+    int TargetCastAttempts,
+    string SkillBinding,
+    string SkillRuntimeState,
+    string LastAction,
+    string PositionCheck,
+    Vector2 TargetClientPosition,
+    Vector2 TargetScreenPosition,
+    bool HasTargetPosition)
+{
+    public static readonly SkillAutomationTelemetrySnapshot Empty = new(
+        ServiceAvailable: false,
+        CastOnMercenaries: false,
+        CastOnAnimateGuardian: false,
+        AutomationAllowed: false,
+        Status: "Service has not started",
+        MercenaryCount: 0,
+        AnimateGuardianCount: 0,
+        TargetsWithCastAttempts: 0,
+        TargetEntityId: 0,
+        TargetPath: string.Empty,
+        TargetBuffState: FlameLinkTargetBuffState.Unknown,
+        TargetCastAttempts: 0,
+        SkillBinding: string.Empty,
+        SkillRuntimeState: "unavailable",
+        LastAction: string.Empty,
+        PositionCheck: string.Empty,
+        TargetClientPosition: default,
+        TargetScreenPosition: default,
+        HasTargetPosition: false);
+}

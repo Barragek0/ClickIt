@@ -33,17 +33,5 @@ namespace ClickIt.Tests.Features.Click
             MovementSkillMath.ResolveMovementSkillStatusPollWindowMs(120, "Frostblink").Should().Be(0);
             MovementSkillMath.ResolveMovementSkillStatusPollWindowMs(120, "leap_slam").Should().BeGreaterThan(120);
         }
-
-        [TestMethod]
-        public void TryMapKeyTextToKeys_ParsesKeyboardBinds_AndRejectsMouseOnlyBinds()
-        {
-            MovementSkillMath.TryMapKeyTextToKeys("Q", out Keys q).Should().BeTrue();
-            q.Should().Be(Keys.Q);
-
-            MovementSkillMath.TryMapKeyTextToKeys("F5", out Keys f5).Should().BeTrue();
-            f5.Should().Be(Keys.F5);
-
-            MovementSkillMath.TryMapKeyTextToKeys("RMB", out _).Should().BeFalse();
-        }
     }
 }

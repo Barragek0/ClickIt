@@ -15,7 +15,10 @@ namespace ClickIt.Features.Click.Runtime
         Func<Vector2, string, bool> PointIsInClickableArea,
         ClickSuccessAnchor? ClickSuccessAnchor = null,
         Func<Vector2, bool>? IsBlightBuildOrUpgradeIconAt = null,
-        IOffscreenRuntimeSeam? RuntimeSeam = null);
+        IOffscreenRuntimeSeam? RuntimeSeam = null,
+        Func<bool>? IsBlightActive = null,
+        Func<Vector2, Element?, float, bool>? IsSafeBlightWalkHover = null,
+        Func<RectangleF, bool>? IsBlightMenuRegionClickable = null);
 
     internal sealed class OffscreenPathingCoordinator(OffscreenPathingCoordinatorDependencies dependencies)
     {
@@ -24,6 +27,8 @@ namespace ClickIt.Features.Click.Runtime
         private readonly OffscreenTraversalConfirmationGate _traversalConfirmationGate = new();
 
         private const float BlightIconAvoidOffset = 90f;
+        private readonly (Vector2 Point, long Time)[] _rejectedBlightPoints = new (Vector2, long)[5];
+        private int _nextRejectedBlightPoint;
 
         // Last target that an A* no-route block rejected, so the coordinator can skip re-running the doomed full-budget search for the same target during the backoff window.
         private long _blockedTargetAddress;
@@ -64,7 +69,7 @@ namespace ClickIt.Features.Click.Runtime
 
         private void AddPathfindingStage(string message) => _dependencies.PathfindingService.AddDebugStage(message);
 
-        public bool TryWalkTowardOffscreenTarget(Entity? preferredTarget = null)
+        public bool TryWalkTowardOffscreenTarget(Entity? preferredTarget = null, bool walkingToBlightTower = false, RectangleF? blightRegion = null)
         {
             if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("WalkTowardEntry",
@@ -107,6 +112,14 @@ namespace ClickIt.Features.Click.Runtime
             if (!TryBuildTraversalPath(context, out bool builtPath))
                 return false;
 
+            if (walkingToBlightTower || _dependencies.IsBlightActive?.Invoke() == true)
+            {
+                if (!_runtimeSeam.TryProjectWorldToScreen(_dependencies.GameController, context.Target, out Vector2 target))
+                    return false;
+                Vector2? routeDirection = builtPath && TryResolveOffscreenTargetScreenPointFromPath(out Vector2 route) ? route : null;
+                return TryWalkInBlight(target, context.TargetPath, blightRegion, routeDirection);
+            }
+
             if (!TryResolveTraversalClick(context, builtPath, out bool resolvedFromPath, out Vector2 targetScreen, out Vector2 walkClick))
                 return false;
 
@@ -143,7 +156,7 @@ namespace ClickIt.Features.Click.Runtime
         }
 
         // Position-only walk fallback for blight foundations whose entity has streamed out.
-        public bool TryWalkTowardGridPosition(NumVector2 gridPos)
+        public bool TryWalkTowardGridPosition(NumVector2 gridPos, RectangleF? blightRegion = null)
         {
             // Mirror the entity-walk's safety gates so the fallback never walks when the entity walk would have been aborted (ritual active, or a clickable on-screen mechanic available).
             if (OffscreenPathingMath.ShouldSkipOffscreenPathfindingForRitual(EntityHelpers.IsRitualActive(_dependencies.GameController)))
@@ -166,19 +179,12 @@ namespace ClickIt.Features.Click.Runtime
                     return false;
 
                 float scale = 1f / PoeMapExtension.WorldToGridConversion;
-                NumVector2 raw = camera.WorldToScreen(new System.Numerics.Vector3(gridPos.X * scale, gridPos.Y * scale, 0f));
-                Vector2 targetScreen = new(raw.X, raw.Y);
-                RectangleF win = _runtimeSeam.GetWindowRectangle(gameController);
-                if (!OffscreenPathingMath.TryResolveDirectionalWalkClickPosition(
-                        win, targetScreen, "blight-foundation", _dependencies.PointIsInClickableArea, out Vector2 walkClick))
-                {
-                    AddPathfindingStage($"Walk: no directional click point toward foundation ({gridPos.X:F0},{gridPos.Y:F0})");
+                if (gameController.Player == null)
                     return false;
-                }
-
-                bool clicked = _dependencies.LabelInteraction.PerformMechanicClick(
-                    ResolveBlightIconSafeClickPosition(walkClick, targetScreen, "blight-foundation"),
-                    interval: IntervalKind.Walk);
+                NumVector2 raw = camera.WorldToScreen(new System.Numerics.Vector3(
+                    gridPos.X * scale, gridPos.Y * scale, gameController.Player.PosNum.Z));
+                Vector2 targetScreen = new(raw.X, raw.Y);
+                bool clicked = TryWalkInBlight(targetScreen, "blight-foundation", blightRegion);
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
                     "BlightBuildWalk",
                     clicked
@@ -191,6 +197,114 @@ namespace ClickIt.Features.Click.Runtime
             {
                 return false;
             }
+        }
+
+        private bool TryWalkInBlight(Vector2 target, string path, RectangleF? popup, Vector2? route = null)
+        {
+            GameController controller = _dependencies.GameController;
+            if (controller.Player == null || !_runtimeSeam.TryProjectWorldToScreen(controller, controller.Player, out Vector2 player))
+                return false;
+
+            RectangleF window = _runtimeSeam.GetWindowRectangle(controller);
+            bool CanClick(Vector2 point) =>
+                _dependencies.PointIsInClickableArea(point, path)
+                && _dependencies.IsBlightBuildOrUpgradeIconAt?.Invoke(point) == false
+                && !IsRecentlyRejectedBlightPoint(point, _rejectedBlightPoints, Environment.TickCount64);
+
+            if (!TryResolveBlightWalkPoint(player, target, route, popup, window.Width, window.Height,
+                CanClick, _dependencies.IsBlightMenuRegionClickable, out Vector2 click))
+                return false;
+
+            return TryBlightGroundClick(click, IntervalKind.Walk);
+        }
+
+        internal bool TryBlightGroundClick(Vector2 point, IntervalKind interval)
+        {
+            GameController controller = _dependencies.GameController;
+            if (controller.Player == null || _dependencies.IsSafeBlightWalkHover is not { } isSafeHover)
+                return false;
+            var before = controller.Player.PosNum;
+            bool clicked = _dependencies.LabelInteraction.PerformMechanicClick(point, interval, hover =>
+            {
+                if (controller.Player == null || controller.IngameState?.Camera is not { } camera)
+                    return false;
+                var groundLabels = controller.IngameState.IngameUi?.ItemsOnGroundLabelElement;
+                if (groundLabels == null || IsAuguryCardHoverPath(groundLabels.ItemOnHoverPath))
+                    return false;
+                float drift = NumVector2.Distance(camera.WorldToScreen(before), camera.WorldToScreen(controller.Player.PosNum));
+                // Reserve room for another input frame's worth of drift and re-read the
+                // live icon geometry after the cursor has settled.
+                return float.IsFinite(drift) && drift <= 100f && isSafeHover(point, hover, drift);
+            });
+            if (!clicked)
+            {
+                _rejectedBlightPoints[_nextRejectedBlightPoint] = (point, Environment.TickCount64);
+                _nextRejectedBlightPoint = (_nextRejectedBlightPoint + 1) % _rejectedBlightPoints.Length;
+            }
+            return clicked;
+        }
+
+        internal static bool IsAuguryCardHoverPath(string? path)
+            => path?.Contains("Terrain/Leagues/Augury/", StringComparison.OrdinalIgnoreCase) == true
+                && path.Contains("/AuguryCardObject", StringComparison.OrdinalIgnoreCase);
+
+        internal static bool IsRecentlyRejectedBlightPoint(Vector2 point, ReadOnlySpan<(Vector2 Point, long Time)> rejected, long now)
+        {
+            foreach ((Vector2 previous, long time) in rejected)
+                if (time > 0 && now >= time && now - time <= 2000 && Vector2.DistanceSquared(point, previous) <= 30f * 30f)
+                    return true;
+            return false;
+        }
+
+        internal static bool TryResolveBlightWalkPoint(
+            Vector2 player, Vector2 target, Vector2? route, RectangleF? popup, float width, float height,
+            Func<Vector2, bool> canClick, Func<RectangleF, bool>? popupClickable, out Vector2 point)
+        {
+            point = default;
+            Vector2 direction = (route ?? target) - player;
+            float distance = 220f;
+            if (popup is { } region && width > region.Width + 48 && height > region.Height + 48)
+            {
+                // Center the popup within the playable viewport, using a short approach
+                // for slight clipping and bounded steps for a distant tower.
+                Vector2 center = new(region.X + region.Width / 2f, region.Y + region.Height / 2f);
+                Vector2 desiredCenter = new(
+                    Math.Clamp(center.X, region.Width / 2f + 24, width - region.Width / 2f - 24),
+                    Math.Clamp(center.Y, region.Height / 2f + 24, height - region.Height / 2f - 24));
+                Vector2 shift = center - desiredCenter;
+                if (shift.LengthSquared() < 1f)
+                    shift = center - new Vector2(width / 2f, height / 2f);
+                if (shift.LengthSquared() >= 1f && (route == null || Vector2.Dot(direction, shift) > 0))
+                {
+                    direction = shift;
+                    distance = Math.Clamp(shift.Length() + 32f, 80f, 260f);
+                }
+            }
+
+            float length = direction.Length();
+            if (!float.IsFinite(length) || length < 1f)
+                return false;
+            direction /= length;
+            Vector2 perpendicular = new(-direction.Y, direction.X);
+            bool found = false;
+            ReadOnlySpan<float> offsets = [0f, -0.4f, 0.4f, -0.8f, 0.8f];
+            foreach (float side in offsets)
+            {
+                Vector2 offset = Vector2.Normalize(direction + (perpendicular * side)) * distance;
+                Vector2 candidate = player + offset;
+                if (candidate.X < 0 || candidate.Y < 0 || candidate.X >= width || candidate.Y >= height || !canClick(candidate))
+                    continue;
+                if (!found)
+                    point = candidate;
+                found = true;
+                if (popup is not { } bounds || popupClickable?.Invoke(
+                    new RectangleF(bounds.X - offset.X, bounds.Y - offset.Y, bounds.Width, bounds.Height)) == true)
+                {
+                    point = candidate;
+                    return true;
+                }
+            }
+            return found;
         }
 
         // Build/upgrade icons are PADDED UNCLICKABLE BOXES: walk the click back along the player->target line until it is outside every box and clickable.

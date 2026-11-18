@@ -14,7 +14,7 @@ internal static class BlightLaneTopology
         IReadOnlyList<NumVector2> positions,
         Func<NumVector2, (bool chilling, bool seismic, bool fireball)> getCoverage,
         IReadOnlyList<int> precomputedParents,
-        Func<NumVector2, (bool empowering, bool shockNova, bool summoning)>? getSupportCoverage = null,
+        Func<NumVector2, (bool empowering, bool shockNova, bool summoning, bool empoweredChilling, bool empoweredSummoning, bool empoweredSeismic)>? getSupportCoverage = null,
         IReadOnlyList<int[]>? allParents = null)
     {
         int n = positions.Count;
@@ -40,6 +40,7 @@ internal static class BlightLaneTopology
                 (positions[par].X + positions[i].X) / 2f,
                 (positions[par].Y + positions[i].Y) / 2f);
             bool hc = false, hs = false, hf = false, he = false, hsn = false, hsu = false;
+            bool hec = false, hes = false, hest = false;
             for (int k = 0; k < incoming.Length; k++)
             {
                 int p = incoming[k];
@@ -52,8 +53,9 @@ internal static class BlightLaneTopology
                 hc |= c; hs |= s; hf |= f;
                 if (getSupportCoverage != null)
                 {
-                    (bool e, bool sn, bool su) = getSupportCoverage(m);
+                    (bool e, bool sn, bool su, bool ec, bool es, bool est) = getSupportCoverage(m);
                     he |= e; hsn |= sn; hsu |= su;
+                    hec |= ec; hes |= es; hest |= est;
                 }
             }
             bool covered = hc || hs || hf;
@@ -61,7 +63,8 @@ internal static class BlightLaneTopology
             results[i] = new LaneCoverageResult(
                 ParentIndex: par, IsFullyCovered: covered, Midpoint: midpoint,
                 HasChilling: hc, HasSeismic: hs, HasFireball: hf,
-                HasEmpowering: he, HasShockNova: hsn, HasSummoning: hsu);
+                HasEmpowering: he, HasShockNova: hsn, HasSummoning: hsu,
+                HasEmpoweredChilling: hec, HasEmpoweredSummoning: hes, HasEmpoweredSeismic: hest);
         }
 
         return MergeAndPropagate(results, n);
@@ -75,6 +78,9 @@ internal static class BlightLaneTopology
         bool[] localEmpowering = new bool[n];
         bool[] localShockNova = new bool[n];
         bool[] localSummoning = new bool[n];
+        bool[] localEmpoweredChilling = new bool[n];
+        bool[] localEmpoweredSummoning = new bool[n];
+        bool[] localEmpoweredSeismic = new bool[n];
         for (int i = 0; i < n; i++)
         {
             localChilling[i] = results[i].HasChilling;
@@ -83,12 +89,16 @@ internal static class BlightLaneTopology
             localEmpowering[i] = results[i].HasEmpowering;
             localShockNova[i] = results[i].HasShockNova;
             localSummoning[i] = results[i].HasSummoning;
+            localEmpoweredChilling[i] = results[i].HasEmpoweredChilling;
+            localEmpoweredSummoning[i] = results[i].HasEmpoweredSummoning;
+            localEmpoweredSeismic[i] = results[i].HasEmpoweredSeismic;
         }
 
         // Stacked parallel rows of one physical lane share coverage BEFORE propagation.  Without this, the AND-upward rule treats the stacked row as a fork arm with no coverage and blocks coverage from propagating up the lane.
         MergeStackedLaneFlags(
             localChilling, localSeismic, localFireball,
-            localEmpowering, localShockNova, localSummoning, results, n);
+            localEmpowering, localShockNova, localSummoning,
+            localEmpoweredChilling, localEmpoweredSummoning, localEmpoweredSeismic, results, n);
 
         bool[] chilling = PropagateType(results, localChilling);
         bool[] seismic = PropagateType(results, localSeismic);
@@ -96,6 +106,9 @@ internal static class BlightLaneTopology
         bool[] empowering = PropagateType(results, localEmpowering);
         bool[] shockNova = PropagateType(results, localShockNova);
         bool[] summoning = PropagateType(results, localSummoning);
+        bool[] empoweredChilling = PropagateType(results, localEmpoweredChilling);
+        bool[] empoweredSummoning = PropagateType(results, localEmpoweredSummoning);
+        bool[] empoweredSeismic = PropagateType(results, localEmpoweredSeismic);
 
         for (int i = 0; i < n; i++)
         {
@@ -109,6 +122,9 @@ internal static class BlightLaneTopology
                 HasEmpowering: empowering[i],
                 HasShockNova: shockNova[i],
                 HasSummoning: summoning[i],
+                HasEmpoweredChilling: empoweredChilling[i],
+                HasEmpoweredSummoning: empoweredSummoning[i],
+                HasEmpoweredSeismic: empoweredSeismic[i],
                 IsPhantom: results[i].IsPhantom,
                 IsPumpStub: results[i].IsPumpStub);
         }
@@ -119,6 +135,7 @@ internal static class BlightLaneTopology
     private static void MergeStackedLaneFlags(
         bool[] chilling, bool[] seismic, bool[] fireball,
         bool[] empowering, bool[] shockNova, bool[] summoning,
+        bool[] empoweredChilling, bool[] empoweredSummoning, bool[] empoweredSeismic,
         LaneCoverageResult[] results, int n)
     {
         // Bucket segments by rounded midpoint so the pairwise stacked-row scan only compares segments in the same or adjacent buckets instead of every pair (O(n^2) on dense webs).
@@ -168,8 +185,10 @@ internal static class BlightLaneTopology
                                 continue;
                             if (!RunsAreParallel(results, pi, i, pj, j))
                                 continue;
-                            changed |= UnionFlags(chilling, seismic, fireball, empowering, shockNova, summoning, i, j);
-                            changed |= UnionFlags(chilling, seismic, fireball, empowering, shockNova, summoning, j, i);
+                            changed |= UnionFlags(chilling, seismic, fireball, empowering, shockNova, summoning,
+                                empoweredChilling, empoweredSummoning, empoweredSeismic, i, j);
+                            changed |= UnionFlags(chilling, seismic, fireball, empowering, shockNova, summoning,
+                                empoweredChilling, empoweredSummoning, empoweredSeismic, j, i);
                         }
                     }
                 }
@@ -196,6 +215,7 @@ internal static class BlightLaneTopology
     private static bool UnionFlags(
         bool[] chilling, bool[] seismic, bool[] fireball,
         bool[] empowering, bool[] shockNova, bool[] summoning,
+        bool[] empoweredChilling, bool[] empoweredSummoning, bool[] empoweredSeismic,
         int target, int source)
     {
         bool changed = false;
@@ -205,6 +225,9 @@ internal static class BlightLaneTopology
         if (empowering[source] && !empowering[target]) { empowering[target] = true; changed = true; }
         if (shockNova[source] && !shockNova[target]) { shockNova[target] = true; changed = true; }
         if (summoning[source] && !summoning[target]) { summoning[target] = true; changed = true; }
+        if (empoweredChilling[source] && !empoweredChilling[target]) { empoweredChilling[target] = true; changed = true; }
+        if (empoweredSummoning[source] && !empoweredSummoning[target]) { empoweredSummoning[target] = true; changed = true; }
+        if (empoweredSeismic[source] && !empoweredSeismic[target]) { empoweredSeismic[target] = true; changed = true; }
         return changed;
     }
 
@@ -301,6 +324,10 @@ internal static class BlightLaneTopology
                 HasEmpowering = agg.HasEmpowering || r.HasEmpowering,
                 HasShockNova = agg.HasShockNova || r.HasShockNova,
                 HasSummoning = agg.HasSummoning || r.HasSummoning,
+                HasEmpoweredChilling = agg.HasEmpoweredChilling || r.HasEmpoweredChilling,
+                HasEmpoweredSummoning = agg.HasEmpoweredSummoning || r.HasEmpoweredSummoning,
+                HasEmpoweredSeismic = agg.HasEmpoweredSeismic || r.HasEmpoweredSeismic,
+                ControlRequired = agg.ControlRequired | r.ControlRequired,
                 IsPhantom = agg.IsPhantom || r.IsPhantom,
             };
         }
@@ -583,10 +610,18 @@ internal readonly record struct LaneCoverageResult(
     bool HasShockNova = false,
     bool HasSummoning = false,
     bool IsPhantom = false,
-    bool IsPumpStub = false);
+    bool IsPumpStub = false,
+    bool HasEmpoweredChilling = false,
+    bool HasEmpoweredSummoning = false,
+    bool HasEmpoweredSeismic = false,
+    BlightControl ControlRequired = BlightControl.None);
 
 internal static class BlightCoverageFlags
 {
+    internal static readonly Color UncoveredLaneColor = new(200, 60, 60, 100);
+    private static readonly Color PartialLaneColor = new(255, 128, 0, 100);
+    private static readonly Color CompleteLaneColor = new(0, 200, 0, 100);
+
     private static readonly BlightTowerType[] s_displayOrder =
     [
         BlightTowerType.Chilling,
@@ -596,6 +631,56 @@ internal static class BlightCoverageFlags
         BlightTowerType.ShockNova,
         BlightTowerType.Summoning,
     ];
+
+    internal static Color GetLaneColor(LaneCoverageResult segment, IBlightTowerStrategy strategy)
+    {
+        int presentCount = 0;
+        BlightTowerType singleType = default;
+        foreach (BlightTowerType type in s_displayOrder)
+        {
+            if (!HasType(segment, type) && !(type == BlightTowerType.Empowering
+                && (segment.HasEmpoweredChilling || segment.HasEmpoweredSummoning || segment.HasEmpoweredSeismic)))
+                continue;
+            presentCount++;
+            singleType = type;
+        }
+
+        if (presentCount == 0)
+            return UncoveredLaneColor;
+
+        BlightControl control = segment.ControlRequired == BlightControl.None ? BlightControl.Both : segment.ControlRequired;
+        bool hasRequiredTowers = strategy.Rules.Count != 0;
+        foreach (TowerBuildRule rule in strategy.Rules)
+        {
+            if (strategy.UsesPhasedLockdown && ((rule.TowerType == BlightTowerType.Seismic && (control & BlightControl.Seismic) == 0)
+                || (rule.TowerType == BlightTowerType.Chilling && (control & BlightControl.Chilling) == 0)))
+                continue;
+
+            bool covered = rule.TowerType == BlightTowerType.Empowering
+                ? HasRequiredEmpowering(segment, rule, strategy.UsesPhasedLockdown ? control : BlightControl.None)
+                : HasType(segment, rule.TowerType);
+            if (!covered)
+            {
+                hasRequiredTowers = false;
+                break;
+            }
+        }
+        if (hasRequiredTowers)
+            return CompleteLaneColor;
+        return presentCount == 1 ? IBlightTowerStrategy.DefaultTowerColor(singleType) : PartialLaneColor;
+    }
+
+    private static bool HasRequiredEmpowering(LaneCoverageResult segment, TowerBuildRule rule, BlightControl control)
+    {
+        if (control != BlightControl.None)
+            return ((control & BlightControl.Chilling) == 0 || segment.HasEmpoweredChilling)
+                && ((control & BlightControl.Seismic) == 0 || segment.HasEmpoweredSeismic);
+        if (rule.EmpowerTargets.Contains(BlightTowerType.Chilling))
+            return segment.HasEmpoweredChilling;
+        if (rule.EmpowerTargets.Contains(BlightTowerType.Summoning))
+            return segment.HasEmpoweredSummoning;
+        return segment.HasEmpowering;
+    }
 
     internal static IReadOnlySet<BlightTowerType> ForStrategy(IBlightTowerStrategy strategy)
     {
