@@ -82,4 +82,4 @@ The test memory guard defaults to 2048 MB and can be changed with `CLICKIT_TEST_
 - **Arecurius0** — original pickit improvements that started this project
 - **cheatingeagle / exapitools** — keeping ExileAPI up to date and functional
 - **instantsc** — the Radar plugin that influenced the terrain/pathfinding structure
-- **AI** — used for documentation, bug fixing (if I couldn't find a solution myself), refactoring / improving codebase structure, and all tests in the `Tests/` project.
+- **AI** — used for documentation, bug fixing (if I couldn't find a solution myself), refactoring / improving codebase structure, and all tests in the `Tests/` project. 3.30 Update: Using AI for more things generally to speed up development as I have less time to work on the plugin for the next few leagues.
