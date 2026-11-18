@@ -58,7 +58,7 @@ public class BlightDescriptionColorsTests
     [TestMethod]
     public void Resolve_BaseTowerPalette_MatchesTheUserScheme()
     {
-        BlightDescriptionColors.Resolve("Seismic").Should().Be(new Vector4(1.00f, 0.50f, 0.10f, 1f), "Seismic is orange");
+        BlightDescriptionColors.Resolve("Seismic").Should().Be(new Vector4(1.00f, 0.74f, 0.17f, 1f), "Seismic is golden yellow");
         BlightDescriptionColors.Resolve("Chilling").Should().Be(new Vector4(0.30f, 0.62f, 1.00f, 1f), "Chilling is blue");
         BlightDescriptionColors.Resolve("Empowering").Should().Be(new Vector4(0.35f, 0.85f, 0.35f, 1f), "Empowering is green");
         BlightDescriptionColors.Resolve("Summoning").Should().Be(BlightDescriptionColors.Resolve("Scout"), "the minion family is purple");
@@ -116,7 +116,7 @@ public class BlightDescriptionColorsTests
         BlightDescriptionColors.TryResolvePhrase(words, 1, out consumed).Should().BeNull();
         consumed.Should().Be(1);
         BlightDescriptionColors.TryResolvePhrase(words, 2, out consumed).Should().Be(BlightDescriptionColors.Resolve("Seismic"));
-        consumed.Should().Be(1); // plural "Seismic Towers" is not a phrase — only "Seismic" is orange
+        consumed.Should().Be(1); // The plural phrase only colours the word "Seismic".
         BlightDescriptionColors.TryResolvePhrase(words, 3, out consumed).Should().BeNull("plural 'Towers' does not inherit a colour");
         consumed.Should().Be(1);
     }

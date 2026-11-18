@@ -22,7 +22,7 @@ internal static class BlightDescriptionColors
 
         // All tower names (and their specializations) must resolve so any name in a description renders.
         AddTower(colors, "Chilling", BlightTowerType.Chilling);
-        AddTower(colors, "Seismic", BlightTowerType.Seismic); // Seismic is orange (distinct from Arc/Shock yellow)
+        AddTower(colors, "Seismic", BlightTowerType.Seismic);
         AddTower(colors, "Meteor", BlightTowerType.Fireball); // Meteor — Fireball's specialization, same red
         AddTower(colors, "Fireball", BlightTowerType.Fireball);
         AddTower(colors, "Arc", BlightTowerType.ShockNova); // Arc Tower — ShockNova's specialization, same yellow

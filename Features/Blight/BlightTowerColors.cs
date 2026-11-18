@@ -11,7 +11,7 @@ internal static class BlightTowerColors
         colors[(int)BlightTowerType.Chilling] = new(0.30f, 0.62f, 1.00f, 1f);   // blue
         colors[(int)BlightTowerType.ShockNova] = new(0.95f, 0.90f, 0.20f, 1f);  // yellow — Arc/ShockNova family
         colors[(int)BlightTowerType.Empowering] = new(0.35f, 0.85f, 0.35f, 1f); // green
-        colors[(int)BlightTowerType.Seismic] = new(1.00f, 0.50f, 0.10f, 1f);    // orange
+        colors[(int)BlightTowerType.Seismic] = new(1.00f, 0.74f, 0.17f, 1f);    // golden yellow
         colors[(int)BlightTowerType.Summoning] = new(0.72f, 0.42f, 1.00f, 1f);  // purple — Scout/Summoning family
         colors[(int)BlightTowerType.Fireball] = new(0.95f, 0.35f, 0.30f, 1f);   // red — Meteor/Fireball family
         return colors;
