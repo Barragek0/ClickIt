@@ -64,7 +64,7 @@ namespace ClickIt.Features.Altars
         private void RenderSingleAltar(DeferredDrawQueue drawQueue, RectangleF windowArea, PrimaryAltarComponent altar)
         {
             // Mod recognition controls whether automation may choose, but it must not suppress the warning overlay for unmatched mods.
-            if (!altar.AreModElementsValid())
+            if (!AreModElementsVisible(altar))
             {
                 return;
             }
@@ -79,7 +79,7 @@ namespace ClickIt.Features.Altars
             RectangleF topModsRect = altar.GetTopModsRect();
             RectangleF bottomModsRect = altar.GetBottomModsRect();
 
-            if (!AltarChoiceEvaluator.IsValidRectangles(topModsRect, bottomModsRect))
+            if (!AreUsableOverlayRectangles(topModsRect, bottomModsRect))
             {
                 return;
             }
@@ -99,6 +99,28 @@ namespace ClickIt.Features.Altars
 
             DrawWeightTexts(drawQueue, altarWeights.Value, topModsTopLeft, bottomModsTopLeft);
         }
+
+        private static bool AreModElementsVisible(PrimaryAltarComponent altar)
+        {
+            try
+            {
+                Element? top = altar.TopMods?.Element;
+                Element? bottom = altar.BottomMods?.Element;
+                return top?.IsValid == true && bottom?.IsValid == true
+                    && DynamicAccess.TryReadBool(top, DynamicAccessProfiles.IsVisible, out bool topVisible) && topVisible
+                    && DynamicAccess.TryReadBool(bottom, DynamicAccessProfiles.IsVisible, out bool bottomVisible) && bottomVisible;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        internal static bool AreUsableOverlayRectangles(RectangleF top, RectangleF bottom)
+            => AltarChoiceEvaluator.IsValidRectangles(top, bottom)
+                && float.IsFinite(top.X) && float.IsFinite(top.Y) && float.IsFinite(top.Width) && float.IsFinite(top.Height)
+                && float.IsFinite(bottom.X) && float.IsFinite(bottom.Y) && float.IsFinite(bottom.Width) && float.IsFinite(bottom.Height)
+                && top.Bottom <= bottom.Top;
 
         private static Color GetWeightColor(decimal weight1, decimal weight2, Color winColor, Color loseColor, Color tieColor)
         {

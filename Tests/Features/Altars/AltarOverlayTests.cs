@@ -46,6 +46,30 @@ namespace ClickIt.Tests.Features.Altars
             queue.GetPendingFrameSnapshot().Count(item => item.Thickness > 0).Should().Be(0);
         }
 
+        [TestMethod]
+        public void Draw_DoesNotRenderWhenOneModBecomesHiddenWhileStreamingOut()
+        {
+            var queue = new DeferredDrawQueue();
+            var top = new AltarProbeElement(new RectangleF(200, 200, 120, 40));
+            var bottom = new AltarProbeElement(new RectangleF(200, 260, 120, 40)) { IsVisible = false };
+            CreateOverlay(BuildService(BuildAltar(top, bottom))).Draw(CreateDrawContext(queue));
+
+            queue.GetPendingFrameSnapshot().Should().BeEmpty();
+            queue.GetPendingTextSnapshot().Should().BeEmpty();
+        }
+
+        [TestMethod]
+        public void Draw_DoesNotRenderWhenStreamedOutRectsCollapseToOrigin()
+        {
+            var queue = new DeferredDrawQueue();
+            CreateOverlay(BuildService(BuildAltar(
+                new AltarProbeElement(new RectangleF(0, 0, 120, 40)),
+                new AltarProbeElement(new RectangleF(0, 0, 120, 40))))).Draw(CreateDrawContext(queue));
+
+            queue.GetPendingFrameSnapshot().Should().BeEmpty();
+            queue.GetPendingTextSnapshot().Should().BeEmpty();
+        }
+
         private static AltarService BuildService(PrimaryAltarComponent component)
         {
             var owner = (ClickIt)RuntimeHelpers.GetUninitializedObject(typeof(ClickIt));
@@ -71,6 +95,7 @@ namespace ClickIt.Tests.Features.Altars
         public sealed class AltarProbeElement(RectangleF clientRect) : Element
         {
             public new bool IsValid { get; set; } = true;
+            public new bool IsVisible { get; set; } = true;
 
             public override RectangleF GetClientRect() => clientRect;
         }
