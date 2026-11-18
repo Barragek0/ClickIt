@@ -138,6 +138,29 @@ namespace ClickIt.Tests.Shared.Input
         }
 
         [DataTestMethod]
+        [DataRow(true, false, false, false, null, true)]
+        [DataRow(false, false, false, false, null, false)]
+        [DataRow(true, true, true, false, null, false)]
+        [DataRow(true, false, false, true, null, false)]
+        [DataRow(true, false, false, false, "Chat is open.", false)]
+        [TestCategory("Boundary")]
+        public void ShouldAllowBackgroundAutomation_ReturnsExpectedResultWithoutClickHotkeyGate(
+            bool isPoeActive,
+            bool blockOnOpenPanels,
+            bool isPanelOpen,
+            bool isEscapeState,
+            string? uiBlockingReason,
+            bool expected)
+        {
+            InputHandler.ShouldAllowBackgroundAutomation(
+                isPoeActive,
+                blockOnOpenPanels,
+                isPanelOpen,
+                isEscapeState,
+                uiBlockingReason).Should().Be(expected);
+        }
+
+        [DataTestMethod]
         [DataRow(false, false, false, false, false, null, false, "PoE not in focus.")]
         [DataRow(true, true, false, false, false, null, true, "Panel is open.")]
         [DataRow(true, false, true, false, false, null, false, "In town/hideout.")]

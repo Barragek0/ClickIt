@@ -36,6 +36,30 @@ namespace ClickIt.Shared.Input
             return TryGetClickFailureReason(gameController, hasLazyModeRestrictedItemsOnScreen, isRitualActive, out _);
         }
 
+        internal bool CanPerformBackgroundAutomation(GameController gameController)
+        {
+            if (gameController == null)
+                return false;
+
+            bool foreground = IsPOEActive(gameController);
+            bool sidePanelOpen = IsPanelOpen(gameController);
+            bool blockOnOpenPanels = _settings?.BlockOnOpenLeftRightPanel?.Value == true;
+            bool escapeOpen = IsEscapeState(gameController);
+            string? uiBlockingReason = GetUiBlockingReason(gameController);
+            return ShouldAllowBackgroundAutomation(foreground, blockOnOpenPanels, sidePanelOpen, escapeOpen, uiBlockingReason);
+        }
+
+        internal static bool ShouldAllowBackgroundAutomation(
+            bool isPoeActive,
+            bool blockOnOpenPanels,
+            bool isPanelOpen,
+            bool isEscapeState,
+            string? uiBlockingReason)
+            => isPoeActive
+                && (!blockOnOpenPanels || !isPanelOpen)
+                && !isEscapeState
+                && string.IsNullOrEmpty(uiBlockingReason);
+
         // Single gate walk shared by the click gate, the per-frame overlay, and the debug reason: one evaluation returns both whether clicking is allowed and the blocking reason, so the UI-panel reflection reads happen once instead of being re-run per caller.
         public bool TryGetClickFailureReason(
             GameController gameController,
