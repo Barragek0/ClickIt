@@ -10,6 +10,7 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
     private readonly Dictionary<long, PendingReroll> _rerolls = [];
     private long _areaHash = long.MinValue;
     private long _inventoryRetryAt;
+    private long _nextModifierDiagnosticAt;
     private CurrencyWarning? _warning;
 
     internal enum UpgradeStep { Wait, Open, Identify, Scour, Alchemy, Chaos }
@@ -48,8 +49,7 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
         if (!settings.ClickHarvest.Value)
             return true;
         if (!settings.HarvestRerollTargetMods.Value && _rerolls.Count != 0)
-            foreach (long id in _rerolls.Where(entry => entry.Value.LastClick != UpgradeStep.Identify).Select(entry => entry.Key).ToArray())
-                _rerolls.Remove(id);
+            _rerolls.Clear();
         if (!settings.HarvestIdentifyScourAlchMagic.Value && !settings.HarvestAlchNormal.Value && !settings.HarvestRerollTargetMods.Value)
         {
             Volatile.Write(ref _warning, null);
@@ -89,23 +89,12 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
             interaction.LogLabelAction(() => $"[Harvest] Tree {treeId}: cleared stale {currentReroll.LastClick} reroll state for {rarity} rarity");
         }
         interaction.LogLabelAction(() => $"[Harvest] Tree {treeId}: current rarity={rarity}, upgrade={pending.LastClick}, reroll={(_rerolls.TryGetValue(treeId, out PendingReroll state) ? state.LastClick : UpgradeStep.Wait)}");
-        if (settings.HarvestRerollTargetMods.Value &&
-            (rarity == MonsterRarity.Rare || _rerolls.ContainsKey(treeId)))
+        if (settings.HarvestRerollTargetMods.Value)
         {
             if (now < pending.CheckAfter)
                 return true;
             return TryReroll(label, windowTopLeft, gameController, interaction, allowWhenHotkeyInactive,
                 areaHash, treeId, rarity, pending.LastClick == UpgradeStep.Alchemy, out readyToOpenUpgradedTree);
-        }
-        if (!settings.HarvestRerollTargetMods.Value && rarity == MonsterRarity.Rare)
-        {
-            _rerolls.TryGetValue(treeId, out PendingReroll identification);
-            if (now < identification.CheckAfter || TryIdentifyRare(label, windowTopLeft, gameController, interaction,
-                    allowWhenHotkeyInactive, areaHash, treeId, identification, ReadModifierText(label)))
-                return true;
-            _rerolls.Remove(treeId);
-            readyToOpenUpgradedTree = identification.LastClick == UpgradeStep.Identify || pending.LastClick == UpgradeStep.Alchemy;
-            return false;
         }
         // ExileCore reports Normal encounter rarity as White.
         bool startedNormal = pending.LastClick == UpgradeStep.Wait ? rarity == MonsterRarity.White : pending.StartedNormal;
@@ -118,38 +107,17 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
         bool? identified = null;
         if (rarity == MonsterRarity.Magic && pending.LastClick is UpgradeStep.Wait or UpgradeStep.Identify)
         {
-            bool? entityIdentified = null;
-            if (DynamicAccess.TryGetComponent<Mods>(tree, out Mods? mods)
-                && DynamicAccess.TryReadBool(mods, static component => component.Identified, out bool isIdentified))
-                entityIdentified = isIdentified;
-
-            object? root = LabelActionButtons.ReadVisibleLabelRoot(label);
-            int row = LabelActionButtons.DefaultRowIndex;
-            bool hasWisdomButton = LabelActionButtons.FindButton(root, row, LabelActionButtons.ScrollOfWisdom, out _) != null;
-            bool hasScouringButton = !hasWisdomButton && entityIdentified == null
-                && LabelActionButtons.FindButton(root, row, LabelActionButtons.OrbOfScouring, out _) != null;
-            identified = ResolveIdentification(entityIdentified, hasWisdomButton, hasScouringButton);
+            identified = ReadIdentificationState(label);
+            if (identified == null)
+            {
+                interaction.LogLabelAction(() => $"[Harvest] Tree {treeId}: waiting for identification text");
+                return true;
+            }
         }
 
         CurrencyStock? stock = null;
-        bool wisdomConsumed = false;
-        if (pending.LastClick == UpgradeStep.Identify && rarity == MonsterRarity.Magic && identified != true)
-        {
-            if (now < _inventoryRetryAt)
-                return true;
 
-            stock = ReadCurrency(gameController);
-            wisdomConsumed = pending.WisdomBefore is int before
-                && stock.Value.WisdomCount == before - 1
-                && stock.Value.SawInventoryItems;
-            if (!wisdomConsumed)
-                _inventoryRetryAt = now + InventoryRetryDelayMs;
-        }
-
-        // An explicitly unidentified tree needs Wisdom; otherwise try Scouring
-        // first and fall back to Wisdom if the action row proves Scouring absent.
-        bool startingMagic = rarity == MonsterRarity.Magic && pending.LastClick == UpgradeStep.Wait;
-        UpgradeStep step = ChooseStep(pending.LastClick, rarity, identified, wisdomConsumed, startedNormal);
+        UpgradeStep step = ChooseStep(pending.LastClick, rarity, identified, false, startedNormal);
         interaction.LogLabelAction(() => $"[Harvest] Tree {treeId} rarity={rarity} identified={identified?.ToString() ?? "unreadable"} previous={pending.LastClick} next={step}");
         if (step == UpgradeStep.Open)
         {
@@ -174,32 +142,7 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
         }
 
         Volatile.Write(ref _warning, null);
-        bool triedScourFirst = startingMagic && step == UpgradeStep.Scour;
         ClickLabelInteractionService.LabelActionResult result = SendAction(step);
-        if (startingMagic && step == UpgradeStep.Scour && result == ClickLabelInteractionService.LabelActionResult.NoMatch)
-        {
-            step = UpgradeStep.Identify;
-            missing = GetMissingUpgradeCurrency(step, stock.Value.Wisdom, stock.Value.Scour, stock.Value.Alchemy);
-            if (missing != null)
-            {
-                Volatile.Write(ref _warning, new CurrencyWarning($"Harvest needs {missing}", now + WarningHoldMs, startedNormal));
-                _inventoryRetryAt = now + InventoryRetryDelayMs;
-                return true;
-            }
-            result = SendAction(step);
-        }
-        if (startingMagic && !triedScourFirst && step == UpgradeStep.Identify && identified != false && result == ClickLabelInteractionService.LabelActionResult.NoMatch)
-        {
-            step = UpgradeStep.Scour;
-            missing = GetMissingUpgradeCurrency(step, stock.Value.Wisdom, stock.Value.Scour, stock.Value.Alchemy);
-            if (missing != null)
-            {
-                Volatile.Write(ref _warning, new CurrencyWarning($"Harvest needs {missing}", now + WarningHoldMs, startedNormal));
-                _inventoryRetryAt = now + InventoryRetryDelayMs;
-                return true;
-            }
-            result = SendAction(step);
-        }
         if (result == ClickLabelInteractionService.LabelActionResult.Clicked)
         {
             _pending[treeId] = new PendingUpgrade(step, Environment.TickCount64 + LabelUpdateDelayMs, stock.Value.WisdomCount, startedNormal);
@@ -222,7 +165,8 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
                     && AreaUiSnapshotReader.TryReadCurrentAreaHash(gameController, out long currentArea)
                     && currentArea == areaHash
                     && TryReadTree(label, out Entity? currentTree, out MonsterRarity currentRarity)
-                    && currentTree.Id == treeId && currentRarity == rarity);
+                    && currentTree.Id == treeId && currentRarity == rarity
+                    && (rarity != MonsterRarity.Magic || ReadIdentificationState(label) == identified));
         }
     }
 
@@ -236,7 +180,20 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
         if (now < pending.CheckAfter)
             return true;
 
-        string? text = rarity == MonsterRarity.Rare ? ReadModifierText(label) : null;
+        bool? identified = rarity == MonsterRarity.White ? true : ReadIdentificationState(label);
+        string? text = rarity is MonsterRarity.Rare or MonsterRarity.Magic ? ReadModifierText(label) : null;
+        if (rarity is MonsterRarity.Rare or MonsterRarity.Magic && identified == null)
+        {
+            interaction.LogLabelAction(() => $"[Harvest] Tree {treeId}: waiting for identification text");
+            if (now >= _nextModifierDiagnosticAt)
+            {
+                _nextModifierDiagnosticAt = now + 1000;
+                interaction.LogLabelAction(() => $"[Harvest] Tree {treeId}: identification and modifier element; {DescribeModifierElement(label)}");
+            }
+            return true;
+        }
+        if (pending.LastClick == UpgradeStep.Identify && identified != true)
+            return true;
         if (pending.LastClick == UpgradeStep.Scour)
         {
             if (rarity != MonsterRarity.White)
@@ -250,21 +207,37 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
         else if (pending.LastClick == UpgradeStep.Chaos)
         {
             if (rarity != MonsterRarity.Rare || string.IsNullOrWhiteSpace(text))
+            {
+                interaction.LogLabelAction(() => $"[Harvest] Tree {treeId}: waiting for Chaos result; rarity={rarity}, modifier text={(text == null ? "unreadable" : "empty")}, previous={DescribeModifiers(pending.PreviousText)}, chaos before={pending.CurrencyBefore?.ToString() ?? "unreadable"}");
+                if (now >= _nextModifierDiagnosticAt)
+                {
+                    _nextModifierDiagnosticAt = now + 1000;
+                    interaction.LogLabelAction(() => $"[Harvest] Tree {treeId}: modifier element; {DescribeModifierElement(label)}");
+                }
                 return true;
+            }
             if (string.Equals(text, pending.PreviousText, StringComparison.Ordinal))
             {
                 CurrencyStock current = ReadCurrency(gameController);
                 if (!ChaosRerollConfirmed(pending.PreviousText, text, pending.CurrencyBefore, current.ChaosCount, current.SawInventoryItems))
+                {
+                    interaction.LogLabelAction(() => $"[Harvest] Tree {treeId}: waiting for Chaos result; modifier unchanged={DescribeModifiers(text)}, chaos before={pending.CurrencyBefore?.ToString() ?? "unreadable"}, after={current.ChaosCount?.ToString() ?? "unreadable"}, inventory items seen={current.SawInventoryItems}, chaos present={current.Chaos}");
                     return true;
+                }
             }
         }
 
-        if (rarity == MonsterRarity.Rare)
+        if (identified == true && rarity is MonsterRarity.Rare or MonsterRarity.Magic)
         {
-            if (TryIdentifyRare(label, windowTopLeft, gameController, interaction, allowWhenHotkeyInactive, areaHash, treeId, pending, text))
-                return true;
             if (string.IsNullOrWhiteSpace(text) || text.Contains("Unidentified", StringComparison.OrdinalIgnoreCase))
+            {
+                if (now >= _nextModifierDiagnosticAt)
+                {
+                    _nextModifierDiagnosticAt = now + 1000;
+                    interaction.LogLabelAction(() => $"[Harvest] Tree {treeId}: waiting for modifier text; {DescribeModifierElement(label)}");
+                }
                 return true;
+            }
             if (MatchesTarget(text, settings.HarvestTargetStackedDecks.Value, settings.HarvestMinStackedDecks.Value,
                     settings.HarvestTargetThreads.Value, settings.HarvestMinThreads.Value,
                     settings.HarvestTargetCurrencyItems.Value, settings.HarvestMinCurrencyItems.Value, settings.HarvestTargetUniqueItems.Value))
@@ -275,17 +248,15 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
                 return false;
             }
         }
-        else if (rarity != MonsterRarity.White || pending.LastClick != UpgradeStep.Scour)
+        else if (rarity is not (MonsterRarity.White or MonsterRarity.Magic or MonsterRarity.Rare))
             return true;
 
         if (now < _inventoryRetryAt)
             return true;
         bool useChaos = settings.HarvestRerollMethod.Value == 0;
-        UpgradeStep next = rarity == MonsterRarity.White ? UpgradeStep.Alchemy : useChaos ? UpgradeStep.Chaos : UpgradeStep.Scour;
+        UpgradeStep next = ChooseRerollStep(rarity, identified, targetMatched: false, useChaos);
         CurrencyStock stock = ReadCurrency(gameController);
-        string? missing = next == UpgradeStep.Chaos ? (!stock.Chaos ? "Chaos Orbs" : null)
-            : !stock.Scour && next == UpgradeStep.Scour ? "Orbs of Scouring"
-            : !stock.Alchemy ? "Orbs of Alchemy" : null;
+        string? missing = GetMissingRerollCurrency(next, stock.Wisdom, stock.Scour, stock.Alchemy, stock.Chaos);
         if (missing != null)
         {
             Volatile.Write(ref _warning, new CurrencyWarning($"Harvest needs {missing}", now + WarningHoldMs, false, true));
@@ -293,74 +264,25 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
             return true;
         }
         Volatile.Write(ref _warning, null);
-        string name = next == UpgradeStep.Chaos ? LabelActionButtons.ChaosOrb
+        string name = next == UpgradeStep.Identify ? LabelActionButtons.ScrollOfWisdom
+            : next == UpgradeStep.Chaos ? LabelActionButtons.ChaosOrb
             : next == UpgradeStep.Scour ? LabelActionButtons.OrbOfScouring : LabelActionButtons.OrbOfAlchemy;
         var result = interaction.TryClickLabelAction(label, windowTopLeft, name, allowWhenHotkeyInactive: allowWhenHotkeyInactive,
             canStillClick: () => settings.ClickHarvest.Value && settings.HarvestRerollTargetMods.Value
                 && AreaUiSnapshotReader.TryReadCurrentAreaHash(gameController, out long currentArea) && currentArea == areaHash
                 && TryReadTree(label, out Entity? currentTree, out MonsterRarity currentRarity)
                 && currentTree.Id == treeId && currentRarity == rarity
-                && (rarity != MonsterRarity.Rare || (string.Equals(ReadModifierText(label), text, StringComparison.Ordinal)
-                    && (settings.HarvestRerollMethod.Value == 0) == useChaos
+                && (rarity == MonsterRarity.White || ReadIdentificationState(label) == identified)
+                && (rarity != MonsterRarity.Rare || next is not (UpgradeStep.Chaos or UpgradeStep.Scour)
+                    || (settings.HarvestRerollMethod.Value == 0) == useChaos)
+                && (next is not (UpgradeStep.Chaos or UpgradeStep.Scour) || (string.Equals(ReadModifierText(label), text, StringComparison.Ordinal)
                     && !MatchesTarget(text!, settings.HarvestTargetStackedDecks.Value, settings.HarvestMinStackedDecks.Value,
                         settings.HarvestTargetThreads.Value, settings.HarvestMinThreads.Value,
                         settings.HarvestTargetCurrencyItems.Value, settings.HarvestMinCurrencyItems.Value, settings.HarvestTargetUniqueItems.Value))));
         if (result == ClickLabelInteractionService.LabelActionResult.Clicked)
-            _rerolls[treeId] = new PendingReroll(next, Environment.TickCount64 + LabelUpdateDelayMs, text, stock.ChaosCount);
+            _rerolls[treeId] = new PendingReroll(next, Environment.TickCount64 + LabelUpdateDelayMs, text,
+                next == UpgradeStep.Identify ? stock.WisdomCount : stock.ChaosCount);
         return true;
-    }
-
-    private bool TryIdentifyRare(LabelOnGround label, Vector2 windowTopLeft, GameController gameController,
-        ClickLabelInteractionService interaction, bool allowWhenHotkeyInactive, long areaHash, long treeId,
-        PendingReroll pending, string? text)
-    {
-        bool? identified = null;
-        if (TryReadTree(label, out Entity? tree, out _) && DynamicAccess.TryGetComponent<Mods>(tree, out Mods? mods)
-            && DynamicAccess.TryReadBool(mods, static component => component.Identified, out bool value))
-            identified = value;
-        bool saysUnidentified = text?.Contains("Unidentified", StringComparison.OrdinalIgnoreCase) == true;
-        bool readableMods = !string.IsNullOrWhiteSpace(text) && !saysUnidentified;
-        if (saysUnidentified)
-            identified = false;
-        if (pending.LastClick == UpgradeStep.Identify)
-        {
-            CurrencyStock current = ReadCurrency(gameController);
-            bool consumed = current.SawInventoryItems && pending.CurrencyBefore is int before
-                && current.WisdomCount is int after && after < before;
-            bool textUpdated = readableMods && !string.Equals(pending.PreviousText, text, StringComparison.Ordinal);
-            if (!RareIdentificationConfirmed(identified, textUpdated, consumed))
-            {
-                interaction.LogLabelAction(() => $"[Harvest] Tree {treeId}: waiting for rare identification to update");
-                return true;
-            }
-            return false;
-        }
-        if (!NeedsRareIdentification(identified, readableMods))
-            return false;
-        long now = Environment.TickCount64;
-        if (now < _inventoryRetryAt)
-            return true;
-        CurrencyStock wisdom = ReadCurrency(gameController);
-        if (!wisdom.Wisdom)
-        {
-            bool normalOnly = settings.HarvestAlchNormal.Value && !settings.HarvestIdentifyScourAlchMagic.Value;
-            Volatile.Write(ref _warning, new CurrencyWarning("Harvest needs Scrolls of Wisdom", now + WarningHoldMs, normalOnly, settings.HarvestRerollTargetMods.Value));
-            _inventoryRetryAt = now + InventoryRetryDelayMs;
-            return true;
-        }
-        interaction.LogLabelAction(() => $"[Harvest] Tree {treeId}: checking Scroll of Wisdom for rare tree");
-        var result = interaction.TryClickLabelAction(label, windowTopLeft, LabelActionButtons.ScrollOfWisdom,
-            allowWhenHotkeyInactive: allowWhenHotkeyInactive,
-            canStillClick: () => settings.ClickHarvest.Value && (IsUpgradeEnabled(false) || settings.HarvestAlchNormal.Value)
-                && AreaUiSnapshotReader.TryReadCurrentAreaHash(gameController, out long currentArea) && currentArea == areaHash
-                && TryReadTree(label, out Entity? currentTree, out MonsterRarity currentRarity)
-                && currentTree.Id == treeId && currentRarity == MonsterRarity.Rare);
-        if (result == ClickLabelInteractionService.LabelActionResult.Clicked)
-        {
-            _rerolls[treeId] = new PendingReroll(UpgradeStep.Identify, Environment.TickCount64 + LabelUpdateDelayMs, text, wisdom.WisdomCount);
-            return true;
-        }
-        return result != ClickLabelInteractionService.LabelActionResult.NoMatch || !readableMods;
     }
 
     internal static bool ChaosRerollConfirmed(string? previous, string? current, int? before, int? after, bool inventoryReadable)
@@ -368,14 +290,60 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
             (!string.Equals(previous, current, StringComparison.Ordinal)
                 || (inventoryReadable && before.HasValue && after.HasValue && after.Value < before.Value));
 
-    internal static bool NeedsRareIdentification(bool? identified, bool readableMods)
-        => identified == false || (identified == null && !readableMods);
-
-    internal static bool RareIdentificationConfirmed(bool? identified, bool textUpdated, bool wisdomConsumed)
-        => identified == true || textUpdated || wisdomConsumed;
+    private static string DescribeModifiers(string? text)
+    {
+        if (text == null)
+            return "<unreadable>";
+        string compact = text.Replace('\r', ' ').Replace('\n', ' ');
+        return compact.Length <= 240 ? compact : compact[..240] + "...";
+    }
 
     internal static bool ShouldResetRerollForRarity(UpgradeStep lastClick, MonsterRarity rarity)
-        => rarity == MonsterRarity.Magic || (rarity == MonsterRarity.White && lastClick is not (UpgradeStep.Scour or UpgradeStep.Alchemy));
+        => (rarity == MonsterRarity.Magic && lastClick is UpgradeStep.Chaos or UpgradeStep.Alchemy)
+            || (rarity == MonsterRarity.White && lastClick is not (UpgradeStep.Scour or UpgradeStep.Alchemy));
+
+    internal static UpgradeStep ChooseRerollStep(MonsterRarity rarity, bool? identified, bool targetMatched, bool useChaos)
+    {
+        if (rarity == MonsterRarity.White)
+            return UpgradeStep.Alchemy;
+        if (rarity is not (MonsterRarity.Magic or MonsterRarity.Rare) || identified == null)
+            return UpgradeStep.Wait;
+        if (identified == false)
+            return UpgradeStep.Identify;
+        if (targetMatched)
+            return UpgradeStep.Open;
+        return rarity == MonsterRarity.Magic || !useChaos ? UpgradeStep.Scour : UpgradeStep.Chaos;
+    }
+
+    internal static string? GetMissingRerollCurrency(UpgradeStep step, bool wisdom, bool scour, bool alchemy, bool chaos)
+        => step switch
+        {
+            UpgradeStep.Identify when !wisdom => "Scrolls of Wisdom",
+            UpgradeStep.Chaos when !chaos => "Chaos Orbs",
+            UpgradeStep.Scour when !scour => "Orbs of Scouring",
+            UpgradeStep.Alchemy when !alchemy => "Orbs of Alchemy",
+            _ => null
+        };
+
+    private static bool? ReadIdentificationState(LabelOnGround label)
+        => ReadIdentificationStateFromRoot(LabelActionButtons.ReadVisibleLabelRoot(label));
+
+    internal static bool? ReadIdentificationStateFromRoot(object? root)
+    {
+        if (!DynamicAccess.TryGetChildAtIndex(root, 0, out object? first)
+            || !DynamicAccess.TryGetChildAtIndex(first, 1, out object? second)
+            || !DynamicAccess.TryGetChildAtIndex(second, 3, out object? element))
+            return null;
+        if (DynamicAccess.TryGetDynamicValue(element, static value => value.TextNoTags, out object? raw) && raw is string text)
+            return !string.Equals(text.Trim(), "Unidentified", StringComparison.OrdinalIgnoreCase);
+        // Identified labels can expose modifier text in the child while the
+        // parent's identification text becomes null after using Wisdom.
+        if (DynamicAccess.TryGetChildAtIndex(element, 0, out object? modifier)
+            && DynamicAccess.TryReadString(modifier, static value => value.TextNoTags, out string mods)
+            && !mods.Contains("Unidentified", StringComparison.OrdinalIgnoreCase))
+            return true;
+        return null;
+    }
 
     private static string? ReadModifierText(LabelOnGround label)
     {
@@ -385,6 +353,29 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
             && DynamicAccess.TryGetChildAtIndex(second, 3, out object? third)
             && DynamicAccess.TryGetChildAtIndex(third, 0, out object? element)
             && DynamicAccess.TryReadString(element, static value => value.TextNoTags, out string text) ? text : null;
+    }
+
+    private static string DescribeModifierElement(LabelOnGround label)
+    {
+        object? current = LabelActionButtons.ReadVisibleLabelRoot(label);
+        int[] path = [0, 1, 3, 0];
+        string description = current == null ? "label unavailable" : "label";
+        foreach (int index in path)
+        {
+            int count = DynamicAccess.TryReadInt(current, static element => element.ChildCount, out int value) ? value : -1;
+            description += $" -> child {index} (count={count})";
+            if (!DynamicAccess.TryGetChildAtIndex(current, index, out current) || current == null)
+                return description + " unavailable";
+            if (index == 3)
+            {
+                string status = DynamicAccess.TryGetDynamicValue(current, static element => element.TextNoTags, out object? valueText)
+                    ? valueText == null ? "<null>" : DescribeModifiers(valueText.ToString()) : "<unreadable>";
+                description += $" [identification text={status}]";
+            }
+        }
+        string plain = DynamicAccess.TryReadString(current, static element => element.TextNoTags, out string noTags) ? DescribeModifiers(noTags) : "<unreadable>";
+        string raw = DynamicAccess.TryReadString(current, static element => element.Text, out string text) ? DescribeModifiers(text) : "<unreadable>";
+        return $"{description}; TextNoTags={plain}; Text={raw}";
     }
 
     internal static bool MatchesTarget(string text, bool decks, int minDecks, bool threads, int minThreads,
@@ -421,7 +412,7 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
             (UpgradeStep.Wait, MonsterRarity.Magic) => identified == false ? UpgradeStep.Identify : UpgradeStep.Scour,
             (UpgradeStep.Wait, MonsterRarity.White) when alchNormal => UpgradeStep.Alchemy,
             (UpgradeStep.Wait, MonsterRarity.White or MonsterRarity.Rare or MonsterRarity.Unique) => UpgradeStep.Open,
-            (UpgradeStep.Identify, MonsterRarity.Magic) when identified == true || wisdomConsumed => UpgradeStep.Scour,
+            (UpgradeStep.Identify, MonsterRarity.Magic) when identified == true => UpgradeStep.Scour,
             (UpgradeStep.Identify or UpgradeStep.Scour, MonsterRarity.White) => UpgradeStep.Alchemy,
             (UpgradeStep.Alchemy, MonsterRarity.Rare) => UpgradeStep.Open,
             _ => UpgradeStep.Wait,
@@ -506,7 +497,7 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
             (missing ??= []).Add("Scrolls of Wisdom");
         if (step == UpgradeStep.Scour && !scour)
             (missing ??= []).Add("Orbs of Scouring");
-        if (step is UpgradeStep.Scour or UpgradeStep.Alchemy && !alchemy)
+        if (step == UpgradeStep.Alchemy && !alchemy)
             (missing ??= []).Add("Orbs of Alchemy");
         return missing == null ? null : string.Join(", ", missing);
     }

@@ -65,16 +65,29 @@ public class HarvestEncounterUpgradeTests
 
     [TestMethod]
     [TestCategory("Regression")]
-    public void RareReroll_IdentifiesBeforeCraftingAndWaitsForConfirmation()
+    public void Reroll_ChoosesActionFromIdentificationRarityAndTarget()
     {
-        HarvestEncounterUpgrade.NeedsRareIdentification(false, true).Should().BeTrue();
-        HarvestEncounterUpgrade.NeedsRareIdentification(null, false).Should().BeTrue();
-        HarvestEncounterUpgrade.NeedsRareIdentification(null, true).Should().BeFalse();
-        HarvestEncounterUpgrade.NeedsRareIdentification(true, false).Should().BeFalse();
-        HarvestEncounterUpgrade.RareIdentificationConfirmed(false, false, false).Should().BeFalse();
-        HarvestEncounterUpgrade.RareIdentificationConfirmed(true, false, false).Should().BeTrue();
-        HarvestEncounterUpgrade.RareIdentificationConfirmed(null, true, false).Should().BeTrue();
-        HarvestEncounterUpgrade.RareIdentificationConfirmed(null, false, true).Should().BeTrue();
+        HarvestEncounterUpgrade.ChooseRerollStep(MonsterRarity.Magic, false, false, true).Should().Be(HarvestEncounterUpgrade.UpgradeStep.Identify);
+        HarvestEncounterUpgrade.ChooseRerollStep(MonsterRarity.Rare, false, true, true).Should().Be(HarvestEncounterUpgrade.UpgradeStep.Identify);
+        HarvestEncounterUpgrade.ChooseRerollStep(MonsterRarity.Magic, true, true, true).Should().Be(HarvestEncounterUpgrade.UpgradeStep.Open);
+        HarvestEncounterUpgrade.ChooseRerollStep(MonsterRarity.Rare, true, true, true).Should().Be(HarvestEncounterUpgrade.UpgradeStep.Open);
+        HarvestEncounterUpgrade.ChooseRerollStep(MonsterRarity.Magic, true, false, true).Should().Be(HarvestEncounterUpgrade.UpgradeStep.Scour);
+        HarvestEncounterUpgrade.ChooseRerollStep(MonsterRarity.Rare, true, false, true).Should().Be(HarvestEncounterUpgrade.UpgradeStep.Chaos);
+        HarvestEncounterUpgrade.ChooseRerollStep(MonsterRarity.Rare, true, false, false).Should().Be(HarvestEncounterUpgrade.UpgradeStep.Scour);
+        HarvestEncounterUpgrade.ChooseRerollStep(MonsterRarity.White, null, false, true).Should().Be(HarvestEncounterUpgrade.UpgradeStep.Alchemy);
+        HarvestEncounterUpgrade.ChooseRerollStep(MonsterRarity.Rare, null, false, true).Should().Be(HarvestEncounterUpgrade.UpgradeStep.Wait);
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void Reroll_WarnsOnlyForTheCurrentStepCurrency()
+    {
+        HarvestEncounterUpgrade.GetMissingRerollCurrency(HarvestEncounterUpgrade.UpgradeStep.Identify, false, false, false, false).Should().Be("Scrolls of Wisdom");
+        HarvestEncounterUpgrade.GetMissingRerollCurrency(HarvestEncounterUpgrade.UpgradeStep.Scour, false, false, false, false).Should().Be("Orbs of Scouring");
+        HarvestEncounterUpgrade.GetMissingRerollCurrency(HarvestEncounterUpgrade.UpgradeStep.Alchemy, false, false, false, false).Should().Be("Orbs of Alchemy");
+        HarvestEncounterUpgrade.GetMissingRerollCurrency(HarvestEncounterUpgrade.UpgradeStep.Chaos, false, false, false, false).Should().Be("Chaos Orbs");
+        HarvestEncounterUpgrade.GetMissingRerollCurrency(HarvestEncounterUpgrade.UpgradeStep.Identify, true, false, false, false).Should().BeNull();
+        HarvestEncounterUpgrade.GetMissingRerollCurrency(HarvestEncounterUpgrade.UpgradeStep.Scour, false, true, false, false).Should().BeNull();
     }
 
     [TestMethod]
@@ -129,7 +142,7 @@ public class HarvestEncounterUpgradeTests
         HarvestEncounterUpgrade.GetMissingUpgradeCurrency(HarvestEncounterUpgrade.UpgradeStep.Identify, true, false, false)
             .Should().BeNull("the tree can be identified before later currency is available");
         HarvestEncounterUpgrade.GetMissingUpgradeCurrency(HarvestEncounterUpgrade.UpgradeStep.Scour, true, false, false)
-            .Should().Be("Orbs of Scouring, Orbs of Alchemy");
+            .Should().Be("Orbs of Scouring");
         HarvestEncounterUpgrade.GetMissingUpgradeCurrency(HarvestEncounterUpgrade.UpgradeStep.Alchemy, false, false, false)
             .Should().Be("Orbs of Alchemy");
     }
@@ -166,12 +179,12 @@ public class HarvestEncounterUpgradeTests
     }
 
     [TestMethod]
-    public void MissingIdentificationFlag_WaitsForWisdomConsumption()
+    public void Identification_WaitsForLabelConfirmationEvenIfWisdomWasConsumed()
     {
         HarvestEncounterUpgrade.ChooseStep(HarvestEncounterUpgrade.UpgradeStep.Identify, MonsterRarity.Magic, null, false)
             .Should().Be(HarvestEncounterUpgrade.UpgradeStep.Wait);
         HarvestEncounterUpgrade.ChooseStep(HarvestEncounterUpgrade.UpgradeStep.Identify, MonsterRarity.Magic, null, true)
-            .Should().Be(HarvestEncounterUpgrade.UpgradeStep.Scour);
+            .Should().Be(HarvestEncounterUpgrade.UpgradeStep.Wait);
     }
 
     [DataTestMethod]

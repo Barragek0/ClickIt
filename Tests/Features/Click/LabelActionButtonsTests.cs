@@ -4,6 +4,28 @@ namespace ClickIt.Tests.Features.Click;
 public class LabelActionButtonsTests
 {
     [TestMethod]
+    [TestCategory("Regression")]
+    public void HarvestIdentification_ReadsTheParentTextRatherThanModifierChild()
+    {
+        var unidentified = new Node(new Node(), new Node(new Node(), new Node(), new Node(),
+            new Node(new Node { TextNoTags = "different modifier text" }) { TextNoTags = "Unidentified" }));
+        var root = new Node(unidentified);
+        HarvestEncounterUpgrade.ReadIdentificationStateFromRoot(root).Should().BeFalse();
+        var identified = new Node(new Node(new Node(), new Node(new Node(), new Node(), new Node(),
+            new Node(new Node { TextNoTags = "Unidentified" }) { TextNoTags = "" })));
+        HarvestEncounterUpgrade.ReadIdentificationStateFromRoot(identified).Should().BeTrue();
+        var identifiedWithNullParentText = new Node(new Node(new Node(), new Node(new Node(), new Node(), new Node(),
+            new Node(new Node { TextNoTags = "Tier 3 Sacred Fauna drop 2 additional Threads" }))));
+        HarvestEncounterUpgrade.ReadIdentificationStateFromRoot(identifiedWithNullParentText).Should().BeTrue();
+        var nullTextWithoutModifiers = new Node(new Node(new Node(), new Node(new Node(), new Node(), new Node(), new Node())));
+        HarvestEncounterUpgrade.ReadIdentificationStateFromRoot(nullTextWithoutModifiers).Should().BeNull();
+        var nullTextWithUnidentifiedChild = new Node(new Node(new Node(), new Node(new Node(), new Node(), new Node(),
+            new Node(new Node { TextNoTags = "Unidentified" }))));
+        HarvestEncounterUpgrade.ReadIdentificationStateFromRoot(nullTextWithUnidentifiedChild).Should().BeNull();
+        HarvestEncounterUpgrade.ReadIdentificationStateFromRoot(new Node()).Should().BeNull();
+    }
+
+    [TestMethod]
     public void VisibleIconCanBeProbedBeforeItsTooltipGetsChildren()
     {
         var icon = new Node { Tooltip = new Node() };
