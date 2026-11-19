@@ -4,6 +4,39 @@ namespace ClickIt.Tests.Features.Blight;
 public class BlightBranchesTests
 {
     [TestMethod]
+    public void IsolatedOverlappingBeamFromDump_ReusesConnectedControlRoute()
+    {
+        NumVector2[] starts = [new(402.5f, 977.5f), new(398.2f, 973.3f), new(393.7f, 968.7f), new(391.5f, 966.5f)];
+        NumVector2[] ends = [starts[1], starts[2], new(384.5f, 959.5f), new(381.5f, 966.5f)];
+        BlightPathwayIcon[] icons = [.. starts.Select((start, i) => new BlightPathwayIcon(i, start, 2,
+            BlightHelpers.GridToWorld(start), BlightHelpers.GridToWorld(ends[i]), i is 1 or 2 ? [i - 1] : []))];
+        LaneCoverageResult[] coverage = Coverage(-2, 0, 1, -2);
+        List<PumpBranch> branches = [new(1, starts[0])];
+        NumVector2 pump = new(612, 961);
+
+        BlightPathwayIcon[] crossing = [.. icons];
+        crossing[3] = crossing[3] with { BeamEnd = BlightHelpers.GridToWorld(new(384.5f, 973.5f)) };
+        BlightBranches.AttachBeamEndpointGaps((LaneCoverageResult[])coverage.Clone(), crossing, starts, branches, pump)
+            .Should().BeFalse("a crossing beam is not evidence of a shared lane");
+
+        BlightPathwayIcon[] alreadyLinked = [.. icons];
+        alreadyLinked[2] = alreadyLinked[2] with { Parents = [1, 3] };
+        BlightBranches.AttachBeamEndpointGaps((LaneCoverageResult[])coverage.Clone(), alreadyLinked, starts, branches, pump)
+            .Should().BeFalse("a raw link to another beam must not be replaced by a guessed connection");
+
+        BlightBranches.AttachBeamEndpointGaps(coverage, icons, starts, branches, pump).Should().BeTrue();
+        coverage[3].ParentIndex.Should().Be(2);
+        var lanes = BlightLockdownPlanner.FindLanes(icons, new Dictionary<NumVector2, string>(), coverage, out _);
+        BlightCachedTower[] towers =
+        [new(starts[0], BlightTowerType.Chilling, 3), new(starts[0], BlightTowerType.Seismic, 3),
+            new(new(385, 979), BlightTowerType.Fireball)];
+        TowerBuildRule meteor = new ChillingSeismicMeteorStrategy().GetRule(BlightTowerType.Fireball)!.Value;
+        BlightLockdownPlanner.Build(towers, lanes, meteor, 1, pump).Steps
+            .Should().NotContain(step => step.Action == BlightPlanAction.Build &&
+                (step.TowerType == BlightTowerType.Chilling || step.TowerType == BlightTowerType.Seismic));
+    }
+
+    [TestMethod]
     public void AngledDuplicateBeamGap_JoinsConnectedJunctionWithoutFollowingBackwardsEndpoint()
     {
         NumVector2[] starts = [new(265.2f, 640.9f), new(262.5f, 630.5f),

@@ -21,7 +21,7 @@ internal static class BlightLockdownPlanner
         NumVector2 layoutOffset = default)
     {
         bool hasAlignedCoverage = coverage.Count == icons.Count;
-        bool[] hasChild = FindNonTerminalBeams(icons, coverage);
+        bool[] hasChild = FindNonTerminalBeams(icons, coverage, ignoreFinishedChildren: true);
         NumVector2?[] midpoints = new NumVector2?[icons.Count];
         damageSegments = [];
         List<Lane> lanes = [];
@@ -32,14 +32,18 @@ internal static class BlightLockdownPlanner
                 continue;
             NumVector2 midpoint = BlightHelpers.WorldToGrid((icon.BeamStart + icon.BeamEnd) / 2f) + layoutOffset;
             midpoints[i] = midpoint;
-            // Include secondary incoming beams even when the control route takes another parent.
-            damageSegments.Add(midpoint);
+            // Keep unknown states; only an explicitly finished beam is excluded.
+            // Secondary incoming beams still count for damage coverage.
+            if (icon.VisualState != 3)
+                damageSegments.Add(midpoint);
         }
 
         var portalLanes = MatchPortalEnds(icons, portals);
 
         for (int i = 0; i < icons.Count; i++)
         {
+            if (icons[i].VisualState == 3)
+                continue;
             if (hasChild[i] && !portalLanes.ContainsKey(i))
                 continue;
             List<NumVector2> segments = [];
@@ -49,7 +53,10 @@ internal static class BlightLockdownPlanner
             {
                 BlightPathwayIcon icon = icons[current];
                 if (midpoints[current] is { } midpoint)
+                {
                     segments.Add(midpoint);
+                    damageSegments.Add(midpoint);
+                }
                 current = hasAlignedCoverage
                     ? coverage[current].ParentIndex
                     : icon.Parents.Length > 0 ? icon.Parents[0] : -1;
@@ -89,16 +96,21 @@ internal static class BlightLockdownPlanner
         }
     }
 
-    private static bool[] FindNonTerminalBeams(IReadOnlyList<BlightPathwayIcon> icons, IReadOnlyList<LaneCoverageResult> coverage)
+    private static bool[] FindNonTerminalBeams(IReadOnlyList<BlightPathwayIcon> icons, IReadOnlyList<LaneCoverageResult> coverage,
+        bool ignoreFinishedChildren = false)
     {
         bool[] hasChild = new bool[icons.Count];
-        foreach (BlightPathwayIcon icon in icons)
-            foreach (int parent in icon.Parents)
+        for (int i = 0; i < icons.Count; i++)
+        {
+            if (ignoreFinishedChildren && icons[i].VisualState == 3)
+                continue;
+            foreach (int parent in icons[i].Parents)
                 hasChild[parent] = true;
+        }
         if (coverage.Count == icons.Count)
-            foreach (LaneCoverageResult segment in coverage)
-                if (segment.ParentIndex >= 0)
-                    hasChild[segment.ParentIndex] = true;
+            for (int i = 0; i < coverage.Count; i++)
+                if ((!ignoreFinishedChildren || icons[i].VisualState != 3) && coverage[i].ParentIndex >= 0)
+                    hasChild[coverage[i].ParentIndex] = true;
         return hasChild;
     }
 
@@ -201,7 +213,7 @@ internal static class BlightLockdownPlanner
             && !ordered.Any(tower => tower.TowerType == damage.TowerType && tower.UpgradeLevel >= damage.MaxUpgradeLevel))
         {
             // Get damage going early while every route already has its planned control
-            // and support placements. Keep the damage towers in pump-distance order.
+            // and support placements. Follow the same damage priority as the rest of the plan.
             NumVector2 firstDamageTower = damageSteps[0].FoundationPosition;
             while (nextDamageStep < damageSteps.Count && damageSteps[nextDamageStep].FoundationPosition == firstDamageTower)
                 steps.Add(damageSteps[nextDamageStep++]);
@@ -270,28 +282,29 @@ internal static class BlightLockdownPlanner
                     BlightTowerData.GetSpecializationTowerId(damage.TowerType, (TowerSpecialization)damage.Specialization)))
                 : BlightService.GetCoverageRadiusForLevel(damage.TowerType, damage.MaxUpgradeLevel);
             NumVector2 origin = pump ?? player;
-            BlightCachedTower[] byPumpDistance = [.. ordered
-                .OrderBy(tower => NumVector2.DistanceSquared(tower.WorldPosition, origin))
+            BlightCachedTower[] byPriority = [.. ordered
+                .OrderBy(ControlDistance)
+                .ThenBy(tower => NumVector2.DistanceSquared(tower.WorldPosition, origin))
                 .ThenBy(tower => tower.WorldPosition.X)
                 .ThenBy(tower => tower.WorldPosition.Y)];
 
             // Use existing damage towers first. Account for queued upgrades at their
             // final range so a foundation is only taken for a remaining coverage gap.
-            foreach (BlightCachedTower tower in byPumpDistance)
+            foreach (BlightCachedTower tower in byPriority)
             {
                 if (tower.TowerType == damage.TowerType && tower.UpgradeLevel >= damage.MaxUpgradeLevel)
                     CoverSegments(tower, tower.Radius > 0 ? BlightService.GetCoverageRadius(tower.Radius) : finalRadius);
             }
 
             HashSet<BlightCachedTower> pendingUpgrades = [];
-            foreach (BlightCachedTower tower in byPumpDistance)
+            foreach (BlightCachedTower tower in byPriority)
             {
                 if (tower.TowerType == damage.TowerType && tower.UpgradeLevel > 0
                     && tower.UpgradeLevel < damage.MaxUpgradeLevel && CoverSegments(tower, finalRadius))
                     pendingUpgrades.Add(tower);
             }
 
-            foreach (BlightCachedTower tower in byPumpDistance)
+            foreach (BlightCachedTower tower in byPriority)
             {
                 if (pendingUpgrades.Contains(tower))
                 {
@@ -305,6 +318,17 @@ internal static class BlightLockdownPlanner
                 }
             }
             return (total - uncovered.Count, total);
+
+            float ControlDistance(BlightCachedTower tower)
+            {
+                float chill = chilling.Count == 0 ? 0f : chilling.Min(control =>
+                    NumVector2.DistanceSquared(tower.WorldPosition, control.WorldPosition)) /
+                    MathF.Pow(BlightService.GetCoverageRadiusForLevel(BlightTowerType.Chilling, 3), 2);
+                float stun = seismic.Count == 0 ? 0f : seismic.Min(control =>
+                    NumVector2.DistanceSquared(tower.WorldPosition, control.WorldPosition)) /
+                    MathF.Pow(BlightService.GetCoverageRadiusForLevel(BlightTowerType.Seismic, 3), 2);
+                return Math.Max(chill, stun);
+            }
 
             bool CoverSegments(BlightCachedTower tower, int radius)
                 => uncovered.RemoveWhere(segment =>

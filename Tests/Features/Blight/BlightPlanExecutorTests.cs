@@ -9,6 +9,59 @@ public class BlightPlanExecutorTests
     private static BlightPlan Plan(string name, params BlightPlanStep[] steps)
         => new(steps, version: 1, debugSummary: name);
 
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void Tick_WaitsWithoutSkippingWhenTowerControlAndWalkTargetAreUnavailable()
+    {
+        var service = new BlightService(new ClickItSettings());
+        const BindingFlags fields = BindingFlags.Instance | BindingFlags.NonPublic;
+        var cache = (BlightEntityCache)typeof(BlightService).GetField("_cache", fields)!.GetValue(service)!;
+        var towers = (List<BlightCachedTower>)typeof(BlightEntityCache).GetField("_knownTowers", fields)!.GetValue(cache)!;
+        towers.Add(new BlightCachedTower(new NumVector2(920, 723), BlightTowerType.Seismic, upgradeLevel: 1));
+        var executor = new BlightPlanExecutor();
+        BlightPlanStep step = Step(BlightPlanAction.Upgrade, 920, 723, BlightTowerType.Seismic, 2);
+        executor.SetPlan(Plan("unavailable control", step));
+
+        for (int i = 0; i < 30; i++)
+        {
+            BlightBuildAction action = executor.Tick(null, [], service);
+            action.Kind.Should().Be(BlightBuildActionKind.None);
+            action.DebugMessage.Should().NotContain("control hidden");
+            executor.CurrentPlan!.CurrentStep.Should().Be(step);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void TowerApproach_AllowsUnknownVisibilityButBlocksKnownHiddenControls()
+    {
+        BlightPlanExecutor.CanApproachTowerControl(null).Should().BeTrue("a streamed-out label gives no visibility information");
+        BlightPlanExecutor.CanApproachTowerControl(true).Should().BeTrue();
+        BlightPlanExecutor.CanApproachTowerControl(false).Should().BeFalse();
+        BlightPlanExecutor.ResolveWalkActionKind(false, true).Should().Be(BlightBuildActionKind.WalkToPosition);
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void Tick_AdvancesReplayedBuildToUpgrade_WhenTowerAlreadyExistsAndLabelIsMissing()
+    {
+        var service = new BlightService(new ClickItSettings());
+        const BindingFlags fields = BindingFlags.Instance | BindingFlags.NonPublic;
+        var cache = (BlightEntityCache)typeof(BlightService).GetField("_cache", fields)!.GetValue(service)!;
+        var towers = (List<BlightCachedTower>)typeof(BlightEntityCache).GetField("_knownTowers", fields)!.GetValue(cache)!;
+        towers.Add(new BlightCachedTower(new NumVector2(920, 723), BlightTowerType.Seismic, upgradeLevel: 1));
+
+        var executor = new BlightPlanExecutor();
+        BlightPlanStep upgrade = Step(BlightPlanAction.Upgrade, 920, 723, BlightTowerType.Seismic, 2);
+        executor.SetPlan(Plan("refreshed", Step(BlightPlanAction.Build, 920, 723, BlightTowerType.Seismic, 1), upgrade));
+
+        BlightBuildAction action = executor.Tick(null, [], service);
+
+        action.Kind.Should().Be(BlightBuildActionKind.Complete);
+        executor.CurrentPlan!.CurrentStep.Should().Be(upgrade);
+        towers[0].UpgradeLevel.Should().Be(1);
+    }
+
 
     public void SetPlan_ReplacesActivePlan()
     {

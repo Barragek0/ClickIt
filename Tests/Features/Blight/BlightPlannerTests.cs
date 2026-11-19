@@ -1377,13 +1377,13 @@ public class BlightPlannerTests
         BlightPlan plan = BlightLockdownPlanner.Build(towers, lanes, meteor, 1, new(613, 298), pump: new(666, 351));
 
         plan.Steps.Select(step => (step.FoundationPosition, step.TargetLevel)).Should().Equal(
-            (existingFireball, 3), (existingFireball, 4),
-            (additionalFireball, 1), (additionalFireball, 2), (additionalFireball, 3), (additionalFireball, 4));
+            (additionalFireball, 1), (additionalFireball, 2), (additionalFireball, 3), (additionalFireball, 4),
+            (existingFireball, 3), (existingFireball, 4));
         plan.DebugSummary.Should().Contain("damage segments=23/23");
     }
 
     [TestMethod]
-    public void LockdownBuildsDamageFromThePumpOutwardAndSkipsAlreadyCoveredSegments()
+    public void LockdownPrioritizesDamageNearControlAndSkipsAlreadyCoveredSegments()
     {
         BlightLockdownPlanner.Lane[] lanes =
         [
@@ -1405,6 +1405,62 @@ public class BlightPlannerTests
         plan.Steps.Where(step => step.Action == BlightPlanAction.Build)
             .Select(step => step.FoundationPosition).Should().Equal(new NumVector2(130, 100), new NumVector2(320, 100));
         plan.Steps.Should().HaveCount(8);
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void LockdownIgnoresFinishedBranchesButKeepsUnknownAndSharedRoutes()
+    {
+        NumVector2[] starts = [new(100, 100), new(110, 100), new(110, 100), new(110, 100)];
+        NumVector2[] ends = [new(110, 100), new(120, 100), new(120, 110), new(120, 90)];
+        int[] states = [3, 3, 2, 0];
+        BlightPathwayIcon[] icons = [.. starts.Select((start, i) => new BlightPathwayIcon(i, start, states[i],
+            BlightHelpers.GridToWorld(start), BlightHelpers.GridToWorld(ends[i]), i == 0 ? [] : [0]))];
+        LaneCoverageResult[] coverage = [new(-2, false, default), new(0, false, default),
+            new(0, false, default), new(0, false, default)];
+
+        var lanes = BlightLockdownPlanner.FindLanes(icons, new Dictionary<NumVector2, string>(), coverage, out var damage);
+
+        lanes.Should().HaveCount(2, "the finished branch no longer needs towers, but unknown and active branches do");
+        damage.Should().NotContain(new NumVector2(115, 100));
+        damage.Should().Contain(new NumVector2(105, 100), "the shared pump route is still used by live branches");
+        damage.Should().Contain(new NumVector2(115, 105));
+        damage.Should().Contain(point => NumVector2.DistanceSquared(point, new NumVector2(115, 95)) < 0.001f);
+
+        NumVector2[] distantStarts = [new(100, 100), new(500, 100)];
+        BlightPathwayIcon[] separate = [.. distantStarts.Select((start, i) => new BlightPathwayIcon(i, start, i == 0 ? 3 : 2,
+            BlightHelpers.GridToWorld(start), BlightHelpers.GridToWorld(start + new NumVector2(10, 0)), []))];
+        var liveLanes = BlightLockdownPlanner.FindLanes(separate, new Dictionary<NumVector2, string>(), [], out var liveDamage);
+        BlightCachedTower[] towers =
+        [new(new(100, 100), BlightTowerType.Empowering, 1),
+            new(new(500, 100), BlightTowerType.Chilling, 3),
+            new(new(501, 100), BlightTowerType.Seismic, 3),
+            new(new(502, 100), BlightTowerType.Empowering, 3),
+            new(new(503, 100), BlightTowerType.Fireball)];
+        TowerBuildRule meteor = new ChillingSeismicMeteorStrategy().GetRule(BlightTowerType.Fireball)!.Value;
+        BlightLockdownPlanner.Build(towers, liveLanes, meteor, 1, new(500, 100), damageSegments: liveDamage).Steps
+            .Should().NotContain(step => step.FoundationPosition == new NumVector2(100, 100),
+                "an empowering tower supporting only a finished branch must not be upgraded");
+    }
+
+    [TestMethod]
+    public void LockdownUpgradesFireballNearBothControlTowersBeforeBuildingCloserToPump()
+    {
+        BlightLockdownPlanner.Lane[] lanes = [new([new(500, 960), new(680, 960)], false)];
+        BlightCachedTower[] towers =
+        [
+            new(new(490, 960), BlightTowerType.Chilling, 3),
+            new(new(495, 960), BlightTowerType.Seismic, 3),
+            new(new(492, 950), BlightTowerType.Empowering, 3),
+            new(new(502, 958), BlightTowerType.Fireball, 2),
+            new(new(680, 960), BlightTowerType.Fireball)
+        ];
+        TowerBuildRule meteor = new ChillingSeismicMeteorStrategy().GetRule(BlightTowerType.Fireball)!.Value;
+        BlightPlan plan = BlightLockdownPlanner.Build(towers, lanes, meteor, 1, new(680, 960), pump: new(700, 961));
+
+        plan.Steps.Where(step => step.TowerType == BlightTowerType.Fireball).First()
+            .FoundationPosition.Should().Be(new NumVector2(502, 958));
+        plan.Steps.Should().Contain(step => step.Action == BlightPlanAction.Build && step.FoundationPosition == new NumVector2(680, 960));
     }
 
     [TestMethod]

@@ -88,11 +88,8 @@ namespace ClickIt.UI.Settings.Panels
         private static void DrawSkillAutomationToggle(string id, string label, ToggleNode node)
         {
             bool value = node.Value;
-            if (ImGui.Checkbox($"##{id}", ref value))
+            if (ImGui.Checkbox($"{label}##{id}", ref value))
                 node.Value = value;
-
-            ImGui.SameLine();
-            ImGui.TextUnformatted(label);
         }
 
         private void DrawLazyModeSection()

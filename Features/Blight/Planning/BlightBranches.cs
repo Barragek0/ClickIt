@@ -432,6 +432,48 @@ internal static class BlightBranches
             attached = true;
         }
 
+        // A single orphan beam may lie on an already connected beam. It has no
+        // child from which the parallel-lane pass can infer its direction.
+        foreach (int root in roots)
+        {
+            if (assigned[root] || children[root].Count != 0 || icons[root].BeamStart == default || icons[root].BeamEnd == default
+                || SqDist(positions[root], pump) <= PumpBranchMaxDistanceSq)
+                continue;
+            // Do not guess a connection when the raw graph has another route,
+            // even if that link was not selected as a coverage-tree parent.
+            if (icons[root].Parents.Length != 0 || icons.Any(icon => icon.Parents.Contains(root)))
+                continue;
+            NumVector2 start = positions[root];
+            NumVector2 direction = BlightHelpers.WorldToGrid(icons[root].BeamEnd) - start;
+            if (direction.LengthSquared() < 1f)
+                continue;
+            direction = NumVector2.Normalize(direction);
+            int best = -1;
+            float bestDistance = 1.5f * 1.5f;
+            for (int candidate = 0; candidate < icons.Count; candidate++)
+            {
+                if (!assigned[candidate] || icons[candidate].BeamEnd == default)
+                    continue;
+                NumVector2 beam = BlightHelpers.WorldToGrid(icons[candidate].BeamEnd) - positions[candidate];
+                float lengthSq = beam.LengthSquared();
+                if (lengthSq < 1f || NumVector2.Dot(direction, beam / MathF.Sqrt(lengthSq)) < 0.65f)
+                    continue;
+                float along = NumVector2.Dot(start - positions[candidate], beam) / lengthSq;
+                if (along <= 0.1f || along >= 0.9f)
+                    continue;
+                float distance = SqDist(start, positions[candidate] + beam * along);
+                if (distance >= bestDistance)
+                    continue;
+                best = candidate;
+                bestDistance = distance;
+            }
+            if (best >= 0)
+            {
+                ReparentUnder(coverage, children, assigned, root, best);
+                attached = true;
+            }
+        }
+
         // Some junctions have a longer missing section and two copies of the
         // detached beam. Only use this weaker angle test when both copies and
         // an existing connected junction corroborate the connection.

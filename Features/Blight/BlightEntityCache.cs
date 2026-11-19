@@ -250,7 +250,7 @@ internal sealed class BlightEntityCache
     private static int ReadPathwayVisualState(Entity entity)
     {
         long? visual = BlightEncounter.TryReadPumpState(entity, "visual");
-        return visual is 1 or 2 or 3 ? (int)visual.Value : 0;
+        return visual is >= 1 and <= 5 ? (int)visual.Value : 0;
     }
 
     // Only currently-valid entities have trustworthy component reads; streamed-out (retained but invalid) entities must keep their last-good persisted icon data instead.
@@ -642,7 +642,7 @@ internal sealed class BlightEntityCache
                 NumVector2 end = BlightHelpers.WorldToGrid(icon.BeamEnd);
                 bool inSnapshot = _persistedIcons.ContainsKey(icon.Id);
                 sb.Append($"  [raw {p}] id={icon.Id} grid=({icon.GridPos.X:F0},{icon.GridPos.Y:F0})");
-                sb.Append($" act={(icon.IsActive ? 1 : 0)}");
+                sb.Append($" act={(icon.IsActive ? 1 : 0)} visual={icon.VisualState}");
                 sb.Append($" beamStart=({start.X:F1},{start.Y:F1}) beamEnd=({end.X:F1},{end.Y:F1})");
                 sb.Append($" kept={(inSnapshot ? 1 : 0)}");
                 sb.Append('\n');
@@ -654,7 +654,7 @@ internal sealed class BlightEntityCache
                 NumVector2 start = BlightHelpers.BeamAnchorToGrid(icon.GridPos, icon.BeamStart);
                 NumVector2 end = BlightHelpers.WorldToGrid(icon.BeamEnd);
                 sb.Append($"  [{p}] id={icon.Id} grid=({icon.GridPos.X:F0},{icon.GridPos.Y:F0})");
-                sb.Append($" act={(icon.IsActive ? 1 : 0)}");
+                sb.Append($" act={(icon.IsActive ? 1 : 0)} visual={icon.VisualState}");
                 sb.Append($" beamStart=({start.X:F1},{start.Y:F1}) beamEnd=({end.X:F1},{end.Y:F1})");
                 sb.Append($" parents=[{string.Join(",", icon.Parents)}]");
                 if (!_coverageDirty && _cachedCoverage?.Length == _iconPathwaySnapshot.Count)
@@ -1138,6 +1138,7 @@ internal sealed class BlightEntityCache
             _knownTowers.AddRange(_scanLocalKnown);
 
             // Game-visible pathway icons feed the icon-lane coverage and overlay. Persisted by entity Id so icons that stream out of the active list (player moved away) keep rendering on the map; only currently-valid entities refresh their active/beam state — a streamed-out entity's component reads can be stale and must not overwrite the last good persisted value.
+            HashSet<int> finishedBefore = [.. _iconPathwaySnapshot.Where(icon => icon.VisualState == 3).Select(icon => icon.Id)];
             _iconPathwaySnapshot.Clear();
             _activePathwayCount = 0;
             for (int p = 0; p < _scanLocalPathways.Count; p++)
@@ -1155,6 +1156,8 @@ internal sealed class BlightEntityCache
                 _persistedIcons[icon.Id] = icon;
             }
             _iconPathwaySnapshot.AddRange(DedupePathwayIcons(_persistedIcons.Values));
+            if (!finishedBefore.SetEquals(_iconPathwaySnapshot.Where(icon => icon.VisualState == 3).Select(icon => icon.Id)))
+                LaneLayoutVersion++;
             foreach ((NumVector2 position, string name) in _scanLocalPortals)
             {
                 if (!_portals.TryGetValue(position, out string? existing) || existing != name)

@@ -164,11 +164,16 @@ internal sealed class BlightPlanExecutor
 
         if (_phase == Phase.Walking)
         {
-            if (s.Action == BlightPlanAction.Upgrade && GetTowerRank(service, s.FoundationPosition).Effective >= s.TargetLevel)
+            // A plan refresh can rewind to Build after the click has already created the tower.
+            // Check the rank before looking for the build opener, which no longer exists.
+            if (tower.UpgradeLevel >= s.TargetLevel || GetTowerRank(service, s.FoundationPosition).Effective >= s.TargetLevel)
                 return AdvanceStep(service, s, $"Step already complete: {s.TowerType} lvl {s.TargetLevel}");
 
             RectangleF? controlRect = gc == null ? null : GetStepControlRect(labels, s, service);
-            bool walkReady = controlRect is { } rect && service.IsMenuRegionClickable(rect);
+            bool regionClickable = controlRect is { } rect && service.IsMenuRegionClickable(rect);
+            if (!CanApproachTowerControl(GetStepControlVisibility(labels, s, service)))
+                return new BlightBuildAction(BlightBuildActionKind.None, DebugMessage: "Tower control hidden - waiting");
+            bool walkReady = regionClickable;
 
             if (!walkReady)
             {
@@ -214,6 +219,12 @@ internal sealed class BlightPlanExecutor
 
         if (_phase == Phase.StopPlayer && gc != null)
         {
+            RectangleF? controlRect = GetStepControlRect(labels, s, service);
+            if (!CanApproachTowerControl(GetStepControlVisibility(labels, s, service)))
+                return new BlightBuildAction(BlightBuildActionKind.None, DebugMessage: "Tower control hidden - waiting");
+            if (controlRect is not { } rect || !service.IsMenuRegionClickable(rect))
+                return WalkCloser(service, gc, s, "Executor: STOP - tower control no longer fully clickable", controlRect);
+
             if (IsPlayerMoving(gc))
             {
                 _stationaryTicks = 0;
@@ -241,21 +252,9 @@ internal sealed class BlightPlanExecutor
             _phase = Phase.OpenMenu;
         }
 
-        if (labels == null || labels.Count == 0)
-            return new BlightBuildAction(BlightBuildActionKind.None, DebugMessage: "No labels available");
-
-        Element? labelElement = FindLabelAt(labels, s.FoundationPosition, service);
+        Element? labelElement = labels == null ? null : FindLabelAt(labels, s.FoundationPosition, service);
         if (labelElement == null)
-        {
-            Entity? walkEntity = service.GetBestEntityAtPosition(s.FoundationPosition);
-            if (walkEntity != null && service.IsEntityFullyOnScreen(walkEntity))
-            {
-                service.AddDebugStage("Executor: OPEN - label not found, entity on screen - retrying");
-                return new BlightBuildAction(BlightBuildActionKind.None,
-                    DebugMessage: "Label not found, retrying...");
-            }
-            return WalkCloser(service, gc, s, "Executor: OPEN - label not found - walking closer");
-        }
+            return WalkCloser(service, gc, s, "Executor: OPEN - label unavailable - walking closer");
         service.AddDebugStage("Executor: OPEN - label found");
 
         if (_phase == Phase.OpenMenu)
@@ -612,6 +611,20 @@ internal sealed class BlightPlanExecutor
         return BlightMenuInteractions.GetControlRect(ResolveApproachControl(label, step, service));
     }
 
+    private bool? GetStepControlVisibility(IReadOnlyList<LabelOnGround>? labels, BlightPlanStep step, BlightService service)
+    {
+        try
+        {
+            if (labels == null || FindLabelAt(labels, step.FoundationPosition, service) is not { } label)
+                return null;
+            return ResolveApproachControl(label, step, service)?.IsVisible;
+        }
+        catch { return null; }
+    }
+
+    // A missing or streamed-out label cannot establish whether the control is hidden.
+    internal static bool CanApproachTowerControl(bool? visible) => visible != false;
+
     private static Element? ResolveApproachControl(Element label, BlightPlanStep step, BlightService service)
     {
         if (!BlightMenuInteractions.IsTowerMenuOpen(label))
@@ -635,7 +648,9 @@ internal sealed class BlightPlanExecutor
         if (!WantsWalkForCurrentPhase(_phase))
             return false;
 
-        return !IsStepWalkReady(labels, gc, service);
+        return GetTowerRank(service, step.Value.FoundationPosition).Effective < step.Value.TargetLevel
+            && CanApproachTowerControl(GetStepControlVisibility(labels, step.Value, service))
+            && !IsStepWalkReady(labels, gc, service);
     }
 
     internal static bool WantsWalkForCurrentPhase(Phase phase) => phase == Phase.Walking;
@@ -712,6 +727,8 @@ internal sealed class BlightPlanExecutor
             return new BlightBuildAction(BlightBuildActionKind.None,
                 DebugMessage: "Player still moving - waiting to stop before menu click");
         }
+        if (!expected.IsVisible)
+            return new BlightBuildAction(BlightBuildActionKind.None, DebugMessage: "Tower control hidden - waiting for currency");
         if (BlightMenuInteractions.GetControlRect(expected) is not { } controlRect)
             return Fail("Tower control has no readable rectangle");
         if (!service.IsMenuRegionClickable(controlRect))

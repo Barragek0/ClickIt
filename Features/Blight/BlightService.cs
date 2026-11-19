@@ -303,19 +303,6 @@ public sealed class BlightService
 
     internal static string? GetEntityPath(Entity entity) => BlightEntityCache.GetEntityPathFresh(entity);
 
-    internal bool IsEntityFullyOnScreen(Entity? entity)
-    {
-        if (entity == null || _gameController == null) return false;
-        try
-        {
-            Camera? camera = _gameController.Game?.IngameState?.Camera;
-            if (camera == null) return false;
-            return BlightHelpers.IsWorldPosOnScreen(
-                camera, _gameController.Window.GetWindowRectangleTimeCache.Size, entity.PosNum, allowance: 0f);
-        }
-        catch { return false; }
-    }
-
     internal BlightBuildAction TryProgressBlightBuilding(IReadOnlyList<LabelOnGround>? allLabels)
     {
         _lastLabels = allLabels;

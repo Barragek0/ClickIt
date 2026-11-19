@@ -1054,7 +1054,7 @@ namespace ClickIt.Tests.Features.Click
 
             (Vector2 Point, long Time)[] rejected = [(new(620, 300), 1000), (new(604, 218), 1100)];
             bool found = OffscreenPathingCoordinator.TryResolveBlightWalkPoint(new(400, 300), new(800, 300),
-                null, null, 1000, 800, point => !OffscreenPathingCoordinator.IsRecentlyRejectedBlightPoint(point, rejected, 1200), null, out Vector2 click);
+                null, 1000, 800, point => !OffscreenPathingCoordinator.IsRecentlyRejectedBlightPoint(point, rejected, 1200), null, out Vector2 click);
             found.Should().BeTrue();
             click.Y.Should().BeGreaterThan(300);
             OffscreenPathingCoordinator.IsRecentlyRejectedBlightPoint(new(620, 300), rejected, 3201).Should().BeFalse();
@@ -1066,7 +1066,7 @@ namespace ClickIt.Tests.Features.Click
             Vector2 player = new(400, 300);
             RectangleF popup = new(655, 200, 160, 160);
             bool found = OffscreenPathingCoordinator.TryResolveBlightWalkPoint(player, new Vector2(730, 280),
-                null, popup, 800, 600, point => point.Y != 300f,
+                popup, 800, 600, point => point.Y != 300f,
                 projected => projected.Right <= 800 && projected.Left >= 0, out Vector2 click);
 
             found.Should().BeTrue();
@@ -1079,8 +1079,91 @@ namespace ClickIt.Tests.Features.Click
         public void BlightWalkDoesNotReturnAnUncheckedFallbackWhenEveryCandidateIsBlocked()
         {
             OffscreenPathingCoordinator.TryResolveBlightWalkPoint(new Vector2(400, 300),
-                new Vector2(900, 300), null, null, 800, 600, static _ => false, null, out _)
+                new Vector2(900, 300), null, 800, 600, static _ => false, null, out _)
                 .Should().BeFalse();
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void BlightRepositionFindsSafePointFurtherToSideOfTowerIcon()
+        {
+            Vector2 player = new(400, 300);
+            bool found = OffscreenPathingCoordinator.TryResolveBlightWalkPoint(player, new Vector2(800, 300),
+                null, 1000, 800, candidate => candidate.Y > 480, null, out Vector2 click);
+
+            found.Should().BeTrue();
+            click.X.Should().BeGreaterThan(player.X);
+            click.Y.Should().BeGreaterThan(480);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void BlightRepositionFallbackRequiresTheEntireControlToFit()
+        {
+            RectangleF halfVisibleIcon = new(750, 200, 100, 100);
+            Vector2 player = new(400, 300);
+            Vector2 tower = new(800, 300);
+
+            OffscreenPathingCoordinator.TryResolveBlightWalkPoint(player, tower, halfVisibleIcon, 800, 600,
+                static _ => true, static predicted => predicted.Right <= 800, out Vector2 click,
+                requirePopupFit: true).Should().BeTrue();
+            click.X.Should().BeGreaterThanOrEqualTo(450);
+
+            OffscreenPathingCoordinator.TryResolveBlightWalkPoint(player, tower, halfVisibleIcon, 800, 600,
+                static _ => true, static _ => false, out _, requirePopupFit: true).Should().BeFalse();
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void BlightRouteFollowsBendsWithinWalkingBudgetAndBacktracksFromBlockedWaypoint()
+        {
+            Vector2 player = new(400, 300);
+            Vector2[] route = [new(460, 300), new(460, 370), new(520, 370), new(520, 410)];
+
+            OffscreenPathingCoordinator.TryResolveBlightRoutePoint(player, route, null, 800, 600,
+                static _ => true, null, out Vector2 clear).Should().BeTrue();
+            clear.Should().Be(route[2], "the last waypoint is nearby in a straight line but too far along the corridor");
+
+            OffscreenPathingCoordinator.TryResolveBlightRoutePoint(player, route, null, 800, 600,
+                candidate => candidate == route[1], null, out Vector2 blocked).Should().BeTrue();
+            blocked.Should().Be(route[1]);
+
+            OffscreenPathingCoordinator.TryResolveBlightRoutePoint(player, route, null, 800, 600,
+                static _ => false, null, out _).Should().BeFalse();
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void BlightRoutePrefersWaypointThatRevealsPopupAndDoesNotOvershootRouteEnd()
+        {
+            Vector2[] route = [new(450, 300), new(450, 340)];
+            RectangleF popup = new(765, 200, 80, 140);
+
+            OffscreenPathingCoordinator.TryResolveBlightRoutePoint(new(400, 300), route, popup, 800, 600,
+                static _ => true, predicted => predicted.Right <= 800 && predicted.Top >= 180,
+                out Vector2 reveal).Should().BeTrue();
+            reveal.Should().Be(route[0]);
+
+            OffscreenPathingCoordinator.TryResolveBlightRoutePoint(new(400, 300), route, null, 800, 600,
+                static _ => true, null, out Vector2 end).Should().BeTrue();
+            end.Should().Be(route[^1]);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void BlightRouteStopsAtFirstSafeWaypointThatMakesControlClickable()
+        {
+            Vector2 player = new(400, 300);
+            Vector2[] route = [new(420, 300), new(450, 300), new(500, 300)];
+            RectangleF popup = new(770, 200, 80, 100);
+
+            OffscreenPathingCoordinator.TryResolveBlightRoutePoint(player, route, popup, 800, 600,
+                static _ => true, predicted => predicted.Right <= 800, out Vector2 click).Should().BeTrue();
+            click.Should().Be(route[1]);
+
+            OffscreenPathingCoordinator.TryResolveBlightRoutePoint(player, route, popup, 800, 600,
+                candidate => candidate != route[1], predicted => predicted.Right <= 800, out click).Should().BeTrue();
+            click.Should().Be(route[2], "a visible control does not make an unsafe walking point clickable");
         }
 
         [TestMethod]
