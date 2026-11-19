@@ -6,6 +6,7 @@ internal static class LabelActionButtons
     internal const string ScrollOfWisdom = "Scroll of Wisdom";
     internal const string OrbOfScouring = "Orb of Scouring";
     internal const string OrbOfAlchemy = "Orb of Alchemy";
+    internal const string ChaosOrb = "Chaos Orb";
     internal const string VaalOrb = "Vaal Orb";
 
     internal static int CountButtons(object? labelRoot, int rowIndex)

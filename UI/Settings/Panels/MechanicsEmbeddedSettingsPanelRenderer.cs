@@ -57,13 +57,55 @@ namespace ClickIt.UI.Settings.Panels
             else if (string.Equals(entryId, MechanicIds.Harvest, StringComparison.OrdinalIgnoreCase))
             {
                 SettingsUiRenderHelpers.DrawToggleNodeControl(
-                    "Identify > Scour > Alch if Magic##HarvestIdentifyScourAlchMagic",
-                    _settings.HarvestIdentifyScourAlchMagic,
-                    "When enabled, identify magic Harvest encounters, scour them to normal, then use an Alchemy Orb before opening them. Requires Scrolls of Wisdom, Orbs of Scouring, and Orbs of Alchemy in your inventory.");
-                SettingsUiRenderHelpers.DrawToggleNodeControl(
-                    "Alch if Normal##HarvestAlchNormal",
-                    _settings.HarvestAlchNormal,
-                    "Use an Orb of Alchemy on Normal Harvest encounters before opening them.");
+                    "Reroll to Target Specific Modifiers##HarvestRerollTargetMods",
+                    _settings.HarvestRerollTargetMods,
+                    "Upgrades normal and magic Harvest trees to rare,\nthen rerolls them using your chosen currency.\nStops when any enabled modifier meets its minimum.");
+                if (_settings.HarvestRerollTargetMods.Value)
+                {
+                    ImGui.Indent();
+                    int method = Math.Clamp(_settings.HarvestRerollMethod.Value, 0, 1);
+                    string[] methods = ["Chaos Orbs", "Scour > Alch"];
+                    ImGui.TextUnformatted("Reroll Method");
+                    ImGui.SetNextItemWidth(150f);
+                    if (ImGui.Combo("##HarvestRerollMethod", ref method, methods, methods.Length))
+                        _settings.HarvestRerollMethod.Value = method;
+                    SettingsUiRenderHelpers.DrawInlineTooltip(
+                        "Keep Scrolls of Wisdom, Orbs of Scouring, and Orbs of Alchemy in your inventory.\nIf using Chaos Orbs to reroll, keep those too; Scouring and Alchemy still prepare magic and normal trees.\nThe plugin rerolls until the tree has one of the enabled modifiers chosen below.");
+                    float minimumColumnX = ImGui.GetCursorPosX() + ImGui.GetFrameHeight()
+                        + Math.Max(ImGui.CalcTextSize("Stacked Decks").X, ImGui.CalcTextSize("Currency Items").X) + 16f;
+                    bool decks = _settings.HarvestTargetStackedDecks.Value;
+                    bool threads = _settings.HarvestTargetThreads.Value;
+                    bool currency = _settings.HarvestTargetCurrencyItems.Value;
+                    bool unique = _settings.HarvestTargetUniqueItems.Value;
+                    if (!decks && !threads && !currency && !unique)
+                        _settings.HarvestTargetStackedDecks.Value = decks = true;
+                    if (ImGui.Checkbox("Stacked Decks##HarvestTargetStackedDecks", ref decks))
+                        _settings.HarvestTargetStackedDecks.Value = decks = decks || !(threads || currency || unique);
+                    ImGui.SameLine(minimumColumnX);
+                    DrawHarvestMinimum("##HarvestMinStackedDecks", _settings.HarvestMinStackedDecks, 1, 3);
+                    if (ImGui.Checkbox("Threads##HarvestTargetThreads", ref threads))
+                        _settings.HarvestTargetThreads.Value = threads = threads || !(decks || currency || unique);
+                    ImGui.SameLine(minimumColumnX);
+                    DrawHarvestMinimum("##HarvestMinThreads", _settings.HarvestMinThreads, 1, 3);
+                    if (ImGui.Checkbox("Currency Items##HarvestTargetCurrencyItems", ref currency))
+                        _settings.HarvestTargetCurrencyItems.Value = currency = currency || !(decks || threads || unique);
+                    ImGui.SameLine(minimumColumnX);
+                    DrawHarvestMinimum("##HarvestMinCurrencyItems", _settings.HarvestMinCurrencyItems, 1, 4);
+                    if (ImGui.Checkbox("Unique Items##HarvestTargetUniqueItems", ref unique))
+                        _settings.HarvestTargetUniqueItems.Value = unique || !(decks || threads || currency);
+                    ImGui.Unindent();
+                }
+                else
+                {
+                    SettingsUiRenderHelpers.DrawToggleNodeControl(
+                        "Identify > Scour > Alch if Magic##HarvestIdentifyScourAlchMagic",
+                        _settings.HarvestIdentifyScourAlchMagic,
+                        "When enabled, identify magic Harvest encounters, scour them to normal, then use an Alchemy Orb before opening them. Requires Scrolls of Wisdom, Orbs of Scouring, and Orbs of Alchemy in your inventory.");
+                    SettingsUiRenderHelpers.DrawToggleNodeControl(
+                        "Alch if Normal##HarvestAlchNormal",
+                        _settings.HarvestAlchNormal,
+                        "Use an Orb of Alchemy on Normal Harvest encounters before opening them.");
+                }
             }
 
             else if (string.Equals(entryId, MechanicIds.Blight, StringComparison.OrdinalIgnoreCase))
@@ -71,6 +113,16 @@ namespace ClickIt.UI.Settings.Panels
 
 
             ImGui.Unindent();
+        }
+
+        private static void DrawHarvestMinimum(string id, RangeNode<int> node, int minimum, int maximum)
+        {
+            int value = Math.Clamp(node.Value, minimum, maximum);
+            ImGui.SetNextItemWidth(70f);
+            bool changed = ImGui.InputInt(id, ref value, 1, 1);
+            value = Math.Clamp(value, minimum, maximum);
+            if (changed || value != node.Value)
+                node.Value = value;
         }
 
         internal void DrawMechanicGroupExtraSettings(string groupId)

@@ -146,6 +146,7 @@ namespace ClickIt.Features.Click.Application
                             // The dispatcher already gave hover a frame to settle. Allow a
                             // little longer for the tooltip's child tree to populate.
                             long deadline = Environment.TickCount64 + 120;
+                            bool retriedHover = false;
                             while (true)
                             {
                                 var state = _dependencies.GameController.IngameState;
@@ -188,6 +189,32 @@ namespace ClickIt.Features.Click.Application
                                 }
                                 if (Environment.TickCount64 >= deadline)
                                 {
+                                    SystemDrawingPoint cursor = Mouse.GetCursorPosition();
+                                    if (!retriedHover && !Mouse.DisableNativeInput && Environment.TickCount64 + 200 < searchDeadline
+                                        && LabelClickPointSearch.IsPointInsideRect(new Vector2(cursor.X, cursor.Y) - windowTopLeft, currentRect)
+                                        && (canStillClick?.Invoke() ?? true)
+                                        && TryFindTooltipResetPoint(currentRect, windowTopLeft, _dependencies.IsInsideWindowInEitherSpace, out Vector2 resetPoint))
+                                    {
+                                        retriedHover = true;
+                                        Input.SetCursorPos(new NumVector2(resetPoint.X, resetPoint.Y));
+                                        ClickPipelineTiming.Sleep(40);
+                                        SystemDrawingPoint movedCursor = Mouse.GetCursorPosition();
+                                        if (_dependencies.GameController.Window?.IsForeground() != true || canStillClick?.Invoke() == false
+                                            || Math.Abs(movedCursor.X - resetPoint.X) > 2f || Math.Abs(movedCursor.Y - resetPoint.Y) > 2f
+                                            || LabelActionButtons.ReadVisibleButton(LabelActionButtons.ReadVisibleLabelRoot(label), row, index)
+                                                is not Element refreshed || refreshed.Address != address
+                                            || !TryGetActionButtonBounds(refreshed, out RectangleF refreshedRect)
+                                            || !LabelClickPointSearch.IsPointInsideRect(point - windowTopLeft, refreshedRect))
+                                        {
+                                            outcome = "icon or interaction changed during tooltip retry";
+                                            return false;
+                                        }
+                                        Input.SetCursorPos(new NumVector2(point.X, point.Y));
+                                        ClickPipelineTiming.Sleep(60);
+                                        deadline = Environment.TickCount64 + 120;
+                                        hover = state.UIHoverElement;
+                                        continue;
+                                    }
                                     outcome = "tooltip did not populate before timeout";
                                     return false;
                                 }
@@ -209,6 +236,27 @@ namespace ClickIt.Features.Click.Application
 
                 return unreadable ? LabelActionResult.Unavailable : LabelActionResult.NoMatch;
             }
+        }
+
+        internal static bool TryFindTooltipResetPoint(RectangleF rect, Vector2 windowTopLeft,
+            Func<Vector2, bool> insideWindow, out Vector2 point)
+        {
+            Vector2[] candidates =
+            [
+                new(rect.Left - 12f, rect.Center.Y), new(rect.Right + 12f, rect.Center.Y),
+                new(rect.Center.X, rect.Top - 12f), new(rect.Center.X, rect.Bottom + 12f)
+            ];
+            foreach (Vector2 candidate in candidates)
+            {
+                Vector2 absolute = candidate + windowTopLeft;
+                if (insideWindow(absolute))
+                {
+                    point = absolute;
+                    return true;
+                }
+            }
+            point = default;
+            return false;
         }
 
         private static bool TryGetActionButtonBounds(Element button, out RectangleF rect)

@@ -168,6 +168,25 @@ namespace ClickIt
         [IgnoreMenu]
         public ToggleNode HarvestAlchNormal { get; set; } = new ToggleNode(false);
 
+        [IgnoreMenu]
+        public ToggleNode HarvestRerollTargetMods { get; set; } = new ToggleNode(false);
+        [IgnoreMenu]
+        public RangeNode<int> HarvestRerollMethod { get; set; } = new RangeNode<int>(0, 0, 1);
+        [IgnoreMenu]
+        public ToggleNode HarvestTargetStackedDecks { get; set; } = new ToggleNode(true);
+        [IgnoreMenu]
+        public ToggleNode HarvestTargetThreads { get; set; } = new ToggleNode(true);
+        [IgnoreMenu]
+        public ToggleNode HarvestTargetCurrencyItems { get; set; } = new ToggleNode(false);
+        [IgnoreMenu]
+        public ToggleNode HarvestTargetUniqueItems { get; set; } = new ToggleNode(false);
+        [IgnoreMenu]
+        public RangeNode<int> HarvestMinStackedDecks { get; set; } = new RangeNode<int>(1, 1, 3);
+        [IgnoreMenu]
+        public RangeNode<int> HarvestMinThreads { get; set; } = new RangeNode<int>(2, 1, 3);
+        [IgnoreMenu]
+        public RangeNode<int> HarvestMinCurrencyItems { get; set; } = new RangeNode<int>(4, 1, 4);
+
         // Keep obsolete keys readable from existing settings files; Harvest no longer uses pricing or estimate options.
         [IgnoreMenu]
         public ToggleNode ShowHarvestLifeforceEstimation { get; set; } = new ToggleNode(true);

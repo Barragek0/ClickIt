@@ -4,6 +4,17 @@ namespace ClickIt.Tests.Features.Click
     public class ClickLabelInteractionServiceTests
     {
         [TestMethod]
+        [TestCategory("Regression")]
+        public void TooltipRetry_ChoosesAnInWindowPointOutsideTheIcon()
+        {
+            RectangleF icon = new(10, 20, 30, 40);
+            ClickLabelInteractionService.TryFindTooltipResetPoint(icon, new Vector2(100, 200),
+                point => point.X > 100 && point.Y > 200, out Vector2 reset).Should().BeTrue();
+            reset.Should().Be(new Vector2(152, 240));
+            ClickLabelInteractionService.TryFindTooltipResetPoint(icon, Vector2.Zero,
+                _ => false, out _).Should().BeFalse();
+        }
+        [TestMethod]
         public void PerformManualCursorInteraction_AllowsHotkeyInactiveAndAvoidsCursorMove()
         {
             InteractionExecutionRequest? capturedRequest = null;
