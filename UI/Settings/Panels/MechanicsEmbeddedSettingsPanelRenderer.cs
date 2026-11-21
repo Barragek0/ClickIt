@@ -46,16 +46,31 @@ namespace ClickIt.UI.Settings.Panels
                     "Corrupt ALL Essences##MechanicsEssenceCorruptAll",
                     _settings.CorruptAllEssences,
                     "Overrides the essence table and attempts to corrupt every eligible essence encounter.");
+                SettingsUiRenderHelpers.DrawToggleNodeControl(
+                    "Only corrupt a second time when there are no Deafening##EssenceSecondNoDeafening",
+                    _settings.EssenceSecondCorruptionOnlyWhenNoDeafening,
+                    "With Recrystallisation, skip the second corruption if the monster has any Deafening essences.");
+                SettingsUiRenderHelpers.DrawToggleNodeControl(
+                    "Only corrupt a second time when there are no Corruption essences##EssenceSecondNoCorruptionEssences",
+                    _settings.EssenceSecondCorruptionOnlyWhenNoCorruptionEssences,
+                    "With Recrystallisation, skip the second corruption if the monster has Hysteria, Insanity, Horror, Delirium, Desolation, or Trickery.");
 
                 if (_settings.ShowEssenceCorruptionTablePanel)
                     _essenceCorruptionPanelRenderer.DrawPanel();
 
             }
+            else if (string.Equals(entryId, MechanicIds.Betrayal, StringComparison.OrdinalIgnoreCase))
+                SettingsUiRenderHelpers.DrawToggleNodeControl("Corpse Sculpture##BetrayalCorpseSculpture",
+                    _settings.ClickBetrayalCorpseSculpture, "Click Corpse Sculptures when Betrayal is enabled in the click table.");
             else if (string.Equals(entryId, MechanicIds.Strongboxes, StringComparison.OrdinalIgnoreCase))
                 DrawStrongboxSettings();
 
             else if (string.Equals(entryId, MechanicIds.Harvest, StringComparison.OrdinalIgnoreCase))
             {
+                SettingsUiRenderHelpers.DrawToggleNodeControl(
+                    "Boss Seeds##HarvestBossSeeds",
+                    _settings.HarvestBossSeeds,
+                    "Click Harvest boss seeds when Harvest is enabled in the click table.");
                 SettingsUiRenderHelpers.DrawToggleNodeControl(
                     "Reroll to Target Specific Modifiers##HarvestRerollTargetMods",
                     _settings.HarvestRerollTargetMods,
@@ -77,22 +92,34 @@ namespace ClickIt.UI.Settings.Panels
                     bool threads = _settings.HarvestTargetThreads.Value;
                     bool currency = _settings.HarvestTargetCurrencyItems.Value;
                     bool unique = _settings.HarvestTargetUniqueItems.Value;
-                    if (!decks && !threads && !currency && !unique)
+                    bool duplicated = _settings.HarvestTargetDuplicatedItems.Value;
+                    bool lifeforce = _settings.HarvestTargetLifeforceQuantity.Value;
+                    if (!decks && !threads && !currency && !unique && !duplicated && !lifeforce)
                         _settings.HarvestTargetStackedDecks.Value = decks = true;
                     if (ImGui.Checkbox("Stacked Decks##HarvestTargetStackedDecks", ref decks))
-                        _settings.HarvestTargetStackedDecks.Value = decks = decks || !(threads || currency || unique);
+                        _settings.HarvestTargetStackedDecks.Value = decks = decks || !(threads || currency || unique || duplicated || lifeforce);
                     ImGui.SameLine(minimumColumnX);
                     DrawHarvestMinimum("##HarvestMinStackedDecks", _settings.HarvestMinStackedDecks, 1, 3);
                     if (ImGui.Checkbox("Threads##HarvestTargetThreads", ref threads))
-                        _settings.HarvestTargetThreads.Value = threads = threads || !(decks || currency || unique);
+                        _settings.HarvestTargetThreads.Value = threads = threads || !(decks || currency || unique || duplicated || lifeforce);
                     ImGui.SameLine(minimumColumnX);
                     DrawHarvestMinimum("##HarvestMinThreads", _settings.HarvestMinThreads, 1, 3);
                     if (ImGui.Checkbox("Currency Items##HarvestTargetCurrencyItems", ref currency))
-                        _settings.HarvestTargetCurrencyItems.Value = currency = currency || !(decks || threads || unique);
+                        _settings.HarvestTargetCurrencyItems.Value = currency = currency || !(decks || threads || unique || duplicated || lifeforce);
                     ImGui.SameLine(minimumColumnX);
                     DrawHarvestMinimum("##HarvestMinCurrencyItems", _settings.HarvestMinCurrencyItems, 1, 4);
                     if (ImGui.Checkbox("Unique Items##HarvestTargetUniqueItems", ref unique))
-                        _settings.HarvestTargetUniqueItems.Value = unique || !(decks || threads || currency);
+                        _settings.HarvestTargetUniqueItems.Value = unique = unique || !(decks || threads || currency || duplicated || lifeforce);
+                    if (ImGui.Checkbox("Duplicated Items##HarvestTargetDuplicatedItems", ref duplicated))
+                        _settings.HarvestTargetDuplicatedItems.Value = duplicated = duplicated || !(decks || threads || currency || unique || lifeforce);
+                    if (ImGui.Checkbox("Lifeforce Quantity##HarvestTargetLifeforceQuantity", ref lifeforce))
+                        _settings.HarvestTargetLifeforceQuantity.Value = lifeforce = lifeforce || !(decks || threads || currency || unique || duplicated);
+                    int minLifeforce = Math.Clamp(_settings.HarvestMinLifeforceQuantity.Value, 50, 150);
+                    ImGui.SameLine();
+                    ImGui.SetNextItemWidth(150f);
+                    if (ImGui.SliderInt("##HarvestMinLifeforceQuantity", ref minLifeforce, 50, 150, "%d%%")
+                        || minLifeforce != _settings.HarvestMinLifeforceQuantity.Value)
+                        _settings.HarvestMinLifeforceQuantity.Value = minLifeforce;
                     ImGui.Unindent();
                 }
                 else

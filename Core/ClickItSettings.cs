@@ -109,6 +109,8 @@ namespace ClickIt
         [Menu("Betrayal", "Click betrayal labels", 10, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickBetrayal { get; set; } = new ToggleNode(false);
+        [IgnoreMenu]
+        public ToggleNode ClickBetrayalCorpseSculpture { get; set; } = new ToggleNode(true);
         [Menu("Blight", "Click blight pumps and build towers during encounters.", 11, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickBlight { get; set; } = new ToggleNode(true);
@@ -158,9 +160,16 @@ namespace ClickIt
         [Menu("Legion Pillars", "Click legion encounter pillars.", 13, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickLegionPillars { get; set; } = new ToggleNode(true);
+        [IgnoreMenu]
+        public ToggleNode ClickBeyond { get; set; } = new ToggleNode(false);
+        [IgnoreMenu]
+        public ToggleNode ClickSentinel { get; set; } = new ToggleNode(true);
         [Menu("Harvest", "Click Harvest encounter trees to start the encounter.", 14, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickHarvest { get; set; } = new ToggleNode(true);
+
+        [IgnoreMenu]
+        public ToggleNode HarvestBossSeeds { get; set; } = new ToggleNode(true);
 
         [IgnoreMenu]
         public ToggleNode HarvestIdentifyScourAlchMagic { get; set; } = new ToggleNode(false);
@@ -171,7 +180,7 @@ namespace ClickIt
         [IgnoreMenu]
         public ToggleNode HarvestRerollTargetMods { get; set; } = new ToggleNode(false);
         [IgnoreMenu]
-        public RangeNode<int> HarvestRerollMethod { get; set; } = new RangeNode<int>(0, 0, 1);
+        public RangeNode<int> HarvestRerollMethod { get; set; } = new RangeNode<int>(1, 0, 1);
         [IgnoreMenu]
         public ToggleNode HarvestTargetStackedDecks { get; set; } = new ToggleNode(true);
         [IgnoreMenu]
@@ -181,9 +190,15 @@ namespace ClickIt
         [IgnoreMenu]
         public ToggleNode HarvestTargetUniqueItems { get; set; } = new ToggleNode(false);
         [IgnoreMenu]
+        public ToggleNode HarvestTargetDuplicatedItems { get; set; } = new ToggleNode(true);
+        [IgnoreMenu]
+        public ToggleNode HarvestTargetLifeforceQuantity { get; set; } = new ToggleNode(true);
+        [IgnoreMenu]
+        public RangeNode<int> HarvestMinLifeforceQuantity { get; set; } = new RangeNode<int>(100, 50, 150);
+        [IgnoreMenu]
         public RangeNode<int> HarvestMinStackedDecks { get; set; } = new RangeNode<int>(1, 1, 3);
         [IgnoreMenu]
-        public RangeNode<int> HarvestMinThreads { get; set; } = new RangeNode<int>(2, 1, 3);
+        public RangeNode<int> HarvestMinThreads { get; set; } = new RangeNode<int>(1, 1, 3);
         [IgnoreMenu]
         public RangeNode<int> HarvestMinCurrencyItems { get; set; } = new RangeNode<int>(4, 1, 4);
 
@@ -288,6 +303,10 @@ namespace ClickIt
         [Menu("Corrupt ALL Essences", "Overrides the essence table and attempts to corrupt every eligible essence encounter.", 1, 118)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode CorruptAllEssences { get; set; } = new ToggleNode(false);
+        [JsonProperty("EssenceSecondCorruptionOnlyWhenNoDeafening")]
+        public ToggleNode EssenceSecondCorruptionOnlyWhenNoDeafening { get; set; } = new ToggleNode(true);
+        [JsonProperty("EssenceSecondCorruptionOnlyWhenNoCorruptionEssences")]
+        public ToggleNode EssenceSecondCorruptionOnlyWhenNoCorruptionEssences { get; set; } = new ToggleNode(false);
         [JsonIgnore]
         public bool ShowEssenceCorruptionTablePanel => CorruptAllEssences?.Value != true;
         [Menu("", 2, 118)]
@@ -378,6 +397,8 @@ namespace ClickIt
         public ToggleNode MinWeightThresholdEnabled { get; set; } = new ToggleNode(false);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public RangeNode<int> MinWeightThreshold { get; set; } = new RangeNode<int>(25, 1, 100);
+        [JsonProperty("ChooseHigherUpsideWhenAltarWeightsTie")]
+        public ToggleNode ChooseHigherUpsideWhenAltarWeightsTie { get; set; } = new ToggleNode(true);
 
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public EmptyNode AlertSoundCategory { get; set; } = new EmptyNode();

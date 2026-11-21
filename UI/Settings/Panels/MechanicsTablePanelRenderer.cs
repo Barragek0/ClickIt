@@ -498,6 +498,7 @@ namespace ClickIt.UI.Settings.Panels
         private static bool HasMechanicEntrySubmenu(string entryId)
             => string.Equals(entryId, MechanicIds.Items, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(entryId, MechanicIds.Essences, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(entryId, MechanicIds.Betrayal, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(entryId, MechanicIds.Strongboxes, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(entryId, MechanicIds.Harvest, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(entryId, MechanicIds.Blight, StringComparison.OrdinalIgnoreCase);

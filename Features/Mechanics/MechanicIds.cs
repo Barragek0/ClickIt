@@ -30,9 +30,14 @@ namespace ClickIt.Features.Mechanics
         public const string Strongboxes = "strongboxes";
         public const string Sanctum = "sanctum";
         public const string Betrayal = "betrayal";
+        public const string BetrayalCorpseSculpturePath = "Betrayal/BetrayalCorpseSculpture";
         public const string Blight = "blight";
         public const string AlvaTempleDoors = "alva-temple-doors";
         public const string LegionPillars = "legion-pillars";
+        public const string Beyond = "beyond";
+        public const string Sentinel = "sentinel";
+        public const string BeyondInitiatorPath = "BeyondDemons/BeyondInitiator";
+        public const string SentinelEncounterPath = "Sentinel/SentinelRandomEncounter";
         public const string DelveAzuriteVeins = "delve-azurite-veins";
         public const string UltimatumInitialOverlay = "ultimatum-initial-overlay";
         public const string UltimatumWindow = "ultimatum-window";

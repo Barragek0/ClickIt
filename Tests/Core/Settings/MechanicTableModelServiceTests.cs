@@ -4,6 +4,21 @@ namespace ClickIt.Tests.Core.Settings
     public class MechanicTableModelServiceTests
     {
         [TestMethod]
+        [TestCategory("Settings")]
+        public void BeyondAndSentinelHaveRequestedDefaultsAndTableEntries()
+        {
+            var settings = new ClickItSettings();
+            var entries = MechanicTableModelService.GetTableEntries(settings);
+            var beyond = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.Beyond).Subject;
+            var sentinel = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.Sentinel).Subject;
+            beyond.Node.Should().BeSameAs(settings.ClickBeyond);
+            beyond.Node.Value.Should().BeFalse();
+            beyond.DefaultEnabled.Should().BeFalse();
+            sentinel.Node.Should().BeSameAs(settings.ClickSentinel);
+            sentinel.Node.Value.Should().BeTrue();
+            sentinel.DefaultEnabled.Should().BeTrue();
+        }
+        [TestMethod]
         public void GetTableEntries_BuildsCachedEntryListFromSettingsNodes()
         {
             var settings = new ClickItSettings();

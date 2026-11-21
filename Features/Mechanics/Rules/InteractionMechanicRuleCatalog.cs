@@ -11,7 +11,8 @@ namespace ClickIt.Features.Mechanics.Rules
     {
         private static readonly Func<InteractionRuleContext, string?>[] OrderedRules =
         [
-            static ctx => ctx.Settings.ClickHarvest && MechanicClassifier.IsHarvestPath(ctx.Path)
+            static ctx => ctx.Settings.ClickHarvest && (MechanicClassifier.IsHarvestPath(ctx.Path)
+                || (ctx.Settings.HarvestBossSeeds && MechanicClassifier.IsHarvestBossSeedPath(ctx.Path)))
                 ? MechanicIds.Harvest : null,
             static ctx => ctx.Settings.ClickSulphite && ctx.Path.Contains("DelveMineral", StringComparison.OrdinalIgnoreCase)
                 ? MechanicIds.DelveSulphiteVeins : null,
@@ -21,7 +22,8 @@ namespace ClickIt.Features.Mechanics.Rules
                     ? MechanicIds.Strongboxes : null,
             static ctx => ctx.Settings.ClickSanctum && ctx.Path.Contains("Sanctum", StringComparison.OrdinalIgnoreCase)
                 ? MechanicIds.Sanctum : null,
-            static ctx => ctx.Settings.ClickBetrayal && ctx.Path.Contains("BetrayalMakeChoice", StringComparison.OrdinalIgnoreCase)
+            static ctx => ctx.Settings.ClickBetrayal && (ctx.Path.Contains("BetrayalMakeChoice", StringComparison.OrdinalIgnoreCase)
+                || (ctx.Settings.ClickBetrayalCorpseSculpture && ctx.Path.Contains(MechanicIds.BetrayalCorpseSculpturePath, StringComparison.OrdinalIgnoreCase)))
                 ? MechanicIds.Betrayal : null,
             static ctx => ctx.Settings.ClickBlight && ctx.Settings.ClickBlightPump
                 && ctx.Path.Contains("BlightPump", StringComparison.OrdinalIgnoreCase)
@@ -33,6 +35,10 @@ namespace ClickIt.Features.Mechanics.Rules
             static ctx => ctx.Settings.ClickLegionPillars
                 && ctx.Path.Contains(Constants.LegionInitiator, StringComparison.OrdinalIgnoreCase)
                     ? MechanicIds.LegionPillars : null,
+            static ctx => ctx.Settings.ClickBeyond && ctx.Path.Contains(MechanicIds.BeyondInitiatorPath, StringComparison.OrdinalIgnoreCase)
+                ? MechanicIds.Beyond : null,
+            static ctx => ctx.Settings.ClickSentinel && ctx.Path.Contains(MechanicIds.SentinelEncounterPath, StringComparison.OrdinalIgnoreCase)
+                ? MechanicIds.Sentinel : null,
             static ctx => ctx.Settings.ClickAzurite
                 && ctx.Path.Contains("AzuriteEncounterController", StringComparison.OrdinalIgnoreCase)
                     ? MechanicIds.DelveAzuriteVeins : null,

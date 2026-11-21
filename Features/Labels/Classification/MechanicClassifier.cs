@@ -55,6 +55,12 @@ namespace ClickIt.Features.Labels.Classification
             if (!string.IsNullOrWhiteSpace(mechanicId))
                 return mechanicId;
 
+            if (IsHarvestBossSeedPath(path)
+                || path.Contains(MechanicIds.BetrayalCorpseSculpturePath, StringComparison.OrdinalIgnoreCase)
+                || path.Contains(MechanicIds.BeyondInitiatorPath, StringComparison.OrdinalIgnoreCase)
+                || path.Contains(MechanicIds.SentinelEncounterPath, StringComparison.OrdinalIgnoreCase))
+                return null;
+
             if (type == EntityType.WorldItem)
             {
                 if (!worldItemMetadataPolicy.ShouldAllowWorldItemByMetadata(
@@ -162,6 +168,9 @@ namespace ClickIt.Features.Labels.Classification
 
         internal static bool IsHarvestPath(string path)
             => path.Contains("Harvest/Objects/HarvestEncounterTree", StringComparison.OrdinalIgnoreCase);
+
+        internal static bool IsHarvestBossSeedPath(string path)
+            => path.Contains("Leagues/Harvest/Objects/BossSeed", StringComparison.OrdinalIgnoreCase);
 
         internal static bool IsSettlersOrePath(string path)
         {

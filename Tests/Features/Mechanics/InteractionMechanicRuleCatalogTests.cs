@@ -7,6 +7,47 @@ namespace ClickIt.Tests.Features.Mechanics
             (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
 
         [DataTestMethod]
+        [TestCategory("Settings")]
+        [DataRow(false, false, false)]
+        [DataRow(false, true, false)]
+        [DataRow(true, false, false)]
+        [DataRow(true, true, true)]
+        public void TryResolve_CorpseSculptureRequiresBothSettings(bool betrayal, bool sculpture, bool expected)
+        {
+            ClickSettings settings = new() { ClickBetrayal = betrayal, ClickBetrayalCorpseSculpture = sculpture };
+            InteractionMechanicRuleCatalog.TryResolve(settings, "Metadata/Terrain/Leagues/Betrayal/BetrayalCorpseSculpture",
+                DummyLabel, null, CreateInventoryInteractionPolicy()).Should().Be(expected ? MechanicIds.Betrayal : null);
+        }
+
+        [DataTestMethod]
+        [TestCategory("Settings")]
+        [DataRow("Metadata/Terrain/Leagues/BeyondDemons/BeyondInitiator", false, false, null)]
+        [DataRow("Metadata/Terrain/Leagues/BeyondDemons/BeyondInitiator", true, false, MechanicIds.Beyond)]
+        [DataRow("Metadata/Terrain/Leagues/Sentinel/SentinelRandomEncounter", false, false, null)]
+        [DataRow("Metadata/Terrain/Leagues/Sentinel/SentinelRandomEncounter", false, true, MechanicIds.Sentinel)]
+        public void TryResolve_BeyondAndSentinelFollowTheirOwnToggles(string path, bool beyond, bool sentinel, string? expected)
+        {
+            ClickSettings settings = new() { ClickBeyond = beyond, ClickSentinel = sentinel };
+            InteractionMechanicRuleCatalog.TryResolve(settings, path, DummyLabel, null, CreateInventoryInteractionPolicy())
+                .Should().Be(expected);
+        }
+
+        [DataTestMethod]
+        [TestCategory("Settings")]
+        [DataRow(false, false, false)]
+        [DataRow(false, true, false)]
+        [DataRow(true, false, false)]
+        [DataRow(true, true, true)]
+        public void TryResolve_HarvestBossSeedRequiresBothSettings(bool harvest, bool bossSeeds, bool expected)
+        {
+            ClickSettings settings = new() { ClickHarvest = harvest, HarvestBossSeeds = bossSeeds };
+            string? result = InteractionMechanicRuleCatalog.TryResolve(settings,
+                "Metadata/Terrain/Leagues/Harvest/Objects/BossSeed", DummyLabel, null, CreateInventoryInteractionPolicy());
+
+            result.Should().Be(expected ? MechanicIds.Harvest : null);
+        }
+
+        [DataTestMethod]
         [DataRow("Metadata/Terrain/Leagues/Harvest/Objects/HarvestEncounterTree", MechanicIds.Harvest)]
         [DataRow("Metadata/Terrain/BetrayalMakeChoice/Some", MechanicIds.Betrayal)]
         [DataRow("Metadata/Terrain/BlightPump/Some", MechanicIds.Blight)]

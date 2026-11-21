@@ -16,11 +16,14 @@ namespace ClickIt.Features.Labels
         public bool ClickAreaTransitions { get; set; }
         public bool ClickLabyrinthTrials { get; set; }
         public bool ClickHarvest { get; set; }
+        public bool HarvestBossSeeds { get; set; }
         public bool ClickSulphite { get; set; }
         public bool ClickBlight { get; set; }
         public bool ClickBlightPump { get; set; }
         public bool ClickAlvaTempleDoors { get; set; }
         public bool ClickLegionPillars { get; set; }
+        public bool ClickBeyond { get; set; }
+        public bool ClickSentinel { get; set; }
         public bool ClickRitualInitiate { get; set; }
         public bool ClickRitualCompleted { get; set; }
         public bool ClickInitialUltimatum { get; set; }
@@ -45,6 +48,7 @@ namespace ClickIt.Features.Labels
         public IReadOnlyList<string> StrongboxDontClickMetadata { get; set; }
         public bool ClickSanctum { get; set; }
         public bool ClickBetrayal { get; set; }
+        public bool ClickBetrayalCorpseSculpture { get; set; }
         public IReadOnlyDictionary<string, int> MechanicPriorityIndexMap { get; set; }
         public IReadOnlySet<string> IgnoreDistanceMechanicIds { get; set; }
         public IReadOnlyDictionary<string, int> IgnoreDistanceWithinByMechanicId { get; set; }
