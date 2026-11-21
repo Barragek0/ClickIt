@@ -332,7 +332,7 @@ namespace ClickIt.Tests.Features.Altars
         }
 
         [TestMethod]
-        public void EvaluateChoice_ReturnsEqualWeightsManual_WhenWeightsTie()
+        public void EvaluateChoice_UsesHigherUpsideToBreakEqualFinalWeightTie()
         {
             var settings = CreateWeightOnlySettings();
             var evaluator = new AltarChoiceEvaluator(settings);
@@ -340,14 +340,29 @@ namespace ClickIt.Tests.Features.Altars
             var weights = TestBuilders.BuildAltarWeights(
                 topDown: [10m],
                 bottomDown: [10m],
-                topUp: [10m],
+                topUp: [20m],
                 bottomUp: [10m],
                 topWeight: 42,
                 bottomWeight: 42);
 
             AltarChoiceEvaluation evaluation = evaluator.EvaluateChoice(altar, weights, ValidRect, ValidRect);
 
-            evaluation.Outcome.Should().Be(AltarChoiceOutcome.EqualWeightsManual);
+            evaluation.Outcome.Should().Be(AltarChoiceOutcome.EqualWeightHigherTopUpsideChosen);
+            evaluation.ChosenElement.Should().BeSameAs(altar.TopButton.Element);
+        }
+
+        [TestMethod]
+        public void EvaluateChoice_LeavesTieManualWhenUpsidesAlsoTieOrOverrideDisabled()
+        {
+            var settings = CreateWeightOnlySettings();
+            var evaluator = new AltarChoiceEvaluator(settings);
+            var altar = TestBuilders.BuildPrimary();
+            AltarWeights weights = TestBuilders.BuildAltarWeights(topDown: [10m], bottomDown: [10m], topUp: [10m], bottomUp: [10m], topWeight: 42, bottomWeight: 42);
+            evaluator.EvaluateChoice(altar, weights, ValidRect, ValidRect).Outcome.Should().Be(AltarChoiceOutcome.EqualWeightsManual);
+
+            settings.ChooseHigherUpsideWhenAltarWeightsTie.Value = false;
+            weights = TestBuilders.BuildAltarWeights(topDown: [10m], bottomDown: [10m], topUp: [20m], bottomUp: [10m], topWeight: 42, bottomWeight: 42);
+            evaluator.EvaluateChoice(altar, weights, ValidRect, ValidRect).Outcome.Should().Be(AltarChoiceOutcome.EqualWeightsManual);
         }
 
         [TestMethod]

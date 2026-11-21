@@ -178,7 +178,7 @@ namespace ClickIt.Features.Altars
 
         private void RenderChoiceEvaluation(DeferredDrawQueue drawQueue, AltarChoiceEvaluation evaluation, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 topModsTopLeft)
         {
-            Vector2 textPos1 = topModsTopLeft + Offset120_Minus60;
+            Vector2 textPos1 = new(topModsTopLeft.X + 120f, topModsTopLeft.Y - 32f);
             Vector2 textPos2 = topModsTopLeft + Offset120_Minus25;
 
             switch (evaluation.Outcome)
@@ -198,28 +198,28 @@ namespace ClickIt.Features.Altars
                     DrawYellowFrames(drawQueue, topModsRect, bottomModsRect);
                     break;
                 case AltarChoiceOutcome.HighValueTopChosen:
-                    drawQueue.EnqueueText($"Weighting has been overridden\n\nTop has been chosen because one of the top upsides has a weight of {evaluation.Threshold}+", textPos1, Color.LawnGreen, 30);
+                    drawQueue.EnqueueText("Override Triggered: Valuable Upside", textPos1, Color.LawnGreen, 30);
                     drawQueue.EnqueueFrame(topModsRect, Color.LawnGreen, 3);
                     drawQueue.EnqueueFrame(bottomModsRect, Color.OrangeRed, 2);
                     break;
                 case AltarChoiceOutcome.HighValueBottomChosen:
-                    drawQueue.EnqueueText($"Weighting has been overridden\n\nBottom has been chosen because one of the bottom upsides has a weight of {evaluation.Threshold}+", textPos1, Color.LawnGreen, 30);
+                    drawQueue.EnqueueText("Override Triggered: Valuable Upside", textPos1, Color.LawnGreen, 30);
                     drawQueue.EnqueueFrame(topModsRect, Color.OrangeRed, 2);
                     drawQueue.EnqueueFrame(bottomModsRect, Color.LawnGreen, 3);
                     break;
                 case AltarChoiceOutcome.BothDangerousManual:
-                    drawQueue.EnqueueText($"Weighting has been overridden\n\nBoth options have downsides with a weight of {evaluation.Threshold}+ that may brick your build.", textPos1, Color.Orange, 30);
+                    drawQueue.EnqueueText("Override Triggered: Dangerous Downside", textPos1, Color.Orange, 30);
                     drawQueue.EnqueueFrame(topModsRect, Color.OrangeRed, 2);
                     drawQueue.EnqueueFrame(bottomModsRect, Color.OrangeRed, 2);
                     _logMessage("[RenderChoiceEvaluation] BOTH DANGEROUS CASE - both sides >= threshold", 10);
                     break;
                 case AltarChoiceOutcome.DangerousTopChooseBottom:
-                    drawQueue.EnqueueText($"Weighting overridden\n\nBottom chosen due to top downside {evaluation.Threshold}+", textPos1, Color.LawnGreen, 30);
+                    drawQueue.EnqueueText("Override Triggered: Dangerous Downside", textPos1, Color.LawnGreen, 30);
                     drawQueue.EnqueueFrame(topModsRect, Color.OrangeRed, 3);
                     drawQueue.EnqueueFrame(bottomModsRect, Color.LawnGreen, 2);
                     break;
                 case AltarChoiceOutcome.DangerousBottomChooseTop:
-                    drawQueue.EnqueueText($"Weighting overridden\n\nTop chosen due to bottom downside {evaluation.Threshold}+", textPos1, Color.LawnGreen, 30);
+                    drawQueue.EnqueueText("Override Triggered: Dangerous Downside", textPos1, Color.LawnGreen, 30);
                     drawQueue.EnqueueFrame(topModsRect, Color.LawnGreen, 2);
                     drawQueue.EnqueueFrame(bottomModsRect, Color.OrangeRed, 3);
                     break;
@@ -228,12 +228,12 @@ namespace ClickIt.Features.Altars
                     DrawYellowFrames(drawQueue, topModsRect, bottomModsRect);
                     break;
                 case AltarChoiceOutcome.TopLowValueChooseBottom:
-                    drawQueue.EnqueueText($"Weighting has been overridden\n\nBottom has been chosen because top has a modifier with weight <= {evaluation.Threshold}", textPos1, Color.Yellow, 30);
+                    drawQueue.EnqueueText("Override Triggered: Unvaluable Upside", textPos1, Color.Yellow, 30);
                     drawQueue.EnqueueFrame(topModsRect, Color.OrangeRed, 3);
                     drawQueue.EnqueueFrame(bottomModsRect, Color.LawnGreen, 2);
                     break;
                 case AltarChoiceOutcome.BottomLowValueChooseTop:
-                    drawQueue.EnqueueText($"Weighting has been overridden\n\nTop has been chosen because bottom has a modifier with weight <= {evaluation.Threshold}", textPos1, Color.Yellow, 30);
+                    drawQueue.EnqueueText("Override Triggered: Unvaluable Upside", textPos1, Color.Yellow, 30);
                     drawQueue.EnqueueFrame(topModsRect, Color.LawnGreen, 2);
                     drawQueue.EnqueueFrame(bottomModsRect, Color.OrangeRed, 3);
                     break;
@@ -242,12 +242,12 @@ namespace ClickIt.Features.Altars
                     DrawYellowFrames(drawQueue, topModsRect, bottomModsRect);
                     break;
                 case AltarChoiceOutcome.TopBelowMinimumChooseBottom:
-                    drawQueue.EnqueueText($"Weighting has been overridden\n\nBottom has been chosen because top weight ({evaluation.TopWeight}) is below minimum {evaluation.Threshold}", textPos1, Color.Yellow, 30);
+                    drawQueue.EnqueueText("Override Triggered: Minimum Weight", textPos1, Color.Yellow, 30);
                     drawQueue.EnqueueFrame(topModsRect, Color.OrangeRed, 3);
                     drawQueue.EnqueueFrame(bottomModsRect, Color.LawnGreen, 2);
                     break;
                 case AltarChoiceOutcome.BottomBelowMinimumChooseTop:
-                    drawQueue.EnqueueText($"Weighting has been overridden\n\nTop has been chosen because bottom weight ({evaluation.BottomWeight}) is below minimum {evaluation.Threshold}", textPos1, Color.Yellow, 30);
+                    drawQueue.EnqueueText("Override Triggered: Minimum Weight", textPos1, Color.Yellow, 30);
                     drawQueue.EnqueueFrame(topModsRect, Color.LawnGreen, 2);
                     drawQueue.EnqueueFrame(bottomModsRect, Color.OrangeRed, 3);
                     break;
@@ -256,6 +256,16 @@ namespace ClickIt.Features.Altars
                     drawQueue.EnqueueFrame(bottomModsRect, Color.OrangeRed, 2);
                     break;
                 case AltarChoiceOutcome.BottomWeightHigher:
+                    drawQueue.EnqueueFrame(topModsRect, Color.OrangeRed, 2);
+                    drawQueue.EnqueueFrame(bottomModsRect, Color.LawnGreen, 3);
+                    break;
+                case AltarChoiceOutcome.EqualWeightHigherTopUpsideChosen:
+                    drawQueue.EnqueueText("Override Triggered: Higher Upside", textPos1, Color.LawnGreen, 30);
+                    drawQueue.EnqueueFrame(topModsRect, Color.LawnGreen, 3);
+                    drawQueue.EnqueueFrame(bottomModsRect, Color.OrangeRed, 2);
+                    break;
+                case AltarChoiceOutcome.EqualWeightHigherBottomUpsideChosen:
+                    drawQueue.EnqueueText("Override Triggered: Higher Upside", textPos1, Color.LawnGreen, 30);
                     drawQueue.EnqueueFrame(topModsRect, Color.OrangeRed, 2);
                     drawQueue.EnqueueFrame(bottomModsRect, Color.LawnGreen, 3);
                     break;

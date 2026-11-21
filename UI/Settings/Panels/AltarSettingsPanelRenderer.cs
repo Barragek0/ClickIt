@@ -102,6 +102,10 @@ namespace ClickIt.UI.Settings.Panels
                 100,
                 "Minimum final weight (1 - 100) an option must have to be considered valid. If both options are below this value, neither will be auto-chosen.",
                 rangeWidthOverride: 300f);
+            SettingsUiRenderHelpers.DrawToggleNodeControl(
+                "Choose higher upside when weights tie##AltarTieHigherUpside",
+                _settings.ChooseHigherUpsideWhenAltarWeightsTie,
+                "When both altar options have the same final weight, automatically choose the option with the higher upside weight. If their upside weights also tie, you choose manually.");
 
             ImGui.TreePop();
         }

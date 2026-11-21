@@ -22,6 +22,8 @@ namespace ClickIt.Features.Altars
         BottomBelowMinimumChooseTop,
         TopWeightHigher,
         BottomWeightHigher,
+        EqualWeightHigherTopUpsideChosen,
+        EqualWeightHigherBottomUpsideChosen,
         EqualWeightsManual
     }
 
@@ -146,6 +148,18 @@ namespace ClickIt.Features.Altars
 
             if (weights.BottomWeight > weights.TopWeight)
                 return CreateChoiceEvaluation(AltarChoiceOutcome.BottomWeightHigher, altar.BottomButton, BottomButtonName, topWeight: weights.TopWeight, bottomWeight: weights.BottomWeight);
+
+            if (_settings.ChooseHigherUpsideWhenAltarWeightsTie.Value
+                && weights.TopUpsideWeight != weights.BottomUpsideWeight)
+            {
+                bool chooseTop = weights.TopUpsideWeight > weights.BottomUpsideWeight;
+                return CreateChoiceEvaluation(
+                    chooseTop ? AltarChoiceOutcome.EqualWeightHigherTopUpsideChosen : AltarChoiceOutcome.EqualWeightHigherBottomUpsideChosen,
+                    chooseTop ? altar.TopButton : altar.BottomButton,
+                    chooseTop ? TopButtonName : BottomButtonName,
+                    topWeight: weights.TopWeight,
+                    bottomWeight: weights.BottomWeight);
+            }
 
             return new(AltarChoiceOutcome.EqualWeightsManual, TopWeight: weights.TopWeight, BottomWeight: weights.BottomWeight);
         }
