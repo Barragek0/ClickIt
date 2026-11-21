@@ -53,6 +53,15 @@ public sealed class BlightService
 
     internal bool IsPointInClickableArea(Vector2 point) => _isPointInClickableArea(point);
     internal bool IsMenuRegionClickable(RectangleF region) => _isMenuRegionClickable?.Invoke(region) == true;
+    internal bool IsMenuPointClickable(Vector2 point)
+        => IsMenuRegionClickable(new RectangleF(point.X - 0.5f, point.Y - 0.5f, 1f, 1f));
+    internal bool TryResolveMenuControlPoint(RectangleF region, out Vector2 point)
+    {
+        point = default;
+        return float.IsFinite(region.X) && float.IsFinite(region.Y) && float.IsFinite(region.Width) && float.IsFinite(region.Height)
+            && region.Width > 0 && region.Height > 0
+            && LabelClickPointSearch.TryResolveVisibleClickablePoint(region, region.Center, [], IsMenuPointClickable, out point);
+    }
     internal bool CanPathfind => _settings.BlightPathfindToBuild.Value;
 
     internal IBlightTowerStrategy CurrentStrategy => BlightStrategyResolver.Resolve(_settings);

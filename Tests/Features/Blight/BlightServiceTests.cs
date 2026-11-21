@@ -3,6 +3,16 @@ namespace ClickIt.Tests.Features.Blight;
 [TestClass]
 public class BlightServiceTests
 {
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void TowerControl_UsesUnblockedPointWithinControl()
+    {
+        var service = new BlightService(new ClickItSettings(), isMenuRegionClickable: rect => rect.Left >= 0 && rect.Top >= 0 && rect.Right < 40 && rect.Bottom < 100);
+        service.TryResolveMenuControlPoint(new RectangleF(10, 10, 100, 40), out Vector2 point).Should().BeTrue();
+        point.X.Should().BeInRange(10, 40);
+        point.Y.Should().BeInRange(10, 50);
+        service.TryResolveMenuControlPoint(new RectangleF(100, 10, 20, 20), out _).Should().BeFalse();
+    }
     private static BlightPlanStep Step(BlightPlanAction action, BlightTowerType type, int targetLevel)
         => new(action, new NumVector2(5, 5), type, targetLevel);
 

@@ -170,7 +170,7 @@ internal sealed class BlightPlanExecutor
                 return AdvanceStep(service, s, $"Step already complete: {s.TowerType} lvl {s.TargetLevel}");
 
             RectangleF? controlRect = gc == null ? null : GetStepControlRect(labels, s, service);
-            bool regionClickable = controlRect is { } rect && service.IsMenuRegionClickable(rect);
+            bool regionClickable = controlRect is { } rect && service.TryResolveMenuControlPoint(rect, out _);
             if (!CanApproachTowerControl(GetStepControlVisibility(labels, s, service)))
                 return new BlightBuildAction(BlightBuildActionKind.None, DebugMessage: "Tower control hidden - waiting");
             bool walkReady = regionClickable;
@@ -222,8 +222,8 @@ internal sealed class BlightPlanExecutor
             RectangleF? controlRect = GetStepControlRect(labels, s, service);
             if (!CanApproachTowerControl(GetStepControlVisibility(labels, s, service)))
                 return new BlightBuildAction(BlightBuildActionKind.None, DebugMessage: "Tower control hidden - waiting");
-            if (controlRect is not { } rect || !service.IsMenuRegionClickable(rect))
-                return WalkCloser(service, gc, s, "Executor: STOP - tower control no longer fully clickable", controlRect);
+            if (controlRect is not { } rect || !service.TryResolveMenuControlPoint(rect, out _))
+                return WalkCloser(service, gc, s, "Executor: STOP - tower control no longer clickable", controlRect);
 
             if (IsPlayerMoving(gc))
             {
@@ -601,7 +601,7 @@ internal sealed class BlightPlanExecutor
     {
         return gc != null && CurrentPlan?.CurrentStep is { } step
             && GetStepControlRect(labels, step, service) is { } region
-            && service.IsMenuRegionClickable(region);
+            && service.TryResolveMenuControlPoint(region, out _);
     }
 
     private RectangleF? GetStepControlRect(IReadOnlyList<LabelOnGround>? labels, BlightPlanStep step, BlightService service)
@@ -731,10 +731,9 @@ internal sealed class BlightPlanExecutor
             return new BlightBuildAction(BlightBuildActionKind.None, DebugMessage: "Tower control hidden - waiting for currency");
         if (BlightMenuInteractions.GetControlRect(expected) is not { } controlRect)
             return Fail("Tower control has no readable rectangle");
-        if (!service.IsMenuRegionClickable(controlRect))
+        if (!service.TryResolveMenuControlPoint(controlRect, out Vector2 clickPos))
             return WalkCloser(service, gc, step, $"Executor: blocked control - {message}", controlRect);
 
-        Vector2 clickPos = controlRect.Center;
         LogMenuState(service, label, message);
         _phaseStartTimestamp = Stopwatch.GetTimestamp();
         _phase = nextPhase;
@@ -749,7 +748,7 @@ internal sealed class BlightPlanExecutor
                     || BlightMenuInteractions.GetControlRect(expected) is not { } region
                     || !region.Contains(clickPos)
                     || !BlightMenuInteractions.IsHoverInside(hover, expected)
-                    || !service.IsMenuRegionClickable(region))
+                    || !service.IsMenuPointClickable(clickPos))
                     return false;
 
                 if (step.Action != BlightPlanAction.Upgrade)
