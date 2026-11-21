@@ -306,7 +306,7 @@ namespace ClickIt
         [JsonProperty("EssenceSecondCorruptionOnlyWhenNoDeafening")]
         public ToggleNode EssenceSecondCorruptionOnlyWhenNoDeafening { get; set; } = new ToggleNode(true);
         [JsonProperty("EssenceSecondCorruptionOnlyWhenNoCorruptionEssences")]
-        public ToggleNode EssenceSecondCorruptionOnlyWhenNoCorruptionEssences { get; set; } = new ToggleNode(false);
+        public ToggleNode EssenceSecondCorruptionOnlyWhenNoCorruptionEssences { get; set; } = new ToggleNode(true);
         [JsonIgnore]
         public bool ShowEssenceCorruptionTablePanel => CorruptAllEssences?.Value != true;
         [Menu("", 2, 118)]
