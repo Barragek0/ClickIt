@@ -42,6 +42,27 @@ public class LabelActionButtonsTests
     }
 
     [TestMethod]
+    [TestCategory("Regression")]
+    public void DescribeRow_ReportsWhereTooltipTitleIsUnavailable()
+    {
+        var icon = new Node { Tooltip = new Node() };
+        var root = new Node(new Node(), new Node(new Node(icon)));
+        LabelActionButtons.DescribeRow(root, 1).Should().Contain("tooltip children=0, body unavailable");
+        icon.Tooltip = Button("Scroll of Wisdom").Tooltip;
+        LabelActionButtons.DescribeRow(root, 1).Should().Contain("Scroll of Wisdom").And.Contain("body children=1");
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void HiddenIconCanBeLocatedForGeometryWithoutBeingClickable()
+    {
+        var icon = new Node { IsVisible = false };
+        var root = new Node(new Node(), new Node(new Node(icon)));
+        LabelActionButtons.ReadButtonElement(root, 1, 0).Should().BeSameAs(icon);
+        LabelActionButtons.ReadVisibleButton(root, 1, 0).Should().BeNull();
+    }
+
+    [TestMethod]
     public void FindsCurrencyWhenTheRawTooltipTitleHasFormatting()
     {
         var title = new Node { Text = "formatted wisdom title", TextNoTags = "Scroll of Wisdom" };

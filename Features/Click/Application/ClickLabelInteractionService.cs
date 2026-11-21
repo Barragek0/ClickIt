@@ -17,6 +17,11 @@ namespace ClickIt.Features.Click.Application
 
     internal sealed class ClickLabelInteractionService(ClickLabelInteractionServiceDependencies dependencies)
     {
+        private readonly RecrystallisationDetector _recrystallisationDetector = new();
+        private readonly HashSet<long> _essenceFirstCorruptionLabels = [];
+        private readonly HashSet<long> _essenceSecondCorruptionLabels = [];
+        private readonly Lock _essenceCorruptionLock = new();
+        private long? _essenceAreaHash;
         private const long BlightChestDebugCaptureIntervalMs = 500;
         private readonly ClickLabelInteractionServiceDependencies _dependencies = dependencies;
         private long _lastBlightChestDebugCaptureTimestampMs;
@@ -72,16 +77,96 @@ namespace ClickIt.Features.Click.Application
 
         internal bool TryCorruptEssence(LabelOnGround label, string? mechanicId, Vector2 windowTopLeft)
         {
-            return string.Equals(mechanicId, MechanicIds.Essences, StringComparison.OrdinalIgnoreCase)
-                && _dependencies.Settings.ClickEssences.Value
-                && _dependencies.LabelInteractionPort.ShouldCorruptEssence(label)
-                && TryClickLabelAction(label, windowTopLeft, LabelActionButtons.VaalOrb,
-                    alternateRowIndex: 2,
-                    canStillClick: () => _dependencies.Settings.ClickEssences.Value
-                        && _dependencies.LabelInteractionPort.ShouldCorruptEssence(label)) == LabelActionResult.Clicked;
+            if (!string.Equals(mechanicId, MechanicIds.Essences, StringComparison.OrdinalIgnoreCase)
+                || !_dependencies.Settings.ClickEssences.Value)
+                return false;
+
+            lock (_essenceCorruptionLock)
+                return TryCorruptEssenceLocked(label, windowTopLeft);
         }
 
-        internal enum LabelActionResult { Clicked, NoMatch, Unavailable }
+        private bool TryCorruptEssenceLocked(LabelOnGround label, Vector2 windowTopLeft)
+        {
+            if (!AreaUiSnapshotReader.TryReadCurrentAreaHash(_dependencies.GameController, out long areaHash))
+                return true;
+            if (_essenceAreaHash != areaHash)
+            {
+                _essenceFirstCorruptionLabels.Clear();
+                _essenceSecondCorruptionLabels.Clear();
+                _essenceAreaHash = areaHash;
+            }
+
+            long id;
+            try { id = label.ItemOnGround?.Id ?? 0; }
+            catch { id = 0; }
+            if (id <= 0)
+                return true;
+
+            if (_essenceFirstCorruptionLabels.Contains(id))
+            {
+                if (_essenceSecondCorruptionLabels.Contains(id))
+                    return false;
+                if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? currentLabel)
+                    || currentLabel is not Element currentElement
+                    || !LabelElementSearch.ElementContainsAnyStrings(currentElement, ["Corrupted"]))
+                    return true;
+                if (!_essenceSecondCorruptionLabels.Contains(id) && IsRecrystallisationActive()
+                    && ShouldCorruptEssenceSecondTime(label))
+                {
+                    if (TryClickVaalOrb(label, windowTopLeft, () => _dependencies.Settings.ClickEssences.Value
+                        && IsRecrystallisationActive() && ShouldCorruptEssenceSecondTime(label)))
+                        _essenceSecondCorruptionLabels.Add(id);
+                    return true;
+                }
+
+                _essenceSecondCorruptionLabels.Add(id);
+                return false;
+            }
+
+            bool clicked = TryFirstCorruption();
+            if (clicked)
+            {
+                _essenceFirstCorruptionLabels.Add(id);
+            }
+            return clicked;
+
+            bool TryFirstCorruption()
+                => _dependencies.LabelInteractionPort.ShouldCorruptEssence(label)
+                    && TryClickVaalOrb(label, windowTopLeft,
+                        () => _dependencies.Settings.ClickEssences.Value && _dependencies.LabelInteractionPort.ShouldCorruptEssence(label));
+        }
+
+        private bool TryClickVaalOrb(LabelOnGround label, Vector2 windowTopLeft, Func<bool> canStillClick)
+            => TryClickLabelAction(label, windowTopLeft, LabelActionButtons.VaalOrb, alternateRowIndex: 2,
+                canStillClick: canStillClick) == LabelActionResult.Clicked;
+
+        private bool ShouldCorruptEssenceSecondTime(LabelOnGround label)
+        {
+            if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
+                || rawLabel is not Element element
+                || !_dependencies.Settings.CorruptAllEssences.Value
+                    && !_dependencies.Settings.GetCorruptEssenceNames().Any(name => LabelElementSearch.ElementContainsAnyStrings(element, [name])))
+                return false;
+
+            if (_dependencies.Settings.EssenceSecondCorruptionOnlyWhenNoDeafening.Value
+                && LabelElementSearch.ElementContainsAnyStrings(element, ["Deafening"]))
+                return false;
+
+            string[] corruptionEssences = ["Essence of Hysteria", "Essence of Insanity", "Essence of Horror",
+                "Essence of Delirium", "Essence of Desolation", "Essence of Trickery"];
+            return !_dependencies.Settings.EssenceSecondCorruptionOnlyWhenNoCorruptionEssences.Value
+                || !LabelElementSearch.ElementContainsAnyStrings(element, corruptionEssences);
+        }
+
+        private bool IsRecrystallisationActive()
+        {
+            object? ingameData = null;
+            if (DynamicAccess.TryGetDynamicValue(_dependencies.GameController, DynamicAccessProfiles.IngameState, out object? state))
+                DynamicAccess.TryGetDynamicValue(state, DynamicAccessProfiles.Data, out ingameData);
+            return _recrystallisationDetector.IsActive(ingameData);
+        }
+
+        internal enum LabelActionResult { Clicked, NoMatch, Unavailable, Blocked }
 
         // A tooltip can be empty until the cursor enters its icon. Use the guarded
         // dispatcher to move and settle the cursor, and only authorize input on a match.
@@ -96,7 +181,8 @@ namespace ClickIt.Features.Click.Application
             if (result != LabelActionResult.Clicked && alternateRowIndex is { } alternate)
             {
                 LabelActionResult alternateResult = TryRow(alternate);
-                if (alternateResult == LabelActionResult.Clicked || result == LabelActionResult.NoMatch)
+                if (alternateResult == LabelActionResult.Clicked || result == LabelActionResult.NoMatch
+                    || (alternateResult == LabelActionResult.Blocked && result != LabelActionResult.Clicked))
                     result = alternateResult;
             }
 
@@ -115,12 +201,13 @@ namespace ClickIt.Features.Click.Application
             {
                 int count = LabelActionButtons.CountButtons(root, row);
                 bool unreadable = count == 0;
+                bool blocked = false;
                 for (int index = 0; index < count; index++)
                 {
                     if (Environment.TickCount64 >= searchDeadline || canStillClick?.Invoke() == false)
                         return LabelActionResult.Unavailable;
 
-                    if (LabelActionButtons.ReadVisibleButton(root, row, index) is not Element { Address: not 0 } button)
+                    if (LabelActionButtons.ReadButtonElement(root, row, index) is not Element { Address: not 0 } button)
                         continue;
 
                     if (!TryGetActionButtonBounds(button, out RectangleF rect))
@@ -129,12 +216,19 @@ namespace ClickIt.Features.Click.Application
                         continue;
                     }
 
-                    Vector2 point = rect.Center + windowTopLeft;
-                    if (!_dependencies.IsInsideWindowInEitherSpace(point) || !_dependencies.IsClickableInEitherSpace(point, path))
+                    if (!LabelClickPointSearch.TryResolveVisibleClickablePoint(rect, rect.Center, [],
+                        candidate => _dependencies.IsInsideWindowInEitherSpace(candidate + windowTopLeft)
+                            && _dependencies.IsClickableInEitherSpace(candidate + windowTopLeft, path), out Vector2 clientPoint))
+                    {
+                        blocked = true;
+                        continue;
+                    }
+                    if (LabelActionButtons.ReadVisibleButton(root, row, index) is not Element)
                     {
                         unreadable = true;
                         continue;
                     }
+                    Vector2 point = clientPoint + windowTopLeft;
 
                     long address = button.Address;
                     string? observedTitle = null;
@@ -234,7 +328,7 @@ namespace ClickIt.Features.Click.Application
                     unreadable |= observedTitle == null;
                 }
 
-                return unreadable ? LabelActionResult.Unavailable : LabelActionResult.NoMatch;
+                return blocked ? LabelActionResult.Blocked : unreadable ? LabelActionResult.Unavailable : LabelActionResult.NoMatch;
             }
         }
 
@@ -274,12 +368,13 @@ namespace ClickIt.Features.Click.Application
         }
 
         internal bool TryHandleHarvestUpgrade(LabelOnGround label, string? mechanicId, Vector2 windowTopLeft,
-            out bool readyToOpenUpgradedTree, bool allowWhenHotkeyInactive = false)
+            out bool readyToOpenUpgradedTree, out bool needsApproach, bool allowWhenHotkeyInactive = false)
         {
             readyToOpenUpgradedTree = false;
+            needsApproach = false;
             return string.Equals(mechanicId, MechanicIds.Harvest, StringComparison.OrdinalIgnoreCase)
                 && _dependencies.HarvestUpgrade?.TryHandle(label, windowTopLeft, _dependencies.GameController,
-                    this, allowWhenHotkeyInactive, out readyToOpenUpgradedTree) == true;
+                    this, allowWhenHotkeyInactive, out readyToOpenUpgradedTree, out needsApproach) == true;
         }
 
         internal bool PerformLabelClick(

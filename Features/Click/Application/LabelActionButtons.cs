@@ -42,15 +42,17 @@ internal static class LabelActionButtons
         => ReadVisibleButton(labelRoot, rowIndex, buttonIndex) is { } button && Matches(button, tooltipName) ? button : null;
 
     internal static object? ReadVisibleButton(object? labelRoot, int rowIndex, int buttonIndex)
-        => DynamicAccess.TryGetChildAtIndex(GetActionRow(labelRoot, rowIndex), buttonIndex, out object? button)
+            => ReadButtonElement(labelRoot, rowIndex, buttonIndex) is { } button
             && DynamicAccess.TryReadBool(button, DynamicAccessProfiles.IsVisible, out bool visible) && visible ? button : null;
+
+    internal static object? ReadButtonElement(object? labelRoot, int rowIndex, int buttonIndex)
+        => DynamicAccess.TryGetChildAtIndex(GetActionRow(labelRoot, rowIndex), buttonIndex, out object? button) ? button : null;
 
     internal static string? ReadTitle(object button)
     {
         object? title = GetTooltipTitle(button);
         return DynamicAccess.TryReadString(title, static element => element.TextNoTags, out string plain) ? plain
-            : DynamicAccess.TryReadString(title, static element => element.Text, out string raw) ? raw
-            : null;
+            : DynamicAccess.TryReadString(title, static element => element.Text, out string raw) ? raw : null;
     }
 
     private static object? GetActionRow(object? root, int rowIndex)
@@ -82,12 +84,26 @@ internal static class LabelActionButtons
         {
             DynamicAccess.TryGetChildAtIndex(row, i, out object? button);
             bool visible = DynamicAccess.TryReadBool(button, DynamicAccessProfiles.IsVisible, out bool value) && value;
-            string text = DynamicAccess.TryReadString(GetTooltipTitle(button), static element => element.Text, out string title)
-                ? title : "<unreadable title>";
-            buttons.Add($"[{i}] visible={visible}: {text}");
+            string text = button == null ? "<unreadable title>" : ReadTitle(button) ?? "<unreadable title>";
+            buttons.Add($"[{i}] visible={visible}: {text} ({DescribeTooltip(button)})");
         }
 
         return $"row {rowIndex}: {count} buttons ({string.Join(", ", buttons)})";
+    }
+
+    private static string DescribeTooltip(object? button)
+    {
+        if (!DynamicAccess.TryGetDynamicValue(button, static element => element.Tooltip, out object? tooltip) || tooltip == null)
+            return "tooltip unavailable";
+        int count = DynamicAccess.TryReadInt(tooltip, static element => element.ChildCount, out int childCount) ? childCount : -1;
+        if (!DynamicAccess.TryGetChildAtIndex(tooltip, 0, out object? body) || body == null)
+            return $"tooltip children={count}, body unavailable";
+        int bodyCount = DynamicAccess.TryReadInt(body, static element => element.ChildCount, out int children) ? children : -1;
+        if (!DynamicAccess.TryGetChildAtIndex(body, 0, out object? title) || title == null)
+            return $"tooltip children={count}, body children={bodyCount}, title unavailable";
+        bool plainReadable = DynamicAccess.TryReadString(title, static element => element.TextNoTags, out string _);
+        bool rawReadable = DynamicAccess.TryReadString(title, static element => element.Text, out string _);
+        return $"tooltip children={count}, body children={bodyCount}, text={plainReadable}, raw={rawReadable}";
     }
 
     internal static bool IsHoverOnButton(Element? hover, long buttonAddress)

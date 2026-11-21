@@ -5,10 +5,16 @@ namespace ClickIt.Features.Essence
         private readonly ClickItSettings _settings = settings;
 
         public bool ShouldCorruptEssence(Element? label)
+            => ShouldCorruptEssence(label, excludeCorrupted: true);
+
+        public bool ShouldCorruptEssenceForSecondCorruption(Element? label)
+            => ShouldCorruptEssence(label, excludeCorrupted: false);
+
+        private bool ShouldCorruptEssence(Element? label, bool excludeCorrupted)
         {
             if (label == null)
                 return false;
-            if (LabelElementSearch.ElementContainsAnyStrings(label, ["Corrupted"]))
+            if (excludeCorrupted && LabelElementSearch.ElementContainsAnyStrings(label, ["Corrupted"]))
                 return false;
 
             if (_settings.CorruptAllEssences.Value)
