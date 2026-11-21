@@ -3,6 +3,7 @@ namespace ClickIt.Features.Click.Application;
 internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, InventoryInteractionPolicy inventory)
 {
     private const int LabelUpdateDelayMs = 80;
+    private const int ModifierUpdateTimeoutMs = 200;
     private const int InventoryRetryDelayMs = 250;
     private const int WarningHoldMs = 3_000;
     private readonly object _sync = new();
@@ -35,19 +36,24 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
 
     // True consumes this tick, including while waiting for the previous click to take effect.
     internal bool TryHandle(LabelOnGround label, Vector2 windowTopLeft, GameController gameController,
-        ClickLabelInteractionService interaction, bool allowWhenHotkeyInactive, out bool readyToOpenUpgradedTree)
+        ClickLabelInteractionService interaction, bool allowWhenHotkeyInactive, out bool readyToOpenUpgradedTree, out bool needsApproach)
     {
         // Regular clicks and manual hover clicks run on separate coroutines.
         lock (_sync)
-            return TryAdvance(label, windowTopLeft, gameController, interaction, allowWhenHotkeyInactive, out readyToOpenUpgradedTree);
+            return TryAdvance(label, windowTopLeft, gameController, interaction, allowWhenHotkeyInactive, out readyToOpenUpgradedTree, out needsApproach);
     }
 
     private bool TryAdvance(LabelOnGround label, Vector2 windowTopLeft, GameController gameController,
-        ClickLabelInteractionService interaction, bool allowWhenHotkeyInactive, out bool readyToOpenUpgradedTree)
+        ClickLabelInteractionService interaction, bool allowWhenHotkeyInactive, out bool readyToOpenUpgradedTree, out bool needsApproach)
     {
         readyToOpenUpgradedTree = false;
+        needsApproach = false;
         if (!settings.ClickHarvest.Value)
             return true;
+        if (DynamicAccess.TryGetLabelItemOnGround(label, out Entity? harvestItem)
+            && DynamicAccess.TryReadString(harvestItem, DynamicAccessProfiles.Path, out string harvestPath)
+            && MechanicClassifier.IsHarvestBossSeedPath(harvestPath))
+            return !settings.HarvestBossSeeds.Value;
         if (!settings.HarvestRerollTargetMods.Value && _rerolls.Count != 0)
             _rerolls.Clear();
         if (!settings.HarvestIdentifyScourAlchMagic.Value && !settings.HarvestAlchNormal.Value && !settings.HarvestRerollTargetMods.Value)
@@ -94,7 +100,7 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
             if (now < pending.CheckAfter)
                 return true;
             return TryReroll(label, windowTopLeft, gameController, interaction, allowWhenHotkeyInactive,
-                areaHash, treeId, rarity, pending.LastClick == UpgradeStep.Alchemy, out readyToOpenUpgradedTree);
+                areaHash, treeId, rarity, pending.LastClick == UpgradeStep.Alchemy, out readyToOpenUpgradedTree, out needsApproach);
         }
         // ExileCore reports Normal encounter rarity as White.
         bool startedNormal = pending.LastClick == UpgradeStep.Wait ? rarity == MonsterRarity.White : pending.StartedNormal;
@@ -143,6 +149,7 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
 
         Volatile.Write(ref _warning, null);
         ClickLabelInteractionService.LabelActionResult result = SendAction(step);
+        needsApproach = result == ClickLabelInteractionService.LabelActionResult.Blocked;
         if (result == ClickLabelInteractionService.LabelActionResult.Clicked)
         {
             _pending[treeId] = new PendingUpgrade(step, Environment.TickCount64 + LabelUpdateDelayMs, stock.Value.WisdomCount, startedNormal);
@@ -172,9 +179,10 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
 
     private bool TryReroll(LabelOnGround label, Vector2 windowTopLeft, GameController gameController,
         ClickLabelInteractionService interaction, bool allowWhenHotkeyInactive, long areaHash, long treeId,
-        MonsterRarity rarity, bool wasUpgraded, out bool readyToOpen)
+        MonsterRarity rarity, bool wasUpgraded, out bool readyToOpen, out bool needsApproach)
     {
         readyToOpen = false;
+        needsApproach = false;
         long now = Environment.TickCount64;
         _rerolls.TryGetValue(treeId, out PendingReroll pending);
         if (now < pending.CheckAfter)
@@ -216,15 +224,13 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
                 }
                 return true;
             }
-            if (string.Equals(text, pending.PreviousText, StringComparison.Ordinal))
+            if (!ChaosRerollConfirmed(pending.PreviousText, text, now, pending.CheckAfter))
             {
-                CurrencyStock current = ReadCurrency(gameController);
-                if (!ChaosRerollConfirmed(pending.PreviousText, text, pending.CurrencyBefore, current.ChaosCount, current.SawInventoryItems))
-                {
-                    interaction.LogLabelAction(() => $"[Harvest] Tree {treeId}: waiting for Chaos result; modifier unchanged={DescribeModifiers(text)}, chaos before={pending.CurrencyBefore?.ToString() ?? "unreadable"}, after={current.ChaosCount?.ToString() ?? "unreadable"}, inventory items seen={current.SawInventoryItems}, chaos present={current.Chaos}");
-                    return true;
-                }
+                interaction.LogLabelAction(() => $"[Harvest] Tree {treeId}: waiting for changed Chaos modifiers; previous={DescribeModifiers(pending.PreviousText)}");
+                return true;
             }
+            if (string.Equals(text, pending.PreviousText, StringComparison.Ordinal))
+                interaction.LogLabelAction(() => $"[Harvest] Tree {treeId}: modifier update timed out after {ModifierUpdateTimeoutMs}ms; evaluating unchanged text");
         }
 
         if (identified == true && rarity is MonsterRarity.Rare or MonsterRarity.Magic)
@@ -238,9 +244,13 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
                 }
                 return true;
             }
-            if (MatchesTarget(text, settings.HarvestTargetStackedDecks.Value, settings.HarvestMinStackedDecks.Value,
+            bool matched = MatchesTarget(text, settings.HarvestTargetStackedDecks.Value, settings.HarvestMinStackedDecks.Value,
                     settings.HarvestTargetThreads.Value, settings.HarvestMinThreads.Value,
-                    settings.HarvestTargetCurrencyItems.Value, settings.HarvestMinCurrencyItems.Value, settings.HarvestTargetUniqueItems.Value))
+                    settings.HarvestTargetCurrencyItems.Value, settings.HarvestMinCurrencyItems.Value, settings.HarvestTargetUniqueItems.Value, settings.HarvestTargetDuplicatedItems.Value,
+                    settings.HarvestTargetLifeforceQuantity.Value, settings.HarvestMinLifeforceQuantity.Value);
+            if (pending.LastClick is UpgradeStep.Chaos or UpgradeStep.Alchemy)
+                interaction.LogLabelAction(() => $"[Harvest] Tree {treeId}: modifiers={DescribeModifiers(text)}, matched={matched}, targets: decks={settings.HarvestTargetStackedDecks.Value}/{settings.HarvestMinStackedDecks.Value}, threads={settings.HarvestTargetThreads.Value}/{settings.HarvestMinThreads.Value}, currency={settings.HarvestTargetCurrencyItems.Value}/{settings.HarvestMinCurrencyItems.Value}, unique={settings.HarvestTargetUniqueItems.Value}, duplicated={settings.HarvestTargetDuplicatedItems.Value}, lifeforce={settings.HarvestTargetLifeforceQuantity.Value}/{settings.HarvestMinLifeforceQuantity.Value}");
+            if (matched)
             {
                 _rerolls.Remove(treeId);
                 Volatile.Write(ref _warning, null);
@@ -278,17 +288,19 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
                 && (next is not (UpgradeStep.Chaos or UpgradeStep.Scour) || (string.Equals(ReadModifierText(label), text, StringComparison.Ordinal)
                     && !MatchesTarget(text!, settings.HarvestTargetStackedDecks.Value, settings.HarvestMinStackedDecks.Value,
                         settings.HarvestTargetThreads.Value, settings.HarvestMinThreads.Value,
-                        settings.HarvestTargetCurrencyItems.Value, settings.HarvestMinCurrencyItems.Value, settings.HarvestTargetUniqueItems.Value))));
+                        settings.HarvestTargetCurrencyItems.Value, settings.HarvestMinCurrencyItems.Value, settings.HarvestTargetUniqueItems.Value, settings.HarvestTargetDuplicatedItems.Value,
+                        settings.HarvestTargetLifeforceQuantity.Value, settings.HarvestMinLifeforceQuantity.Value))));
+        needsApproach = result == ClickLabelInteractionService.LabelActionResult.Blocked;
         if (result == ClickLabelInteractionService.LabelActionResult.Clicked)
             _rerolls[treeId] = new PendingReroll(next, Environment.TickCount64 + LabelUpdateDelayMs, text,
                 next == UpgradeStep.Identify ? stock.WisdomCount : stock.ChaosCount);
         return true;
     }
 
-    internal static bool ChaosRerollConfirmed(string? previous, string? current, int? before, int? after, bool inventoryReadable)
-        => !string.IsNullOrWhiteSpace(current) &&
-            (!string.Equals(previous, current, StringComparison.Ordinal)
-                || (inventoryReadable && before.HasValue && after.HasValue && after.Value < before.Value));
+    internal static bool ChaosRerollConfirmed(string? previous, string? current, long now, long checkAfter)
+        => !string.IsNullOrWhiteSpace(current)
+            && (!string.Equals(previous, current, StringComparison.Ordinal)
+                || now >= checkAfter + ModifierUpdateTimeoutMs - LabelUpdateDelayMs);
 
     private static string DescribeModifiers(string? text)
     {
@@ -379,12 +391,24 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
     }
 
     internal static bool MatchesTarget(string text, bool decks, int minDecks, bool threads, int minThreads,
-        bool currency = false, int minCurrency = 1, bool unique = false)
+        bool currency = false, int minCurrency = 1, bool unique = false, bool duplicated = false, bool lifeforce = false, int minLifeforce = 100)
     {
-        if (!decks && !threads && !currency && !unique)
+        if (!decks && !threads && !currency && !unique && !duplicated && !lifeforce)
             decks = true;
         foreach (string line in text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
+            if (lifeforce)
+            {
+                var quantity = System.Text.RegularExpressions.Regex.Match(line,
+                    @"^Sacred\s+Fauna\s+drop\s+(\d+)\s*%\s+increased\s+Quantity\s+of\s+Lifeforce\s*$",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+                if (quantity.Success && int.TryParse(quantity.Groups[1].Value, out int value) && value >= Math.Clamp(minLifeforce, 50, 150))
+                    return true;
+            }
+            if (duplicated && System.Text.RegularExpressions.Regex.IsMatch(line,
+                @"^Items\s+dropped\s+by\s+Sacred\s+Fauna\s+are\s+Duplicated\s*$",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant))
+                return true;
             var match = System.Text.RegularExpressions.Regex.Match(line,
                 @"^Tier\s*3\s+Sacred\s+Fauna\s+drop\s+(\d+|an)\s+additional\s+(Stacked\s+Decks?|Threads?|Currency\s+Items?|Unique\s+Items?)\s*$",
                 System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);

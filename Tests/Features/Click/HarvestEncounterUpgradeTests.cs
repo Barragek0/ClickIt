@@ -37,30 +37,71 @@ public class HarvestEncounterUpgradeTests
         HarvestEncounterUpgrade.MatchesTarget("Tier 3 Sacred Fauna drop 3 additional Threads", false, 1, true, 3).Should().BeTrue();
     }
 
+    [DataTestMethod]
+    [TestCategory("Regression")]
+    [DataRow("Items dropped by Sacred Fauna are Duplicated", true, true)]
+    [DataRow("Other modifier\nitems dropped by sacred fauna are duplicated\nAnother modifier", true, true)]
+    [DataRow("Items dropped by Sacred Fauna are Duplicated", false, false)]
+    [DataRow("Some Items dropped by Sacred Fauna are Duplicated", true, false)]
+    public void RerollTarget_DuplicatedItemsRespectsToggleAndChecksEveryLine(string text, bool enabled, bool expected)
+        => HarvestEncounterUpgrade.MatchesTarget(text, false, 1, false, 2, false, 4, false, enabled).Should().Be(expected);
+
+    [DataTestMethod]
+    [TestCategory("Regression")]
+    [DataRow("Tier 3 Sacred Fauna drop 1 additional Unique Item")]
+    [DataRow("Tier 3 Sacred Fauna drop 1 additional Unique Items")]
+    [DataRow("Tier 3 Sacred Fauna drop an additional Unique Item")]
+    public void RerollTarget_UniqueItemAcceptsEachGameWording(string text)
+    {
+        HarvestEncounterUpgrade.MatchesTarget(text, false, 1, false, 2, false, 4, true).Should().BeTrue();
+        HarvestEncounterUpgrade.MatchesTarget(text, true, 1, false, 2, false, 4, false).Should().BeFalse();
+    }
+
+    [DataTestMethod]
+    [TestCategory("Regression")]
+    [DataRow("Sacred Fauna drop 74% increased Quantity of Lifeforce", 75, true, false)]
+    [DataRow("Other modifier\nSacred Fauna drop 75% increased Quantity of Lifeforce\nOther modifier", 75, true, true)]
+    [DataRow("Sacred Fauna drop 50% increased Quantity of Lifeforce", 50, true, true)]
+    [DataRow("Sacred Fauna drop 100% increased Quantity of Lifeforce", 100, true, true)]
+    [DataRow("Sacred Fauna drop 141% increased Quantity of Lifeforce", 100, true, true)]
+    [DataRow("Sacred Fauna drop 119% increased Quantity of Lifeforce", 120, true, false)]
+    [DataRow("Sacred Fauna drop 120% increased Quantity of Lifeforce", 120, true, true)]
+    [DataRow("Sacred Fauna drop 149% increased Quantity of Lifeforce", 150, true, false)]
+    [DataRow("Sacred Fauna drop 150% increased Quantity of Lifeforce", 150, true, true)]
+    [DataRow("Sacred Fauna drop 100% increased Quantity of Lifeforce", 75, false, false)]
+    public void RerollTarget_LifeforceQuantityRespectsMinimum(string text, int minimum, bool enabled, bool expected)
+        => HarvestEncounterUpgrade.MatchesTarget(text, false, 1, false, 2, false, 4, false, false, enabled, minimum).Should().Be(expected);
+
     [TestMethod]
     [TestCategory("Settings")]
     public void HarvestReroll_DefaultsMatchRequestedTargets()
     {
         var settings = new ClickItSettings();
+        settings.HarvestBossSeeds.Value.Should().BeTrue();
         settings.HarvestRerollTargetMods.Value.Should().BeFalse();
+        settings.HarvestRerollMethod.Value.Should().Be(1);
         settings.HarvestTargetStackedDecks.Value.Should().BeTrue();
         settings.HarvestMinStackedDecks.Value.Should().Be(1);
         settings.HarvestTargetThreads.Value.Should().BeTrue();
-        settings.HarvestMinThreads.Value.Should().Be(2);
+        settings.HarvestMinThreads.Value.Should().Be(1);
         settings.HarvestTargetCurrencyItems.Value.Should().BeFalse();
         settings.HarvestMinCurrencyItems.Value.Should().Be(4);
         settings.HarvestTargetUniqueItems.Value.Should().BeFalse();
+        settings.HarvestTargetDuplicatedItems.Value.Should().BeTrue();
+        settings.HarvestTargetLifeforceQuantity.Value.Should().BeTrue();
+        settings.HarvestMinLifeforceQuantity.Value.Should().Be(100);
     }
 
     [TestMethod]
     [TestCategory("Regression")]
-    public void ChaosReroll_WaitsForChangedModifiersOrConfirmedCurrencyConsumption()
+    public void ChaosReroll_WaitsForChangedModifiersOrTimeout()
     {
-        HarvestEncounterUpgrade.ChaosRerollConfirmed("a", "b", null, null, false).Should().BeTrue();
-        HarvestEncounterUpgrade.ChaosRerollConfirmed("a", "a", 5, 4, true).Should().BeTrue();
-        HarvestEncounterUpgrade.ChaosRerollConfirmed("a", "a", 5, 5, true).Should().BeFalse();
-        HarvestEncounterUpgrade.ChaosRerollConfirmed("a", "a", 5, 0, false).Should().BeFalse();
-        HarvestEncounterUpgrade.ChaosRerollConfirmed("a", "", 5, 4, true).Should().BeFalse();
+        const long checkAfter = 1080; // Click at 1000ms, first check at 1080ms.
+        HarvestEncounterUpgrade.ChaosRerollConfirmed("a", "b", 1080, checkAfter).Should().BeTrue();
+        HarvestEncounterUpgrade.ChaosRerollConfirmed("a", "a", 1199, checkAfter).Should().BeFalse();
+        HarvestEncounterUpgrade.ChaosRerollConfirmed("a", "a", 1200, checkAfter).Should().BeTrue();
+        HarvestEncounterUpgrade.ChaosRerollConfirmed("a", "", 1200, checkAfter).Should().BeFalse();
+        HarvestEncounterUpgrade.ChaosRerollConfirmed("a", null, 1200, checkAfter).Should().BeFalse();
     }
 
     [TestMethod]
