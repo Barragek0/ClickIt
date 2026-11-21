@@ -93,14 +93,14 @@ namespace ClickIt.Tests.Features.Observability.Performance
         {
             var tracker = new TimingChannelMetricsTracker();
 
-            // One thousand and one quick runs fill the 1000-sample window; the reported max must come from the current window (all ~0ms here), not from any historical spike.
+            // Samples within the window are retained.
             for (int i = 0; i < 1001; i++)
             {
                 tracker.StartCoroutineTiming(TimingChannel.Blight);
                 tracker.StopCoroutineTiming(TimingChannel.Blight);
             }
 
-            tracker.GetTimingSampleCount(TimingChannel.Blight).Should().Be(1000);
+            tracker.GetTimingSampleCount(TimingChannel.Blight).Should().Be(1001);
             tracker.GetMaxTiming(TimingChannel.Blight).Should().BeLessThanOrEqualTo(tracker.GetLastTiming(TimingChannel.Blight) + 1);
         }
 

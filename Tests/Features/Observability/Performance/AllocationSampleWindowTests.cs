@@ -24,7 +24,7 @@ public class AllocationSampleWindowTests
     }
 
     [TestMethod]
-    public void Average_CoversOnlyTheMostRecentFiftySamples()
+    public void Average_CoversAllLiveSamples()
     {
         var clock = new FakeClock { Now = 0 };
         var window = new AllocationSampleWindow(nowProvider: () => clock.Now);
@@ -38,7 +38,7 @@ public class AllocationSampleWindowTests
 
         AllocationSampleStats stats = window.Stats;
         stats.LastBytesPerRun.Should().Be(2000);
-        stats.AvgBytesPerRun.Should().BeApproximately((49 * 1000.0 + 2000) / 50, 0.001);
+        stats.AvgBytesPerRun.Should().BeApproximately((60 * 1000.0 + 2000) / 61, 0.001);
         stats.MaxBytesPerRun.Should().Be(2000, "max still covers the full live window");
         stats.SampleCount.Should().Be(61);
     }

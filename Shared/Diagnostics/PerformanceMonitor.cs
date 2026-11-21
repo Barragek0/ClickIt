@@ -113,8 +113,11 @@ namespace ClickIt.Shared.Diagnostics
         private double _cachedWorkingSetMb;
 
         // Rolling DLR-read rate (reads/sec + ms/sec) sampled on a 200ms cadence from the DynamicAccess counters, plus the share of reads in the last window that failed. The ms/sec is the actual wall-clock time spent inside dynamic reads (the freeze-relevant question — how much main-thread time do the reads actually cost), mirroring the GC Pause row.
-        private readonly ExpiringSampleBuffer _dlrReadRateBuffer = new(expiryMs: 10_000, maxSamples: 60, averageSamples: 10);
-        private readonly ExpiringSampleBuffer _dlrReadMsBuffer = new(expiryMs: 10_000, maxSamples: 60, averageSamples: 10);
+        private readonly ExpiringSampleBuffer _dlrReadRateBuffer = new(expiryMs: 10_000, maxSamples: 60);
+        private readonly ExpiringSampleBuffer _dlrReadMsBuffer = new(expiryMs: 10_000, maxSamples: 60);
+        private readonly ExpiringSampleBuffer _gcPauseSamples = new();
+        private readonly Lock _gcPauseLock = new();
+        private long _lastGcPauseIndex;
         private long _lastDlrSampleMs;
         private DynamicAccessStats _lastDlrStats;
         private double _dlrFailPercent;
@@ -125,7 +128,7 @@ namespace ClickIt.Shared.Diagnostics
         private readonly long[] _lastDlrSectionCalls = new long[DynamicAccess.DlrSectionCount];
         private readonly long[] _lastDlrSectionTicks = new long[DynamicAccess.DlrSectionCount];
 
-        // Per-feature GC allocation-rate attribution: one bytes/sec buffer per ProcessingSection, sampled on the same 200ms cadence as the timing tables so the GC table's Last/Avg/Max matches the other tables exactly (10s expiry, 10-sample average). RecordAllocation accumulates per-section bytes; SampleGcAllocationRates converts the delta over the window into a bytes/sec rate.
+        // Per-feature GC allocation-rate attribution: one bytes/sec buffer per ProcessingSection, sampled on the same 200ms cadence as the timing tables so the GC table's Last/Avg/Max matches the other tables exactly (10s expiry, full-window average). RecordAllocation accumulates per-section bytes; SampleGcAllocationRates converts the delta over the window into a bytes/sec rate.
         private readonly ExpiringSampleBuffer[] _gcSectionByteBuffers = CreateSectionBuffers();
         private readonly long[] _gcSectionCumulativeBytes = new long[DynamicAccess.DlrSectionCount];
         private readonly long[] _lastGcSectionCumulativeBytes = new long[DynamicAccess.DlrSectionCount];
@@ -135,7 +138,7 @@ namespace ClickIt.Shared.Diagnostics
         {
             ExpiringSampleBuffer[] buffers = new ExpiringSampleBuffer[DynamicAccess.DlrSectionCount];
             for (int i = 0; i < buffers.Length; i++)
-                buffers[i] = new ExpiringSampleBuffer(expiryMs: 10_000, maxSamples: 60, averageSamples: 10);
+                buffers[i] = new ExpiringSampleBuffer(expiryMs: 10_000, maxSamples: 60);
             return buffers;
         }
 
@@ -481,7 +484,7 @@ namespace ClickIt.Shared.Diagnostics
         private long _lastClickRunStartAtMs;
         private long _lastDispatchedRunStartAtMs;
         private const long MaxTimeToClickMs = 1000;
-        private readonly ExpiringSampleBuffer _timeToClickSamples = new(expiryMs: 10_000, maxSamples: 60, averageSamples: 20);
+        private readonly ExpiringSampleBuffer _timeToClickSamples = new();
 
         public void MarkClickRunStart()
             => _lastClickRunStartAtMs = HighResNowMs();
@@ -583,7 +586,7 @@ namespace ClickIt.Shared.Diagnostics
             _dlrFailPercent = failDelta * 100.0 / callsDelta;
         }
 
-        // Per-feature GC allocation-rate sampling on a 200ms cadence (called every render frame via UpdateFPS): the bytes recorded since the last sample, divided by the window, become that section's bytes/sec for the buffer (10s expiry, 10-sample average, max over the live window). A minimum window is required because per-frame allocation bursts are not a meaningful rate. nowMs is injectable for tests; production uses a high-resolution clock so the 200ms window is accurate.
+        // Per-feature GC allocation-rate sampling on a 200ms cadence (called every render frame via UpdateFPS): the bytes recorded since the last sample, divided by the window, become that section's bytes/sec for the buffer (10s expiry, full-window average, max over the live window). A minimum window is required because per-frame allocation bursts are not a meaningful rate. nowMs is injectable for tests; production uses a high-resolution clock so the 200ms window is accurate.
         internal void SampleGcAllocationRates(long? nowMs = null)
         {
             long now = nowMs ?? HighResNowMs();
@@ -634,23 +637,18 @@ namespace ClickIt.Shared.Diagnostics
                 ? info.TotalCommittedBytes * 100.0 / info.TotalAvailableMemoryBytes
                 : 0;
 
-            // Recent blocking-GC pause picture (the actual cause of whole-process hitches). The pause durations span only the GCs since the last GetGCMemoryInfo() call, so they are a rolling recent window, not process-lifetime.
-            double pauseLastMs = 0, pauseAvgMs = 0, pauseMaxMs = 0;
-            ReadOnlySpan<TimeSpan> pauses = info.PauseDurations;
-            if (pauses.Length > 0)
+            // The runtime exposes only the most recent GC; avoid recording it repeatedly.
+            lock (_gcPauseLock)
             {
-                double sum = 0;
-                for (int i = 0; i < pauses.Length; i++)
+                if (info.Index > 0 && info.Index != _lastGcPauseIndex)
                 {
-                    double ms = pauses[i].TotalMilliseconds;
-                    sum += ms;
-                    if (i == pauses.Length - 1)
-                        pauseLastMs = ms;
-                    if (ms > pauseMaxMs)
-                        pauseMaxMs = ms;
+                    foreach (TimeSpan pause in info.PauseDurations)
+                        if (pause > TimeSpan.Zero)
+                            _gcPauseSamples.Record(pause.TotalMilliseconds);
+                    _lastGcPauseIndex = info.Index;
                 }
-                pauseAvgMs = sum / pauses.Length;
             }
+            (double pauseLastMs, double pauseAvgMs, double pauseMaxMs, _) = _gcPauseSamples.Stats;
 
             (double dlrLast, double dlrAvg, double dlrMax, _) = _dlrReadRateBuffer.Stats;
             (double dlrMsLast, double dlrMsAvg, double dlrMsMax, _) = _dlrReadMsBuffer.Stats;

@@ -4,9 +4,7 @@ namespace ClickIt.Features.Observability.Performance
     {
         private readonly Stopwatch _timer = new();
         private int _frameCount;
-        private double _maxFps;
-        private double _fpsSampleSum;
-        private int _fpsSampleCount;
+        private readonly ExpiringSampleBuffer _samples = new(maxSamples: 60);
 
         internal double CurrentFps { get; private set; }
 
@@ -19,10 +17,7 @@ namespace ClickIt.Features.Observability.Performance
 
             if (_timer.ElapsedMilliseconds >= 1000)
             {
-                CurrentFps = _frameCount / (_timer.ElapsedMilliseconds / 1000.0);
-                _fpsSampleSum += CurrentFps;
-                _fpsSampleCount++;
-                _maxFps = SystemMath.Max(_maxFps, CurrentFps);
+                RecordSample(_frameCount / (_timer.ElapsedMilliseconds / 1000.0));
                 _frameCount = 0;
                 _timer.Restart();
             }
@@ -31,15 +26,13 @@ namespace ClickIt.Features.Observability.Performance
         internal void RecordSample(double fps)
         {
             CurrentFps = fps;
-            _fpsSampleSum += fps;
-            _fpsSampleCount++;
-            _maxFps = SystemMath.Max(_maxFps, fps);
+            _samples.Record(fps);
         }
 
         internal (double Current, double Average, double Max) GetStats()
         {
-            double averageFps = _fpsSampleCount > 0 ? _fpsSampleSum / _fpsSampleCount : 0;
-            return (CurrentFps, averageFps, _maxFps);
+            (_, double averageFps, double maxFps, _) = _samples.Stats;
+            return (CurrentFps, averageFps, maxFps);
         }
 
         internal void Stop()

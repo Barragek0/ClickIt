@@ -53,7 +53,7 @@ internal sealed class IntervalTimingStore
     {
         if (!_buffers.TryGetValue(kind, out ExpiringSampleBuffer? buffer))
         {
-            buffer = new ExpiringSampleBuffer(expiryMs: 10_000, maxSamples: 200, averageSamples: 50);
+            buffer = new ExpiringSampleBuffer();
             _buffers[kind] = buffer;
         }
         return buffer;

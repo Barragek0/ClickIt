@@ -108,7 +108,7 @@ public class ExpiringSampleBufferTests
     }
 
     [TestMethod]
-    public void Average_CoversOnlyTheMostRecentFiftySamples()
+    public void Average_CoversAllLiveSamples()
     {
         var buffer = new ExpiringSampleBuffer(nowProvider: () => 0);
 
@@ -118,7 +118,7 @@ public class ExpiringSampleBufferTests
 
         (double last, double average, double max, long count) = buffer.Stats;
         last.Should().Be(2.0);
-        average.Should().BeApproximately(1.02, 0.0001, "49×1.0 + 1×2.0 over the last 50 samples");
+        average.Should().BeApproximately(62.0 / 61, 0.0001);
         max.Should().Be(2.0, "max still covers the full live window");
         count.Should().Be(61, "sample count is the full live window");
     }

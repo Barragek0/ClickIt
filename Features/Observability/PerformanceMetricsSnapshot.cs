@@ -120,7 +120,7 @@ namespace ClickIt.Features.Observability
         double MsAvgPerSec = 0,
         double MsMaxPerSec = 0);
 
-    // One feature's GC allocation-rate attribution over the recent window: bytes/sec (last/avg/max), sampled on the same 500ms cadence as the timing tables so the GC table's Last/Avg/Max matches the other tables (10s expiry, 10-sample average, max over the live window). Indexed by ProcessingSection value; the GC table maps each entry to a feature row.
+    // Per-feature allocation rates sampled over the retained 10-second window.
     internal readonly record struct GcSectionSnapshot(
         double BytesLastPerSec = 0,
         double BytesAvgPerSec = 0,

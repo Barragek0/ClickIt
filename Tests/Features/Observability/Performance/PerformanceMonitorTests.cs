@@ -129,25 +129,25 @@
 
             stats.LastMs.Should().Be(1.0);
             stats.AverageMs.Should().BeApproximately(4.0, 0.001, "the average covers the last 100 samples");
-            stats.MaxMs.Should().Be(10.0, "the spike is still inside the 1000-sample max window");
+            stats.MaxMs.Should().Be(10.0, "the spike is still inside the sample window");
             stats.SampleCount.Should().Be(30);
         }
 
         [TestMethod]
-        public void RenderSection_MaxRollsOutAfter1000Samples()
+        public void RenderSection_MaxRollsOutAfterSampleCap()
         {
             var monitor = new PerformanceMonitor(new ClickItSettings());
 
             for (int i = 0; i < 10; i++)
                 monitor.RecordRenderSectionTiming(RenderSection.BlightOverlay, 10.0);
-            for (int i = 0; i < 1000; i++)
+            for (int i = 0; i < 10000; i++)
                 monitor.RecordRenderSectionTiming(RenderSection.BlightOverlay, 1.0);
 
             (double LastMs, double AverageMs, double MaxMs, long SampleCount) stats = monitor.GetRenderSectionStats(RenderSection.BlightOverlay);
 
-            stats.MaxMs.Should().Be(1.0, "the 10ms spike rolled out of the 1000-sample window");
+            stats.MaxMs.Should().Be(1.0, "the 10ms spike rolled out of the sample window");
             stats.AverageMs.Should().Be(1.0);
-            stats.SampleCount.Should().Be(1000);
+            stats.SampleCount.Should().Be(10000);
         }
 
         [TestMethod]
@@ -758,17 +758,16 @@
         {
             var monitor = new PerformanceMonitor(new ClickItSettings());
 
-            // 1000 samples of 1.0 fill and then roll the 1000-sample window, then one 2.0 sample.
+            // The live window retains more than 1000 samples and averages all of them.
             for (int i = 0; i < 1000; i++)
                 monitor.RecordRenderSectionTiming(RenderSection.DebugOverlay, 1.0);
             monitor.RecordRenderSectionTiming(RenderSection.DebugOverlay, 2.0);
 
             (double LastMs, double AverageMs, double MaxMs, long SampleCount) stats = monitor.GetRenderSectionStats(RenderSection.DebugOverlay);
-            stats.SampleCount.Should().Be(1000);
+            stats.SampleCount.Should().Be(1001);
             stats.LastMs.Should().Be(2.0);
             stats.MaxMs.Should().Be(2.0);
-            // The 1000-sample cap drops the first sample and the average covers only the most recent 50 samples (49Ã—1.0 + 1Ã—2.0) so the table reacts quickly instead of averaging everything.
-            stats.AverageMs.Should().BeApproximately(1.02, 0.0001);
+            stats.AverageMs.Should().BeApproximately(1002.0 / 1001, 0.0001);
         }
 
         [TestMethod]
