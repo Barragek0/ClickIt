@@ -102,6 +102,7 @@ namespace ClickIt.Core.Settings.Mechanics
                 new(MechanicIds.LegionPillars, "Legion Pillars", settings.ClickLegionPillars, null, true),
                 new(MechanicIds.Beyond, "Beyond", settings.ClickBeyond, null, false),
                 new(MechanicIds.Sentinel, "Sentinel", settings.ClickSentinel, null, true),
+                new(MechanicIds.Fates, "Fates", settings.ClickFates, null, false),
                 new(MechanicIds.Harvest, "Harvest", settings.ClickHarvest, null, true),
                 new(MechanicIds.Sanctum, "Sanctum", settings.ClickSanctum, null, true),
                 new(MechanicIds.Items, "Items", settings.ClickItems, null, true),

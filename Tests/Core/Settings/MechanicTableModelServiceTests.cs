@@ -5,18 +5,23 @@ namespace ClickIt.Tests.Core.Settings
     {
         [TestMethod]
         [TestCategory("Settings")]
-        public void BeyondAndSentinelHaveRequestedDefaultsAndTableEntries()
+        public void LeagueMechanicsHaveRequestedDefaultsAndTableEntries()
         {
             var settings = new ClickItSettings();
             var entries = MechanicTableModelService.GetTableEntries(settings);
             var beyond = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.Beyond).Subject;
             var sentinel = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.Sentinel).Subject;
+            var fates = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.Fates).Subject;
             beyond.Node.Should().BeSameAs(settings.ClickBeyond);
             beyond.Node.Value.Should().BeFalse();
             beyond.DefaultEnabled.Should().BeFalse();
             sentinel.Node.Should().BeSameAs(settings.ClickSentinel);
             sentinel.Node.Value.Should().BeTrue();
             sentinel.DefaultEnabled.Should().BeTrue();
+            fates.Node.Should().BeSameAs(settings.ClickFates);
+            fates.Node.Value.Should().BeFalse();
+            fates.DisplayName.Should().Be("Fates");
+            fates.DefaultEnabled.Should().BeFalse();
         }
         [TestMethod]
         public void GetTableEntries_BuildsCachedEntryListFromSettingsNodes()

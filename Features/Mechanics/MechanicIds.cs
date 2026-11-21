@@ -36,8 +36,10 @@ namespace ClickIt.Features.Mechanics
         public const string LegionPillars = "legion-pillars";
         public const string Beyond = "beyond";
         public const string Sentinel = "sentinel";
+        public const string Fates = "fates";
         public const string BeyondInitiatorPath = "BeyondDemons/BeyondInitiator";
         public const string SentinelEncounterPath = "Sentinel/SentinelRandomEncounter";
+        public const string FatesPath = "Augury/Objects/AuguryCardObject";
         public const string DelveAzuriteVeins = "delve-azurite-veins";
         public const string UltimatumInitialOverlay = "ultimatum-initial-overlay";
         public const string UltimatumWindow = "ultimatum-window";

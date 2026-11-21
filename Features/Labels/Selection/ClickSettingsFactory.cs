@@ -73,6 +73,7 @@ namespace ClickIt.Features.Labels.Selection
                 ClickLegionPillars = _settings.ClickLegionPillars.Value,
                 ClickBeyond = _settings.ClickBeyond.Value,
                 ClickSentinel = _settings.ClickSentinel.Value,
+                ClickFates = _settings.ClickFates.Value,
                 ClickRitualInitiate = _settings.ClickRitualInitiate.Value,
                 ClickRitualCompleted = _settings.ClickRitualCompleted.Value,
                 ClickInitialUltimatum = _settings.IsInitialUltimatumClickEnabled(),

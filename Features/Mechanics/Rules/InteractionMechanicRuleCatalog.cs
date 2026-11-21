@@ -39,6 +39,8 @@ namespace ClickIt.Features.Mechanics.Rules
                 ? MechanicIds.Beyond : null,
             static ctx => ctx.Settings.ClickSentinel && ctx.Path.Contains(MechanicIds.SentinelEncounterPath, StringComparison.OrdinalIgnoreCase)
                 ? MechanicIds.Sentinel : null,
+            static ctx => ctx.Settings.ClickFates && ctx.Path.Contains(MechanicIds.FatesPath, StringComparison.OrdinalIgnoreCase)
+                ? MechanicIds.Fates : null,
             static ctx => ctx.Settings.ClickAzurite
                 && ctx.Path.Contains("AzuriteEncounterController", StringComparison.OrdinalIgnoreCase)
                     ? MechanicIds.DelveAzuriteVeins : null,

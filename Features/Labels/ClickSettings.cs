@@ -24,6 +24,7 @@ namespace ClickIt.Features.Labels
         public bool ClickLegionPillars { get; set; }
         public bool ClickBeyond { get; set; }
         public bool ClickSentinel { get; set; }
+        public bool ClickFates { get; set; }
         public bool ClickRitualInitiate { get; set; }
         public bool ClickRitualCompleted { get; set; }
         public bool ClickInitialUltimatum { get; set; }

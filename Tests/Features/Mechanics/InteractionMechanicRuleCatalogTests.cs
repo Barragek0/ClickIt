@@ -25,10 +25,22 @@ namespace ClickIt.Tests.Features.Mechanics
         [DataRow("Metadata/Terrain/Leagues/BeyondDemons/BeyondInitiator", true, false, MechanicIds.Beyond)]
         [DataRow("Metadata/Terrain/Leagues/Sentinel/SentinelRandomEncounter", false, false, null)]
         [DataRow("Metadata/Terrain/Leagues/Sentinel/SentinelRandomEncounter", false, true, MechanicIds.Sentinel)]
-        public void TryResolve_BeyondAndSentinelFollowTheirOwnToggles(string path, bool beyond, bool sentinel, string? expected)
+        public void TryResolve_LeagueMechanicsFollowTheirOwnToggles(string path, bool beyond, bool sentinel, string? expected)
         {
             ClickSettings settings = new() { ClickBeyond = beyond, ClickSentinel = sentinel };
             InteractionMechanicRuleCatalog.TryResolve(settings, path, DummyLabel, null, CreateInventoryInteractionPolicy())
+                .Should().Be(expected);
+        }
+
+        [DataTestMethod]
+        [TestCategory("Settings")]
+        [DataRow(false, null)]
+        [DataRow(true, MechanicIds.Fates)]
+        public void TryResolve_FatesFollowsItsToggle(bool clickFates, string? expected)
+        {
+            ClickSettings settings = new() { ClickFates = clickFates };
+            InteractionMechanicRuleCatalog.TryResolve(settings,
+                "Metadata/Terrain/Leagues/Augury/Objects/AuguryCardObject", DummyLabel, null, CreateInventoryInteractionPolicy())
                 .Should().Be(expected);
         }
 
