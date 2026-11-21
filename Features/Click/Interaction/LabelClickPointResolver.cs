@@ -35,9 +35,11 @@ namespace ClickIt.Features.Click.Interaction
             if (!TryResolveLabelRect(label, out RectangleF rect))
                 return false;
 
-            ResolveLabelMetadataCached(label, out EntityType itemType, out string? itemPath, out string? renderName);
-
             List<RectangleF> potentialBlockers = CollectPotentialBlockingLabelRectsCached(label, rect, allLabels);
+            if (potentialBlockers.Count == 0)
+                return false;
+
+            ResolveLabelMetadataCached(label, out EntityType itemType, out string? itemPath, out string? renderName);
             return IsLabelFullyOverlapped(rect, itemType, itemPath, renderName, potentialBlockers);
         }
 
@@ -198,11 +200,12 @@ namespace ClickIt.Features.Click.Interaction
             int maxX = CellIndex(targetRect.Right);
             int minY = CellIndex(targetRect.Top);
             int maxY = CellIndex(targetRect.Bottom);
+            Dictionary<long, List<long>> grid = GetOrBuildBlockerGrid(allLabels);
             for (int cy = minY; cy <= maxY; cy++)
             {
                 for (int cx = minX; cx <= maxX; cx++)
                 {
-                    if (!GetOrBuildBlockerGrid(allLabels).TryGetValue(CellKey(cx, cy), out List<long>? cell))
+                    if (!grid.TryGetValue(CellKey(cx, cy), out List<long>? cell))
                         continue;
                     for (int i = 0; i < cell.Count; i++)
                     {

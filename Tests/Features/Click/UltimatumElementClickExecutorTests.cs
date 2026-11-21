@@ -52,6 +52,20 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
+        [TestCategory("Regression")]
+        public void TryClickElement_UsesUnblockedPartOfChoice()
+        {
+            Vector2 clicked = default;
+            bool result = UltimatumElementClickExecutor.TryClickElement(
+                new RectangleF(10, 10, 100, 40), null!, new Vector2(100, 200),
+                "outside", "reject", "click", _ => true, (point, _) => point.X < 40,
+                _ => { }, (point, _) => clicked = point, () => { });
+            result.Should().BeTrue();
+            clicked.X.Should().BeInRange(110, 140);
+            clicked.Y.Should().BeInRange(210, 250);
+        }
+
+        [TestMethod]
         public void TryClickElement_ClicksCenterOffsetAndRecordsInterval_WhenAllowed()
         {
             Vector2 clickedPos = default;

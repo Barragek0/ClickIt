@@ -30,7 +30,7 @@ namespace ClickIt.Features.Click.Selection
             }
 
             if (_dependencies.LabelInteraction.TryHandleHarvestUpgrade(hoveredLabel, mechanicId, windowTopLeft,
-                out bool readyToOpenUpgradedTree, allowWhenHotkeyInactive: true)
+                out bool readyToOpenUpgradedTree, out _, allowWhenHotkeyInactive: true)
                 || _dependencies.LabelInteraction.TryCorruptEssence(hoveredLabel, mechanicId, windowTopLeft))
                 return true;
 

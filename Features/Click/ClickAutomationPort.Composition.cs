@@ -90,7 +90,8 @@ namespace ClickIt.Features.Click
             ClickAutomationSupport.IsClickableInEitherSpace,
             PathfindingLabelSuppression,
             _labelInteractionPort,
-            ClickAutomationSupport.HoldDebugTelemetryAfterSuccessfulInteraction));
+            ClickAutomationSupport.HoldDebugTelemetryAfterSuccessfulInteraction,
+            (label, mechanicId, windowTopLeft) => SpecialLabelInteraction.TryHandle(label, mechanicId, windowTopLeft)));
 
         private OnscreenMechanicPathingBlocker OnscreenMechanicPathingBlocker => field ??= new(new OnscreenMechanicPathingBlockerDependencies(
             _settings,

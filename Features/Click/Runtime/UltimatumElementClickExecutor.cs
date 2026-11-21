@@ -18,13 +18,14 @@ namespace ClickIt.Features.Click.Runtime
             if (!ensureCursorInsideGameWindowForClick(outsideWindowLog))
                 return false;
 
-            if (!isClickableInEitherSpace(rect.Center, "Ultimatum"))
+            if (!LabelClickPointSearch.TryResolveVisibleClickablePoint(rect, rect.Center, [],
+                point => isClickableInEitherSpace(point, "Ultimatum"), out Vector2 clientPoint))
             {
                 debugLog($"{rejectedClickableAreaLogPrefix} center={rect.Center}");
                 return false;
             }
 
-            Vector2 clickPos = rect.Center + windowTopLeft;
+            Vector2 clickPos = clientPoint + windowTopLeft;
             debugLog($"{clickLog} {clickPos}");
 
             performLockedClick(clickPos, element);

@@ -33,7 +33,7 @@ namespace ClickIt.Features.Click.Application
                 if (!TryGetClickableAltarElement(altar, clickEater, clickExarch, out Element? boxToClick))
                     continue;
 
-                foreach (object? step in ClickAltarElement(boxToClick!))
+                foreach (object? step in ClickAltarElement(boxToClick!, altar.AltarType.ToString()))
                     yield return step;
             }
         }
@@ -78,7 +78,7 @@ namespace ClickIt.Features.Click.Application
                 if (!_dependencies.EnsureCursorInsideGameWindowForClick("[TryClickManualCursorPreferredAltarOption] Skipping click - cursor is outside the PoE window"))
                     return false;
 
-                return TryPerformClick(boxToClick, windowTopLeft, allowWhenHotkeyInactive: true, avoidCursorMove: true);
+                return TryPerformClick(boxToClick, windowTopLeft, altarSnapshot[i].AltarType.ToString(), allowWhenHotkeyInactive: true, avoidCursorMove: true, cursorAbsolute: cursorAbsolute);
             }
 
             return false;
@@ -86,6 +86,35 @@ namespace ClickIt.Features.Click.Application
 
         public bool ShouldClickAltar(PrimaryAltarComponent altar, bool clickEater, bool clickExarch)
             => TryGetClickableAltarElement(altar, clickEater, clickExarch, out _);
+
+        internal bool ShouldApproachAltar(Entity target)
+        {
+            long address = target.Address;
+            if (address == 0)
+                return false;
+            IReadOnlyList<PrimaryAltarComponent> altars = _dependencies.GetAltarSnapshot();
+            for (int i = 0; i < altars.Count; i++)
+            {
+                PrimaryAltarComponent altar = altars[i];
+                if (altar.SourceEntity?.Address != address)
+                    continue;
+                bool enabled = altar.AltarType == AltarType.EaterOfWorlds ? _dependencies.Settings.ClickEaterAltars.Value
+                    : altar.AltarType == AltarType.SearingExarch && _dependencies.Settings.ClickExarchAltars.Value;
+                if (!enabled || !altar.IsValidCached() || !altar.AreModElementsValid()
+                    || altar.TopMods.HasUnmatchedMods || altar.BottomMods.HasUnmatchedMods)
+                    return false;
+                if (!AreBothAltarOptionsVisibleAndClickable(altar, out _, out _))
+                    return true;
+                AltarWeights? weights = altar.GetCachedWeights(component => _dependencies.CalculateAltarWeights(component));
+                if (!weights.HasValue)
+                    return false;
+                RectangleF top = altar.GetTopModsRect();
+                RectangleF bottom = altar.GetBottomModsRect();
+                Element? choice = _dependencies.DetermineAltarChoice(altar, weights.Value, top, bottom, top.TopLeft);
+                return choice != null && !IsAltarOptionVisibleAndClickable(choice, altar.AltarType.ToString());
+            }
+            return false;
+        }
 
         private bool TryGetClickableAltarElement(PrimaryAltarComponent altar, bool clickEater, bool clickExarch, out Element? boxToClick)
         {
@@ -142,7 +171,7 @@ namespace ClickIt.Features.Click.Application
                 return false;
             }
 
-            if (!_dependencies.IsClickableInEitherSpace(boxToClick.GetClientRect().Center, altar.AltarType.ToString()) || !boxToClick.IsVisible)
+            if (!IsAltarOptionVisibleAndClickable(boxToClick, altar.AltarType.ToString()))
             {
                 RecordSkip("Choice is not clickable or visible", $"visible={boxToClick.IsVisible}");
                 return false;
@@ -151,7 +180,7 @@ namespace ClickIt.Features.Click.Application
             return true;
         }
 
-        private IEnumerable ClickAltarElement(Element element)
+        private IEnumerable ClickAltarElement(Element element, string altarPath)
         {
             _dependencies.DebugLog("[ClickAltarElement] Starting");
 
@@ -173,7 +202,7 @@ namespace ClickIt.Features.Click.Application
             if (!_dependencies.EnsureCursorInsideGameWindowForClick("[ClickAltarElement] Skipping click - cursor is outside the PoE window"))
                 yield break;
 
-            if (!TryPerformClick(element, windowTopLeft))
+            if (!TryPerformClick(element, windowTopLeft, altarPath))
                 yield break;
 
             yield return new WaitTime(70);
@@ -230,10 +259,19 @@ namespace ClickIt.Features.Click.Application
                 return false;
             }
 
-            if (optionRect.Width <= 0 || optionRect.Height <= 0)
-                return false;
+            return TryResolveAltarClickPoint(optionRect, _dependencies.GameController.Window.GetWindowRectangleTimeCache,
+                point => _dependencies.IsClickableInEitherSpace(point, altarPath), out _);
+        }
 
-            return _dependencies.IsClickableInEitherSpace(optionRect.Center, altarPath);
+        internal static bool TryResolveAltarClickPoint(RectangleF rect, RectangleF window, Func<Vector2, bool> isClickable, out Vector2 point)
+        {
+            point = default;
+            if (!float.IsFinite(rect.X) || !float.IsFinite(rect.Y) || !float.IsFinite(rect.Width) || !float.IsFinite(rect.Height)
+                || rect.Width <= 0 || rect.Height <= 0 || window.Width <= 0 || window.Height <= 0)
+                return false;
+            return LabelClickPointSearch.TryResolveVisibleClickablePoint(rect, rect.Center, [],
+                candidate => candidate.X >= 0 && candidate.Y >= 0 && candidate.X < window.Width && candidate.Y < window.Height
+                    && isClickable(candidate), out point);
         }
 
         private bool IsValidVisibleUnderLock(Element el)
@@ -244,7 +282,7 @@ namespace ClickIt.Features.Click.Application
             }
         }
 
-        private bool TryPerformClick(Element element, Vector2 windowTopLeft, bool allowWhenHotkeyInactive = false, bool avoidCursorMove = false)
+        private bool TryPerformClick(Element element, Vector2 windowTopLeft, string altarPath, bool allowWhenHotkeyInactive = false, bool avoidCursorMove = false, Vector2 cursorAbsolute = default)
         {
             using (LockManager.AcquireStatic(_dependencies.ElementAccessLock))
             {
@@ -255,7 +293,19 @@ namespace ClickIt.Features.Click.Application
                 }
 
                 RectangleF rect = element.GetClientRect();
-                Vector2 clickPos = rect.Center + windowTopLeft;
+                RectangleF window = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
+                Vector2 clientPoint;
+                if (avoidCursorMove)
+                {
+                    clientPoint = cursorAbsolute - windowTopLeft;
+                    if (!LabelClickPointSearch.IsPointInsideRect(clientPoint, rect)
+                        || clientPoint.X < 0 || clientPoint.Y < 0 || clientPoint.X >= window.Width || clientPoint.Y >= window.Height
+                        || !_dependencies.IsClickableInEitherSpace(clientPoint, altarPath))
+                        return false;
+                }
+                else if (!TryResolveAltarClickPoint(rect, window, point => _dependencies.IsClickableInEitherSpace(point, altarPath), out clientPoint))
+                    return false;
+                Vector2 clickPos = clientPoint + windowTopLeft;
                 bool executed = _dependencies.ExecuteInteraction(new InteractionExecutionRequest(
                     ClickPosition: clickPos,
                     ExpectedElement: element,

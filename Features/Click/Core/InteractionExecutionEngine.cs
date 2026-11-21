@@ -173,6 +173,15 @@ namespace ClickIt.Features.Click.Core
                 return true;
             }
 
+            if (mechanicId is MechanicIds.AltarsEaterOfWorlds or MechanicIds.AltarsSearingExarch
+                && _dependencies.Mechanics.AltarAutomation.ShouldApproachAltar(entity))
+            {
+                _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage(
+                    "WalkTowardAltar", "Altar choice controls are not clickable; pathfinding toward the altar", mechanicId);
+                _dependencies.Pathing.OffscreenPathing.TryWalkTowardOffscreenTarget(entity);
+                return true;
+            }
+
             (bool resolved, Vector2 clickPos) = _dependencies.Selection.LabelInteraction.TryResolveLabelClickPositionResult(
                 label, mechanicId, default, context.AllLabels);
             if (resolved && _dependencies.Policy.PointIsInClickableArea(clickPos, mechanicId ?? string.Empty))
@@ -393,8 +402,16 @@ namespace ClickIt.Features.Click.Core
                 return StopExecution();
             }
 
-            if (_dependencies.Selection.LabelInteraction.TryHandleHarvestUpgrade(nextLabel, candidates.NextLabelMechanicId, context.WindowTopLeft, out _)
-                || _dependencies.Selection.SpecialLabelInteraction.TryHandle(nextLabel, candidates.NextLabelMechanicId, context.WindowTopLeft))
+            if (_dependencies.Selection.LabelInteraction.TryHandleHarvestUpgrade(nextLabel, candidates.NextLabelMechanicId, context.WindowTopLeft, out _, out bool harvestNeedsApproach))
+            {
+                if (harvestNeedsApproach && nextLabelItem != null)
+                {
+                    _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage("WalkTowardHarvestCraft", "Harvest crafting controls are blocked; pathfinding toward tree", candidates.NextLabelMechanicId);
+                    WalkTowardEntity(nextLabelItem, candidates.NextLabelMechanicId);
+                }
+                return StopExecution();
+            }
+            if (_dependencies.Selection.SpecialLabelInteraction.TryHandle(nextLabel, candidates.NextLabelMechanicId, context.WindowTopLeft))
             {
                 _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage("SpecialLabelHandled", "Special label handling consumed click tick", candidates.NextLabelMechanicId);
                 return StopExecution();

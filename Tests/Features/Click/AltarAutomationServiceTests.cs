@@ -4,6 +4,24 @@ namespace ClickIt.Tests.Features.Click
     public class AltarAutomationServiceTests
     {
         [TestMethod]
+        [TestCategory("Regression")]
+        public void AltarClickPoint_UsesVisibleUnblockedPartAndRejectsFullyBlockedOptions()
+        {
+            RectangleF window = new(100, 200, 1920, 1080);
+            RectangleF partlyOffscreen = new(389, -49, 765, 90);
+            bool resolved = AltarAutomationService.TryResolveAltarClickPoint(partlyOffscreen, window,
+                point => point.X > 500 && point.Y >= 10, out Vector2 selected);
+            resolved.Should().BeTrue();
+            selected.X.Should().BeGreaterThan(500);
+            selected.Y.Should().BeGreaterThanOrEqualTo(10);
+            selected.Y.Should().BeLessThan(partlyOffscreen.Bottom);
+
+            AltarAutomationService.TryResolveAltarClickPoint(partlyOffscreen, window, _ => false, out _).Should().BeFalse();
+            AltarAutomationService.TryResolveAltarClickPoint(new RectangleF(1, -100, 50, 40), window, _ => true, out _).Should().BeFalse();
+            AltarAutomationService.TryResolveAltarClickPoint(new RectangleF(0, 0, 0, 20), window, _ => true, out _).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void HasClickableAltars_ReturnsFalse_WhenBothAltarTypesAreDisabled()
         {
             var settings = new ClickItSettings

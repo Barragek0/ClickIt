@@ -546,9 +546,14 @@ namespace ClickIt.Features.Click.Runtime
             if (!_dependencies.StickyTargetHandler.TryResolveStickyOffscreenTarget(out Entity? stickyTarget) || stickyTarget == null)
                 return false;
 
-            if (_dependencies.StickyTargetHandler.TryClickStickyTargetIfPossible(stickyTarget, windowTopLeft, allLabels))
+            if (_dependencies.StickyTargetHandler.TryClickStickyTargetIfPossible(stickyTarget, windowTopLeft, allLabels, out bool needsApproach))
                 return true;
 
+            if (needsApproach)
+            {
+                _ = TryWalkTowardOffscreenTarget(stickyTarget);
+                return true;
+            }
             // The label click failed, so fall to fresh resolution instead of re-walking a stale target.
             _ = TryWalkTowardOffscreenTarget();
             return true;

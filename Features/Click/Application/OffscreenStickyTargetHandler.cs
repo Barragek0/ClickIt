@@ -9,7 +9,8 @@ namespace ClickIt.Features.Click.Application
         Func<Vector2, string, bool> IsClickableInEitherSpace,
         PathfindingLabelSuppressionEvaluator PathfindingLabelSuppression,
         ILabelInteractionPort LabelInteractionPort,
-        Action<string> HoldDebugTelemetryAfterSuccess);
+        Action<string> HoldDebugTelemetryAfterSuccess,
+        Func<LabelOnGround, string?, Vector2, bool>? HandleSpecialLabel = null);
 
     internal sealed class OffscreenStickyTargetHandler(OffscreenStickyTargetHandlerDependencies dependencies)
     {
@@ -111,11 +112,15 @@ namespace ClickIt.Features.Click.Application
         }
 
         internal bool TryClickStickyTargetIfPossible(Entity stickyTarget, Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels)
+            => TryClickStickyTargetIfPossible(stickyTarget, windowTopLeft, allLabels, out _);
+
+        internal bool TryClickStickyTargetIfPossible(Entity stickyTarget, Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels, out bool needsApproach)
         {
+            needsApproach = false;
             if (ShrineService.IsShrine(stickyTarget))
                 return TryClickStickyShrine(stickyTarget);
 
-            return TryClickStickyLabel(stickyTarget, windowTopLeft, allLabels);
+            return TryClickStickyLabel(stickyTarget, windowTopLeft, allLabels, out needsApproach);
         }
 
         private bool TryClickStickyShrine(Entity stickyTarget)
@@ -138,8 +143,12 @@ namespace ClickIt.Features.Click.Application
             return true;
         }
 
-        private bool TryClickStickyLabel(Entity stickyTarget, Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels)
+        private bool TryClickStickyLabel(Entity stickyTarget, Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels, out bool needsApproach)
         {
+            needsApproach = false;
+            if (DynamicAccess.TryReadString(stickyTarget, DynamicAccessProfiles.Path, out string path)
+                && OffscreenPathingMath.IsEldritchAltarPath(path))
+                return false;
             LabelOnGround? stickyLabel = OffscreenPathingMath.FindVisibleLabelForEntity(stickyTarget, allLabels);
             if (stickyLabel == null)
             {
@@ -174,7 +183,15 @@ namespace ClickIt.Features.Click.Application
                 return false;
             }
 
-            if (_dependencies.LabelInteraction.TryHandleHarvestUpgrade(stickyLabel, mechanicId, windowTopLeft, out _))
+            if (_dependencies.LabelInteraction.TryHandleHarvestUpgrade(stickyLabel, mechanicId, windowTopLeft, out _, out bool harvestNeedsApproach))
+            {
+                if (harvestNeedsApproach)
+                    ClearStickyOffscreenTarget();
+                needsApproach = harvestNeedsApproach;
+                return !harvestNeedsApproach;
+            }
+
+            if (_dependencies.HandleSpecialLabel?.Invoke(stickyLabel, mechanicId, windowTopLeft) == true)
                 return true;
 
             bool clickedLabel = _dependencies.LabelInteraction.PerformResolvedLabelInteraction(clickPos, stickyLabel, mechanicId);

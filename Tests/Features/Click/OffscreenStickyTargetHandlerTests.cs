@@ -299,13 +299,35 @@ namespace ClickIt.Tests.Features.Click
         }
 
 
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void StickyLabel_UsesSpecialHandlerBeforeGenericClick()
+        {
+            var runtimeState = new ClickRuntimeState { StickyOffscreenTargetAddress = 42 };
+            Entity target = OffscreenStickyTargetGraphShaper.CreateActiveStickyEntity(address: 42);
+            LabelOnGround label = OffscreenStickyTargetGraphShaper.CreateVisibleLabel(target);
+            int genericClicks = 0;
+            int specialCalls = 0;
+            var handler = CreateHandler(runtimeState, ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(target),
+                labelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(
+                    tryResolveClickPosition: static (_, _, _, _) => (true, new Vector2(25f, 40f)),
+                    executeInteraction: _ => { genericClicks++; return true; }),
+                labelInteractionPort: new StubLabelInteractionPort(MechanicIds.Essences),
+                handleSpecialLabel: (_, mechanic, _) => { mechanic.Should().Be(MechanicIds.Essences); specialCalls++; return true; });
+
+            handler.TryClickStickyTargetIfPossible(target, Vector2.Zero, [label]).Should().BeTrue();
+            specialCalls.Should().Be(1);
+            genericClicks.Should().Be(0);
+        }
+
         private static OffscreenStickyTargetHandler CreateHandler(
             ClickRuntimeState runtimeState,
             GameController gameController,
             ClickItSettings? settings = null,
             ClickLabelInteractionService? labelInteraction = null,
             ILabelInteractionPort? labelInteractionPort = null,
-            ChestLootSettlementState? chestState = null)
+            ChestLootSettlementState? chestState = null,
+            Func<LabelOnGround, string?, Vector2, bool>? handleSpecialLabel = null)
         {
             settings ??= new ClickItSettings();
             var pathfindingLabelSuppression = new PathfindingLabelSuppressionEvaluator(new PathfindingLabelSuppressionEvaluatorDependencies(
@@ -322,7 +344,8 @@ namespace ClickIt.Tests.Features.Click
                 IsClickableInEitherSpace: static (_, _) => false,
                 PathfindingLabelSuppression: pathfindingLabelSuppression,
                 LabelInteractionPort: labelInteractionPort ?? new StubLabelInteractionPort(),
-                HoldDebugTelemetryAfterSuccess: static _ => { }));
+                HoldDebugTelemetryAfterSuccess: static _ => { },
+                HandleSpecialLabel: handleSpecialLabel));
         }
 
         private static ChestLootSettlementTracker CreateChestLootSettlementTracker(
