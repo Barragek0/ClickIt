@@ -5,7 +5,7 @@ public sealed class RecrystallisationDetectorTests
 {
     public sealed class ServerData
     {
-        public object[] AtlasPassiveSkillIds { get; set; } = [];
+        public object[]? AtlasPassiveSkillIds { get; set; } = [];
     }
 
     public sealed class IngameData
@@ -27,6 +27,7 @@ public sealed class RecrystallisationDetectorTests
         detector.IsActive(inactive).Should().BeTrue();
         now += 101;
         detector.IsActive(inactive).Should().BeFalse();
+        new RecrystallisationDetector(() => now).IsActive(new IngameData { ServerData = new() { AtlasPassiveSkillIds = null } }).Should().BeFalse();
         new RecrystallisationDetector(() => now).IsActive(new IngameData { ServerData = null }).Should().BeFalse();
     }
 }

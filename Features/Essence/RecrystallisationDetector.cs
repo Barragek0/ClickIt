@@ -21,6 +21,7 @@ namespace ClickIt.Features.Essence
 
                 bool active = DynamicObjectAdapter.TryGetValue(ingameData, data => data.ServerData, out object? serverData)
                     && DynamicObjectAdapter.TryGetValue(serverData, data => data.AtlasPassiveSkillIds, out object? ids)
+                    && ids is not null
                     && UltimatumGruelingGauntletPolicy.ContainsAtlasPassiveSkillId(ids, AtlasPassiveSkillId);
                 _timestamp = now;
                 _cached = active;
