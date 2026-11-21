@@ -249,7 +249,7 @@ internal sealed class ImGuiDebugOverlay(
         for (int i = 0; i < items.Length; i++)
         {
             (string Label, string Value, Vector4 Color) it = items[i];
-            ImGui.TextColored(it.Color, $"{it.Label}: {it.Value}");
+            DrawLiteralColored(it.Color, $"{it.Label}: {it.Value}");
         }
     }
 
@@ -261,11 +261,25 @@ internal sealed class ImGuiDebugOverlay(
             if (i > 0)
             {
                 ImGui.SameLine();
-                ImGui.TextColored(CDim, " | ");
+                DrawLiteralColored(CDim, " | ");
                 ImGui.SameLine();
             }
-            ImGui.TextColored(items[i].Color, $"{items[i].Label}: {items[i].Value}");
+            DrawLiteralColored(items[i].Color, $"{items[i].Label}: {items[i].Value}");
         }
+    }
+
+    private static void DrawLiteralColored(NumVec4 color, string text)
+    {
+        ImGui.PushStyleColor(ImGuiCol.Text, color);
+        ImGui.TextUnformatted(text);
+        ImGui.PopStyleColor();
+    }
+
+    private static void DrawLiteralWrapped(string text)
+    {
+        ImGui.PushTextWrapPos(0);
+        ImGui.TextUnformatted(text);
+        ImGui.PopTextWrapPos();
     }
 
     private static readonly char[] SanitizeNeedles = ['\u2190', '\u2191', '\u2192', '\u2193', '\u2713', '\u2717', '\u25CF', '\u25B6', '\u25C0', '\u2665', '\u2605'];
@@ -275,16 +289,15 @@ internal sealed class ImGuiDebugOverlay(
         if (trail.Count == 0) return;
 
         ImGui.Spacing();
-        ImGui.TextColored(CHeader, $"{label} ({trail.Count}):");
+        DrawLiteralColored(CHeader, $"{label} ({trail.Count}):");
         int start = Math.Max(0, trail.Count - maxRows);
 
         for (int i = start; i < trail.Count; i++)
         {
             string s = trail[i];
-            if (s.AsSpan().IndexOfAny(SanitizeNeedles) < 0)
-                ImGui.TextWrapped(s);
-            else
-                ImGui.TextWrapped(SanitizeText(s));
+            ImGui.PushTextWrapPos(0);
+            ImGui.TextUnformatted(s.AsSpan().IndexOfAny(SanitizeNeedles) < 0 ? s : SanitizeText(s));
+            ImGui.PopTextWrapPos();
         }
     }
 
@@ -350,7 +363,7 @@ internal sealed class ImGuiDebugOverlay(
                 ("Player Pos", $"({s.PlayerPositionX:F1}, {s.PlayerPositionY:F1})", CWhite)
             );
         else
-            ImGui.TextColored(s.CachedLabelsAvailable ? CWhite : CMuted,
+            DrawLiteralColored(s.CachedLabelsAvailable ? CWhite : CMuted,
                 $"Cached Labels: {(s.CachedLabelsAvailable ? s.CachedLabelCount.ToString() : "N/A")}");
     }
 
@@ -369,19 +382,19 @@ internal sealed class ImGuiDebugOverlay(
         {
             double fps = perf.Fps.Current;
             NumVec4 fpsCol = fps >= 144f ? CGreen : fps >= 60f ? CWarn : CError;
-            ImGui.TextColored(fpsCol, $"FPS: {fps:F1} (avg: {perf.Fps.Average:F1}, max: {perf.Fps.Max:F1})");
+            DrawLiteralColored(fpsCol, $"FPS: {fps:F1} (avg: {perf.Fps.Average:F1}, max: {perf.Fps.Max:F1})");
         }
         else
         {
-            ImGui.TextColored(CMuted, "FPS: --");
+            DrawLiteralColored(CMuted, "FPS: --");
         }
         ImGui.SameLine(summaryColX);
         MemoryMetricsSnapshot mem = perf.Memory;
-        ImGui.TextColored(SizeColor(mem.ProcessWorkingSetMb), $"Memory: {FormatMemoryMb(mem.ProcessWorkingSetMb)}");
+        DrawLiteralColored(SizeColor(mem.ProcessWorkingSetMb), $"Memory: {FormatMemoryMb(mem.ProcessWorkingSetMb)}");
         ImGui.SameLine();
-        ImGui.TextColored(SizeColor(mem.ManagedHeapMb), $"  Managed: {FormatMemoryMb(mem.ManagedHeapMb)}");
+        DrawLiteralColored(SizeColor(mem.ManagedHeapMb), $"  Managed: {FormatMemoryMb(mem.ManagedHeapMb)}");
         ImGui.SameLine();
-        ImGui.TextColored(FragmentationColor(mem.FragmentedMb), $"  Frag: {FormatMemoryMb(mem.FragmentedMb)}");
+        DrawLiteralColored(FragmentationColor(mem.FragmentedMb), $"  Frag: {FormatMemoryMb(mem.FragmentedMb)}");
 
         ImGui.Spacing();
         bool renderInGame = _settings.RenderPerformanceInGame.Value;
@@ -391,6 +404,10 @@ internal sealed class ImGuiDebugOverlay(
         bool onlyInMap = _settings.OnlyShowPerformanceInGameWhileInMap.Value;
         if (ImGui.Checkbox("Only in map", ref onlyInMap))
             _settings.OnlyShowPerformanceInGameWhileInMap.Value = onlyInMap;
+        ImGui.SameLine();
+        bool copyAll = _settings.ShowPerformanceCopyAllButton.Value;
+        if (ImGui.Checkbox("Copy All##PerformanceCopyAll", ref copyAll))
+            _settings.ShowPerformanceCopyAllButton.Value = copyAll;
         ImGui.SameLine(summaryColX);
         if (ImGui.Button("Reset setup flag"))
         {
@@ -399,7 +416,7 @@ internal sealed class ImGuiDebugOverlay(
             PerformanceSettingsPanelRenderer.ForceShowSetup();
         }
         ImGui.SameLine();
-        ImGui.TextColored(GcPauseColor(mem.GcPauseMaxMs), $"  GC Pause: {mem.GcPauseLastMs:F0}/{mem.GcPauseAvgMs:F0}/{mem.GcPauseMaxMs:F0} ms");
+        DrawLiteralColored(GcPauseColor(mem.GcPauseMaxMs), $"  GC Pause: {mem.GcPauseLastMs:F0}/{mem.GcPauseAvgMs:F0}/{mem.GcPauseMaxMs:F0} ms");
 
         // When the in-game overlay is already rendering the same tables, they are redundant here - skip them to keep the debug box cheap while "Render in-game" is on.
         if (renderInGame)
@@ -529,10 +546,10 @@ internal sealed class ImGuiDebugOverlay(
     private static void RenderClickTargetValueRow(string label, double last, double avg, double max, double targetMs)
     {
         ImGui.TableNextRow();
-        _ = ImGui.TableNextColumn(); ImGui.Text(label);
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(ClickTargetColor(last, targetMs), $"{last:F1}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(ClickTargetColor(avg, targetMs), $"{avg:F1}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(ClickTargetColor(max, targetMs), $"{max:F1}");
+        _ = ImGui.TableNextColumn(); ImGui.TextUnformatted(label);
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(ClickTargetColor(last, targetMs), $"{last:F1}");
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(ClickTargetColor(avg, targetMs), $"{avg:F1}");
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(ClickTargetColor(max, targetMs), $"{max:F1}");
     }
 
     private static void RenderClickProcessingRows(PerformanceMetricsSnapshot perf)
@@ -629,10 +646,10 @@ internal sealed class ImGuiDebugOverlay(
     private static void RenderDlrTotalRow(MemoryMetricsSnapshot mem, double fps)
     {
         ImGui.TableNextRow();
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(CHeader, "Total");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(FrameColor(mem.DlrReadsMsLastPerSec / fps), $"{mem.DlrReadsMsLastPerSec / fps:F2}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(FrameColor(mem.DlrReadsMsAvgPerSec / fps), $"{mem.DlrReadsMsAvgPerSec / fps:F2}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(FrameColor(mem.DlrReadsMsMaxPerSec / fps), $"{mem.DlrReadsMsMaxPerSec / fps:F2}");
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(CHeader, "Total");
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(FrameColor(mem.DlrReadsMsLastPerSec / fps), $"{mem.DlrReadsMsLastPerSec / fps:F2}");
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(FrameColor(mem.DlrReadsMsAvgPerSec / fps), $"{mem.DlrReadsMsAvgPerSec / fps:F2}");
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(FrameColor(mem.DlrReadsMsMaxPerSec / fps), $"{mem.DlrReadsMsMaxPerSec / fps:F2}");
     }
 
     private static void RenderDlrRow(string label, DlrSectionSnapshot s, double fps)
@@ -722,10 +739,10 @@ internal sealed class ImGuiDebugOverlay(
     {
         bool hasData = total.SampleCount > 0;
         ImGui.TableNextRow();
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(CHeader, label);
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(color(hasData ? total.LastMs : 0), hasData ? total.LastMs.ToString(fLast) : "-");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(color(hasData ? total.AverageMs : 0), hasData ? total.AverageMs.ToString(fAvg) : "-");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(color(hasData ? total.MaxMs : 0), hasData ? total.MaxMs.ToString(fMax) : "-");
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(CHeader, label);
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(color(hasData ? total.LastMs : 0), hasData ? total.LastMs.ToString(fLast) : "-");
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(color(hasData ? total.AverageMs : 0), hasData ? total.AverageMs.ToString(fAvg) : "-");
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(color(hasData ? total.MaxMs : 0), hasData ? total.MaxMs.ToString(fMax) : "-");
     }
 
     // Table-wide GC totals as the first data row: byte/s Last/Avg/Max summed across every row beneath.
@@ -742,10 +759,10 @@ internal sealed class ImGuiDebugOverlay(
             }
         }
         ImGui.TableNextRow();
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(CHeader, "Total");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(GcTotalColor(totalLast), FormatBytes(totalLast));
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(GcTotalColor(totalAvg), FormatBytes(totalAvg));
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(GcTotalColor(totalMax), FormatBytes(totalMax));
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(CHeader, "Total");
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(GcTotalColor(totalLast), FormatBytes(totalLast));
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(GcTotalColor(totalAvg), FormatBytes(totalAvg));
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(GcTotalColor(totalMax), FormatBytes(totalMax));
     }
 
     // Whole-plugin allocation rate: <=25MB/s healthy, <=50MB/s tolerable, above that too much.
@@ -786,10 +803,10 @@ internal sealed class ImGuiDebugOverlay(
     private static void RenderScaledSubTimingRow(string label, TimingMetricsSnapshot stats, double scale)
     {
         ImGui.TableNextRow();
-        _ = ImGui.TableNextColumn(); ImGui.Text(label);
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(scale > 0 ? FrameColor(stats.LastMs * scale) : CGreen, scale > 0 ? $"{stats.LastMs * scale:F2}" : "-");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(scale > 0 ? FrameColor(stats.AverageMs * scale) : CGreen, scale > 0 ? $"{stats.AverageMs * scale:F2}" : "-");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(scale > 0 ? FrameColor(stats.MaxMs * scale) : CGreen, scale > 0 ? $"{stats.MaxMs * scale:F2}" : "-");
+        _ = ImGui.TableNextColumn(); ImGui.TextUnformatted(label);
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(scale > 0 ? FrameColor(stats.LastMs * scale) : CGreen, scale > 0 ? $"{stats.LastMs * scale:F2}" : "-");
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(scale > 0 ? FrameColor(stats.AverageMs * scale) : CGreen, scale > 0 ? $"{stats.AverageMs * scale:F2}" : "-");
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(scale > 0 ? FrameColor(stats.MaxMs * scale) : CGreen, scale > 0 ? $"{stats.MaxMs * scale:F2}" : "-");
     }
 
     private static void RenderTimingRow(string label, TimingMetricsSnapshot stats)
@@ -798,8 +815,8 @@ internal sealed class ImGuiDebugOverlay(
     private static void FreqTargetRow(string label, string value, NumVec4 color)
     {
         ImGui.TableNextRow();
-        _ = ImGui.TableNextColumn(); ImGui.Text(label);
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(color, value);
+        _ = ImGui.TableNextColumn(); ImGui.TextUnformatted(label);
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(color, value);
     }
 
     // One 4-column table row: label + three colored values; a row with no data renders a plain dash in each value column.
@@ -807,17 +824,17 @@ internal sealed class ImGuiDebugOverlay(
         Func<double, NumVec4> color, Func<double, string> format)
     {
         ImGui.TableNextRow();
-        _ = ImGui.TableNextColumn(); ImGui.Text(label);
+        _ = ImGui.TableNextColumn(); ImGui.TextUnformatted(label);
         if (!hasData)
         {
-            _ = ImGui.TableNextColumn(); ImGui.Text("-");
-            _ = ImGui.TableNextColumn(); ImGui.Text("-");
-            _ = ImGui.TableNextColumn(); ImGui.Text("-");
+            _ = ImGui.TableNextColumn(); ImGui.TextUnformatted("-");
+            _ = ImGui.TableNextColumn(); ImGui.TextUnformatted("-");
+            _ = ImGui.TableNextColumn(); ImGui.TextUnformatted("-");
             return;
         }
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(color(last), format(last));
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(color(avg), format(avg));
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(color(max), format(max));
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(color(last), format(last));
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(color(avg), format(avg));
+        _ = ImGui.TableNextColumn(); DrawLiteralColored(color(max), format(max));
     }
 
     private static string FormatF2(double v) => v.ToString("F2");
@@ -833,14 +850,14 @@ internal sealed class ImGuiDebugOverlay(
         IReadOnlyList<string> errors = snap.Errors.RecentErrors;
         if (errors.Count == 0)
         {
-            ImGui.TextColored(CGreen, "No recent errors");
+            DrawLiteralColored(CGreen, "No recent errors");
             return;
         }
 
-        ImGui.TextColored(CWarn, $"Error Count: {errors.Count}");
+        DrawLiteralColored(CWarn, $"Error Count: {errors.Count}");
         int start = Math.Max(0, errors.Count - 3);
         for (int i = start; i < errors.Count; i++)
-            ImGui.TextColored(CError, errors[i]);
+            DrawLiteralColored(CError, errors[i]);
     }
 
     private void RenderClickSection()
@@ -853,7 +870,7 @@ internal sealed class ImGuiDebugOverlay(
 
         if (!click.ServiceAvailable)
         {
-            ImGui.TextColored(CMuted, "Click service unavailable");
+            DrawLiteralColored(CMuted, "Click service unavailable");
             return;
         }
 
@@ -863,7 +880,7 @@ internal sealed class ImGuiDebugOverlay(
             string freezeText = string.IsNullOrWhiteSpace(freezeReason)
                 ? $"Telemetry Hold Active: {freezeMs}ms remaining"
                 : $"Telemetry Hold Active: {freezeMs}ms remaining | {freezeReason}";
-            ImGui.TextColored(COrange, freezeText);
+            DrawLiteralColored(COrange, freezeText);
             ImGui.Spacing();
         }
 
@@ -877,17 +894,17 @@ internal sealed class ImGuiDebugOverlay(
         if (cd.HasData)
         {
             NumVec4 stageColor = cd.Resolved && cd.ResolvedClickable ? CGreen : CWarn;
-            ImGui.TextColored(stageColor, $"Stage: {cd.Stage}  Seq: {cd.Sequence}");
+            DrawLiteralColored(stageColor, $"Stage: {cd.Stage}  Seq: {cd.Sequence}");
 
             InlineRow(
                 ("Mechanic", cd.MechanicId, CWhite),
                 ("Distance", $"{cd.Distance:F1}", CWhite)
             );
 
-            ImGui.TextWrapped($"Entity: {cd.EntityPath}");
+            DrawLiteralWrapped($"Entity: {cd.EntityPath}");
 
             if (!string.IsNullOrEmpty(cd.Notes))
-                ImGui.TextColored(CMuted, $"Note: {cd.Notes}");
+                DrawLiteralColored(CMuted, $"Note: {cd.Notes}");
 
             ImGui.Spacing();
             InlineRow(
@@ -904,7 +921,7 @@ internal sealed class ImGuiDebugOverlay(
         }
         else
         {
-            ImGui.TextColored(CMuted, "No click data yet");
+            DrawLiteralColored(CMuted, "No click data yet");
         }
 
         RenderTrail("Runtime Log", click.RuntimeLogTrail, 8);
@@ -919,10 +936,10 @@ internal sealed class ImGuiDebugOverlay(
         static string Fmt(bool v) => BoolStr(v);
 
         // Single-line settings (same data the clipboard dump shows), rendered as 2 text widgets instead of ~40 colored InlineRow widgets - ImGui is ~10x more expensive per widget than the in-game overlay's text.
-        ImGui.TextColored(CHeader, "Settings:");
-        ImGui.TextColored(CWhite,
+        DrawLiteralColored(CHeader, "Settings:");
+        DrawLiteralColored(CWhite,
             $"Toggle:HT={Fmt(s.ClickHotkeyToggleMode.Value)} MC={Fmt(s.ClickOnManualUiHoverOnly.Value)} LM={Fmt(s.LazyMode.Value)} LH={Fmt(s.LeftHanded.Value)}  Click:R={s.ClickDistance.Value} f={s.ClickFrequencyTarget.Value}ms vW={Fmt(s.VerifyCursorInGameWindowBeforeClick.Value)} vH={Fmt(s.VerifyUIHoverWhenNotLazy.Value)} aO={Fmt(s.AvoidOverlappingLabelClickPoints.Value)}");
-        ImGui.TextColored(CWhite,
+        DrawLiteralColored(CWhite,
             $"Safety:bP={Fmt(s.BlockOnOpenLeftRightPanel.Value)} tI={Fmt(s.ToggleItems.Value)} ti={s.ToggleItemsIntervalMs.Value} pT={s.ToggleItemsPostToggleClickBlockMs.Value}  Walk:wO={Fmt(s.WalkTowardOffscreenLabels.Value)} pO={Fmt(s.PrioritizeOnscreenClickableMechanicsOverPathfinding.Value)} pB={s.OffscreenPathfindingSearchBudget.Value}  Chest:bC={Fmt(s.PauseAfterOpeningBasicChests.Value)} aN={Fmt(s.AllowNearbyMechanicsWhileWaitingForChestDropsToSettle.Value)}");
     }
 
@@ -936,7 +953,7 @@ internal sealed class ImGuiDebugOverlay(
 
         if (!label.ServiceAvailable)
         {
-            ImGui.TextColored(CMuted, "Label filter service unavailable");
+            DrawLiteralColored(CMuted, "Label filter service unavailable");
             return;
         }
 
@@ -965,7 +982,7 @@ internal sealed class ImGuiDebugOverlay(
         }
 
         if (ld.HasData && !string.IsNullOrEmpty(ld.Notes))
-            ImGui.TextColored(CMuted, $"Note: {ld.Notes}");
+            DrawLiteralColored(CMuted, $"Note: {ld.Notes}");
 
         RenderTrail("Recent Stages", label.LabelTrail, 10);
     }
@@ -980,7 +997,7 @@ internal sealed class ImGuiDebugOverlay(
 
         if (!pf.ServiceAvailable)
         {
-            ImGui.TextColored(CMuted, "Pathfinding service unavailable");
+            DrawLiteralColored(CMuted, "Pathfinding service unavailable");
             return;
         }
 
@@ -1003,18 +1020,18 @@ internal sealed class ImGuiDebugOverlay(
         );
 
         if (!string.IsNullOrWhiteSpace(data.LastGoalResolutionNote))
-            ImGui.TextColored(CWarn, $"Goal Note: {data.LastGoalResolutionNote}");
+            DrawLiteralColored(CWarn, $"Goal Note: {data.LastGoalResolutionNote}");
 
         if (!string.IsNullOrWhiteSpace(data.LastFailureReason))
-            ImGui.TextColored(CError, $"Failure: {data.LastFailureReason}");
+            DrawLiteralColored(CError, $"Failure: {data.LastFailureReason}");
 
-        ImGui.TextWrapped($"Target Path: {data.LastTargetPath ?? "<none>"}");
+        DrawLiteralWrapped($"Target Path: {data.LastTargetPath ?? "<none>"}");
 
         ImGui.Spacing();
         OffscreenMovementDebugSnapshot offscreen = pf.OffscreenMovement;
         if (offscreen.HasData)
         {
-            ImGui.TextColored(CInfo, "Offscreen Movement:");
+            DrawLiteralColored(CInfo, "Offscreen Movement:");
 
             DataRows(
             [
@@ -1025,9 +1042,9 @@ internal sealed class ImGuiDebugOverlay(
             ]);
 
             if (!string.IsNullOrWhiteSpace(offscreen.MovementSkillDebug))
-                ImGui.TextColored(CWarn, $"Skill: {offscreen.MovementSkillDebug}");
+                DrawLiteralColored(CWarn, $"Skill: {offscreen.MovementSkillDebug}");
 
-            ImGui.TextWrapped($"Target: {TrimPath(offscreen.TargetPath)}");
+            DrawLiteralWrapped($"Target: {TrimPath(offscreen.TargetPath)}");
 
             DataRows(
             [
@@ -1051,7 +1068,7 @@ internal sealed class ImGuiDebugOverlay(
         }
         else
         {
-            ImGui.TextColored(CMuted, "Offscreen Movement: no data");
+            DrawLiteralColored(CMuted, "Offscreen Movement: no data");
         }
 
         RenderTrail("Recent Stages", pf.OffscreenMovementTrail, 15);
@@ -1066,12 +1083,12 @@ internal sealed class ImGuiDebugOverlay(
         SkillAutomationTelemetrySnapshot data = (_lastSnapshot ?? DebugTelemetrySnapshot.Empty).SkillAutomation;
         if (!data.ServiceAvailable)
         {
-            ImGui.TextColored(CMuted, data.Status);
+            DrawLiteralColored(CMuted, data.Status);
             return;
         }
 
-        ImGui.TextWrapped($"Settings: Mercenaries={BoolStr(data.CastOnMercenaries)} Animate Guardian={BoolStr(data.CastOnAnimateGuardian)}");
-        ImGui.TextColored(data.AutomationAllowed ? CGreen : CMuted, $"State: {data.Status}");
+        DrawLiteralWrapped($"Settings: Mercenaries={BoolStr(data.CastOnMercenaries)} Animate Guardian={BoolStr(data.CastOnAnimateGuardian)}");
+        DrawLiteralColored(data.AutomationAllowed ? CGreen : CMuted, $"State: {data.Status}");
         DataRows(
         [
             ("Input Safety", data.AutomationAllowed ? "Allowed" : "Waiting", data.AutomationAllowed ? CGreen : CWarn),
@@ -1088,10 +1105,10 @@ internal sealed class ImGuiDebugOverlay(
         ]);
 
         if (!string.IsNullOrWhiteSpace(data.TargetPath))
-            ImGui.TextWrapped($"Target Path: {data.TargetPath}");
+            DrawLiteralWrapped($"Target Path: {data.TargetPath}");
         if (data.HasTargetPosition)
         {
-            ImGui.TextWrapped($"Target Position: client=({data.TargetClientPosition.X:F1},{data.TargetClientPosition.Y:F1}) screen=({data.TargetScreenPosition.X:F1},{data.TargetScreenPosition.Y:F1})");
+            DrawLiteralWrapped($"Target Position: client=({data.TargetClientPosition.X:F1},{data.TargetClientPosition.Y:F1}) screen=({data.TargetScreenPosition.X:F1},{data.TargetScreenPosition.Y:F1})");
         }
     }
 
@@ -1105,7 +1122,7 @@ internal sealed class ImGuiDebugOverlay(
 
         if (!click.ServiceAvailable)
         {
-            ImGui.TextColored(CMuted, "Click service unavailable");
+            DrawLiteralColored(CMuted, "Click service unavailable");
             return;
         }
 
@@ -1120,9 +1137,9 @@ internal sealed class ImGuiDebugOverlay(
         {
             IReadOnlyList<UltimatumOptionPreviewSnapshot> previews = click.UltimatumOptionPreview;
             if (previews.Count > 0)
-                ImGui.TextColored(CWarn, "No click-flow snapshot yet; showing live panel preview.");
+                DrawLiteralColored(CWarn, "No click-flow snapshot yet; showing live panel preview.");
             else
-                ImGui.TextColored(CMuted, "No ultimatum debug data yet");
+                DrawLiteralColored(CMuted, "No ultimatum debug data yet");
 
             if (previews.Count > 0) RenderUltimatumPreviews(previews);
             RenderTrail("Recent Stages", click.UltimatumTrail, 10);
@@ -1132,7 +1149,7 @@ internal sealed class ImGuiDebugOverlay(
         NumVec4 stageColor = u.ClickedTakeRewards
             ? CGold
             : (u.ClickedConfirm || u.ClickedChoice) ? CGreen : CWarn;
-        ImGui.TextColored(stageColor, $"Stage: {u.Stage}  Seq: {u.Sequence}  Source: {u.Source}");
+        DrawLiteralColored(stageColor, $"Stage: {u.Stage}  Seq: {u.Sequence}  Source: {u.Source}");
 
         ImGui.Spacing();
         InlineRow(
@@ -1143,11 +1160,11 @@ internal sealed class ImGuiDebugOverlay(
         );
 
         if (!string.IsNullOrEmpty(u.SaturatedModifier))
-            ImGui.TextColored(CInfo, $"Saturated Modifier: {u.SaturatedModifier}");
+            DrawLiteralColored(CInfo, $"Saturated Modifier: {u.SaturatedModifier}");
 
-        ImGui.TextColored(CWhite, $"Action: {u.Action}");
-        ImGui.TextColored(CWhite, $"Candidates: {u.CandidateCount}  Saturated: {u.SaturatedCandidateCount}");
-        ImGui.TextColored(CInfo, $"Best: {u.BestModifier} (priority={u.BestPriority})");
+        DrawLiteralColored(CWhite, $"Action: {u.Action}");
+        DrawLiteralColored(CWhite, $"Candidates: {u.CandidateCount}  Saturated: {u.SaturatedCandidateCount}");
+        DrawLiteralColored(CInfo, $"Best: {u.BestModifier} (priority={u.BestPriority})");
 
         InlineRow(
             ("Choice", BoolStr(u.ClickedChoice), BoolColor(u.ClickedChoice)),
@@ -1156,7 +1173,7 @@ internal sealed class ImGuiDebugOverlay(
         );
 
         if (!string.IsNullOrEmpty(u.Notes))
-            ImGui.TextColored(CMuted, $"Note: {u.Notes}");
+            DrawLiteralColored(CMuted, $"Note: {u.Notes}");
 
         RenderUltimatumPreviews(click.UltimatumOptionPreview);
         RenderTrail("Recent Stages", click.UltimatumTrail, 10);
@@ -1166,7 +1183,7 @@ internal sealed class ImGuiDebugOverlay(
     {
         if (previews.Count == 0) return;
         ImGui.Spacing();
-        ImGui.TextColored(CHeader, $"Visible Options: {previews.Count}");
+        DrawLiteralColored(CHeader, $"Visible Options: {previews.Count}");
 
         int maxShow = Math.Min(3, previews.Count);
         if (ImGui.BeginTable("UltimatumPreviews", 4, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX))
@@ -1182,13 +1199,13 @@ internal sealed class ImGuiDebugOverlay(
                 UltimatumOptionPreviewSnapshot opt = previews[i];
                 ImGui.TableNextRow();
                 _ = ImGui.TableNextColumn();
-                ImGui.Text(opt.IsSelected ? "*" : "-");
+                ImGui.TextUnformatted(opt.IsSelected ? "*" : "-");
                 _ = ImGui.TableNextColumn();
-                ImGui.TextColored(opt.IsSelected ? CGreen : CMuted, opt.ModifierName);
+                DrawLiteralColored(opt.IsSelected ? CGreen : CMuted, opt.ModifierName);
                 _ = ImGui.TableNextColumn();
-                ImGui.Text(opt.PriorityIndex.ToString());
+                ImGui.TextUnformatted(opt.PriorityIndex.ToString());
                 _ = ImGui.TableNextColumn();
-                ImGui.Text($"({opt.Rect.Center.X:F0},{opt.Rect.Center.Y:F0})");
+                ImGui.TextUnformatted($"({opt.Rect.Center.X:F0},{opt.Rect.Center.Y:F0})");
             }
             ImGui.EndTable();
         }
@@ -1201,11 +1218,11 @@ internal sealed class ImGuiDebugOverlay(
 
         DebugTelemetrySnapshot snap = _lastSnapshot ?? DebugTelemetrySnapshot.Empty;
         AltarTelemetrySnapshot altar = snap.Altar;
-        ImGui.TextWrapped($"Altar Settings: {altar.SettingsSummary}");
+        DrawLiteralWrapped($"Altar Settings: {altar.SettingsSummary}");
 
         if (_settings.DebugShowAltarDetection.Value)
         {
-            ImGui.TextColored(altar.ComponentCount > 0 ? CGreen : CMuted,
+            DrawLiteralColored(altar.ComponentCount > 0 ? CGreen : CMuted,
                 $"Altar Components: {altar.ComponentCount}");
 
             if (altar.Components.Count > 0)
@@ -1214,8 +1231,8 @@ internal sealed class ImGuiDebugOverlay(
                 for (int i = 0; i < altar.Components.Count; i++)
                 {
                     AltarComponentTelemetrySnapshot comp = altar.Components[i];
-                    ImGui.TextColored(CInfo, $"Altar #{i + 1}:");
-                    ImGui.TextWrapped($"Runtime: {comp.RuntimeState}");
+                    DrawLiteralColored(CInfo, $"Altar #{i + 1}:");
+                    DrawLiteralWrapped($"Runtime: {comp.RuntimeState}");
                     RenderAltarSectionTable("Top", comp.Top);
                     RenderAltarSectionTable("Bottom", comp.Bottom);
                 }
@@ -1229,7 +1246,7 @@ internal sealed class ImGuiDebugOverlay(
                 ImGui.Separator();
 
             AltarServiceDebugTelemetrySnapshot d = altar.ServiceDebug;
-            ImGui.TextColored(CHeader, "Altar Service:");
+            DrawLiteralColored(CHeader, "Altar Service:");
 
             ImGui.Spacing();
             InlineRow(
@@ -1253,20 +1270,20 @@ internal sealed class ImGuiDebugOverlay(
             );
 
             if (!string.IsNullOrEmpty(d.LastError))
-                ImGui.TextColored(CError, $"Last Error: {d.LastError}");
+                DrawLiteralColored(CError, $"Last Error: {d.LastError}");
 
             RenderTrail("Recent Stages", d.RecentStages, 15);
         }
         else if (_settings.DebugShowAltarService.Value)
         {
-            ImGui.TextColored(CError, "Altar Service: NULL");
+            DrawLiteralColored(CError, "Altar Service: NULL");
         }
     }
 
     private static void RenderAltarSectionTable(string label, AltarModSectionTelemetrySnapshot section)
     {
         if (section.Upsides.Count == 0 && section.Downsides.Count == 0 && section.MatchTrace.Count == 0) return;
-        ImGui.TextColored(CInfo, $"  {label} ({section.SectionName}):");
+        DrawLiteralColored(CInfo, $"  {label} ({section.SectionName}):");
         if (ImGui.BeginTable($"Altar{label}Mods", 2, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX))
         {
             ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed, 130f);
@@ -1277,20 +1294,20 @@ internal sealed class ImGuiDebugOverlay(
             {
                 ImGui.TableNextRow();
                 string rawUpsides = JoinMatchedRawText(section.MatchTrace, "Upside");
-                _ = ImGui.TableNextColumn(); ImGui.Text(rawUpsides.Length > 0 ? "Upsides (raw)" : "Upsides (catalog IDs)");
+                _ = ImGui.TableNextColumn(); ImGui.TextUnformatted(rawUpsides.Length > 0 ? "Upsides (raw)" : "Upsides (catalog IDs)");
                 _ = ImGui.TableNextColumn(); RenderUnformattedWrapped(rawUpsides.Length > 0 ? rawUpsides : JoinModTexts(section.Upsides));
             }
             if (section.Downsides.Count > 0)
             {
                 ImGui.TableNextRow();
                 string rawDownsides = JoinMatchedRawText(section.MatchTrace, "Downside");
-                _ = ImGui.TableNextColumn(); ImGui.Text(rawDownsides.Length > 0 ? "Downsides (raw)" : "Downsides (catalog IDs)");
+                _ = ImGui.TableNextColumn(); ImGui.TextUnformatted(rawDownsides.Length > 0 ? "Downsides (raw)" : "Downsides (catalog IDs)");
                 _ = ImGui.TableNextColumn(); RenderUnformattedWrapped(rawDownsides.Length > 0 ? rawDownsides : JoinModTexts(section.Downsides));
             }
             if (section.MatchTrace.Count > 0)
             {
                 ImGui.TableNextRow();
-                _ = ImGui.TableNextColumn(); ImGui.Text("Catalog matches");
+                _ = ImGui.TableNextColumn(); ImGui.TextUnformatted("Catalog matches");
                 _ = ImGui.TableNextColumn(); RenderUnformattedWrapped(string.Join(Environment.NewLine, section.MatchTrace));
             }
             ImGui.EndTable();
@@ -1352,9 +1369,9 @@ internal sealed class ImGuiDebugOverlay(
         if (h.HasHoveredItem)
         {
             ImGui.Spacing();
-            ImGui.TextWrapped($"Item: {h.GroundItemName}");
-            ImGui.TextWrapped($"Entity: {h.EntityPath}");
-            ImGui.TextWrapped($"Metadata: {h.MetadataPath}");
+            DrawLiteralWrapped($"Item: {h.GroundItemName}");
+            DrawLiteralWrapped($"Entity: {h.EntityPath}");
+            DrawLiteralWrapped($"Metadata: {h.MetadataPath}");
         }
     }
 
@@ -1369,11 +1386,11 @@ internal sealed class ImGuiDebugOverlay(
         InventoryDebugSnapshot id = inv.Inventory;
         if (!id.HasData)
         {
-            ImGui.TextColored(CMuted, "No inventory debug data yet");
+            DrawLiteralColored(CMuted, "No inventory debug data yet");
             return;
         }
 
-        ImGui.TextColored(CInfo, $"Stage: {id.Stage}  Seq: {id.Sequence}");
+        DrawLiteralColored(CInfo, $"Stage: {id.Stage}  Seq: {id.Sequence}");
 
         ImGui.Spacing();
         InlineRow(
@@ -1383,10 +1400,10 @@ internal sealed class ImGuiDebugOverlay(
         );
 
         if (!string.IsNullOrEmpty(id.GroundItemName))
-            ImGui.TextWrapped($"Ground: {id.GroundItemName}");
+            DrawLiteralWrapped($"Ground: {id.GroundItemName}");
 
         if (!string.IsNullOrEmpty(id.Notes))
-            ImGui.TextColored(CMuted, $"Note: {id.Notes}");
+            DrawLiteralColored(CMuted, $"Note: {id.Notes}");
 
         RenderTrail("Recent Stages", inv.InventoryTrail, 10);
     }
@@ -1406,17 +1423,17 @@ internal sealed class ImGuiDebugOverlay(
             int bracketIdx = summary.IndexOf(" [", StringComparison.Ordinal);
             if (bracketIdx > 0)
             {
-                ImGui.TextColored(CInfo, $"Plan v{plan.Version} ({summary[..bracketIdx]})");
+                DrawLiteralColored(CInfo, $"Plan v{plan.Version} ({summary[..bracketIdx]})");
                 ImGui.PushTextWrapPos(0);
-                ImGui.TextColored(CDim, $"{summary[bracketIdx..]}");
+                DrawLiteralColored(CDim, $"{summary[bracketIdx..]}");
                 ImGui.PopTextWrapPos();
             }
             else
             {
-                ImGui.TextColored(CInfo, $"Plan v{plan.Version} ({summary})");
+                DrawLiteralColored(CInfo, $"Plan v{plan.Version} ({summary})");
             }
 
-            ImGui.TextColored(plan.IsComplete ? CGreen : CWarn, plan.IsComplete ? " Plan complete" : " Plan in progress");
+            DrawLiteralColored(plan.IsComplete ? CGreen : CWarn, plan.IsComplete ? " Plan complete" : " Plan in progress");
 
             if (ImGui.BeginTable("PlanSteps", 5, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.Borders))
             {
@@ -1433,37 +1450,37 @@ internal sealed class ImGuiDebugOverlay(
                     BlightPlanStep s = plan.Steps[i];
                     ImGui.TableNextRow();
                     _ = ImGui.TableNextColumn();
-                    if (i == plan.CurrentStepIndex) ImGui.TextColored(CInfo, $"> {i + 1}");
-                    else ImGui.Text($"  {i + 1}");
+                    if (i == plan.CurrentStepIndex) DrawLiteralColored(CInfo, $"> {i + 1}");
+                    else ImGui.TextUnformatted($"  {i + 1}");
                     _ = ImGui.TableNextColumn();
-                    ImGui.TextColored(s.IsSpecializationStep ? CSpecialAction : s.Action == BlightPlanAction.Build ? CBuildAction : CUpgradeAction,
+                    DrawLiteralColored(s.IsSpecializationStep ? CSpecialAction : s.Action == BlightPlanAction.Build ? CBuildAction : CUpgradeAction,
                         s.ActionLabel);
                     _ = ImGui.TableNextColumn();
                     string targetName = _blight.GetStepTargetName(s);
-                    ImGui.TextColored(BlightTowerColors.AsVector4(s.TowerType), targetName);
+                    DrawLiteralColored(BlightTowerColors.AsVector4(s.TowerType), targetName);
                     _ = ImGui.TableNextColumn();
-                    ImGui.TextColored(CGreen, $"{s.TargetLevel}");
+                    DrawLiteralColored(CGreen, $"{s.TargetLevel}");
                     _ = ImGui.TableNextColumn();
-                    ImGui.Text($"({s.FoundationPosition.X:F0},{s.FoundationPosition.Y:F0})");
+                    ImGui.TextUnformatted($"({s.FoundationPosition.X:F0},{s.FoundationPosition.Y:F0})");
                 }
                 if (plan.Steps.Count > maxShow)
                 {
                     ImGui.TableNextRow();
                     _ = ImGui.TableNextColumn();
-                    ImGui.TextColored(CDim, $"... {plan.Steps.Count - maxShow} more");
+                    DrawLiteralColored(CDim, $"... {plan.Steps.Count - maxShow} more");
                 }
                 ImGui.EndTable();
             }
         }
         else
         {
-            ImGui.TextColored(CMuted, "Plan not yet computed");
+            DrawLiteralColored(CMuted, "Plan not yet computed");
         }
 
         if (_blight.TowerEntities.Count > 0)
         {
             ImGui.Spacing();
-            ImGui.TextColored(CHeader, "Towers:");
+            DrawLiteralColored(CHeader, "Towers:");
             if (ImGui.BeginTable("TowerEntities", 4, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX))
             {
                 ImGui.TableSetupColumn("#", ImGuiTableColumnFlags.WidthFixed, 24f);
@@ -1486,13 +1503,13 @@ internal sealed class ImGuiDebugOverlay(
 
                     ImGui.TableNextRow();
                     _ = ImGui.TableNextColumn();
-                    ImGui.Text(t.ToString());
+                    ImGui.TextUnformatted(t.ToString());
                     _ = ImGui.TableNextColumn();
-                    ImGui.Text($"({e.GridPosNum.X:F0},{e.GridPosNum.Y:F0})");
+                    ImGui.TextUnformatted($"({e.GridPosNum.X:F0},{e.GridPosNum.Y:F0})");
                     _ = ImGui.TableNextColumn();
-                    ImGui.TextColored(BlightTowerColors.AsVector4(mapped.Value), typeLabel);
+                    DrawLiteralColored(BlightTowerColors.AsVector4(mapped.Value), typeLabel);
                     _ = ImGui.TableNextColumn();
-                    ImGui.TextColored(level >= 3 ? CGreen : CWhite, $"{level}");
+                    DrawLiteralColored(level >= 3 ? CGreen : CWhite, $"{level}");
                 }
                 ImGui.EndTable();
             }
@@ -1506,7 +1523,7 @@ internal sealed class ImGuiDebugOverlay(
         if (foundationCount > 0)
         {
             ImGui.Spacing();
-            ImGui.TextColored(CHeader, $"Foundations: {foundationCount}");
+            DrawLiteralColored(CHeader, $"Foundations: {foundationCount}");
             if (ImGui.BeginTable("BlightFoundations", 3, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX))
             {
                 ImGui.TableSetupColumn("#", ImGuiTableColumnFlags.WidthFixed, 24f);
@@ -1522,15 +1539,15 @@ internal sealed class ImGuiDebugOverlay(
                         continue;
                     ImGui.TableNextRow();
                     _ = ImGui.TableNextColumn();
-                    ImGui.Text(idx.ToString());
+                    ImGui.TextUnformatted(idx.ToString());
                     _ = ImGui.TableNextColumn();
-                    ImGui.Text($"({t.WorldPosition.X:F0},{t.WorldPosition.Y:F0})");
+                    ImGui.TextUnformatted($"({t.WorldPosition.X:F0},{t.WorldPosition.Y:F0})");
                     _ = ImGui.TableNextColumn();
                     bool planned = t.PlannedTowerType != t.TowerType;
                     if (planned)
-                        ImGui.TextColored(BlightTowerColors.AsVector4(t.PlannedTowerType), t.PlannedTowerType.ToString());
+                        DrawLiteralColored(BlightTowerColors.AsVector4(t.PlannedTowerType), t.PlannedTowerType.ToString());
                     else
-                        ImGui.TextColored(CDim, "-");
+                        DrawLiteralColored(CDim, "-");
                     idx++;
                 }
                 ImGui.EndTable();
@@ -1552,7 +1569,7 @@ internal sealed class ImGuiDebugOverlay(
                     if (r.IsFullyCovered) segCovered++;
                     else segUncovered++;
                 }
-                ImGui.TextColored(CHeader, $"Coverage: {segCovered}/{segTotal} covered, {segUncovered} uncovered");
+                DrawLiteralColored(CHeader, $"Coverage: {segCovered}/{segTotal} covered, {segUncovered} uncovered");
                 ImGui.SameLine();
                 if (ImGui.Button(_settings.BlightDebugShowLaneLabels.Value ? "Lane labels: ON" : "Lane labels: OFF"))
                     _settings.BlightDebugShowLaneLabels.Value = !_settings.BlightDebugShowLaneLabels.Value;
@@ -1587,7 +1604,7 @@ internal sealed class ImGuiDebugOverlay(
                 _lastTowerDatDumpMs = now;
             }
             ImGui.PushTextWrapPos(0);
-            ImGui.TextColored(CDim, _lastTowerDatDump ?? "(Blight dat not loaded)");
+            DrawLiteralColored(CDim, _lastTowerDatDump ?? "(Blight dat not loaded)");
             ImGui.PopTextWrapPos();
         }
 
@@ -1705,8 +1722,12 @@ internal sealed class ImGuiDebugOverlay(
         }
     }
 
-    private void CopyAllToClipboard()
+    internal void CopyAllToClipboard()
     {
+        if (_telemetrySource != null)
+            _lastSnapshot = _telemetrySource.GetSnapshot();
+        if (_performanceMonitor != null)
+            _lastPerformance = _performanceMonitor.GetDebugSnapshot();
         // Build + copy on a background task so a big blight web never freezes the render thread.
         _ = System.Threading.Tasks.Task.Run(CopyAllToClipboardCore);
     }
@@ -2064,7 +2085,7 @@ internal sealed class ImGuiDebugOverlay(
         if (!ImGui.CollapsingHeader("Crafting", ImGuiTreeNodeFlags.DefaultOpen))
             return;
 
-        ImGui.TextWrapped(GetCraftingSettingsText());
+        DrawLiteralWrapped(GetCraftingSettingsText());
         IReadOnlyList<string> trail = _lastSnapshot?.CraftingTrail ?? [];
         if (trail.Count == 0)
             ImGui.TextDisabled("No crafting attempts recorded");

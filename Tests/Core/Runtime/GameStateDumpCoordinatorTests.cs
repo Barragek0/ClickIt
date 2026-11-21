@@ -106,6 +106,11 @@ namespace ClickIt.Tests.Core.Runtime
             InvokeResolveRoot(coordinator, GameStateDumpTarget.Player).Should().BeNull();
             InvokeResolveRoot(coordinator, GameStateDumpTarget.IngameState).Should().BeNull();
             InvokeResolveRoot(coordinator, GameStateDumpTarget.UiHover).Should().BeNull();
+            InvokeResolveRoot(coordinator, GameStateDumpTarget.UiHoverTooltip).Should().BeNull();
+            InvokeResolveRoot(coordinator, GameStateDumpTarget.UiHoverTooltipTitle).Should().BeNull();
+            InvokeResolveRoot(coordinator, GameStateDumpTarget.UiHoverGlobalTooltip).Should().BeNull();
+            InvokeResolveRoot(coordinator, GameStateDumpTarget.UiHoverGlobalTooltipText).Should().BeAssignableTo<IReadOnlyList<string>>().Which.Should().BeEmpty();
+            InvokeResolveRoot(coordinator, GameStateDumpTarget.UiHoverImageDetails).Should().BeAssignableTo<IReadOnlyList<string>>().Which.Should().BeEmpty();
         }
 
         private static GameStateDumpCoordinator CreateCoordinator(Func<GameController?> getGameController, PluginContext? context = null)

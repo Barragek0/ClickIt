@@ -19,6 +19,9 @@ namespace ClickIt
         public ToggleNode DebugMode { get; set; } = new ToggleNode(false);
 
         [IgnoreMenu]
+        public HotkeyNodeV2 DumpAllHotkey { get; set; } = new HotkeyNodeV2(Keys.Oem6);
+
+        [IgnoreMenu]
         public ToggleNode RenderDebug { get; set; } = new ToggleNode(false);
 
         [IgnoreMenu]
@@ -36,6 +39,9 @@ namespace ClickIt
 
         [IgnoreMenu]
         public ToggleNode OnlyShowPerformanceInGameWhileInMap { get; set; } = new ToggleNode(true);
+
+        [IgnoreMenu]
+        public ToggleNode ShowPerformanceCopyAllButton { get; set; } = new ToggleNode(false);
 
         [IgnoreMenu]
         public ToggleNode DebugShowAltarDetection { get; set; } = new ToggleNode(true);

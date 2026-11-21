@@ -5,7 +5,7 @@ namespace ClickIt
 
         public override Job? Tick()
         {
-            PluginInputHost.Tick(State, Settings);
+            PluginInputHost.Tick(State, Settings, GameController);
             return null;
         }
     }

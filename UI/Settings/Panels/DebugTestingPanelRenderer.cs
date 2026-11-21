@@ -44,6 +44,8 @@ namespace ClickIt.UI.Settings.Panels
                 ImGui.Spacing();
 
                 // Game-state dump tool.
+                SettingsUiRenderHelpers.DrawHotkeyNodeControl(_settings.DumpAllHotkey, "Dump All Hotkey##DebugDumpAllHotkey",
+                    "Press this key while the game is focused to start a full dump. Debug Mode must be enabled.");
                 GameStateDumpCoordinator? dump = GameStateDumpCoordinator.Current;
                 if (dump != null)
                 {

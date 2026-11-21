@@ -9,6 +9,11 @@ internal enum GameStateDumpTarget
     IngameState,
     PluginWrappers,
     UiHover,
+    UiHoverTooltipTitle,
+    UiHoverTooltip,
+    UiHoverGlobalTooltip,
+    UiHoverGlobalTooltipText,
+    UiHoverImageDetails,
 }
 
 internal readonly record struct GameStateDumpSnapshot(
@@ -93,7 +98,9 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
         => QueueDumpCore([target]);
 
     internal void QueueDumpAll()
-        => QueueDumpCore(Enum.GetValues<GameStateDumpTarget>());
+        => QueueDumpCore([GameStateDumpTarget.UiHoverImageDetails, GameStateDumpTarget.UiHoverGlobalTooltipText, GameStateDumpTarget.UiHoverGlobalTooltip,
+            GameStateDumpTarget.UiHoverTooltipTitle, GameStateDumpTarget.UiHoverTooltip, GameStateDumpTarget.UiHover,
+            .. Enum.GetValues<GameStateDumpTarget>().Where(static target => target is not (GameStateDumpTarget.UiHoverImageDetails or GameStateDumpTarget.UiHoverGlobalTooltipText or GameStateDumpTarget.UiHoverGlobalTooltip or GameStateDumpTarget.UiHoverTooltipTitle or GameStateDumpTarget.UiHoverTooltip or GameStateDumpTarget.UiHover))]);
 
     internal void CancelDump()
     {
@@ -386,8 +393,63 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
             GameStateDumpTarget.IngameState => gc?.IngameState,
             GameStateDumpTarget.PluginWrappers => _dependencies.State.Services,
             GameStateDumpTarget.UiHover => gc?.IngameState?.UIHover,
+            GameStateDumpTarget.UiHoverTooltip => gc?.IngameState?.UIHoverElement?.Tooltip,
+            GameStateDumpTarget.UiHoverTooltipTitle => ReadHoveredTooltipTitle(gc?.IngameState?.UIHoverElement),
+            GameStateDumpTarget.UiHoverGlobalTooltip => gc?.IngameState?.UIHoverTooltip,
+            GameStateDumpTarget.UiHoverGlobalTooltipText => DescribeGlobalTooltip(gc?.IngameState?.UIHoverTooltip),
+            GameStateDumpTarget.UiHoverImageDetails => DescribeHoveredIcon(gc?.IngameState?.UIHoverElement),
             _ => null,
         };
+    }
+
+    private static IReadOnlyList<string> DescribeGlobalTooltip(Element? tooltip)
+    {
+        List<string> result = [];
+        if (tooltip == null)
+            return result;
+        Queue<(object Node, string Path, int Depth)> pending = new();
+        pending.Enqueue((tooltip, "tooltip", 0));
+        while (pending.Count > 0 && result.Count < 40)
+        {
+            (object node, string path, int depth) = pending.Dequeue();
+            int count = DynamicAccess.TryReadInt(node, static element => element.ChildCount, out int children) ? Math.Clamp(children, 0, 40) : 0;
+            string text = DynamicAccess.TryReadString(node, static element => element.TextNoTags, out string plain) ? plain
+                : DynamicAccess.TryReadString(node, static element => element.Text, out string raw) ? raw : "<unreadable>";
+            string texture = DynamicAccess.TryReadString(node, static element => element.TextureName, out string name) ? name : "<unreadable>";
+            result.Add($"{path}: children={count}, texture={texture}, text={text}");
+            if (depth >= 3)
+                continue;
+            for (int i = 0; i < count && pending.Count + result.Count < 40; i++)
+                if (DynamicAccess.TryGetChildAtIndex(node, i, out object? child) && child != null)
+                    pending.Enqueue((child, $"{path}[{i}]", depth + 1));
+        }
+        return result;
+    }
+
+    private static IReadOnlyList<string> DescribeHoveredIcon(Element? hovered)
+    {
+        List<string> result = [.. DescribeGlobalTooltip(hovered)];
+        Element? current = hovered;
+        for (int depth = 0; depth < 5 && current != null && current.Address != 0; depth++)
+        {
+            object? tooltipPointer = DynamicAccess.TryGetDynamicValue(current, static element => element.Elem.Tooltip, out object? rawTooltip) ? rawTooltip : null;
+            object? texturePointer = DynamicAccess.TryGetDynamicValue(current, static element => element.Elem.TextureNamePtr, out object? rawTexture) ? rawTexture : null;
+            string texture = DynamicAccess.TryReadString(current, static element => element.TextureName, out string name) ? name : "<unreadable>";
+            string title = ReadHoveredTooltipTitle(current) ?? "<unreadable>";
+            result.Add($"ancestor[{depth}]: address={current.Address:X}, tooltipPtr={tooltipPointer ?? "<unreadable>"}, texturePtr={texturePointer ?? "<unreadable>"}, texture={texture}, title={title}");
+            current = DynamicAccess.TryGetDynamicValue(current, static element => element.Parent, out object? parent) ? parent as Element : null;
+        }
+        return result;
+    }
+
+    private static string? ReadHoveredTooltipTitle(Element? hovered)
+    {
+        if (!DynamicAccess.TryGetDynamicValue(hovered, static element => element.Tooltip, out object? tooltip)
+            || !DynamicAccess.TryGetChildAtIndex(tooltip, 0, out object? body)
+            || !DynamicAccess.TryGetChildAtIndex(body, 0, out object? title))
+            return null;
+        return DynamicAccess.TryReadString(title, static element => element.TextNoTags, out string plain) ? plain
+            : DynamicAccess.TryReadString(title, static element => element.Text, out string raw) ? raw : null;
     }
 
     private void SetFinished(string statusText)

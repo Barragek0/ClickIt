@@ -6,7 +6,7 @@ namespace ClickIt.UI.Debug
     /// Draws into the deferred text queue every frame with per-cell X positions so the proportional
     /// game font does not break column alignment. Mirrors the debug UI's two-column layout.
     /// </summary>
-    internal sealed class PerformanceInGameOverlay(Func<PerformanceMetricsSnapshot> getSnapshot, Func<bool>? isInMapProvider = null) : IOverlay
+    internal sealed class PerformanceInGameOverlay(Func<PerformanceMetricsSnapshot> getSnapshot, Func<bool>? isInMapProvider = null, Action? copyAll = null) : IOverlay
     {
         private static readonly Color HeaderColor = Color.Orange;
         private static readonly Color LabelColor = Color.White;
@@ -17,6 +17,7 @@ namespace ClickIt.UI.Debug
 
         private readonly Func<PerformanceMetricsSnapshot> _getSnapshot = getSnapshot ?? throw new ArgumentNullException(nameof(getSnapshot));
         private readonly Func<bool>? _isInMapProvider = isInMapProvider;
+        private readonly Action? _copyAll = copyAll;
 
         // Rebuild the performance snapshot at most every 200ms (the buffers it aggregates only change at that cadence) so the per-frame draw does not reallocate snapshot arrays/dictionaries on the render thread.
         private const long SnapshotCacheIntervalMs = 200;
@@ -53,6 +54,15 @@ namespace ClickIt.UI.Debug
             }
             if (perf.Fps.Max <= 0)
                 return;
+
+            if (ctx.Settings.ShowPerformanceCopyAllButton.Value && _copyAll != null)
+            {
+                ImGui.SetNextWindowPos(new System.Numerics.Vector2(ctx.WindowArea.X + 5f, ctx.WindowArea.Y + 70f));
+                ImGui.Begin("##PerformanceCopyAllWindow", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoBackground);
+                if (ImGui.Button("Copy All##PerformanceInGame"))
+                    _copyAll();
+                ImGui.End();
+            }
 
             const float lineHeight = 15f;
             const float originX = 5f;

@@ -35,9 +35,8 @@ namespace ClickIt.Core.Bootstrap
                 core.HarvestUpgrade is { } harvestUpgrade ? harvestUpgrade.GetWarning : null));
             overlayRenderHost.Register(new PathfindingOverlay(core.PathfindingService));
             overlayRenderHost.Register(new BlightOverlay(core.BlightService));
-            overlayRenderHost.Register(new PerformanceInGameOverlay(core.PerformanceMonitor.GetDebugSnapshot, () => AreaService.IsInMap(plugin.GameController)));
-
             ImGuiDebugOverlay guiDebugOverlay = new(settings, core.PerformanceMonitor, core.BlightService, new PluginDebugTelemetrySource(plugin));
+            overlayRenderHost.Register(new PerformanceInGameOverlay(core.PerformanceMonitor.GetDebugSnapshot, () => AreaService.IsInMap(plugin.GameController), guiDebugOverlay.CopyAllToClipboard));
 
             UiRegionRectangleOverlay uiRegionRectangleOverlay = new(settings, core.AreaService);
 

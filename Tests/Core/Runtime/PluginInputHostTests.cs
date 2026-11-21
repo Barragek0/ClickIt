@@ -5,6 +5,20 @@ namespace ClickIt.Tests.Core.Runtime
     public class PluginInputHostTests
     {
         [TestMethod]
+        [TestCategory("Regression")]
+        public void DumpHotkey_RequiresDebugAndFocusAndOnlyTriggersOnPress()
+        {
+            bool wasDown = false;
+            PluginInputHost.ShouldTriggerDumpHotkey(false, true, true, ref wasDown).Should().BeFalse();
+            PluginInputHost.ShouldTriggerDumpHotkey(true, false, true, ref wasDown).Should().BeFalse();
+            PluginInputHost.ShouldTriggerDumpHotkey(true, true, true, ref wasDown).Should().BeTrue();
+            PluginInputHost.ShouldTriggerDumpHotkey(true, true, true, ref wasDown).Should().BeFalse();
+            PluginInputHost.ShouldTriggerDumpHotkey(true, true, false, ref wasDown).Should().BeFalse();
+            PluginInputHost.ShouldTriggerDumpHotkey(true, true, true, ref wasDown).Should().BeTrue();
+            new ClickItSettings().DumpAllHotkey.Value.Key.Should().Be(Keys.Oem6);
+        }
+
+        [TestMethod]
         public void IsClickHotkeyPressed_ReturnsFalse_WhenInputHandlerMissing()
         {
             var plugin = new ClickIt();
