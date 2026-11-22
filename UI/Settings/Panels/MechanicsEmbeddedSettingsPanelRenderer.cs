@@ -69,7 +69,7 @@ namespace ClickIt.UI.Settings.Panels
                 SettingsUiRenderHelpers.DrawToggleNodeControl(
                     "Choose AutoAugury Recommendations##FatesAutoAugury",
                     _settings.ClickRecommendedFates,
-                    "Follow AutoAugury's recommended Fates while the click key is active.\nAt a Cauldron, select its recommended Fate. At the boss, place its recommended Fates in order and confirm.\nRequires AutoAugury with interface version 2, enabled and running.");
+                    "Follow AutoAugury's recommended Fates while the click key is active.\nAt a Cauldron, select its recommended Fate. At the boss, place its recommended Fates in order and confirm.\nRequires the AutoAugury plugin to be enabled, available via PluginUpdater.");
                 ImGui.EndDisabled();
 
                 if (!available)
