@@ -103,6 +103,9 @@ namespace ClickIt
         public ToggleNode CastFlameLinkOnAnimateGuardian { get; set; } = new ToggleNode(false);
 
         [IgnoreMenu]
+        public ToggleNode CastFlameLinkOnSpectres { get; set; } = new ToggleNode(false);
+
+        [IgnoreMenu]
         [JsonIgnore]
         public CustomNode PathfindingSliderWidthEnd { get; internal set; } = new();
 

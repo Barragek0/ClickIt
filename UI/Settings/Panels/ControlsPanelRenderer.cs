@@ -78,6 +78,10 @@ namespace ClickIt.UI.Settings.Panels
                     "ControlsFlameLinkAnimateGuardian",
                     "Animate Guardian",
                     _settings.CastFlameLinkOnAnimateGuardian);
+                DrawSkillAutomationToggle(
+                    "ControlsFlameLinkSpectres",
+                    "Spectres",
+                    _settings.CastFlameLinkOnSpectres);
 
                 ImGui.TreePop();
             }

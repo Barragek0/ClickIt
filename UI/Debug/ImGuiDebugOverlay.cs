@@ -1087,13 +1087,14 @@ internal sealed class ImGuiDebugOverlay(
             return;
         }
 
-        DrawLiteralWrapped($"Settings: Mercenaries={BoolStr(data.CastOnMercenaries)} Animate Guardian={BoolStr(data.CastOnAnimateGuardian)}");
+        DrawLiteralWrapped($"Settings: Mercenaries={BoolStr(data.CastOnMercenaries)} Animate Guardian={BoolStr(data.CastOnAnimateGuardian)} Spectres={BoolStr(data.CastOnSpectres)}");
         DrawLiteralColored(data.AutomationAllowed ? CGreen : CMuted, $"State: {data.Status}");
         DataRows(
         [
             ("Input Safety", data.AutomationAllowed ? "Allowed" : "Waiting", data.AutomationAllowed ? CGreen : CWarn),
             ("Tracked Mercenaries", data.MercenaryCount.ToString(), CWhite),
             ("Tracked Animate Guardians", data.AnimateGuardianCount.ToString(), CWhite),
+            ("Tracked Spectres", data.SpectreCount.ToString(), CWhite),
             ("Targets With Cast Attempts", data.TargetsWithCastAttempts.ToString(), CWhite),
             ("Target ID", data.TargetEntityId > 0 ? data.TargetEntityId.ToString() : "<none>", CInfo),
             ("Target Buff", data.TargetBuffState.ToString(), data.TargetBuffState == FlameLinkTargetBuffState.Missing ? CWarn : CWhite),
@@ -2213,10 +2214,10 @@ internal sealed class ImGuiDebugOverlay(
         sb.AppendLine("--- Skill Automation ---");
         SkillAutomationTelemetrySnapshot data = (_lastSnapshot ?? DebugTelemetrySnapshot.Empty).SkillAutomation;
         sb.AppendLine($"  Service Available: {data.ServiceAvailable}");
-        sb.AppendLine($"  Settings: castOnMercenaries={data.CastOnMercenaries} castOnAnimateGuardian={data.CastOnAnimateGuardian}");
+        sb.AppendLine($"  Settings: castOnMercenaries={data.CastOnMercenaries} castOnAnimateGuardian={data.CastOnAnimateGuardian} castOnSpectres={data.CastOnSpectres}");
         sb.AppendLine($"  Automation Allowed: {data.AutomationAllowed}");
         sb.AppendLine($"  Status: {data.Status}");
-        sb.AppendLine($"  Tracked Targets: mercenaries={data.MercenaryCount} animateGuardians={data.AnimateGuardianCount}");
+        sb.AppendLine($"  Tracked Targets: mercenaries={data.MercenaryCount} animateGuardians={data.AnimateGuardianCount} spectres={data.SpectreCount}");
         sb.AppendLine($"  Cast Tracking: targetsWithAttemptHistory={data.TargetsWithCastAttempts}");
         sb.AppendLine($"  Target: id={(data.TargetEntityId > 0 ? data.TargetEntityId.ToString() : "<none>")} path={(string.IsNullOrWhiteSpace(data.TargetPath) ? "<none>" : data.TargetPath)} buff={data.TargetBuffState} attempts={data.TargetCastAttempts}");
         sb.AppendLine($"  Skill Binding: {(string.IsNullOrWhiteSpace(data.SkillBinding) ? "<unresolved>" : data.SkillBinding)}");

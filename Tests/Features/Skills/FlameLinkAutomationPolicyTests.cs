@@ -11,6 +11,7 @@ public sealed class FlameLinkAutomationPolicyTests
 
         settings.CastFlameLinkOnMercenaries.Value.Should().BeFalse();
         settings.CastFlameLinkOnAnimateGuardian.Value.Should().BeFalse();
+        settings.CastFlameLinkOnSpectres.Value.Should().BeFalse();
     }
 
     [TestMethod]
@@ -129,5 +130,63 @@ public sealed class FlameLinkAutomationPolicyTests
             candidate => ReferenceEquals(candidate, localMercenary));
 
         ReferenceEquals(target, localMercenary).Should().BeTrue();
+    }
+
+    [TestMethod]
+    [TestCategory("Scenario")]
+    public void SelectNextMissingTarget_ReturnsSpectre_WhenOnlySpectresAreEnabled()
+    {
+        Entity spectre = EntityProbeFactory.Create(path: "spectre");
+
+        Entity? target = FlameLinkAutomationPolicy.SelectNextMissingTarget(
+            [],
+            [],
+            castOnMercenaries: false,
+            castOnAnimateGuardian: false,
+            _ => FlameLinkTargetBuffState.Missing,
+            _ => true,
+            [spectre],
+            castOnSpectres: true);
+
+        ReferenceEquals(target, spectre).Should().BeTrue();
+    }
+
+    [TestMethod]
+    [TestCategory("Boundary")]
+    public void SelectNextMissingTarget_IgnoresSpectres_WhenTheSpectreOptionIsOff()
+    {
+        Entity spectre = EntityProbeFactory.Create(path: "spectre");
+
+        Entity? target = FlameLinkAutomationPolicy.SelectNextMissingTarget(
+            [],
+            [],
+            castOnMercenaries: false,
+            castOnAnimateGuardian: false,
+            _ => FlameLinkTargetBuffState.Missing,
+            _ => true,
+            [spectre],
+            castOnSpectres: false);
+
+        target.Should().BeNull();
+    }
+
+    [TestMethod]
+    [TestCategory("Boundary")]
+    public void SelectNextMissingTarget_PrefersMercenariesAndGuardians_OverSpectres()
+    {
+        Entity mercenary = EntityProbeFactory.Create(path: "mercenary");
+        Entity spectre = EntityProbeFactory.Create(path: "spectre");
+
+        Entity? target = FlameLinkAutomationPolicy.SelectNextMissingTarget(
+            [mercenary],
+            [],
+            castOnMercenaries: true,
+            castOnAnimateGuardian: false,
+            _ => FlameLinkTargetBuffState.Missing,
+            _ => true,
+            [spectre],
+            castOnSpectres: true);
+
+        ReferenceEquals(target, mercenary).Should().BeTrue();
     }
 }

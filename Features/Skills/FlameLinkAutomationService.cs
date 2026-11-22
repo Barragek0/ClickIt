@@ -15,6 +15,7 @@ internal sealed class FlameLinkAutomationService(
     private readonly Action<string> _logMessage = logMessage ?? throw new ArgumentNullException(nameof(logMessage));
     private readonly List<Entity> _mercenarySnapshot = [];
     private readonly List<Entity> _animateGuardianSnapshot = [];
+    private readonly List<Entity> _spectreSnapshot = [];
     private readonly HashSet<long> _locallyOwnedCompanionAddresses = [];
     private readonly Dictionary<long, int> _castAttemptsByEntityId = [];
     private SkillAutomationTelemetrySnapshot _debugSnapshot = SkillAutomationTelemetrySnapshot.Empty;
@@ -26,11 +27,13 @@ internal sealed class FlameLinkAutomationService(
     {
         bool castOnMercenaries = _settings.CastFlameLinkOnMercenaries?.Value == true;
         bool castOnAnimateGuardian = _settings.CastFlameLinkOnAnimateGuardian?.Value == true;
+        bool castOnSpectres = _settings.CastFlameLinkOnSpectres?.Value == true;
         SkillAutomationTelemetrySnapshot debug = GetDebugSnapshot() with
         {
             ServiceAvailable = true,
             CastOnMercenaries = castOnMercenaries,
             CastOnAnimateGuardian = castOnAnimateGuardian,
+            CastOnSpectres = castOnSpectres,
             AutomationAllowed = false,
             Status = "Checking settings",
             SkillBinding = string.Empty,
@@ -39,7 +42,7 @@ internal sealed class FlameLinkAutomationService(
             TargetsWithCastAttempts = _castAttemptsByEntityId.Count
         };
 
-        if (!castOnMercenaries && !castOnAnimateGuardian)
+        if (!castOnMercenaries && !castOnAnimateGuardian && !castOnSpectres)
         {
             PublishDebugSnapshot(debug with { Status = "Disabled in settings" });
             return;
@@ -65,7 +68,8 @@ internal sealed class FlameLinkAutomationService(
         EntityEventHub hub = EntityEventHub.Instance;
         hub.EnsureSubscribed(_gameController);
         if ((!castOnMercenaries || hub.Mercenaries.Count == 0)
-            && (!castOnAnimateGuardian || hub.AnimateGuardians.Count == 0))
+            && (!castOnAnimateGuardian || hub.AnimateGuardians.Count == 0)
+            && (!castOnSpectres || hub.Spectres.Count == 0))
         {
             _castAttemptsByEntityId.Clear();
             // EntityEventHub rate-limits this shared retained-cache reseed to once every two seconds.
@@ -80,6 +84,10 @@ internal sealed class FlameLinkAutomationService(
             hub.AnimateGuardians.CopyTo(_animateGuardianSnapshot);
         else
             _animateGuardianSnapshot.Clear();
+        if (castOnSpectres)
+            hub.Spectres.CopyTo(_spectreSnapshot);
+        else
+            _spectreSnapshot.Clear();
 
         if (!TryRefreshLocallyOwnedCompanionAddresses())
         {
@@ -91,6 +99,7 @@ internal sealed class FlameLinkAutomationService(
         {
             MercenaryCount = CountLocallyOwnedTargets(_mercenarySnapshot),
             AnimateGuardianCount = CountLocallyOwnedTargets(_animateGuardianSnapshot),
+            SpectreCount = CountLocallyOwnedTargets(_spectreSnapshot),
             TargetsWithCastAttempts = _castAttemptsByEntityId.Count
         };
 
@@ -100,7 +109,9 @@ internal sealed class FlameLinkAutomationService(
             castOnMercenaries,
             castOnAnimateGuardian,
             TargetBuffReader,
-            IsLocallyOwnedCompanion);
+            IsLocallyOwnedCompanion,
+            _spectreSnapshot,
+            castOnSpectres);
         if (target == null)
         {
             PublishDebugSnapshot(debug with

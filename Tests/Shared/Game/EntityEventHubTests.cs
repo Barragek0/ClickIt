@@ -127,6 +127,21 @@ namespace ClickIt.Tests.Shared.Game
         }
 
         [TestMethod]
+        [TestCategory("Scenario")]
+        public void Reseed_ClassifiesSpectres_IntoSpectres()
+        {
+            Entity spectre = EntityProbeFactory.Create(path: "Metadata/LeagueAzmeri/SpecialCorpses/CorpseWraith");
+            Entity unrelated = EntityProbeFactory.Create(path: "Metadata/Monsters/Test");
+            GameController gc = ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(spectre, unrelated);
+
+            EntityEventHub.Instance.EnsureSubscribed(gc);
+
+            EntityEventHub.Instance.Spectres.Snapshot().Should().ContainSingle().Which.Should().BeSameAs(spectre);
+            EntityEventHub.Instance.AnimateGuardians.Count.Should().Be(0);
+            EntityEventHub.Instance.Mercenaries.Count.Should().Be(0);
+        }
+
+        [TestMethod]
         public void Reseed_IgnoresUnrelatedEntities()
         {
             Entity monster = EntityProbeFactory.Create(path: "Metadata/Monsters/Test");

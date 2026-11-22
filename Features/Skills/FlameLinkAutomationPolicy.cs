@@ -41,7 +41,9 @@ internal static class FlameLinkAutomationPolicy
         bool castOnMercenaries,
         bool castOnAnimateGuardian,
         Func<Entity, FlameLinkTargetBuffState> readBuffState,
-        Func<Entity, bool> isOwnedTarget)
+        Func<Entity, bool> isOwnedTarget,
+        IReadOnlyList<Entity>? spectres = null,
+        bool castOnSpectres = false)
     {
         ArgumentNullException.ThrowIfNull(mercenaries);
         ArgumentNullException.ThrowIfNull(animateGuardians);
@@ -55,8 +57,15 @@ internal static class FlameLinkAutomationPolicy
                 return target;
         }
 
-        return castOnAnimateGuardian
-            ? FindMissingTarget(animateGuardians, readBuffState, isOwnedTarget)
+        if (castOnAnimateGuardian)
+        {
+            Entity? target = FindMissingTarget(animateGuardians, readBuffState, isOwnedTarget);
+            if (target != null)
+                return target;
+        }
+
+        return castOnSpectres && spectres != null
+            ? FindMissingTarget(spectres, readBuffState, isOwnedTarget)
             : null;
     }
 

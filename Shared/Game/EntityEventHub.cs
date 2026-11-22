@@ -14,6 +14,7 @@ internal sealed class EntityEventHub
     private readonly Dictionary<long, Entity> _lostShipment = [];
     private readonly Dictionary<long, Entity> _mercenaries = [];
     private readonly Dictionary<long, Entity> _animateGuardians = [];
+    private readonly Dictionary<long, Entity> _spectres = [];
     private GameController? _subscribedController;
     private bool _subscribed;
     private long _lastReseedMs;
@@ -30,6 +31,7 @@ internal sealed class EntityEventHub
     internal TrackedEntityView LostShipment { get; }
     internal TrackedEntityView Mercenaries { get; }
     internal TrackedEntityView AnimateGuardians { get; }
+    internal TrackedEntityView Spectres { get; }
 
     internal EntityEventHub()
     {
@@ -41,6 +43,7 @@ internal sealed class EntityEventHub
         LostShipment = new TrackedEntityView(_lock, _lostShipment);
         Mercenaries = new TrackedEntityView(_lock, _mercenaries);
         AnimateGuardians = new TrackedEntityView(_lock, _animateGuardians);
+        Spectres = new TrackedEntityView(_lock, _spectres);
     }
 
     // Returns the accumulated entity-event cost since the last poll and resets the accumulator.
@@ -101,6 +104,7 @@ internal sealed class EntityEventHub
             _lostShipment.Clear();
             _mercenaries.Clear();
             _animateGuardians.Clear();
+            _spectres.Clear();
         }
         Unsubscribe(gc);
     }
@@ -136,6 +140,7 @@ internal sealed class EntityEventHub
             _lostShipment.Clear();
             _mercenaries.Clear();
             _animateGuardians.Clear();
+            _spectres.Clear();
         }
     }
 
@@ -164,6 +169,7 @@ internal sealed class EntityEventHub
             _lostShipment.Clear();
             _mercenaries.Clear();
             _animateGuardians.Clear();
+            _spectres.Clear();
         }
         GameController? gc = _subscribedController;
         if (gc == null)
@@ -242,6 +248,7 @@ internal sealed class EntityEventHub
             _lostShipment.Clear();
             _mercenaries.Clear();
             _animateGuardians.Clear();
+            _spectres.Clear();
         }
     }
 
@@ -258,6 +265,7 @@ internal sealed class EntityEventHub
         bool isLostShipment = IsLostShipmentPath(path);
         bool isMercenary = IsMercenaryPath(path);
         bool isAnimateGuardian = IsAnimateGuardianPath(path);
+        bool isSpectre = IsSpectrePath(path);
         bool isOffscreen = IsOffscreenStructurePath(path) || isShrine;
         if (!isOffscreen)
         {
@@ -275,6 +283,7 @@ internal sealed class EntityEventHub
             if (isLostShipment) _lostShipment[id] = entity;
             if (isMercenary) _mercenaries[id] = entity;
             if (isAnimateGuardian) _animateGuardians[id] = entity;
+            if (isSpectre) _spectres[id] = entity;
         }
     }
 
@@ -319,6 +328,7 @@ internal sealed class EntityEventHub
     private const string LostShipmentLoosePathMarker = "LostShipment";
     private const string MercenaryPathMarker = "Monsters/Mercenaries/Mercenary";
     private const string AnimateGuardianPathMarker = "Monsters/AnimatedItem/AnimatedArmour";
+    private const string SpectrePathMarker = "LeagueAzmeri/SpecialCorpses";
 
     private static bool IsBlightPath(string path)
         => path.Contains(BlightObjectsMetadata, StringComparison.OrdinalIgnoreCase)
@@ -338,6 +348,9 @@ internal sealed class EntityEventHub
 
     internal static bool IsAnimateGuardianPath(string path)
         => path.Contains(AnimateGuardianPathMarker, StringComparison.OrdinalIgnoreCase);
+
+    internal static bool IsSpectrePath(string path)
+        => path.Contains(SpectrePathMarker, StringComparison.OrdinalIgnoreCase);
 
     // Current-league shrines (e.g. Shrouded Shrine) carry the Shrine component but a path without "DarkShrine"; the component read is gated on a path hint to keep the event burst one read per entity.
     internal static bool IsShrineEntity(string path, Entity entity)
