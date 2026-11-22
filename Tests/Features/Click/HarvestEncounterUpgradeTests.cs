@@ -110,13 +110,58 @@ public class HarvestEncounterUpgradeTests
     {
         NumVector2 baseline = new(1500f, 900f);
 
-        // Standing still, and sub-threshold drift, both still allow the reroll icon click.
+        // Only very small position noise is tolerated during the final click validation.
         HarvestEncounterUpgrade.IsPlayerStillAt(baseline, baseline).Should().BeTrue();
-        HarvestEncounterUpgrade.IsPlayerStillAt(new NumVector2(1500.2f, 900.1f), baseline).Should().BeTrue();
+        HarvestEncounterUpgrade.IsPlayerStillAt(new NumVector2(1500.02f, 900.01f), baseline).Should().BeTrue();
 
-        // A walk of even a fifth of a grid cell moves the icon out from under the cursor onto the tree.
+        HarvestEncounterUpgrade.IsPlayerStillAt(new NumVector2(1500.1f, 900f), baseline).Should().BeFalse();
         HarvestEncounterUpgrade.IsPlayerStillAt(new NumVector2(1500.5f, 900f), baseline).Should().BeFalse();
         HarvestEncounterUpgrade.IsPlayerStillAt(new NumVector2(1500f, 900.5f), baseline).Should().BeFalse();
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void PlayerStationaryGate_RequiresStableSamplesBeforeCrafting()
+    {
+        NumVector2 position = new(1500f, 900f);
+        HarvestEncounterUpgrade.PlayerStationaryObservation state = default;
+
+        state = HarvestEncounterUpgrade.ObservePlayerPosition(state, position, 1_000);
+        HarvestEncounterUpgrade.IsPlayerStationary(state, 1_000).Should().BeFalse();
+        state = HarvestEncounterUpgrade.ObservePlayerPosition(state, position, 1_060);
+        HarvestEncounterUpgrade.IsPlayerStationary(state, 1_060).Should().BeFalse();
+        state = HarvestEncounterUpgrade.ObservePlayerPosition(state, position, 1_120);
+        HarvestEncounterUpgrade.IsPlayerStationary(state, 1_120).Should().BeTrue();
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void PlayerStationaryGate_RestartsWhenMovementOrAStaleSampleIsObserved()
+    {
+        NumVector2 position = new(1500f, 900f);
+        HarvestEncounterUpgrade.PlayerStationaryObservation state =
+            new(position, 1_000, 1_060);
+
+        state = HarvestEncounterUpgrade.ObservePlayerPosition(state, new NumVector2(1500.1f, 900f), 1_080);
+        state.Since.Should().Be(1_080);
+        HarvestEncounterUpgrade.IsPlayerStationary(state, 1_200).Should().BeTrue();
+
+        state = HarvestEncounterUpgrade.ObservePlayerPosition(state, position, 1_400);
+        state.Since.Should().Be(1_400);
+        HarvestEncounterUpgrade.IsPlayerStationary(state, 1_400).Should().BeFalse();
+    }
+
+    [TestMethod]
+    [TestCategory("Boundary")]
+    public void PlayerStationaryGate_ResetsWhenPositionCannotBeRead()
+    {
+        HarvestEncounterUpgrade.PlayerStationaryObservation state =
+            new(new NumVector2(1500f, 900f), 1_000, 1_060);
+
+        state = HarvestEncounterUpgrade.ObservePlayerPosition(state, null, 1_080);
+
+        state.Should().Be(default(HarvestEncounterUpgrade.PlayerStationaryObservation));
+        HarvestEncounterUpgrade.IsPlayerStationary(state, 2_000).Should().BeFalse();
     }
 
     [TestMethod]

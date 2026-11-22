@@ -41,6 +41,27 @@ namespace ClickIt.Features.Click.Interaction
                 out SystemDrawingPoint before, validateSettledHover))
                 return false;
 
+            if (validateSettledHover != null)
+            {
+                try
+                {
+                    var state = gameController?.IngameState;
+                    if (state == null || !validateSettledHover(state.UIHoverElement)
+                        || ShouldSkipClickWhenNotLazyAndHotkeyInactive(
+                            _settings?.LazyMode?.Value == true, _isClickHotkeyActive(), allowWhenHotkeyInactive))
+                    {
+                        RestoreCursorIfLazyMode(before, gameController);
+                        swTotal.Stop();
+                        return false;
+                    }
+                }
+                catch
+                {
+                    RestoreCursorIfLazyMode(before, gameController);
+                    swTotal.Stop();
+                    return false;
+                }
+            }
 
             if (_settings?.LeftHanded?.Value == true)
                 Mouse.RightClick();

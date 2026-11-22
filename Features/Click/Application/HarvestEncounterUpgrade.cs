@@ -6,13 +6,11 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
     private const int ModifierUpdateTimeoutMs = 200;
     private const int InventoryRetryDelayMs = 250;
     private const int WarningHoldMs = 3_000;
+    private const int PlayerStationaryDurationMs = 120;
+    private const int PlayerStationaryMaxSampleGapMs = 250;
 
-    /// <summary>
-    /// How far the player's grid position may drift between frames and still count as standing still, in grid units.
-    /// Deliberately small: slow drift moves the camera and invalidates the screen rectangle the reroll icon was resolved
-    /// from, which is how a reroll click lands on the tree itself.
-    /// </summary>
-    private const float PlayerStillThreshold = 0.25f;
+    /// <summary>Maximum grid movement accepted while validating a crafting click.</summary>
+    private const float PlayerStillThreshold = 0.05f;
 
     private readonly object _sync = new();
     private readonly Dictionary<long, PendingUpgrade> _pending = [];
@@ -20,9 +18,11 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
     private long _areaHash = long.MinValue;
     private long _inventoryRetryAt;
     private long _nextModifierDiagnosticAt;
+    private PlayerStationaryObservation _playerStationaryObservation;
     private CurrencyWarning? _warning;
 
     internal enum UpgradeStep { Wait, Open, Identify, Scour, Alchemy, Chaos }
+    internal readonly record struct PlayerStationaryObservation(NumVector2? Anchor, long Since, long LastSampleAt);
 
     private readonly record struct PendingUpgrade(UpgradeStep LastClick, long CheckAfter, int? WisdomBefore, bool StartedNormal);
     private readonly record struct PendingReroll(UpgradeStep LastClick, long CheckAfter, string? PreviousText, int? CurrencyBefore);
@@ -57,27 +57,36 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
         readyToOpenUpgradedTree = false;
         needsApproach = false;
         if (!settings.ClickHarvest.Value)
+        {
+            _playerStationaryObservation = default;
             return true;
+        }
         if (DynamicAccess.TryGetLabelItemOnGround(label, out Entity? harvestItem)
             && DynamicAccess.TryReadString(harvestItem, DynamicAccessProfiles.Path, out string harvestPath)
             && MechanicClassifier.IsHarvestBossSeedPath(harvestPath))
+        {
+            _playerStationaryObservation = default;
             return !settings.HarvestBossSeeds.Value;
+        }
         if (!settings.HarvestRerollTargetMods.Value && _rerolls.Count != 0)
             _rerolls.Clear();
         if (!settings.HarvestIdentifyScourAlchMagic.Value && !settings.HarvestAlchNormal.Value && !settings.HarvestRerollTargetMods.Value)
         {
+            _playerStationaryObservation = default;
             Volatile.Write(ref _warning, null);
             return false;
         }
 
         if (!AreaUiSnapshotReader.TryReadCurrentAreaHash(gameController, out long areaHash))
         {
+            _playerStationaryObservation = default;
             interaction.LogLabelAction(() => "[Harvest] Waiting for the current area hash");
             return true;
         }
 
         if (!TryReadTree(label, out Entity? tree, out MonsterRarity rarity))
         {
+            _playerStationaryObservation = default;
             interaction.LogLabelAction(() => $"[Harvest] Cannot read a valid tree and rarity: {ClickLabelSelectionMath.DescribeLabel(label)}");
             return true;
         }
@@ -88,6 +97,7 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
             _pending.Clear();
             _rerolls.Clear();
             _inventoryRetryAt = 0;
+            _playerStationaryObservation = default;
             Volatile.Write(ref _warning, null);
         }
 
@@ -156,6 +166,9 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
         }
 
         Volatile.Write(ref _warning, null);
+        if (!IsPlayerStationaryForCrafting(gameController))
+            return true;
+
         ClickLabelInteractionService.LabelActionResult result = SendAction(step);
         needsApproach = result == ClickLabelInteractionService.LabelActionResult.Blocked;
         if (result == ClickLabelInteractionService.LabelActionResult.Clicked)
@@ -288,8 +301,9 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
         }
         Volatile.Write(ref _warning, null);
 
-        // Sample where the character stands before the dispatcher resolves the icon, then require it to still be there
-        // when the click is actually sent. A walk that starts mid-resolve shifts the icon off the cursor onto the tree.
+        if (!IsPlayerStationaryForCrafting(gameController))
+            return true;
+
         NumVector2? playerBaseline = ReadPlayerGridPos(gameController);
         if (playerBaseline == null)
             return true;
@@ -342,6 +356,34 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
             return null;
         }
     }
+
+    private bool IsPlayerStationaryForCrafting(GameController gameController)
+    {
+        long now = Environment.TickCount64;
+        _playerStationaryObservation = ObservePlayerPosition(
+            _playerStationaryObservation, ReadPlayerGridPos(gameController), now);
+        return IsPlayerStationary(_playerStationaryObservation, now);
+    }
+
+    internal static PlayerStationaryObservation ObservePlayerPosition(
+        PlayerStationaryObservation previous, NumVector2? current, long now)
+    {
+        if (current is not { } position
+            || previous.Anchor is not { } anchor
+            || now < previous.LastSampleAt
+            || now - previous.LastSampleAt > PlayerStationaryMaxSampleGapMs
+            || !IsPlayerStillAt(position, anchor))
+            return current is { } next ? new PlayerStationaryObservation(next, now, now) : default;
+
+        return previous with { LastSampleAt = now };
+    }
+
+    internal static bool IsPlayerStationary(PlayerStationaryObservation observation, long now)
+        => observation.Anchor != null
+            && now >= observation.Since
+            && now - observation.Since >= PlayerStationaryDurationMs
+            && now >= observation.LastSampleAt
+            && now - observation.LastSampleAt <= PlayerStationaryMaxSampleGapMs;
 
     /// <summary>
     /// Whether the player still stands where <paramref name="baseline"/> was sampled, within
