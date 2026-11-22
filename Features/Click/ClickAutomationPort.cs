@@ -19,6 +19,7 @@ namespace ClickIt.Features.Click
         TimeCache<List<LabelOnGround>> CachedLabels,
         PerformanceMonitor PerformanceMonitor,
         Action<string, int>? FreezeDebugTelemetrySnapshot,
+        PluginManager? PluginManager = null,
         InventoryInteractionPolicy? Inventory = null);
 
     public sealed partial class ClickAutomationPort
@@ -49,6 +50,7 @@ namespace ClickIt.Features.Click
         private readonly ChestLootSettlementState _chestLootSettlementState = new();
         private readonly ClickRuntimeState _runtimeState = new();
         private readonly MechanicPriorityContextProvider _mechanicPriorityContextProvider;
+        private readonly AutoAuguryFatesClickService _autoAuguryFatesClickService;
 
         internal Func<BlightBuildAction>? TryProgressBlightBuilding { get; set; }
         internal Func<Entity?>? GetBlightPathfindTarget { get; set; }
@@ -100,6 +102,11 @@ namespace ClickIt.Features.Click
             _interactionExecutor = new InteractionExecutor(settings, performanceMonitor, inputHandler.IsClickHotkeyActiveForCurrentInputState, errorHandler);
             LockedInteractionDispatcher = new LockedInteractionDispatcher(_interactionExecutor);
             _mechanicPriorityContextProvider = new MechanicPriorityContextProvider(settings, new MechanicPrioritySnapshotService());
+            _autoAuguryFatesClickService = new AutoAuguryFatesClickService(settings, dependencies.PluginManager,
+                _gameController, ClickAutomationSupport.IsClickableInEitherSpace,
+                (position, element, validateSettledHover) => LockedInteractionDispatcher.PerformClick(
+                    position, element, _gameController, validateSettledHover: validateSettledHover),
+                performanceMonitor.RecordClickInterval, ClickAutomationSupport.DebugLog);
         }
 
         internal void CancelOffscreenPathingState()
@@ -134,8 +141,14 @@ namespace ClickIt.Features.Click
 
         internal IEnumerator ProcessRegularClick()
         {
+            if (_autoAuguryFatesClickService.TryHandlePanel())
+                yield break;
+
             yield return RegularClick.Run();
         }
+
+        internal bool IsAutoAuguryPluginAvailable()
+            => _autoAuguryFatesClickService.IsPluginAvailable;
 
         internal bool TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)
             => UltimatumAutomation.TryGetOptionPreview(out previews);

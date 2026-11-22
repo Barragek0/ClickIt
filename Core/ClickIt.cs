@@ -70,6 +70,8 @@ namespace ClickIt
         public override void DrawSettings()
         {
             ClickItSettings settings = EffectiveSettings;
+            settings.TransientState.RuntimeCache.AutoAuguryPluginAvailable =
+                State.Services.ClickAutomationPort?.IsAutoAuguryPluginAvailable() == true;
 
             if (ImGui.TreeNodeEx("Debug/Testing##ClickItDebugTesting", ImGuiTreeNodeFlags.DefaultOpen))
             {

@@ -2,6 +2,7 @@ namespace ClickIt.Core.Settings.Runtime
 {
     internal sealed class ClickItSettingsRuntimeCacheState
     {
+        internal bool AutoAuguryPluginAvailable { get; set; }
         internal string[] UltimatumPrioritySnapshot { get; set; } = [];
         internal string[] MechanicPrioritySnapshot { get; set; } = [];
         internal string[] MechanicIgnoreDistanceSnapshot { get; set; } = [];

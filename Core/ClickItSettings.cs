@@ -166,6 +166,8 @@ namespace ClickIt
         public ToggleNode ClickSentinel { get; set; } = new ToggleNode(true);
         [IgnoreMenu]
         public ToggleNode ClickFates { get; set; } = new ToggleNode(false);
+        [IgnoreMenu]
+        public ToggleNode ClickRecommendedFates { get; set; } = new ToggleNode(false);
         [Menu("Harvest", "Click Harvest encounter trees to start the encounter.", 14, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickHarvest { get; set; } = new ToggleNode(true);

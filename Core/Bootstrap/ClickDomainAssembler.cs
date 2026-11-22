@@ -12,7 +12,8 @@ namespace ClickIt.Core.Bootstrap
                 (point, _) => core.AreaService.PointIsInClickableArea(gameController, point),
                 (point, _) => core.AreaService.PointIsInClickableArea(gameController, point, forceBlockedUiRefresh: false),
                 core.LabelFilterPort.LabelSelectionService,
-                owner.State.FreezeDebugTelemetrySnapshot, core.InventoryInteractionPolicy);
+                owner.State.FreezeDebugTelemetrySnapshot,
+                owner.PluginManager);
 
         internal static ClickAutomationPort Assemble(
             ClickItSettings settings,
@@ -23,6 +24,7 @@ namespace ClickIt.Core.Bootstrap
             Func<Vector2, string, bool> forceRefreshPointIsInClickableArea,
             ILabelSelectionService labelSelectionService,
             Action<string, int>? freezeDebugTelemetrySnapshot,
+            PluginManager? pluginManager = null,
             InventoryInteractionPolicy? inventory = null)
         {
             LockManager.Instance = new LockManager(settings);
@@ -45,6 +47,7 @@ namespace ClickIt.Core.Bootstrap
                 core.CachedLabels,
                 core.PerformanceMonitor,
                 freezeDebugTelemetrySnapshot,
+                pluginManager,
                 inventory ?? core.InventoryInteractionPolicy))
             {
                 BlightChestDebug = core.BlightService.BlightChestDebug,
