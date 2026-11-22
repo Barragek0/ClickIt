@@ -146,10 +146,8 @@ namespace ClickIt.Features.Area
                 ? AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.MapPanel)
                 : RectangleF.Empty;
             _blockedState.XpBarBlockedRectangle = AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.XpBar);
-            _blockedState.ButtonsBlockedRectangle = AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.Buttons);
-            _blockedState.RitualBlockedRectangle = AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.Ritual);
-            _blockedState.SentinelBlockedRectangle = AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.Sentinel);
-            _blockedState.ExpeditionBlockedRectangle = AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.Expedition);
+            _blockedState.ButtonRectangles.Clear();
+            _blockedState.ButtonRectangles.AddRange(AreaBlockedRectangleCollectionResolver.ResolveButtonRectangles(gameController));
         }
 
         internal static (RectangleF fullScreen, RectangleF leftCombined, RectangleF rightCombined) ResolveMainUiRegions(RectangleF winRect)

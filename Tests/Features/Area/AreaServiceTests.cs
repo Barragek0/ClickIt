@@ -10,7 +10,7 @@ namespace ClickIt.Tests.Features.Area
             service.ApplyBlockedSnapshot(new AreaBlockedSnapshot
             {
                 FullScreenRectangle = new RectangleF(70, 90, 800, 600),
-                ButtonsBlockedRectangle = new RectangleF(190, 190, 20, 20)
+                ButtonRectangles = [new RectangleF(190, 190, 20, 20)]
             });
 
             service.IsClientRectangleClickable(null, new RectangleF(150, 150, 100, 100)).Should().BeFalse();
@@ -502,9 +502,8 @@ namespace ClickIt.Tests.Features.Area
                 ChatPanelBlockedRectangle = chatPanelBlockedRectangle ?? RectangleF.Empty,
                 MapPanelBlockedRectangle = mapPanelBlockedRectangle ?? RectangleF.Empty,
                 XpBarBlockedRectangle = xpBarBlockedRectangle ?? RectangleF.Empty,
-                ButtonsBlockedRectangle = buttonsBlockedRectangle ?? RectangleF.Empty,
-                RitualBlockedRectangle = ritualBlockedRectangle ?? RectangleF.Empty,
-                SentinelBlockedRectangle = sentinelBlockedRectangle ?? RectangleF.Empty,
+                ButtonRectangles = new[] { buttonsBlockedRectangle, ritualBlockedRectangle, sentinelBlockedRectangle }
+                    .Where(rect => rect.HasValue).Select(rect => rect!.Value).ToArray(),
                 BuffsAndDebuffsRectangles = buffsAndDebuffsRectangles ?? [],
                 QuestTrackerBlockedRectangles = questTrackerBlockedRectangles ?? []
             });

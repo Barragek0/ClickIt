@@ -5,10 +5,6 @@ namespace ClickIt.Features.Area
         ChatPanel,
         MapPanel,
         XpBar,
-        Buttons,
-        Ritual,
-        Sentinel,
-        Expedition,
     }
 
     internal static class AreaBlockedRectangleResolver
@@ -19,10 +15,6 @@ namespace ClickIt.Features.Area
             ("Chat", "ChatPanel", [1, 2, 2], false),
             ("Map", "Map", [2, 1], false),
             ("XP Bar", "GameUI", [0], false),
-            ("Buttons", "GameUI", [7, 17], true),
-            ("Ritual", "GameUI", [7, 18, 0], true),
-            ("Sentinel", "GameUI", [7, 18, 2, 0], false),
-            ("Expedition", "GameUI", [7, 18, 1], true),
         ];
 
         internal static RectangleF ResolveBlockedRectangle(GameController gameController, AreaBlockedRectangleKind kind)

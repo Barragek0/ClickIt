@@ -18,9 +18,6 @@ namespace ClickIt.UI.Debug
         private static readonly Vector4 MapColor = ToVec4(Color.Pink);
         private static readonly Vector4 XpBarColor = ToVec4(Color.Orange);
         private static readonly Vector4 ButtonsColor = ToVec4(Color.Cyan);
-        private static readonly Vector4 RitualColor = ToVec4(Color.LawnGreen);
-        private static readonly Vector4 SentinelColor = ToVec4(Color.LightCoral);
-        private static readonly Vector4 ExpeditionColor = ToVec4(Color.Gold);
         private static readonly Vector4 QuestTrackerColor = ToVec4(Color.MediumPurple);
 
         internal static bool IsEnabled(ClickItSettings settings)
@@ -44,10 +41,7 @@ namespace ClickIt.UI.Debug
             DrawRect(draw, _areaService.ChatPanelBlockedRectangle, ChatColor, AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.ChatPanel));
             DrawRect(draw, _areaService.MapPanelBlockedRectangle, MapColor, AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.MapPanel));
             DrawRect(draw, _areaService.XpBarBlockedRectangle, XpBarColor, AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.XpBar));
-            DrawRect(draw, _areaService.ButtonsBlockedRectangle, ButtonsColor, AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.Buttons));
-            DrawRect(draw, _areaService.RitualBlockedRectangle, RitualColor, AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.Ritual));
-            DrawRect(draw, _areaService.SentinelBlockedRectangle, SentinelColor, AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.Sentinel));
-            DrawRect(draw, _areaService.ExpeditionBlockedRectangle, ExpeditionColor, AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.Expedition));
+            DrawRects(draw, _areaService.ButtonRectangles, ButtonsColor, "Button");
 
             DrawRect(draw, _areaService.BuffsRectangle, BuffsColor, "Buffs");
             DrawRect(draw, _areaService.DebuffsRectangle, DebuffsColor, "Debuffs");

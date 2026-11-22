@@ -4,41 +4,41 @@ namespace ClickIt.Tests.Features.Area
     public class AreaBlockedRectangleResolversTests
     {
         [TestMethod]
+        [TestCategory("Regression")]
+        public void ButtonRectangles_CollectVisibleChildrenAcrossAllThreeContainers()
+        {
+            var root = new AreaUiNodeTraversalTests.FakeNode();
+            var first = EnsurePath(root, [7, 17, 0]);
+            first.ClientRect = new RectangleF(10, 20, 30, 40);
+            var second = EnsurePath(root, [7, 18, 0]);
+            second.ClientRect = new RectangleF(50, 20, 30, 40);
+            var hidden = EnsurePath(root, [7, 18, 1]);
+            hidden.ClientRect = new RectangleF(90, 20, 30, 40);
+            hidden.IsVisible = false;
+            var third = EnsurePath(root, [7, 19, 0]);
+            third.ClientRect = new RectangleF(130, 20, 30, 40);
+
+            AreaBlockedRectangleCollectionResolver.ResolveButtonRectanglesFromRoot(root)
+                .Should().Equal(first.ClientRect, second.ClientRect, third.ClientRect);
+            EnsurePath(root, [7, 19]).IsVisible = false;
+            AreaBlockedRectangleCollectionResolver.ResolveButtonRectanglesFromRoot(root)
+                .Should().Equal(first.ClientRect, second.ClientRect);
+        }
+
+        [TestMethod]
         public void RectangleResolvers_ReturnExpectedRectangles_FromObjectRoots()
         {
             RectangleF chatRect = new(10, 20, 30, 40);
             RectangleF mapRect = new(11, 21, 31, 41);
             RectangleF xpRect = new(12, 22, 32, 42);
-            RectangleF buttonsRect = new(13, 23, 33, 43);
-            RectangleF ritualRect = new(15, 25, 35, 45);
-            RectangleF sentinelRect = new(16, 26, 36, 46);
-            RectangleF expeditionRect = new(17, 27, 37, 47);
 
             AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreatePathRoot(chatRect, 1, 2, 2), AreaBlockedRectangleKind.ChatPanel).Should().Be(chatRect);
             AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreatePathRoot(mapRect, 2, 1), AreaBlockedRectangleKind.MapPanel).Should().Be(mapRect);
             AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreatePathRoot(xpRect, 0), AreaBlockedRectangleKind.XpBar).Should().Be(xpRect);
-            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreateVisiblePathRoot(buttonsRect, 7, 17), AreaBlockedRectangleKind.Buttons).Should().Be(buttonsRect);
-            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreateVisiblePathRoot(ritualRect, 7, 18, 0), AreaBlockedRectangleKind.Ritual).Should().Be(ritualRect);
-            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreatePathRoot(sentinelRect, 7, 18, 2, 0), AreaBlockedRectangleKind.Sentinel).Should().Be(sentinelRect);
-            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreateVisiblePathRoot(expeditionRect, 7, 18, 1), AreaBlockedRectangleKind.Expedition).Should().Be(expeditionRect);
 
             AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.ChatPanel).Should().Be("Chat");
             AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.MapPanel).Should().Be("Map");
             AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.XpBar).Should().Be("XP Bar");
-            AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.Buttons).Should().Be("Buttons");
-            AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.Ritual).Should().Be("Ritual");
-            AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.Sentinel).Should().Be("Sentinel");
-            AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.Expedition).Should().Be("Expedition");
-        }
-
-        [TestMethod]
-        public void VisibleRectangleResolvers_ReturnEmpty_WhenLeafIsHidden()
-        {
-            var hiddenRoot = CreatePathRoot(new RectangleF(1, 2, 10, 10), 7, 18);
-            EnsurePath(hiddenRoot, [7, 18]).IsVisible = false;
-
-            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(hiddenRoot, AreaBlockedRectangleKind.Buttons).Should().Be(RectangleF.Empty);
-            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(null, AreaBlockedRectangleKind.Buttons).Should().Be(RectangleF.Empty);
         }
 
         [TestMethod]
@@ -113,45 +113,6 @@ namespace ClickIt.Tests.Features.Area
         {
             AreaBlockedRectangleCollectionResolver.ResolveQuestTrackerBlockedRectanglesFromRoot(new AreaUiNodeTraversalTests.FakeNode())
                 .Should().BeEmpty();
-        }
-
-        [TestMethod]
-        [TestCategory("Boundary")]
-        public void ButtonsResolver_ReadsChild17_NotTheFormerChild18()
-        {
-            var root = CreateVisiblePathRoot(new RectangleF(7, 17, 10, 10), 7, 17);
-            AreaUiNodeTraversalTests.FakeNode stale = EnsureIndexedChild(EnsurePath(root, [7]), 18);
-            stale.ClientRect = new RectangleF(99, 99, 10, 10);
-            stale.IsValid = true;
-            stale.IsVisible = true;
-
-            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(root, AreaBlockedRectangleKind.Buttons)
-                .Should().Be(new RectangleF(7, 17, 10, 10));
-        }
-
-        [TestMethod]
-        [TestCategory("Boundary")]
-        public void ExpeditionResolver_ReadsNestedPath_NotARootLevel18_1()
-        {
-            var root = CreateVisiblePathRoot(new RectangleF(7, 18, 10, 10), 7, 18, 1);
-            AreaUiNodeTraversalTests.FakeNode staleRootPath = EnsurePath(root, [18, 1]);
-            staleRootPath.ClientRect = new RectangleF(99, 99, 10, 10);
-            staleRootPath.IsValid = true;
-            staleRootPath.IsVisible = true;
-
-            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(root, AreaBlockedRectangleKind.Expedition)
-                .Should().Be(new RectangleF(7, 18, 10, 10));
-        }
-
-        [TestMethod]
-        [TestCategory("Boundary")]
-        public void ExpeditionResolver_ReturnsEmpty_WhenLeafIsHidden()
-        {
-            var hiddenRoot = CreatePathRoot(new RectangleF(1, 2, 10, 10), 7, 18, 1);
-            EnsurePath(hiddenRoot, [7, 18, 1]).IsVisible = false;
-
-            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(hiddenRoot, AreaBlockedRectangleKind.Expedition)
-                .Should().Be(RectangleF.Empty);
         }
 
         private static AreaUiNodeTraversalTests.FakeNode CreatePathRoot(RectangleF rect, params int[] path)

@@ -18,11 +18,8 @@ namespace ClickIt.Features.Area.Runtime
         public RectangleF ChatPanelBlockedRectangle { get; set; }
         public RectangleF MapPanelBlockedRectangle { get; set; }
         public RectangleF XpBarBlockedRectangle { get; set; }
-        public RectangleF ButtonsBlockedRectangle { get; set; }
-        public RectangleF RitualBlockedRectangle { get; set; }
-        public RectangleF SentinelBlockedRectangle { get; set; }
-        public RectangleF ExpeditionBlockedRectangle { get; set; }
         public List<RectangleF> QuestTrackerBlockedRectangles { get; } = [];
+        public List<RectangleF> ButtonRectangles { get; } = [];
         public long LastQuestTrackerRectanglesSuccessTimestampMs { get; set; }
         public long LastBlockedUiRectanglesRefreshTimestampMs { get; set; }
         public long LastBuffsAndDebuffsRectanglesRefreshTimestampMs { get; set; }
@@ -49,12 +46,9 @@ namespace ClickIt.Features.Area.Runtime
                 ChatPanelBlockedRectangle = ChatPanelBlockedRectangle,
                 MapPanelBlockedRectangle = MapPanelBlockedRectangle,
                 XpBarBlockedRectangle = XpBarBlockedRectangle,
-                ButtonsBlockedRectangle = ButtonsBlockedRectangle,
-                RitualBlockedRectangle = RitualBlockedRectangle,
-                SentinelBlockedRectangle = SentinelBlockedRectangle,
-                ExpeditionBlockedRectangle = ExpeditionBlockedRectangle,
                 BuffsAndDebuffsRectangles = [.. BuffsAndDebuffsRectangles],
-                QuestTrackerBlockedRectangles = [.. QuestTrackerBlockedRectangles]
+                QuestTrackerBlockedRectangles = [.. QuestTrackerBlockedRectangles],
+                ButtonRectangles = [.. ButtonRectangles]
             };
         }
 
@@ -77,16 +71,14 @@ namespace ClickIt.Features.Area.Runtime
             ChatPanelBlockedRectangle = snapshot.ChatPanelBlockedRectangle;
             MapPanelBlockedRectangle = snapshot.MapPanelBlockedRectangle;
             XpBarBlockedRectangle = snapshot.XpBarBlockedRectangle;
-            ButtonsBlockedRectangle = snapshot.ButtonsBlockedRectangle;
-            RitualBlockedRectangle = snapshot.RitualBlockedRectangle;
-            SentinelBlockedRectangle = snapshot.SentinelBlockedRectangle;
-            ExpeditionBlockedRectangle = snapshot.ExpeditionBlockedRectangle;
 
             BuffsAndDebuffsRectangles.Clear();
             BuffsAndDebuffsRectangles.AddRange(snapshot.BuffsAndDebuffsRectangles);
 
             QuestTrackerBlockedRectangles.Clear();
             QuestTrackerBlockedRectangles.AddRange(snapshot.QuestTrackerBlockedRectangles);
+            ButtonRectangles.Clear();
+            ButtonRectangles.AddRange(snapshot.ButtonRectangles);
         }
     }
 }

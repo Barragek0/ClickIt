@@ -2,6 +2,31 @@ namespace ClickIt.Features.Area
 {
     internal static class AreaBlockedRectangleCollectionResolver
     {
+        internal static List<RectangleF> ResolveButtonRectangles(GameController controller)
+            => ResolveButtonRectanglesFromRoot(AreaUiSnapshotReader.TryGetIngameUiProperty(controller, "GameUI"));
+
+        internal static List<RectangleF> ResolveButtonRectanglesFromRoot(object? root)
+        {
+            List<RectangleF> rectangles = [];
+            if (!AreaUiNodeTraversal.TryGetChildNode(root, 7, out object? group) || group == null)
+                return rectangles;
+
+            for (int index = 17; index <= 19; index++)
+            {
+                if (!AreaUiNodeTraversal.TryGetChildNode(group, index, out object? container) || container == null
+                    || !AreaUiNodeTraversal.TryReadVisibility(container, out bool valid, out bool visible) || !valid || !visible)
+                    continue;
+                foreach (object? child in AreaUiNodeTraversal.ResolveChildNodes(container))
+                {
+                    if (child != null && AreaUiNodeTraversal.TryReadVisibility(child, out bool childValid, out bool childVisible)
+                        && childValid && childVisible && AreaUiNodeTraversal.TryGetClientRect(child, out RectangleF rect)
+                        && rect.Width > 1f && rect.Height > 1f && !rectangles.Contains(rect))
+                        rectangles.Add(rect);
+                }
+            }
+            return rectangles;
+        }
+
         internal static (RectangleF Buffs, RectangleF Debuffs) ResolveBuffsAndDebuffsBlockedRectangles(GameController gameController)
             => ResolveBuffsAndDebuffsBlockedRectanglesFromRoot(AreaUiSnapshotReader.TryGetIngameUiProperty(gameController, "Root"));
 

@@ -17,16 +17,13 @@ namespace ClickIt.Features.Area
             snapshot => snapshot.ChatPanelBlockedRectangle,
             snapshot => snapshot.MapPanelBlockedRectangle,
             snapshot => snapshot.XpBarBlockedRectangle,
-            snapshot => snapshot.ButtonsBlockedRectangle,
-            snapshot => snapshot.RitualBlockedRectangle,
-            snapshot => snapshot.SentinelBlockedRectangle,
-            snapshot => snapshot.ExpeditionBlockedRectangle,
         ];
 
         private static readonly Func<AreaBlockedSnapshot, IReadOnlyList<RectangleF>>[] s_blockedCollections =
         [
             snapshot => snapshot.BuffsAndDebuffsRectangles,
             snapshot => snapshot.QuestTrackerBlockedRectangles,
+            snapshot => snapshot.ButtonRectangles,
         ];
 
         public RectangleF FullScreenRectangle => _blockedSnapshotProvider.CurrentSnapshot.FullScreenRectangle;
@@ -45,11 +42,8 @@ namespace ClickIt.Features.Area
         public RectangleF ChatPanelBlockedRectangle => _blockedSnapshotProvider.CurrentSnapshot.ChatPanelBlockedRectangle;
         public RectangleF MapPanelBlockedRectangle => _blockedSnapshotProvider.CurrentSnapshot.MapPanelBlockedRectangle;
         public RectangleF XpBarBlockedRectangle => _blockedSnapshotProvider.CurrentSnapshot.XpBarBlockedRectangle;
-        public RectangleF ButtonsBlockedRectangle => _blockedSnapshotProvider.CurrentSnapshot.ButtonsBlockedRectangle;
-        public RectangleF RitualBlockedRectangle => _blockedSnapshotProvider.CurrentSnapshot.RitualBlockedRectangle;
-        public RectangleF SentinelBlockedRectangle => _blockedSnapshotProvider.CurrentSnapshot.SentinelBlockedRectangle;
-        public RectangleF ExpeditionBlockedRectangle => _blockedSnapshotProvider.CurrentSnapshot.ExpeditionBlockedRectangle;
         public IReadOnlyList<RectangleF> QuestTrackerBlockedRectangles => _blockedSnapshotProvider.CurrentSnapshot.QuestTrackerBlockedRectangles;
+        public IReadOnlyList<RectangleF> ButtonRectangles => _blockedSnapshotProvider.CurrentSnapshot.ButtonRectangles;
         public long? BlockedUiRefreshAgeMs => ResolveRefreshAgeMs(Environment.TickCount64, _blockedSnapshotProvider.CurrentSnapshot.LastBlockedUiRectanglesRefreshTimestampMs);
         public long? BuffsAndDebuffsRefreshAgeMs => ResolveRefreshAgeMs(Environment.TickCount64, _blockedSnapshotProvider.CurrentSnapshot.LastBuffsAndDebuffsRectanglesRefreshTimestampMs);
         public int ConfiguredBlockedUiRefreshIntervalMs => ResolveBlockedUiRefreshIntervalMs();
