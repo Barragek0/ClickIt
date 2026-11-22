@@ -65,14 +65,11 @@ namespace ClickIt.UI.Settings.Panels
             else if (string.Equals(entryId, MechanicIds.Fates, StringComparison.OrdinalIgnoreCase))
             {
                 bool available = _settings.TransientState.RuntimeCache.AutoAuguryPluginAvailable;
-                if (!available)
-                    _settings.ClickRecommendedFates.Value = false;
-
                 ImGui.BeginDisabled(!available);
                 SettingsUiRenderHelpers.DrawToggleNodeControl(
                     "Choose AutoAugury Recommendations##FatesAutoAugury",
                     _settings.ClickRecommendedFates,
-                    "When the Fates panel is open, follow AutoAugury's recommendation:\n\nWhile choosing, click its best-rated Fate (the only one, when several tie), then its Confirm button.\n\nAt the boss, place each Fate it frames into the invocation slots in its order, then click Confirm.\n\nThis requires you to have the 'AutoAugury' plugin installed and running.\n\nYou can download it using PluginUpdater.");
+                    "Follow AutoAugury's recommended Fates while the click key is active.\nAt a Cauldron, select its recommended Fate. At the boss, place its recommended Fates in order and confirm.\nRequires AutoAugury with interface version 2, enabled and running.");
                 ImGui.EndDisabled();
 
                 if (!available)

@@ -104,8 +104,24 @@ namespace ClickIt.Features.Click
             _mechanicPriorityContextProvider = new MechanicPriorityContextProvider(settings, new MechanicPrioritySnapshotService());
             _autoAuguryFatesClickService = new AutoAuguryFatesClickService(settings, dependencies.PluginManager,
                 _gameController, ClickAutomationSupport.IsClickableInEitherSpace,
-                (position, element, validateSettledHover) => LockedInteractionDispatcher.PerformClick(
-                    position, element, _gameController, validateSettledHover: validateSettledHover),
+                (position, validateSettledHover, controlClick) =>
+                {
+                    if (!ClickAutomationSupport.EnsureCursorInsideGameWindowForClick("[AutoAugury] Cursor outside game window")
+                        || Input.GetKeyState(Keys.ControlKey))
+                        return false;
+                    try
+                    {
+                        if (controlClick && !Mouse.DisableNativeInput)
+                            Keyboard.KeyDown(Keys.LControlKey);
+                        return LockedInteractionDispatcher.PerformClick(
+                            position, null, _gameController, validateSettledHover: validateSettledHover);
+                    }
+                    finally
+                    {
+                        if (controlClick && !Mouse.DisableNativeInput)
+                            Keyboard.KeyUp(Keys.LControlKey);
+                    }
+                },
                 performanceMonitor.RecordClickInterval, ClickAutomationSupport.DebugLog);
         }
 

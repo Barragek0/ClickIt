@@ -1,864 +1,321 @@
 namespace ClickIt.Features.Click.Application;
 
-/// <summary>Uses AutoAugury's recommendations to select cards in the Fates panels.</summary>
-internal sealed class AutoAuguryFatesClickService
+internal sealed class AutoAuguryFatesClickService(
+    ClickItSettings settings,
+    PluginManager? pluginManager,
+    GameController gameController,
+    Func<Vector2, string, bool> isClickable,
+    Func<Vector2, Func<Element?, bool>, bool, bool> performClick,
+    Action recordClickInterval,
+    Action<string> debugLog)
 {
-    private const string AutoAuguryPluginTypeName = "AutoAugury.AutoAugury";
-
-    private const int RetryDelayMs = 150;
-
-    private const int SelectionSettleMs = 400;
-
+    private const int InterfaceVersion = 2;
+    private const int AbsenceGraceMs = 500;
     private const int OpeningSettleMs = 100;
-
-    private const int PanelCloseTimeoutMs = 3000;
-
-    private const int MostChoiceAttempts = 5;
-
-    private const int PanelAbsenceGraceMs = 500;
-
-    private const int PlacementConfirmTimeoutMs = 1500;
-
-    private const int MostPlacementRetries = 2;
-
-    // Child indexes for the offer row, collection row, and confirm button under the panel body.
-    private const int PanelBodyIndex = 2;
-    private const int OfferRowIndex = 6;
-    private const int CollectionRowIndex = 7;
-    private const int ConfirmButtonIndex = 10;
-
-    private static readonly BindingFlags InstanceMembers = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-    private static readonly BindingFlags StaticMembers = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
-
-    private readonly ClickItSettings _settings;
-    private readonly PluginManager? _pluginManager;
-    private readonly GameController _gameController;
-    private readonly Func<Vector2, string, bool> _isClickableInEitherSpace;
-    private readonly Func<Vector2, Element, Func<Element?, bool>?, bool> _performClick;
-    private readonly Action _recordClickInterval;
-    private readonly Action<string> _debugLog;
-    private readonly Stopwatch _retryTimer = new();
-    private readonly Stopwatch _phaseTimer = new();
-
-    private Type? _pluginType;
-    private FieldInfo? _scoresField;
-    private FieldInfo? _panelStateField;
-    private FieldInfo? _fatesPanelField;
-    private FieldInfo? _panelElementField;
-    private FieldInfo? _guideField;
-    private MethodInfo? _bestOfMethod;
-    private PropertyInfo? _choosingFateProperty;
-    private PropertyInfo? _invokingFatesProperty;
-    private PropertyInfo? _confirmButtonProperty;
-    private PropertyInfo? _offeredProperty;
-    private PropertyInfo? _scoreCardProperty;
-    private PropertyInfo? _scoreValueProperty;
-    private PropertyInfo? _guideNextProperty;
-    private PropertyInfo? _guideAdviceProperty;
-    private PropertyInfo? _adviceSlotsProperty;
-    private PropertyInfo? _pickCardProperty;
-    private PropertyInfo? _cardNameProperty;
-    private PropertyInfo? _cardRectProperty;
-
-    private FatesClickPhase _phase;
-
+    private readonly ClickItSettings _settings = settings;
+    private readonly PluginManager? _pluginManager = pluginManager;
+    private readonly GameController _gameController = gameController;
+    private readonly Func<Vector2, string, bool> _isClickable = isClickable;
+    private readonly Func<Vector2, Func<Element?, bool>, bool, bool> _performClick = performClick;
+    private readonly Action _recordClickInterval = recordClickInterval;
+    private readonly Action<string> _debugLog = debugLog;
+    private PendingClick? _pending;
+    private long? _absentSince;
     private long _panelAddress;
+    private long _panelOpenedAt;
+    private string _lastWaitReason = string.Empty;
+    private long _lastWaitLoggedAt;
 
-    private long? _panelOpenedAt;
+    internal readonly record struct Advice(bool Ready, bool AtBoss, string Fate, RectangleF CardRect, RectangleF ConfirmRect);
+    internal readonly record struct Card(string Fate, RectangleF Rect, bool Selected);
+    internal readonly record struct PendingClick(bool AtBoss, bool Confirm, string Fate, RectangleF Rect, int SelectedCount);
 
-    private long? _panelAbsentSince;
+    internal bool IsPluginAvailable => TryGetBridge(out _, out _);
 
-    private bool _gaveUp;
-
-    private RectangleF _pendingPlacementBounds;
-    private int _placedCountAtPlacement;
-
-    private int _placementAttempts;
-
-    private int _placementRetries;
-
-    private readonly List<RectangleF> _skippedPlacementBounds = [];
-
-    private int _confirmAttempts;
-
-    private RectangleF _selectedCardBounds;
-
-    internal AutoAuguryFatesClickService(
-        ClickItSettings settings,
-        PluginManager? pluginManager,
-        GameController gameController,
-        Func<Vector2, string, bool> isClickableInEitherSpace,
-        Func<Vector2, Element, Func<Element?, bool>?, bool> performClick,
-        Action recordClickInterval,
-        Action<string> debugLog)
+    private bool TryGetBridge(
+        out Func<(bool Ready, bool AtBoss, string Fate, RectangleF CardRect, RectangleF ConfirmRect)>? advice,
+        out Func<IReadOnlyList<(string Fate, RectangleF CardRect, bool Selected)>>? order)
     {
-        _settings = settings;
-        _pluginManager = pluginManager;
-        _gameController = gameController;
-        _isClickableInEitherSpace = isClickableInEitherSpace;
-        _performClick = performClick;
-        _recordClickInterval = recordClickInterval;
-        _debugLog = debugLog;
-    }
-
-    internal bool IsPluginAvailable
-    {
-        get
+        advice = null;
+        order = null;
+        try
         {
-            object? plugin = FindEnabledPlugin();
-            return plugin != null && IsPluginSettingEnabled(plugin) && HasChoiceContract && HasInvocationContract;
+            if (!(_pluginManager?.Plugins.Any(static wrapper => wrapper.IsEnable
+                    && wrapper.Plugin?.GetType().FullName == "AutoAugury.AutoAugury") ?? false))
+                return false;
+
+            var bridge = _gameController.PluginBridge;
+            if (bridge?.GetMethod<Func<int>>("AutoAugury.InterfaceVersion")?.Invoke() != InterfaceVersion)
+                return false;
+            advice = bridge.GetMethod<Func<(bool, bool, string, RectangleF, RectangleF)>>("AutoAugury.Advice");
+            order = bridge.GetMethod<Func<IReadOnlyList<(string, RectangleF, bool)>>>("AutoAugury.Order");
+            return advice != null && order != null;
         }
+        catch { return false; }
     }
 
     internal bool TryHandlePanel()
     {
         if (!_settings.ClickFates.Value || !_settings.ClickRecommendedFates.Value)
         {
-            ResetPhase();
+            _pending = null;
+            _absentSince = null;
+            _panelAddress = 0;
             return false;
         }
 
-        object? plugin = FindEnabledPlugin();
-        bool available = plugin != null && IsPluginSettingEnabled(plugin) && HasChoiceContract && HasInvocationContract;
-        _settings.TransientState.RuntimeCache.AutoAuguryPluginAvailable = available;
-        if (!available)
+        if (!TryGetBridge(out var getAdvice, out var getOrder))
         {
-            _settings.ClickRecommendedFates.Value = false;
-            ResetPhase();
-            return false;
+            LogWait("AutoAugury bridge unavailable or incompatible");
+            return _pending != null || IsFatesWindowVisible();
         }
-
-        if (!TryReadPanelForPlugin(plugin!, out AutoAuguryFatesPanelRead read))
-        {
-            // A failed read can be one-tick flicker; keep an in-progress attempt while the panel element remains visible.
-            bool elementGone = !IsLiveFatesPanelVisible(plugin!);
-            if (HandlePanelAbsence(elementGone))
-                return true;
-
-            ResetPhase();
-            return false;
-        }
-
-        if (!read.ChoosingFate && !read.InvokingFates)
-        {
-            // Hold the click tick through a transient closed read so the regular path cannot click another card.
-            if (IsLiveFatesPanelVisible(plugin!))
-                return true;
-
-            return HandlePanelAbsence(panelElementGone: true);
-        }
-
-        _panelAbsentSince = null;
-
-        if (read.Panel == null)
-            return true;
-
-        if (_panelAddress != read.Panel.Address)
-        {
-            _gaveUp = false;
-            _panelOpenedAt = Environment.TickCount64;
-            ResetPhase();
-        }
-
-        _panelAddress = read.Panel.Address;
-
-        if (_gaveUp)
-            return true;
-
-        return read.InvokingFates ? HandleInvocation(read) : HandleChoice(read);
-    }
-
-    private bool IsLiveFatesPanelVisible(object plugin)
-    {
-        try
-        {
-            object? fatesPanel = _fatesPanelField?.GetValue(plugin);
-            Element? cachedPanel = _panelElementField?.GetValue(fatesPanel) as Element;
-            return IsFatesPanelVisible(cachedPanel) || IsFatesPanelVisible(_gameController.IngameState?.UIHoverTooltip);
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private static bool IsFatesPanelVisible(Element? panel)
-    {
-        if (panel is not { IsValid: true, IsVisible: true })
-            return false;
-        Element? title = ResolveElementAtPath(panel, 2, 3);
-        return title is { IsVisible: true } && (title.Text == "Fates" || title.Text == "Invoke Fates");
-    }
-
-    internal static bool IsWithinOpeningSettle(long? openedAt, long now)
-        => openedAt is { } since && now - since < OpeningSettleMs;
-
-    private bool HandlePanelAbsence(bool panelElementGone)
-    {
-        if (_phase == FatesClickPhase.Idle && !_gaveUp)
-        {
-            ForgetPanelOpening();
-            return false;
-        }
-
-        long now = Environment.TickCount64;
-        _panelAbsentSince ??= now;
-
-        if (ShouldHoldAbsentPanel(_phase == FatesClickPhase.AwaitClose, panelElementGone, _panelAbsentSince, now))
-            return true;
-
-        _gaveUp = false;
-        ForgetPanelOpening();
-        ResetPhase();
-        return false;
-    }
-
-    internal static bool ShouldHoldAbsentPanel(bool confirmSent, bool panelElementGone, long? absentSince, long now)
-        => !(confirmSent && panelElementGone) && IsWithinPanelAbsenceGrace(absentSince, now);
-
-    private void ForgetPanelOpening()
-    {
-        _panelAddress = 0;
-        _panelOpenedAt = null;
-    }
-
-    internal static bool IsWithinPanelAbsenceGrace(long? absentSince, long now)
-        => absentSince is not { } since || now - since < PanelAbsenceGraceMs;
-
-    internal static AutoAuguryRecommendedFate? SelectChoice(IReadOnlyList<AutoAuguryRecommendedFate> recommendations)
-    {
-        return recommendations.Count == 0 ? null : recommendations[0];
-    }
-
-    internal bool TryReadPanelForPlugin(object plugin, out AutoAuguryFatesPanelRead read)
-    {
-        if (_pluginType != plugin.GetType())
-            CacheReflectionMembers(plugin.GetType());
-
-        read = AutoAuguryFatesPanelRead.Closed;
 
         try
         {
-            object? panelState = _panelStateField?.GetValue(plugin);
-            bool choosingFate = ReadBool(panelState, _choosingFateProperty);
-            bool invokingFates = ReadBool(panelState, _invokingFatesProperty);
-            if (!choosingFate && !invokingFates)
-                return true;
-
-            object? fatesPanel = _fatesPanelField?.GetValue(plugin);
-            Element? panel = _panelElementField?.GetValue(fatesPanel) as Element;
-            if (panel != null && (!panel.IsValid || !panel.IsVisible))
+            var published = getAdvice!();
+            Advice advice = new(published.Ready, published.AtBoss, published.Fate, published.CardRect, published.ConfirmRect);
+            if (!advice.Ready)
+            {
+                LogWait("waiting for AutoAugury advice");
+                if (IsFatesWindowVisible())
+                {
+                    _absentSince = null;
+                    return true;
+                }
+                if (_pending == null)
+                {
+                    _panelAddress = 0;
+                    return false;
+                }
+                _absentSince ??= Environment.TickCount64;
+                if (Environment.TickCount64 - _absentSince < AbsenceGraceMs)
+                    return true;
+                _pending = null;
+                _absentSince = null;
+                _panelAddress = 0;
                 return false;
+            }
 
-            // Offered contains the choice row, or the placed-slot row at the boss.
-            read = new AutoAuguryFatesPanelRead(
-                choosingFate,
-                invokingFates,
-                panel,
-                ReadRectangle(panelState, _confirmButtonProperty),
-                ReadItemCount(panelState, _offeredProperty),
-                choosingFate ? ReadRecommendations(plugin) : [],
-                invokingFates ? ReadNextInvocation(plugin) : null,
-                invokingFates && ReadGuideIsComputed(plugin));
-            return true;
-        }
-        catch
-        {
-            read = AutoAuguryFatesPanelRead.Closed;
-            return false;
-        }
-    }
-
-    private bool HandleChoice(AutoAuguryFatesPanelRead read)
-    {
-        if (_phase == FatesClickPhase.AwaitClose)
-        {
-            // Wait for the panel to close; do not choose again while confirm is pending.
-            if (_phaseTimer.ElapsedMilliseconds < PanelCloseTimeoutMs)
-                return true;
-
-            if (_confirmAttempts >= MostChoiceAttempts)
+            _absentSince = null;
+            Element? panel = GetFatesWindow();
+            if (panel is not { IsValid: true, IsVisible: true } || panel.Address == 0)
             {
-                _debugLog("AutoAugury Fate panel stayed open after "
-                    + $"{_confirmAttempts} confirm attempts; leaving it for the next read.");
-                _gaveUp = true;
-                ResetPhase();
+                LogWait("Fates window unavailable");
+                return true;
+            }
+            if (_panelAddress != panel.Address)
+            {
+                _panelAddress = panel.Address;
+                _panelOpenedAt = Environment.TickCount64;
+                _pending = null;
+            }
+            if (IsWithinOpeningSettle(_panelOpenedAt, Environment.TickCount64))
+                return true;
+            IReadOnlyList<(string Fate, RectangleF CardRect, bool Selected)> publishedOrder = getOrder!();
+            if (publishedOrder == null || publishedOrder.Count > 64)
+                return true;
+            Card[] cards = publishedOrder.Select(static item => new Card(item.Fate, item.CardRect, item.Selected)).ToArray();
+            if (_pending is { } pending)
+            {
+                if (!HasPlacementAdvanced(pending, advice, cards))
+                {
+                    LogWait("waiting for selection or panel closure after click");
+                    return true;
+                }
+                _pending = null;
+            }
+
+            if (!TryChooseAction(advice, cards, out Card target, out bool confirm))
+            {
+                LogWait("bridge advice and ordered cards are not ready or disagree");
                 return true;
             }
 
-            // Confirm retries must not toggle the selected card.
-            _phase = FatesClickPhase.AwaitConfirm;
-            _retryTimer.Reset();
-            return true;
-        }
-
-        if (_phase == FatesClickPhase.AwaitConfirm)
-        {
-            Element? selectionRow = ResolveElementAtPath(read.Panel!, PanelBodyIndex, OfferRowIndex, 0);
-            Element? selected = selectionRow == null ? null : FindCardByBounds(selectionRow, _selectedCardBounds);
-            Element? marker = selected == null ? null : ResolveElementAtPath(selected, 0, 0, 0);
-            Element? confirm = ResolveElementAtPath(read.Panel!, PanelBodyIndex, ConfirmButtonIndex);
-            if (marker is not { IsValid: true, IsVisible: true } || confirm is not { IsValid: true, IsVisible: true, IsActive: true })
-                return true;
-
-            return TryClickConfirm(read, "confirm");
-        }
-
-        if (IsActionCoolingDown())
-            return true;
-
-        // Keep the selected card; clicking it again would send a second choice.
-        if (_selectedCardBounds.Width > 1f)
-            return TryClickConfirm(read, "confirm");
-
-        AutoAuguryRecommendedFate? choice = SelectChoice(read.Recommendations);
-        if (choice == null)
-            return true;
-
-        Element? offeredRow = ResolveElementAtPath(read.Panel!, PanelBodyIndex, OfferRowIndex, 0);
-        Element? card = offeredRow == null ? null : FindCardByBounds(offeredRow, choice.Bounds);
-        Element? selectedMarker = card == null ? null : ResolveElementAtPath(card, 0, 0, 0);
-        bool alreadySelected = selectedMarker is { IsValid: true, IsVisible: true };
-        if (!alreadySelected && !TryClickElement(card, choice.Bounds, "recommended Fate"))
-            return true;
-
-        _selectedCardBounds = choice.Bounds;
-        _phase = FatesClickPhase.AwaitConfirm;
-        _phaseTimer.Restart();
-        _retryTimer.Reset();
-        _debugLog(read.Recommendations.Count > 1
-            ? $"AutoAugury recommended Fate selected: {choice.Name} (first of {read.Recommendations.Count} equally best)."
-            : $"AutoAugury recommended Fate selected: {choice.Name}.");
-        return true;
-    }
-
-    private bool HandleInvocation(AutoAuguryFatesPanelRead read)
-    {
-        if (!HasInvocationContract)
-            return true;
-
-        if (_phase == FatesClickPhase.AwaitPlacement)
-            return AwaitPlacement(read);
-
-        if (_phase == FatesClickPhase.AwaitClose)
-        {
-            if (_phaseTimer.ElapsedMilliseconds < PanelCloseTimeoutMs)
-                return true;
-
-            if (_confirmAttempts >= MostChoiceAttempts)
+            RectangleF rect = confirm ? advice.ConfirmRect : target.Rect;
+            if (!IsUsableRect(rect))
             {
-                _debugLog("AutoAugury Invoke Fates panel stayed open after "
-                    + $"{_confirmAttempts} confirm attempts; leaving it for the next read.");
-                _gaveUp = true;
-                ResetPhase();
+                LogWait("recommended rectangle unavailable");
                 return true;
             }
-
-            // Rebuild the invocation slots before retrying confirm.
-            _phase = FatesClickPhase.Idle;
-            _skippedPlacementBounds.Clear();
-            _retryTimer.Reset();
-            return true;
-        }
-
-        if (_phase == FatesClickPhase.AwaitConfirm)
-        {
-            if (_phaseTimer.ElapsedMilliseconds < SelectionSettleMs)
-                return true;
-
-            return TryClickConfirm(read, "confirm");
-        }
-
-        if (IsActionCoolingDown())
-            return true;
-
-        if (ResolvePlacement(read.NextInvocation, _skippedPlacementBounds) is { } next)
-        {
-            // The boss panel toggles a collection card in and out of its slot; never repeat a pending click.
-            if (IsPlacementInProgress(_placementAttempts, _pendingPlacementBounds, next))
-                return true;
-
-            Element? collectionRow = ResolveElementAtPath(read.Panel!, PanelBodyIndex, CollectionRowIndex, 0);
-            Element? card = collectionRow == null ? null : FindCardByBounds(collectionRow, next.Bounds);
-            if (!TryClickElement(card, next.Bounds, "invocation Fate"))
-                return true;
-
-            if (!BoundsMatch(_pendingPlacementBounds, next.Bounds))
-                _placementRetries = 0;
-            _placedCountAtPlacement = read.TopRowCount;
-            _pendingPlacementBounds = next.Bounds;
-            _placementAttempts = 1;
-            _phase = FatesClickPhase.AwaitPlacement;
-            _phaseTimer.Restart();
-            _retryTimer.Reset();
-            _debugLog($"AutoAugury invocation Fate clicked: {next.Name}.");
-            return true;
-        }
-
-        // Confirm once the guide is computed and has no remaining card to place.
-        if (!read.GuideComputed)
-            return true;
-
-        _phase = FatesClickPhase.AwaitConfirm;
-        _phaseTimer.Restart();
-        _retryTimer.Reset();
-        return TryClickConfirm(read, "confirm");
-    }
-
-    internal static bool IsPlacementInProgress(int placementAttempts, RectangleF pendingBounds,
-        AutoAuguryRecommendedFate? next)
-        => placementAttempts > 0
-            && pendingBounds.Width > 1f
-            && next is { } card
-            && BoundsMatch(pendingBounds, card.Bounds);
-
-    internal static AutoAuguryRecommendedFate? ResolvePlacement(
-        AutoAuguryRecommendedFate? next, IReadOnlyList<RectangleF> skipped)
-    {
-        if (next is not { } card)
-            return null;
-
-        foreach (RectangleF bounds in skipped)
-            if (BoundsMatch(bounds, card.Bounds))
-                return null;
-
-        return card;
-    }
-
-    private bool AwaitPlacement(AutoAuguryFatesPanelRead read)
-    {
-        bool registered = read.GuideComputed && (read.NextInvocation is not { } next
-            || !BoundsMatch(_pendingPlacementBounds, next.Bounds))
-            || read.TopRowCount > _placedCountAtPlacement
-            || PendingCardReadsPlaced(read);
-
-        if (registered)
-        {
-            EndPlacementWait();
-            return true;
-        }
-
-        if (_phaseTimer.ElapsedMilliseconds < PlacementConfirmTimeoutMs)
-            return true;
-
-        if (_placementRetries < MostPlacementRetries)
-        {
-            // Retry only after the placement timeout; the guide still frames this card.
-            _placementRetries++;
-            _placementAttempts = 0;
-            _phase = FatesClickPhase.Idle;
-            _retryTimer.Reset();
-            _debugLog($"AutoAugury invocation placement did not register; retrying ({_placementRetries} of "
-                + $"{MostPlacementRetries}).");
-            return true;
-        }
-
-        // A late placement could still register, so leave this panel for manual review.
-        _debugLog("AutoAugury invocation placement did not register; leaving the panel for manual review.");
-        _gaveUp = true;
-        ResetPhase();
-        return true;
-    }
-
-    private void EndPlacementWait()
-    {
-        _phase = FatesClickPhase.Idle;
-        _placedCountAtPlacement = 0;
-        _pendingPlacementBounds = RectangleF.Empty;
-        _placementAttempts = 0;
-        _placementRetries = 0;
-        _retryTimer.Reset();
-    }
-
-    private bool PendingCardReadsPlaced(AutoAuguryFatesPanelRead read)
-    {
-        if (_pendingPlacementBounds.Width <= 1f)
-            return false;
-
-        try
-        {
-            Element? collectionRow = ResolveElementAtPath(read.Panel!, PanelBodyIndex, CollectionRowIndex, 0);
-            Element? placed = collectionRow == null ? null : FindCardByBounds(collectionRow, _pendingPlacementBounds);
-            return placed is { IsValid: true, IsVisible: true, IsActive: false };
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private bool TryClickConfirm(AutoAuguryFatesPanelRead read, string action)
-    {
-        if (_confirmAttempts >= MostChoiceAttempts)
-        {
-            _debugLog($"AutoAugury Fates confirm not retried: {_confirmAttempts} attempts already made.");
-            return true;
-        }
-
-        if (_retryTimer.IsRunning && _retryTimer.ElapsedMilliseconds < RetryDelayMs)
-            return true;
-
-        _retryTimer.Restart();
-        Element? confirm = ResolveElementAtPath(read.Panel!, PanelBodyIndex, ConfirmButtonIndex);
-        if (!TryClickElement(confirm, read.ConfirmRect, action))
-            return true;
-
-        _confirmAttempts++;
-        _phase = FatesClickPhase.AwaitClose;
-        _phaseTimer.Restart();
-        return true;
-    }
-
-    private bool IsActionCoolingDown()
-    {
-        if (_retryTimer.IsRunning && _retryTimer.ElapsedMilliseconds < RetryDelayMs)
-            return true;
-
-        _retryTimer.Restart();
-        return false;
-    }
-
-    private List<AutoAuguryRecommendedFate> ReadRecommendations(object plugin)
-    {
-        List<AutoAuguryRecommendedFate> recommendations = [];
-        object? scores = _scoresField?.GetValue(plugin);
-        if (scores is not IEnumerable)
-            return recommendations;
-
-        if (_bestOfMethod == null || _bestOfMethod.Invoke(null, [scores]) is not IEnumerable candidates)
-            return recommendations;
-
-        foreach (object? score in candidates)
-        {
-            object? card = score == null ? null : _scoreCardProperty?.GetValue(score);
-            if (TryReadFateCard(card, out AutoAuguryRecommendedFate? fate))
-                recommendations.Add(fate with { Score = ReadScoreValue(score) });
-        }
-
-        return recommendations;
-    }
-
-    private double ReadScoreValue(object? score)
-    {
-        if (score == null || _scoreValueProperty is null)
-            return 0d;
-
-        try
-        {
-            object? value = _scoreValueProperty.GetValue(score);
-            return value is double d ? d : value is float f ? f : value is int i ? i : 0d;
-        }
-        catch
-        {
-            return 0d;
-        }
-    }
-
-    private AutoAuguryRecommendedFate? ReadNextInvocation(object plugin)
-    {
-        object? guide = _guideField?.GetValue(plugin);
-        object? pick = guide == null ? null : _guideNextProperty?.GetValue(guide);
-        if (pick == null)
-            return null;
-
-        object? card = _pickCardProperty?.GetValue(pick);
-        return TryReadFateCard(card, out AutoAuguryRecommendedFate? fate) ? fate : null;
-    }
-
-    private bool ReadGuideIsComputed(object plugin)
-    {
-        object? guide = _guideField?.GetValue(plugin);
-        object? advice = guide == null ? null : _guideAdviceProperty?.GetValue(guide);
-        return ReadItemCount(advice, _adviceSlotsProperty) > 0;
-    }
-
-    private bool TryReadFateCard(object? card, [NotNullWhen(true)] out AutoAuguryRecommendedFate? fate)
-    {
-        fate = null;
-        if (card == null)
-            return false;
-
-        string? name = _cardNameProperty?.GetValue(card) as string;
-        if (string.IsNullOrWhiteSpace(name))
-            return false;
-
-        if (_cardRectProperty?.GetValue(card) is not RectangleF bounds || bounds.Width <= 1f || bounds.Height <= 1f)
-            return false;
-
-        fate = new AutoAuguryRecommendedFate(name, bounds);
-        return true;
-    }
-
-    private static bool ReadBool(object? source, PropertyInfo? property)
-        => source != null && property != null && property.GetValue(source) is true;
-
-    private static RectangleF ReadRectangle(object? source, PropertyInfo? property)
-        => source != null && property != null && property.GetValue(source) is RectangleF rect ? rect : RectangleF.Empty;
-
-    private static int ReadItemCount(object? source, PropertyInfo? property)
-    {
-        if (source == null || property == null)
-            return 0;
-
-        object? value = property.GetValue(source);
-        return value switch
-        {
-            int count => count,
-            ICollection collection => collection.Count,
-            _ => value != null && value.GetType().GetProperty("Count", InstanceMembers)?.GetValue(value) is int count
-                ? count
-                : 0
-        };
-    }
-
-    private void CacheReflectionMembers(Type pluginType)
-    {
-        ClearReflectionMembers();
-        _pluginType = pluginType;
-
-        _scoresField = pluginType.GetField("_scores", InstanceMembers);
-        _panelStateField = pluginType.GetField("_panelState", InstanceMembers);
-        _fatesPanelField = pluginType.GetField("_fatesPanel", InstanceMembers);
-        _guideField = pluginType.GetField("_guide", InstanceMembers);
-        _panelElementField = _fatesPanelField?.FieldType.GetField("_panel", InstanceMembers);
-
-        Type? panelStateType = _panelStateField?.FieldType;
-        _choosingFateProperty = panelStateType?.GetProperty("ChoosingFate", InstanceMembers);
-        _invokingFatesProperty = panelStateType?.GetProperty("InvokingFates", InstanceMembers);
-        _confirmButtonProperty = panelStateType?.GetProperty("ConfirmButton", InstanceMembers);
-        _offeredProperty = panelStateType?.GetProperty("Offered", InstanceMembers);
-
-        Type? scoringType = pluginType.Assembly.GetType("AutoAugury.FateScoring", throwOnError: false);
-        _bestOfMethod = scoringType?.GetMethod("BestOf", StaticMembers);
-
-        Type? scoreType = _scoresField?.FieldType.IsGenericType == true
-            ? _scoresField.FieldType.GetGenericArguments()[0]
-            : null;
-        _scoreCardProperty = scoreType?.GetProperty("Card", InstanceMembers);
-        _scoreValueProperty = scoreType?.GetProperty("Value", InstanceMembers);
-
-        Type? guideType = _guideField?.FieldType;
-        _guideNextProperty = guideType?.GetProperty("Next", InstanceMembers);
-        _guideAdviceProperty = guideType?.GetProperty("Advice", InstanceMembers);
-        _adviceSlotsProperty = _guideAdviceProperty?.PropertyType.GetProperty("Slots", InstanceMembers);
-
-        Type? pickType = _guideNextProperty?.PropertyType;
-        _pickCardProperty = pickType?.GetProperty("Card", InstanceMembers);
-
-        Type? cardType = _pickCardProperty?.PropertyType ?? _scoreCardProperty?.PropertyType;
-        _cardNameProperty = cardType?.GetProperty("Name", InstanceMembers);
-        _cardRectProperty = cardType?.GetProperty("Rect", InstanceMembers);
-    }
-
-    private void ClearReflectionMembers()
-    {
-        _pluginType = null;
-        _scoresField = null;
-        _panelStateField = null;
-        _fatesPanelField = null;
-        _panelElementField = null;
-        _guideField = null;
-        _bestOfMethod = null;
-        _choosingFateProperty = null;
-        _invokingFatesProperty = null;
-        _confirmButtonProperty = null;
-        _offeredProperty = null;
-        _scoreCardProperty = null;
-        _scoreValueProperty = null;
-        _guideNextProperty = null;
-        _guideAdviceProperty = null;
-        _adviceSlotsProperty = null;
-        _pickCardProperty = null;
-        _cardNameProperty = null;
-        _cardRectProperty = null;
-    }
-
-    private bool HasChoiceContract
-        => _scoresField != null && _panelStateField != null && _fatesPanelField != null
-            && _panelElementField != null && typeof(Element).IsAssignableFrom(_panelElementField.FieldType)
-            && _choosingFateProperty != null && _confirmButtonProperty != null && _offeredProperty != null
-            && _scoreCardProperty != null && _scoreValueProperty != null
-            && _cardNameProperty != null && _cardRectProperty != null && _bestOfMethod != null;
-
-    private bool HasInvocationContract
-        => _guideField != null && _guideNextProperty != null && _guideAdviceProperty != null
-            && _adviceSlotsProperty != null && _pickCardProperty != null && _invokingFatesProperty != null;
-
-    private object? FindEnabledPlugin()
-    {
-        try
-        {
-            foreach (PluginWrapper wrapper in _pluginManager?.Plugins ?? [])
+            Element? targetElement = ResolveTarget(panel, advice.AtBoss, confirm, rect);
+            if (targetElement is not { IsValid: true, IsVisible: true } || targetElement.Address == 0
+                || (confirm && !targetElement.IsActive))
             {
-                object? plugin = wrapper.Plugin;
-                if (!wrapper.IsEnable || plugin?.GetType().FullName != AutoAuguryPluginTypeName)
-                    continue;
-
-                if (_pluginType != plugin.GetType())
-                    CacheReflectionMembers(plugin.GetType());
-
-                return plugin;
+                LogWait("recommended card or confirm element unavailable");
+                return true;
             }
-        }
-        catch
-        {
-            // If plugin state changes during enumeration, deny input for this pass.
-        }
-
-        ClearReflectionMembers();
-        return null;
-    }
-
-    private bool IsPluginSettingEnabled(object plugin)
-    {
-        try
-        {
-            object? settings = plugin.GetType().GetProperty("Settings", InstanceMembers)?.GetValue(plugin);
-            object? enable = settings?.GetType().GetProperty("Enable", InstanceMembers)?.GetValue(settings);
-            return enable?.GetType().GetProperty("Value", InstanceMembers)?.GetValue(enable) is true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private bool TryClickElement(Element? element, RectangleF expectedBounds, string action)
-    {
-        try
-        {
-            if (element == null || !element.IsValid || !element.IsVisible)
-                return LogClickFailure(action, "element is missing, invalid, or hidden");
-
-            RectangleF currentBounds = element.GetClientRectCache;
-            if (currentBounds.Width <= 1f || currentBounds.Height <= 1f)
-                return LogClickFailure(action, $"element has no usable rectangle ({currentBounds})");
-
-            // Use published bounds as a staleness check when they are available.
-            if (!IsPublishedBoundsUsable(expectedBounds, currentBounds))
-                return LogClickFailure(action, $"element moved (expected {expectedBounds}, now {currentBounds})");
-
-            if (!LabelClickPointSearch.TryResolveVisibleClickablePoint(
-                    currentBounds,
-                    currentBounds.Center,
-                    [],
-                    point => _isClickableInEitherSpace(point, MechanicIds.Fates),
-                    out Vector2 clientPoint))
-                return LogClickFailure(action, $"no visible clickable point in {currentBounds}");
+            Vector2 point = rect.Center;
+            if (!_isClickable(point, MechanicIds.Fates) || _gameController.Window?.IsForeground() != true)
+            {
+                LogWait("recommended point blocked or game window not foreground");
+                return true;
+            }
 
             RectangleF window = _gameController.Window.GetWindowRectangleTimeCache;
-            Vector2 absolutePoint = clientPoint + new Vector2(window.X, window.Y);
-
-            // Require the cursor to reach the expected element before dispatching the click.
-            long expectedAddress = element.Address;
-            if (!_performClick(absolutePoint, element, hover => IsHoverOnElement(hover, expectedAddress)))
-                return LogClickFailure(action, "the click dispatcher rejected the input");
-
-            _recordClickInterval();
-            _debugLog($"AutoAugury Fates {action} clicked at {absolutePoint}.");
+            Vector2 absolute = point + new Vector2(window.X, window.Y);
+            PendingClick next = new(advice.AtBoss, confirm, target.Fate ?? string.Empty, rect,
+                cards.Count(static card => card.Selected));
+            long targetAddress = targetElement.Address;
+            string failure = "input dispatcher rejected click before hover validation";
+            bool sent = _performClick(absolute, hover =>
+            {
+                SystemDrawingPoint cursor = Mouse.GetCursorPosition();
+                RectangleF currentWindow = _gameController.Window.GetWindowRectangleTimeCache;
+                if (_gameController.Window?.IsForeground() != true || !_isClickable(point, MechanicIds.Fates))
+                {
+                    failure = "window or clickable area changed";
+                    return false;
+                }
+                if (currentWindow.X != window.X || currentWindow.Y != window.Y
+                    || MathF.Abs(cursor.X - absolute.X) > 2 || MathF.Abs(cursor.Y - absolute.Y) > 2)
+                {
+                    failure = "window or cursor moved";
+                    return false;
+                }
+                if ((advice.AtBoss || confirm) && Input.GetKeyState(Keys.ControlKey))
+                {
+                    failure = "Control held during ordinary click";
+                    return false;
+                }
+                if (!IsHoverOnElement(hover, targetAddress))
+                {
+                    failure = $"hover mismatch (expected=0x{targetAddress:X}, actual=0x{hover?.Address ?? 0:X})";
+                    return false;
+                }
+                if (!targetElement.IsValid || !targetElement.IsVisible || (confirm && !targetElement.IsActive)
+                    || !BoundsMatch(targetElement.GetClientRectCache, rect))
+                {
+                    failure = "target element changed or moved";
+                    return false;
+                }
+                var latest = getAdvice();
+                var latestOrder = getOrder();
+                if (!latest.Ready || latest.AtBoss != advice.AtBoss || latestOrder == null || latestOrder.Count > 64)
+                {
+                    failure = "bridge advice became unavailable";
+                    return false;
+                }
+                Card[] current = latestOrder.Select(static item => new Card(item.Fate, item.CardRect, item.Selected)).ToArray();
+                failure = "bridge recommendation or selection changed";
+                return TryChooseAction(new Advice(latest.Ready, latest.AtBoss, latest.Fate, latest.CardRect, latest.ConfirmRect),
+                    current, out Card currentTarget, out bool currentConfirm)
+                    && currentConfirm == confirm
+                    && BoundsMatch(confirm ? latest.ConfirmRect : currentTarget.Rect, rect)
+                    && (confirm || string.Equals(currentTarget.Fate, target.Fate, StringComparison.Ordinal));
+            }, !advice.AtBoss && !confirm);
+            if (sent)
+            {
+                _pending = next;
+                _recordClickInterval();
+                _debugLog($"AutoAugury: {(confirm ? "confirm" : target.Fate)} clicked.");
+            }
+            else
+                LogWait(failure);
             return true;
         }
-        catch
+        catch (Exception ex)
         {
-            // Stale UI or window state must fail closed.
-            return LogClickFailure(action, "the element or window could not be read");
+            LogWait($"bridge or UI read failed: {ex.GetType().Name}");
+            return true;
         }
     }
 
-    private bool LogClickFailure(string action, string reason)
+    private bool IsFatesWindowVisible()
     {
-        _debugLog($"AutoAugury Fates {action} not clicked: {reason}.");
-        return false;
+        try
+        {
+            return GetFatesWindow() is { IsValid: true, IsVisible: true };
+        }
+        catch { return false; }
+    }
+
+    private Element? GetFatesWindow()
+    {
+        object? ingameUi = _gameController.IngameState?.IngameUi;
+        if (DynamicAccess.TryGetDynamicValue(ingameUi, static ui => ui.AuguryFateWindow, out object? window)
+            && window is Element { IsValid: true, IsVisible: true } typed)
+            return typed;
+
+        Element? tooltip = _gameController.IngameState?.UIHoverTooltip;
+        if (tooltip is not { IsValid: true, IsVisible: true }
+            || !AreaUiNodeTraversal.TryGetChildNode(tooltip, 2, out object? body)
+            || !AreaUiNodeTraversal.TryGetChildNode(body, 3, out object? rawTitle)
+            || rawTitle is not Element title)
+            return null;
+        return title.Text is "Fates" or "Invoke Fates" ? tooltip : null;
+    }
+
+    internal static bool IsWithinOpeningSettle(long openedAt, long now)
+        => now < openedAt || now - openedAt < OpeningSettleMs;
+
+    private void LogWait(string reason)
+    {
+        long now = Environment.TickCount64;
+        if (reason == _lastWaitReason && now - _lastWaitLoggedAt < 1000)
+            return;
+        _lastWaitReason = reason;
+        _lastWaitLoggedAt = now;
+        _debugLog($"AutoAugury: {reason}.");
+    }
+
+    internal static bool TryChooseAction(Advice advice, IReadOnlyList<Card> cards, out Card target, out bool confirm)
+    {
+        target = default;
+        confirm = false;
+        if (!advice.Ready || (!advice.AtBoss && cards.Count != 1))
+            return false;
+        foreach (Card card in cards)
+        {
+            if (card.Selected)
+                continue;
+            if (string.IsNullOrWhiteSpace(card.Fate) || !IsUsableRect(card.Rect)
+                || !string.Equals(card.Fate, advice.Fate, StringComparison.Ordinal)
+                || !BoundsMatch(card.Rect, advice.CardRect))
+                return false;
+            target = card;
+            return true;
+        }
+        confirm = true;
+        return string.IsNullOrEmpty(advice.Fate) && IsUsableRect(advice.ConfirmRect);
+    }
+
+    internal static bool HasPlacementAdvanced(PendingClick pending, Advice advice, IReadOnlyList<Card> cards)
+    {
+        if (pending.Confirm || !pending.AtBoss || !advice.AtBoss)
+            return false;
+        return cards.Count(static card => card.Selected) > pending.SelectedCount;
+    }
+
+    private static bool IsUsableRect(RectangleF rect)
+        => float.IsFinite(rect.X) && float.IsFinite(rect.Y) && float.IsFinite(rect.Width) && float.IsFinite(rect.Height)
+            && rect.Width > 1 && rect.Height > 1;
+
+    internal static bool BoundsMatch(RectangleF a, RectangleF b)
+        => MathF.Abs(a.X - b.X) <= 2 && MathF.Abs(a.Y - b.Y) <= 2
+            && MathF.Abs(a.Width - b.Width) <= 2 && MathF.Abs(a.Height - b.Height) <= 2;
+
+    private static Element? ResolveTarget(Element panel, bool atBoss, bool confirm, RectangleF expected)
+    {
+        object? current = panel;
+        int[] path = confirm ? [2, 10] : [2, atBoss ? 7 : 6, 0];
+        foreach (int index in path)
+            if (!AreaUiNodeTraversal.TryGetChildNode(current, index, out current) || current is not Element)
+                return null;
+        if (confirm)
+            return current is Element button && BoundsMatch(button.GetClientRectCache, expected) ? button : null;
+        foreach (object? child in AreaUiNodeTraversal.ResolveChildNodes(current))
+            if (child is Element card && card.IsValid && card.IsVisible && BoundsMatch(card.GetClientRectCache, expected))
+                return card;
+        return null;
     }
 
     internal static bool IsHoverOnElement(Element? hover, long expectedAddress)
     {
         if (expectedAddress == 0)
             return false;
-
-        for (int depth = 0; depth < 6 && hover != null; depth++, hover = hover.Parent)
+        for (int depth = 0; depth < 8 && hover != null; depth++, hover = hover.Parent)
             if (hover.Address == expectedAddress)
                 return true;
-
         return false;
     }
-
-    private static Element? FindCardByBounds(Element row, RectangleF bounds)
-    {
-        try
-        {
-            foreach (object? child in AreaUiNodeTraversal.ResolveChildNodes(row))
-            {
-                if (child is not Element card || !card.IsValid || !card.IsVisible)
-                    continue;
-
-                if (BoundsMatch(bounds, card.GetClientRectCache))
-                    return card;
-            }
-        }
-        catch
-        {
-            // The UI tree can change between reading the recommendation and resolving its element.
-        }
-
-        return null;
-    }
-
-    private static Element? ResolveElementAtPath(Element root, params int[] path)
-    {
-        object? current = root;
-        foreach (int index in path)
-            if (!AreaUiNodeTraversal.TryGetChildNode(current, index, out current) || current is not Element)
-                return null;
-
-        return current as Element;
-    }
-
-    internal static bool BoundsMatch(RectangleF expected, RectangleF actual)
-        => MathF.Abs(expected.X - actual.X) <= 2f
-            && MathF.Abs(expected.Y - actual.Y) <= 2f
-            && MathF.Abs(expected.Width - actual.Width) <= 2f
-            && MathF.Abs(expected.Height - actual.Height) <= 2f;
-
-    internal static bool IsPublishedBoundsUsable(RectangleF published, RectangleF current)
-        => published.Width <= 1f || published.Height <= 1f || BoundsMatch(published, current);
-
-    private void ResetPhase()
-    {
-        _phase = FatesClickPhase.Idle;
-        _panelAbsentSince = null;
-        _pendingPlacementBounds = RectangleF.Empty;
-        _placedCountAtPlacement = 0;
-        _placementAttempts = 0;
-        _placementRetries = 0;
-        _skippedPlacementBounds.Clear();
-        _confirmAttempts = 0;
-        _selectedCardBounds = RectangleF.Empty;
-        _phaseTimer.Reset();
-        _retryTimer.Reset();
-    }
-
-    private enum FatesClickPhase
-    {
-        Idle,
-        AwaitPlacement,
-        AwaitConfirm,
-        AwaitClose
-    }
-}
-
-internal sealed record AutoAuguryRecommendedFate(string Name, RectangleF Bounds, double Score = 0d);
-
-internal readonly record struct AutoAuguryFatesPanelRead(
-    bool ChoosingFate,
-    bool InvokingFates,
-    Element? Panel,
-    RectangleF ConfirmRect,
-    int TopRowCount,
-    IReadOnlyList<AutoAuguryRecommendedFate> Recommendations,
-    AutoAuguryRecommendedFate? NextInvocation,
-    bool GuideComputed)
-{
-    internal static readonly AutoAuguryFatesPanelRead Closed =
-        new(false, false, null, RectangleF.Empty, 0, [], null, false);
 }
