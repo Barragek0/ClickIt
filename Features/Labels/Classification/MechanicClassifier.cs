@@ -59,7 +59,7 @@ namespace ClickIt.Features.Labels.Classification
                 || path.Contains(MechanicIds.BetrayalCorpseSculpturePath, StringComparison.OrdinalIgnoreCase)
                 || path.Contains(MechanicIds.BeyondInitiatorPath, StringComparison.OrdinalIgnoreCase)
                 || path.Contains(MechanicIds.SentinelEncounterPath, StringComparison.OrdinalIgnoreCase)
-                || path.Contains(MechanicIds.FatesPath, StringComparison.OrdinalIgnoreCase))
+                || MechanicIds.IsFatesPath(path))
                 return null;
 
             if (type == EntityType.WorldItem)

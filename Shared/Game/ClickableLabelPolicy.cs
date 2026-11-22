@@ -97,7 +97,7 @@ namespace ClickIt.Shared.Game
                   || path.Contains("Harvest/Objects/HarvestEncounterTree", StringComparison.OrdinalIgnoreCase)
                 || path.Contains(MechanicIds.BeyondInitiatorPath, StringComparison.OrdinalIgnoreCase)
                 || path.Contains(MechanicIds.SentinelEncounterPath, StringComparison.OrdinalIgnoreCase)
-                || path.Contains(MechanicIds.FatesPath, StringComparison.OrdinalIgnoreCase)
+                || MechanicIds.IsFatesPath(path)
                 || path.Contains("Leagues/Harvest/Objects/BossSeed", StringComparison.OrdinalIgnoreCase)
                 || path.Contains(Constants.CleansingFireAltar)
                 || path.Contains(Constants.TangleAltar)

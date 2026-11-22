@@ -40,6 +40,7 @@ namespace ClickIt.Features.Mechanics
         public const string BeyondInitiatorPath = "BeyondDemons/BeyondInitiator";
         public const string SentinelEncounterPath = "Sentinel/SentinelRandomEncounter";
         public const string FatesPath = "Augury/Objects/AuguryCardObject";
+        public const string FatesBossPath = "Augury/Objects/AuguryBoss";
         public const string DelveAzuriteVeins = "delve-azurite-veins";
         public const string UltimatumInitialOverlay = "ultimatum-initial-overlay";
         public const string UltimatumWindow = "ultimatum-window";
@@ -67,5 +68,14 @@ namespace ClickIt.Features.Mechanics
         public const string SettlersHourglassMarker = SettlersNodeTypeRootPath + "HourglassObjects/" + Constants.Hourglass;
         public const string SettlersVerisiumMarker = SettlersNodeTypeRootPath + "Verisium";
         public const string VerisiumBossSubAreaTransitionPathMarker = "VerisiumBossSubAreaTransition";
+
+        /// <summary>
+        /// Whether a path belongs to the Augury league mechanic: a Cauldron's Fate card, or the area boss the collected
+        /// Fates are invoked on. Both follow the single "Fates" entry in the click table.
+        /// </summary>
+        public static bool IsFatesPath(string? path)
+            => !string.IsNullOrEmpty(path)
+                && (path.Contains(FatesPath, StringComparison.OrdinalIgnoreCase)
+                    || path.Contains(FatesBossPath, StringComparison.OrdinalIgnoreCase));
     }
 }

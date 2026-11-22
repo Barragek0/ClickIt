@@ -171,6 +171,7 @@
         [DataRow("Metadata/Terrain/Leagues/BeyondDemons/BeyondInitiator", true)]
         [DataRow("Metadata/Terrain/Leagues/Sentinel/SentinelRandomEncounter", true)]
         [DataRow("Metadata/Terrain/Leagues/Augury/Objects/AuguryCardObject", true)]
+        [DataRow("Metadata/Terrain/Leagues/Augury/Objects/AuguryBoss", true)]
         [DataRow("Metadata/Terrain/Leagues/Harvest/Objects/Harvest/Extractor", false)]
         [DataRow("Metadata/Terrain/Leagues/Sanctum/Start", true)]
         [DataRow("Metadata/Terrain/Leagues/Blight/BlightPump", true)]
