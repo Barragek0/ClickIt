@@ -2,7 +2,7 @@ namespace ClickIt.UI.Debug
 {
     /// <summary>
     /// In-game performance overlay: renders the full performance tables (render, processing,
-    /// coroutine ms/f + ms/r, GC, memory) as text on the game screen, gated by RenderPerformanceInGame.
+    /// coroutine ms/f + ms/r, GC, memory) as text on the game screen, gated by Debug Mode and RenderPerformanceInGame.
     /// Draws into the deferred text queue every frame with per-cell X positions so the proportional
     /// game font does not break column alignment. Mirrors the debug UI's two-column layout.
     /// </summary>
@@ -35,7 +35,8 @@ namespace ClickIt.UI.Debug
         public ProcessingSection ProcessingSection => ProcessingSection.Unknown;
 
         public bool IsEnabled(ClickItSettings settings)
-            => settings.RenderPerformanceInGame.Value
+            => settings.DebugMode.Value
+               && settings.RenderPerformanceInGame.Value
                && (!settings.OnlyShowPerformanceInGameWhileInMap.Value || (_isInMapProvider?.Invoke() ?? false));
 
         public void Refresh(OverlayRefreshContext ctx)

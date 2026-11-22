@@ -240,6 +240,7 @@ public class PerformanceInGameOverlayTests
     public void IsEnabled_HiddenOutsideMap_WhenInMapOnlyToggleOnAndProviderFalse()
     {
         var settings = new ClickItSettings();
+        settings.DebugMode.Value = true;
         settings.RenderPerformanceInGame.Value = true;
         settings.OnlyShowPerformanceInGameWhileInMap.Value = true;
         var overlay = new PerformanceInGameOverlay(() => default, () => false);
@@ -251,6 +252,7 @@ public class PerformanceInGameOverlayTests
     public void IsEnabled_ShownInMap_WhenInMapOnlyToggleOnAndProviderTrue()
     {
         var settings = new ClickItSettings();
+        settings.DebugMode.Value = true;
         settings.RenderPerformanceInGame.Value = true;
         settings.OnlyShowPerformanceInGameWhileInMap.Value = true;
         var overlay = new PerformanceInGameOverlay(() => default, () => true);
@@ -262,6 +264,7 @@ public class PerformanceInGameOverlayTests
     public void IsEnabled_ShownOutsideMap_WhenInMapOnlyToggleOff()
     {
         var settings = new ClickItSettings();
+        settings.DebugMode.Value = true;
         settings.RenderPerformanceInGame.Value = true;
         settings.OnlyShowPerformanceInGameWhileInMap.Value = false;
         var overlay = new PerformanceInGameOverlay(() => default, () => false);
@@ -273,8 +276,22 @@ public class PerformanceInGameOverlayTests
     public void IsEnabled_HiddenOutsideMap_WhenProviderMissingAndToggleOn()
     {
         var settings = new ClickItSettings();
+        settings.DebugMode.Value = true;
         settings.RenderPerformanceInGame.Value = true;
         settings.OnlyShowPerformanceInGameWhileInMap.Value = true;
+        var overlay = new PerformanceInGameOverlay(() => default);
+
+        overlay.IsEnabled(settings).Should().BeFalse();
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void IsEnabled_HiddenWhenDebugModeIsOffEvenIfPerformanceRenderingIsEnabled()
+    {
+        var settings = new ClickItSettings();
+        settings.DebugMode.Value = false;
+        settings.RenderPerformanceInGame.Value = true;
+        settings.OnlyShowPerformanceInGameWhileInMap.Value = false;
         var overlay = new PerformanceInGameOverlay(() => default);
 
         overlay.IsEnabled(settings).Should().BeFalse();

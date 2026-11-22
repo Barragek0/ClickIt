@@ -113,7 +113,7 @@ namespace ClickIt.Features.Blight
                 largeMap?.MapScale ?? 1f);
 
             DrawIconPathways(rctx, ctx.DrawQueue);
-            if (ctx.Settings.BlightDebugShowLaneLabels.Value)
+            if (ShouldRenderDebugLaneLabels(ctx.Settings))
                 DrawLaneLabels(rctx, ctx.DrawQueue);
 
             bool dotsMap = ctx.Settings.BlightVisualizeTowers.Value && ctx.Settings.BlightVisualizeTowersMap.Value;
@@ -127,6 +127,9 @@ namespace ClickIt.Features.Blight
             if (rangesMap || rangesGame)
                 DrawTowerRanges(rctx, ctx.DrawQueue, rangesMap, rangesGame);
         }
+
+        internal static bool ShouldRenderDebugLaneLabels(ClickItSettings settings)
+            => settings.DebugMode.Value && settings.BlightDebugShowLaneLabels.Value;
 
         private void DrawTowerDots(RenderContext ctx, DeferredDrawQueue queue, bool dotsMap, bool dotsGame, bool showUpgrades)
         {

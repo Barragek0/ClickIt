@@ -2,7 +2,7 @@ namespace ClickIt.UI.Debug
 {
     /// <summary>
     /// Debug-only overlay: draws the AreaService UI-region rectangles (blocked screen regions)
-    /// every frame via the ImGui foreground draw list, gated only by its debug setting.
+    /// every frame via the ImGui foreground draw list when Debug Mode and its setting are enabled.
     /// </summary>
     internal sealed class UiRegionRectangleOverlay(ClickItSettings settings, AreaService areaService)
     {
@@ -23,9 +23,12 @@ namespace ClickIt.UI.Debug
         private static readonly Vector4 ExpeditionColor = ToVec4(Color.Gold);
         private static readonly Vector4 QuestTrackerColor = ToVec4(Color.MediumPurple);
 
+        internal static bool IsEnabled(ClickItSettings settings)
+            => settings.DebugMode.Value && settings.DebugShowUnclickableScreenRegions.Value;
+
         internal void Render()
         {
-            if (!_settings.DebugShowUnclickableScreenRegions.Value)
+            if (!IsEnabled(_settings))
                 return;
 
             ImDrawListPtr draw = ImGui.GetForegroundDrawList();

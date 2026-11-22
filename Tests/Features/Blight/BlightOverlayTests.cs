@@ -4,6 +4,19 @@ namespace ClickIt.Tests.Features.Blight;
 public class BlightOverlayTests
 {
     [TestMethod]
+    [TestCategory("Regression")]
+    public void ShouldRenderDebugLaneLabels_RequiresDebugMode()
+    {
+        var settings = new ClickItSettings();
+        settings.BlightDebugShowLaneLabels.Value = true;
+
+        BlightOverlay.ShouldRenderDebugLaneLabels(settings).Should().BeFalse();
+
+        settings.DebugMode.Value = true;
+        BlightOverlay.ShouldRenderDebugLaneLabels(settings).Should().BeTrue();
+    }
+
+    [TestMethod]
     public void MeteorLaneUsesTowerColourThenOrangeThenGreenWhenAllRolesAreCovered()
     {
         var strategy = new ChillingSeismicMeteorStrategy();

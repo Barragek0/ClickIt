@@ -4,6 +4,22 @@ namespace ClickIt.Tests.UI;
 public class UiRegionRectangleOverlayTests
 {
     [TestMethod]
+    [TestCategory("Regression")]
+    public void IsEnabled_RequiresDebugModeAndRegionToggle()
+    {
+        var settings = new ClickItSettings();
+        settings.DebugShowUnclickableScreenRegions.Value = true;
+
+        UiRegionRectangleOverlay.IsEnabled(settings).Should().BeFalse();
+
+        settings.DebugMode.Value = true;
+        UiRegionRectangleOverlay.IsEnabled(settings).Should().BeTrue();
+
+        settings.DebugShowUnclickableScreenRegions.Value = false;
+        UiRegionRectangleOverlay.IsEnabled(settings).Should().BeFalse();
+    }
+
+    [TestMethod]
     public void TryGetDrawRect_ConvertsStandardRectToMinMax()
     {
         bool ok = UiRegionRectangleOverlay.TryGetDrawRect(
