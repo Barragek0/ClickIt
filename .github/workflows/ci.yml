@@ -43,7 +43,7 @@ jobs:
 
       - name: Build test project
         run: |
-          dotnet build Tests\ClickIt.Tests.csproj -c Debug /p:Platform=AnyCPU /p:IncludeIntegrationTests=false
+          dotnet build Tests\ClickIt.Tests.csproj -c Debug /p:Platform=AnyCPU /p:IncludeIntegrationTests=false -m:1 -nr:false
 
       - name: Test with coverage
         shell: pwsh
