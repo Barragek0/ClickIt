@@ -22,6 +22,7 @@ namespace ClickIt.Features.Area
         internal RectangleF ButtonsBlockedRectangle { get; init; } = RectangleF.Empty;
         internal RectangleF RitualBlockedRectangle { get; init; } = RectangleF.Empty;
         internal RectangleF SentinelBlockedRectangle { get; init; } = RectangleF.Empty;
+        internal RectangleF ExpeditionBlockedRectangle { get; init; } = RectangleF.Empty;
         internal IReadOnlyList<RectangleF> BuffsAndDebuffsRectangles { get; init; } = [];
         internal IReadOnlyList<RectangleF> QuestTrackerBlockedRectangles { get; init; } = [];
     }
