@@ -305,10 +305,12 @@ namespace ClickIt
         [Menu("Corrupt ALL Essences", "Overrides the essence table and attempts to corrupt every eligible essence encounter.", 1, 118)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode CorruptAllEssences { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         [JsonProperty("EssenceSecondCorruptionOnlyWhenNoDeafening")]
-        public ToggleNode EssenceSecondCorruptionOnlyWhenNoDeafening { get; set; } = new ToggleNode(true);
+        public ToggleNode EssenceCorruptionSkipIfDeafening { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         [JsonProperty("EssenceSecondCorruptionOnlyWhenNoCorruptionEssences")]
-        public ToggleNode EssenceSecondCorruptionOnlyWhenNoCorruptionEssences { get; set; } = new ToggleNode(true);
+        public ToggleNode EssenceCorruptionSkipIfSpecialEssence { get; set; } = new ToggleNode(true);
         [JsonIgnore]
         public bool ShowEssenceCorruptionTablePanel => CorruptAllEssences?.Value != true;
         [Menu("", 2, 118)]
@@ -399,6 +401,7 @@ namespace ClickIt
         public ToggleNode MinWeightThresholdEnabled { get; set; } = new ToggleNode(false);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public RangeNode<int> MinWeightThreshold { get; set; } = new RangeNode<int>(25, 1, 100);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         [JsonProperty("ChooseHigherUpsideWhenAltarWeightsTie")]
         public ToggleNode ChooseHigherUpsideWhenAltarWeightsTie { get; set; } = new ToggleNode(true);
 

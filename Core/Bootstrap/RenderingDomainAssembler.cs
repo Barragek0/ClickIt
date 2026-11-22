@@ -4,7 +4,8 @@ namespace ClickIt.Core.Bootstrap
         AltarChoiceEvaluator AltarChoiceEvaluator,
         ImGuiDebugOverlay ImGuiDebugOverlay,
         UiRegionRectangleOverlay UiRegionRectangleOverlay,
-        OverlayRenderHost OverlayRenderHost);
+        OverlayRenderHost OverlayRenderHost,
+        InventoryFullWarningOverlay InventoryFullWarningOverlay);
 
     internal static class RenderingDomainAssembler
     {
@@ -30,9 +31,10 @@ namespace ClickIt.Core.Bootstrap
             overlayRenderHost.Register(new AltarOverlay(core.WeightCalculator, altarChoiceEvaluator, core.AltarService, logMessage));
             overlayRenderHost.Register(new LazyModeOverlay(core.InputHandler, core.LazyModeBlockerService));
             overlayRenderHost.Register(new ClickHotkeyToggleOverlay(core.InputHandler));
-            overlayRenderHost.Register(new InventoryFullWarningOverlay(
+            InventoryFullWarningOverlay inventoryFullWarningOverlay = new(
                 core.AreaService, core.InventoryProbeService.GetLatestDebug,
-                core.HarvestUpgrade is { } harvestUpgrade ? harvestUpgrade.GetWarning : null));
+                core.HarvestUpgrade is { } harvestUpgrade ? harvestUpgrade.GetWarning : null);
+            overlayRenderHost.Register(inventoryFullWarningOverlay);
             overlayRenderHost.Register(new PathfindingOverlay(core.PathfindingService));
             overlayRenderHost.Register(new BlightOverlay(core.BlightService));
             ImGuiDebugOverlay guiDebugOverlay = new(settings, core.PerformanceMonitor, core.BlightService, new PluginDebugTelemetrySource(plugin));
@@ -44,7 +46,8 @@ namespace ClickIt.Core.Bootstrap
                 altarChoiceEvaluator,
                 guiDebugOverlay,
                 uiRegionRectangleOverlay,
-                overlayRenderHost);
+                overlayRenderHost,
+                inventoryFullWarningOverlay);
         }
 
         public static UltimatumOverlay CreateUltimatumOverlay(ClickAutomationPort clickAutomationPort)

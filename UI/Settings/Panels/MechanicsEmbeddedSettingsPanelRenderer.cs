@@ -47,13 +47,13 @@ namespace ClickIt.UI.Settings.Panels
                     _settings.CorruptAllEssences,
                     "Overrides the essence table and attempts to corrupt every eligible essence encounter.");
                 SettingsUiRenderHelpers.DrawToggleNodeControl(
-                    "Only corrupt a second time when there are no Deafening##EssenceSecondNoDeafening",
-                    _settings.EssenceSecondCorruptionOnlyWhenNoDeafening,
-                    "With Recrystallisation, skip the second corruption if the monster has any Deafening essences.");
+                    "Only corrupt when there are no Deafening##EssenceSkipIfDeafening",
+                    _settings.EssenceCorruptionSkipIfDeafening,
+                    "Never corrupt an essence whose label reads Deafening, whether it is the first corruption or a second one.");
                 SettingsUiRenderHelpers.DrawToggleNodeControl(
-                    "Only corrupt a second time when there are no Corruption essences##EssenceSecondNoCorruptionEssences",
-                    _settings.EssenceSecondCorruptionOnlyWhenNoCorruptionEssences,
-                    "With Recrystallisation, skip the second corruption if the monster has Hysteria, Insanity, Horror, Delirium, Desolation, or Trickery.");
+                    "Only corrupt when there are no special essences##EssenceSkipIfSpecialEssence",
+                    _settings.EssenceCorruptionSkipIfSpecialEssence,
+                    "Never corrupt an essence that is one of the corruption-only essences (Hysteria, Insanity, Horror, Delirium, Desolation, or Trickery).\n\nThis applies to the first corruption and to the second, so a special essence is left alone rather than risked.");
 
                 if (_settings.ShowEssenceCorruptionTablePanel)
                     _essenceCorruptionPanelRenderer.DrawPanel();

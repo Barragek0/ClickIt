@@ -71,7 +71,8 @@ namespace ClickIt.Features.Click
             BlightChestDebug,
             message => _errorHandler.LogError(message),
             HarvestUpgrade,
-            ClickAutomationSupport.CraftingLog));
+            ClickAutomationSupport.CraftingLog,
+            _inventory));
 
         private ChestLootSettlementTracker ChestLootSettlement => field ??= new(new ChestLootSettlementTrackerDependencies(
             _settings,

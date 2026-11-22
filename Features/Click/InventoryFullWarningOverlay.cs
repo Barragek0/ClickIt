@@ -34,6 +34,14 @@ namespace ClickIt.Features.Click
             _getHarvestCurrencyWarning = getHarvestCurrencyWarning;
         }
 
+        /// <summary>
+        /// The essence-corruption currency warning, set once the click port that owns the corruption state exists.
+        ///
+        /// Kept as a settable property rather than a constructor argument because the overlays are registered before the
+        /// click domain is assembled; the harvest warning can be passed in because its owner lives in the core domain.
+        /// </summary>
+        internal Func<string?>? EssenceCurrencyWarning { get; set; }
+
         public string Name => "InventoryFullWarning";
 
         public RenderSection Section => RenderSection.InventoryFullWarning;
@@ -66,7 +74,8 @@ namespace ClickIt.Features.Click
 
             bool showInventoryWarning = ShouldShowInventoryFullWarning(now, _lastInventoryFullBlockedTimestampMs);
             string? harvestWarning = _getHarvestCurrencyWarning?.Invoke();
-            if (!showInventoryWarning && harvestWarning == null)
+            string? essenceWarning = EssenceCurrencyWarning?.Invoke();
+            if (!showInventoryWarning && harvestWarning == null && essenceWarning == null)
                 return;
 
             RectangleF windowRect = ctx.WindowArea;
@@ -82,6 +91,16 @@ namespace ClickIt.Features.Click
             {
                 Vector2 harvestPos = showInventoryWarning ? pos + new Vector2(0, InventoryFullWarningTextSize) : pos;
                 EnqueueBoldWarningText(ctx.DrawQueue, harvestPos, harvestWarning, 32);
+            }
+
+            if (essenceWarning != null)
+            {
+                // Stacks under whichever lines are already drawn, so all the warnings stay readable together.
+                float offsetY = showInventoryWarning ? InventoryFullWarningTextSize : 0f;
+                if (harvestWarning != null)
+                    offsetY += 32f;
+
+                EnqueueBoldWarningText(ctx.DrawQueue, pos + new Vector2(0, offsetY), essenceWarning, 32);
             }
         }
 

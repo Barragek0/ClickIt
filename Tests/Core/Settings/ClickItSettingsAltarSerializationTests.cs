@@ -4,6 +4,25 @@ namespace ClickIt.Tests.Core.Settings
     public class AltarSettingsSerializationTests
     {
         [TestMethod]
+        [TestCategory("Settings")]
+        public void EmbeddedSettings_UseLegacySettingsTreeVisibilityGate()
+        {
+            string[] embeddedProperties =
+            [
+                nameof(ClickItSettings.EssenceCorruptionSkipIfDeafening),
+                nameof(ClickItSettings.EssenceCorruptionSkipIfSpecialEssence),
+                nameof(ClickItSettings.ChooseHigherUpsideWhenAltarWeightsTie)
+            ];
+
+            foreach (string propertyName in embeddedProperties)
+            {
+                PropertyInfo property = typeof(ClickItSettings).GetProperty(propertyName)!;
+                property.GetCustomAttributes().OfType<ConditionalDisplayAttribute>()
+                    .Should().ContainSingle(attribute => attribute.ConditionMethodName == nameof(ClickItSettings.ShowLegacySettingsTreeNodes));
+            }
+        }
+
+        [TestMethod]
         public void AltarWeightingAndAlerts_RoundTrip_PreservesCustomValues()
         {
             var settings = new ClickItSettings();

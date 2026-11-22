@@ -138,6 +138,43 @@ namespace ClickIt.Tests.Features.Click
             InventoryFullWarningOverlay.ShouldRefreshInventoryFullWarningTimestamp(7, 7, InventoryDebugSnapshot.Empty).Should().BeFalse();
         }
 
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void Draw_WritesTheEssenceCurrencyWarning_WhenItsProviderReportsOne()
+        {
+            const string warning = "No Vaal Orbs to corrupt essences";
+            DeferredDrawQueue queue = new();
+            var overlay = new InventoryFullWarningOverlay(null, static () => InventoryDebugSnapshot.Empty)
+            {
+                EssenceCurrencyWarning = () => warning
+            };
+
+            overlay.Draw(CreateRenderContext(queue));
+
+            queue.GetPendingTextSnapshot().Should().Contain(warning);
+        }
+
+        [TestMethod]
+        [TestCategory("Boundary")]
+        public void Draw_WritesNothing_WhenNoProviderReportsAWarning()
+        {
+            DeferredDrawQueue queue = new();
+            var overlay = new InventoryFullWarningOverlay(null, static () => InventoryDebugSnapshot.Empty);
+
+            overlay.Draw(CreateRenderContext(queue));
+
+            queue.GetPendingTextSnapshot().Should().BeEmpty();
+        }
+
+        private static OverlayRenderContext CreateRenderContext(DeferredDrawQueue queue)
+            => new(
+                Settings: new ClickItSettings(),
+                GameController: null,
+                Graphics: null,
+                WindowArea: new RectangleF(0, 0, 1920, 1080),
+                Labels: null,
+                DrawQueue: queue);
+
         private static InventoryDebugSnapshot CreateInventorySnapshot(string stage, bool inventoryFull, bool allowPickup, long sequence = 0)
         {
             return new InventoryDebugSnapshot(

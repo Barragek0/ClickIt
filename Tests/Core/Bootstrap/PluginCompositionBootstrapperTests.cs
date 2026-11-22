@@ -315,7 +315,8 @@ namespace ClickIt.Tests.Core.Bootstrap
                 AltarChoiceEvaluator: CreateOpaque<AltarChoiceEvaluator>(),
                 ImGuiDebugOverlay: CreateOpaque<ImGuiDebugOverlay>(),
                 UiRegionRectangleOverlay: CreateOpaque<UiRegionRectangleOverlay>(),
-                OverlayRenderHost: new OverlayRenderHost());
+                OverlayRenderHost: new OverlayRenderHost(),
+                InventoryFullWarningOverlay: new InventoryFullWarningOverlay(null, null));
         }
 
         private static ClickAutomationPort CreateClickAutomationPort(ClickItSettings settings, CoreDomainServices core)

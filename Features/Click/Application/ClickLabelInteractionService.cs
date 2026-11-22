@@ -13,21 +13,87 @@ namespace ClickIt.Features.Click.Application
         ElementTreeInspector? BlightChestDebug = null,
         Action<string>? LogError = null,
         HarvestEncounterUpgrade? HarvestUpgrade = null,
-        Action<Func<string>>? CraftingLog = null);
+        Action<Func<string>>? CraftingLog = null,
+        InventoryInteractionPolicy? Inventory = null);
 
     internal sealed class ClickLabelInteractionService(ClickLabelInteractionServiceDependencies dependencies)
     {
         private readonly RecrystallisationDetector _recrystallisationDetector = new();
         private readonly HashSet<long> _essenceFirstCorruptionLabels = [];
         private readonly HashSet<long> _essenceSecondCorruptionLabels = [];
+        private readonly Dictionary<long, int> _essenceFirstCorruptionAttempts = [];
+        private readonly Dictionary<long, long> _essenceFirstCorruptionDeadlines = [];
         private readonly Lock _essenceCorruptionLock = new();
         private long? _essenceAreaHash;
+
+        /// <summary>
+        /// How long a sent corruption is given to show on the label before it is taken to have failed. The Vaal Orb
+        /// click is not instant, so waiting a few ticks is expected; waiting forever is not, because the essence stays
+        /// the mechanic's best candidate and every tick would be spent here with nothing clicked.
+        /// </summary>
+        private const int CorruptionSettleMs = 1500;
+
+        /// <summary>How many times one essence's first corruption is sent before this owner gives up on it.</summary>
+        private const int MostFirstCorruptionAttempts = 3;
+
+        /// <summary>How long the missing-Vaal-Orbs warning stays on screen after the last corruption attempt.</summary>
+        private const int VaalOrbWarningHoldMs = 3_000;
         private const long BlightChestDebugCaptureIntervalMs = 500;
         private readonly ClickLabelInteractionServiceDependencies _dependencies = dependencies;
         private long _lastBlightChestDebugCaptureTimestampMs;
         private long _lastActionRowDebugTimestampMs;
+        private long _vaalOrbWarningUntil;
 
         internal void LogLabelAction(Func<string> message) => _dependencies.CraftingLog?.Invoke(message);
+
+        /// <summary>
+        /// The warning to draw over the player while essences cannot be corrupted for want of Vaal Orbs, or null.
+        ///
+        /// This mirrors the harvest currency warning: corruption is requested, the orb cannot be found in the inventory,
+        /// and the player is told rather than left wondering why nothing is being clicked.
+        /// </summary>
+        internal string? GetVaalOrbWarning()
+            => _dependencies.Settings.ClickEssences.Value
+                && Environment.TickCount64 < Volatile.Read(ref _vaalOrbWarningUntil)
+                ? "No Vaal Orbs to corrupt essences"
+                : null;
+
+        private void RaiseVaalOrbWarning()
+            => Volatile.Write(ref _vaalOrbWarningUntil, Environment.TickCount64 + VaalOrbWarningHoldMs);
+
+        /// <summary>
+        /// Whether the inventory holds at least one Vaal Orb. Unreadable inventory counts as having one, so a missing
+        /// read never raises a false warning.
+        /// </summary>
+        private bool HasVaalOrb()
+        {
+            if (_dependencies.Inventory is not { } inventory)
+                return true;
+
+            IReadOnlyList<Entity> items;
+            try
+            {
+                items = inventory.ReadCurrentInventoryItems(_dependencies.GameController);
+            }
+            catch
+            {
+                return true;
+            }
+
+            if (items.Count == 0)
+                return true;
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (DynamicAccess.TryReadString(items[i], DynamicAccessProfiles.Path, out string path)
+                    && path.EndsWith(VaalOrbMetadataSuffix, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private const string VaalOrbMetadataSuffix = "/Currency/CurrencyCorrupt";
 
         internal bool ExecuteInteraction(
             Vector2 clickPos,
@@ -93,6 +159,8 @@ namespace ClickIt.Features.Click.Application
             {
                 _essenceFirstCorruptionLabels.Clear();
                 _essenceSecondCorruptionLabels.Clear();
+                _essenceFirstCorruptionAttempts.Clear();
+                _essenceFirstCorruptionDeadlines.Clear();
                 _essenceAreaHash = areaHash;
             }
 
@@ -102,16 +170,28 @@ namespace ClickIt.Features.Click.Application
             if (id <= 0)
                 return true;
 
+            if (_essenceSecondCorruptionLabels.Contains(id))
+                return false;
+
             if (_essenceFirstCorruptionLabels.Contains(id))
             {
-                if (_essenceSecondCorruptionLabels.Contains(id))
-                    return false;
-                if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? currentLabel)
-                    || currentLabel is not Element currentElement
-                    || !LabelElementSearch.ElementContainsAnyStrings(currentElement, ["Corrupted"]))
+                // An unreadable label cannot establish whether the previous corruption succeeded.
+                if (!TryReadLabelCorrupted(label, out bool corrupted))
                     return true;
-                if (!_essenceSecondCorruptionLabels.Contains(id) && IsRecrystallisationActive()
-                    && ShouldCorruptEssenceSecondTime(label))
+
+                if (!corrupted)
+                {
+                    // The corruption was sent but the label does not read "Corrupted" yet. The Vaal Orb click takes a
+                    // moment to land, so hold the tick while it settles; after that the click is taken to have failed
+                    // and retried a bounded number of times. Without this bound the essence stays the mechanic's best
+                    // candidate and every tick is spent here with nothing clicked.
+                    if (IsCorruptionSettling(id))
+                        return true;
+
+                    return TryFirstCorruption(id);
+                }
+
+                if (IsRecrystallisationActive() && ShouldCorruptEssenceSecondTime(label))
                 {
                     if (TryClickVaalOrb(label, windowTopLeft, () => _dependencies.Settings.ClickEssences.Value
                         && IsRecrystallisationActive() && ShouldCorruptEssenceSecondTime(label)))
@@ -123,17 +203,54 @@ namespace ClickIt.Features.Click.Application
                 return false;
             }
 
-            bool clicked = TryFirstCorruption();
-            if (clicked)
-            {
-                _essenceFirstCorruptionLabels.Add(id);
-            }
-            return clicked;
+            return TryFirstCorruption(id);
 
-            bool TryFirstCorruption()
-                => _dependencies.LabelInteractionPort.ShouldCorruptEssence(label)
-                    && TryClickVaalOrb(label, windowTopLeft,
-                        () => _dependencies.Settings.ClickEssences.Value && _dependencies.LabelInteractionPort.ShouldCorruptEssence(label));
+            bool TryFirstCorruption(long essenceId)
+            {
+                if (!CanStillCorruptFirstTime(label) || !HasFirstCorruptionAttemptsLeft(essenceId))
+                    return false;
+
+                if (!HasVaalOrb())
+                {
+                    RaiseVaalOrbWarning();
+                    return false;
+                }
+
+                if (!TryClickVaalOrb(label, windowTopLeft, () => CanStillCorruptFirstTime(label)))
+                    return true;
+
+                _essenceFirstCorruptionAttempts[essenceId] =
+                    _essenceFirstCorruptionAttempts.GetValueOrDefault(essenceId) + 1;
+                _essenceFirstCorruptionDeadlines[essenceId] = Environment.TickCount64 + CorruptionSettleMs;
+                _essenceFirstCorruptionLabels.Add(essenceId);
+                return true;
+            }
+        }
+
+        private bool IsCorruptionSettling(long id)
+            => _essenceFirstCorruptionDeadlines.TryGetValue(id, out long deadline)
+                && Environment.TickCount64 < deadline;
+
+        private bool HasFirstCorruptionAttemptsLeft(long id)
+            => _essenceFirstCorruptionAttempts.GetValueOrDefault(id) < MostFirstCorruptionAttempts;
+
+        private bool CanStillCorruptFirstTime(LabelOnGround label)
+            => _dependencies.Settings.ClickEssences.Value
+                && _dependencies.LabelInteractionPort.ShouldCorruptEssence(label);
+
+        /// <summary>
+        /// Whether the label reads "Corrupted". False when the label element could not be read, so an unreadable
+        /// boundary never grants another restriction-free click.
+        /// </summary>
+        private static bool TryReadLabelCorrupted(LabelOnGround label, out bool corrupted)
+        {
+            corrupted = false;
+            if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
+                || rawLabel is not Element element)
+                return false;
+
+            corrupted = LabelElementSearch.ElementContainsAnyStrings(element, ["Corrupted"]);
+            return true;
         }
 
         private bool TryClickVaalOrb(LabelOnGround label, Vector2 windowTopLeft, Func<bool> canStillClick)
@@ -142,20 +259,14 @@ namespace ClickIt.Features.Click.Application
 
         private bool ShouldCorruptEssenceSecondTime(LabelOnGround label)
         {
-            if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
-                || rawLabel is not Element element
-                || !_dependencies.Settings.CorruptAllEssences.Value
-                    && !_dependencies.Settings.GetCorruptEssenceNames().Any(name => LabelElementSearch.ElementContainsAnyStrings(element, [name])))
+            if (!LabelElementSearch.TryGetLabelAdapter(label, out IElementAdapter? adapter) || adapter == null)
                 return false;
 
-            if (_dependencies.Settings.EssenceSecondCorruptionOnlyWhenNoDeafening.Value
-                && LabelElementSearch.ElementContainsAnyStrings(element, ["Deafening"]))
-                return false;
-
-            string[] corruptionEssences = ["Essence of Hysteria", "Essence of Insanity", "Essence of Horror",
-                "Essence of Delirium", "Essence of Desolation", "Essence of Trickery"];
-            return !_dependencies.Settings.EssenceSecondCorruptionOnlyWhenNoCorruptionEssences.Value
-                || !LabelElementSearch.ElementContainsAnyStrings(element, corruptionEssences);
+            // The table selection ignores "Corrupted", since this path deliberately revisits a corrupted essence.
+            // The Deafening and special-essence safeguards are shared with the first corruption, so both paths apply
+            // the same rule rather than keeping a second copy that can drift.
+            return EssenceService.IsSelectedForCorruption(_dependencies.Settings, adapter)
+                && !EssenceService.IsBlockedBySafeguard(_dependencies.Settings, adapter);
         }
 
         private bool IsRecrystallisationActive()

@@ -56,6 +56,7 @@ namespace ClickIt.Core.Bootstrap
             ClickAutomationPort clickAutomationPort = ClickDomainAssembler.Assemble(owner, settings, gameController, core, rendering.AltarChoiceEvaluator);
             UltimatumOverlay ultimatumOverlay = RenderingDomainAssembler.CreateUltimatumOverlay(clickAutomationPort);
             rendering.OverlayRenderHost.Register(ultimatumOverlay);
+            rendering.InventoryFullWarningOverlay.EssenceCurrencyWarning = clickAutomationPort.GetEssenceCurrencyWarning;
             SettingsDomainServices settingsDomain = SettingsDomainAssembler.Assemble(owner);
             return new CompositionRootParts(core, rendering, clickAutomationPort, settingsDomain);
         }

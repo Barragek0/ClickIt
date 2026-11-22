@@ -18,7 +18,8 @@ namespace ClickIt.Features.Click
         Func<bool> GroundItemsVisible,
         TimeCache<List<LabelOnGround>> CachedLabels,
         PerformanceMonitor PerformanceMonitor,
-        Action<string, int>? FreezeDebugTelemetrySnapshot);
+        Action<string, int>? FreezeDebugTelemetrySnapshot,
+        InventoryInteractionPolicy? Inventory = null);
 
     public sealed partial class ClickAutomationPort
     {
@@ -43,6 +44,7 @@ namespace ClickIt.Features.Click
         private readonly Func<bool> _groundItemsVisible;
         private readonly TimeCache<List<LabelOnGround>> _cachedLabels;
         private readonly PerformanceMonitor _performanceMonitor;
+        private readonly InventoryInteractionPolicy? _inventory;
         private readonly InteractionExecutor _interactionExecutor;
         private readonly ChestLootSettlementState _chestLootSettlementState = new();
         private readonly ClickRuntimeState _runtimeState = new();
@@ -82,6 +84,7 @@ namespace ClickIt.Features.Click
             _cachedLabels = dependencies.CachedLabels;
             PerformanceMonitor performanceMonitor = _performanceMonitor = dependencies.PerformanceMonitor ?? throw new ArgumentNullException(nameof(dependencies.PerformanceMonitor));
             Action<string, int>? freezeDebugTelemetrySnapshot = dependencies.FreezeDebugTelemetrySnapshot;
+            _inventory = dependencies.Inventory;
             ClickAutomationSupport = new ClickAutomationSupport(new ClickAutomationSupportDependencies(
                 Settings: settings,
                 TelemetryStore: new ClickTelemetryStore(settings),
@@ -136,6 +139,9 @@ namespace ClickIt.Features.Click
 
         internal bool TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)
             => UltimatumAutomation.TryGetOptionPreview(out previews);
+
+        internal string? GetEssenceCurrencyWarning()
+            => LabelInteraction.GetVaalOrbWarning();
 
         internal void RefreshUltimatumPreview()
             => UltimatumAutomation.RefreshUltimatumPreview();
