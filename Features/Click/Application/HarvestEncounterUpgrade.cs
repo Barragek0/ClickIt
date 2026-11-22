@@ -6,6 +6,14 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
     private const int ModifierUpdateTimeoutMs = 200;
     private const int InventoryRetryDelayMs = 250;
     private const int WarningHoldMs = 3_000;
+
+    /// <summary>
+    /// How far the player's grid position may drift between frames and still count as standing still, in grid units.
+    /// Deliberately small: slow drift moves the camera and invalidates the screen rectangle the reroll icon was resolved
+    /// from, which is how a reroll click lands on the tree itself.
+    /// </summary>
+    private const float PlayerStillThreshold = 0.25f;
+
     private readonly object _sync = new();
     private readonly Dictionary<long, PendingUpgrade> _pending = [];
     private readonly Dictionary<long, PendingReroll> _rerolls = [];
@@ -166,9 +174,14 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
                 UpgradeStep.Alchemy => LabelActionButtons.OrbOfAlchemy,
                 _ => throw new InvalidOperationException($"Unexpected Harvest currency step: {action}"),
             };
+            NumVector2? playerBaseline = ReadPlayerGridPos(gameController);
+            if (playerBaseline == null)
+                return ClickLabelInteractionService.LabelActionResult.Unavailable;
+
             return interaction.TryClickLabelAction(label, windowTopLeft, tooltipName,
                 allowWhenHotkeyInactive: allowWhenHotkeyInactive,
                 canStillClick: () => settings.ClickHarvest.Value && IsUpgradeEnabled(startedNormal)
+                    && IsPlayerStillAt(ReadPlayerGridPos(gameController), playerBaseline)
                     && AreaUiSnapshotReader.TryReadCurrentAreaHash(gameController, out long currentArea)
                     && currentArea == areaHash
                     && TryReadTree(label, out Entity? currentTree, out MonsterRarity currentRarity)
@@ -274,11 +287,19 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
             return true;
         }
         Volatile.Write(ref _warning, null);
+
+        // Sample where the character stands before the dispatcher resolves the icon, then require it to still be there
+        // when the click is actually sent. A walk that starts mid-resolve shifts the icon off the cursor onto the tree.
+        NumVector2? playerBaseline = ReadPlayerGridPos(gameController);
+        if (playerBaseline == null)
+            return true;
+
         string name = next == UpgradeStep.Identify ? LabelActionButtons.ScrollOfWisdom
             : next == UpgradeStep.Chaos ? LabelActionButtons.ChaosOrb
             : next == UpgradeStep.Scour ? LabelActionButtons.OrbOfScouring : LabelActionButtons.OrbOfAlchemy;
         var result = interaction.TryClickLabelAction(label, windowTopLeft, name, allowWhenHotkeyInactive: allowWhenHotkeyInactive,
             canStillClick: () => settings.ClickHarvest.Value && settings.HarvestRerollTargetMods.Value
+                && IsPlayerStillAt(ReadPlayerGridPos(gameController), playerBaseline)
                 && AreaUiSnapshotReader.TryReadCurrentAreaHash(gameController, out long currentArea) && currentArea == areaHash
                 && TryReadTree(label, out Entity? currentTree, out MonsterRarity currentRarity)
                 && currentTree.Id == treeId && currentRarity == rarity
@@ -301,6 +322,41 @@ internal sealed class HarvestEncounterUpgrade(ClickItSettings settings, Inventor
         => !string.IsNullOrWhiteSpace(current)
             && (!string.Equals(previous, current, StringComparison.Ordinal)
                 || now >= checkAfter + ModifierUpdateTimeoutMs - LabelUpdateDelayMs);
+
+    /// <summary>
+    /// The player's grid position, or null when it cannot be read. Null is treated as "not still" by
+    /// <see cref="IsPlayerStillAt"/>, so an unreadable boundary never grants a click.
+    /// </summary>
+    private static NumVector2? ReadPlayerGridPos(GameController? gameController)
+    {
+        try
+        {
+            if (gameController?.Player == null)
+                return null;
+
+            NumVector2 position = gameController.Player.GridPosNum;
+            return float.IsFinite(position.X) && float.IsFinite(position.Y) ? position : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Whether the player still stands where <paramref name="baseline"/> was sampled, within
+    /// <see cref="PlayerStillThreshold"/>.
+    ///
+    /// The harvest tree's reroll icons are drawn under the tree and move with the camera, so a click resolved while the
+    /// character is walking lands wherever the icon used to be - on the tree itself. This is a pure comparison: the
+    /// caller samples the baseline once per tick and re-asks as often as it likes, so the answer cannot drift just
+    /// because it was asked again.
+    /// </summary>
+    internal static bool IsPlayerStillAt(NumVector2? current, NumVector2? baseline)
+        => current is { } now
+            && baseline is { } then
+            && MathF.Abs(now.X - then.X) <= PlayerStillThreshold
+            && MathF.Abs(now.Y - then.Y) <= PlayerStillThreshold;
 
     private static string DescribeModifiers(string? text)
     {
