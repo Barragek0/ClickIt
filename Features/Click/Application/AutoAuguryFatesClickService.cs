@@ -10,7 +10,7 @@ internal sealed class AutoAuguryFatesClickService(
     Action<string> debugLog)
 {
     private const int InterfaceVersion = 2;
-    private const int AbsenceGraceMs = 500;
+    private const int AbsenceGraceMs = 100;
     private const int OpeningSettleMs = 100;
     private readonly ClickItSettings _settings = settings;
     private readonly PluginManager? _pluginManager = pluginManager;
