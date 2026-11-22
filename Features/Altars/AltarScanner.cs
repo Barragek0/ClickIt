@@ -37,9 +37,9 @@ namespace ClickIt.Features.Altars
         public static List<(Element element, string path)> CollectElementsFromLabels(List<LabelOnGround>? altarLabels)
             => [.. CollectElementsWithEntities(altarLabels).Select(entry => (entry.element, entry.path))];
 
-        internal static List<(Element element, string path, Entity? entity)> CollectElementsWithEntities(List<LabelOnGround>? altarLabels)
+        internal static List<(Element element, string path, Entity? entity, LabelOnGround label)> CollectElementsWithEntities(List<LabelOnGround>? altarLabels)
         {
-            List<(Element element, string path, Entity? entity)> elementsToProcess = new((altarLabels?.Count ?? 0) * 2);
+            List<(Element element, string path, Entity? entity, LabelOnGround label)> elementsToProcess = new((altarLabels?.Count ?? 0) * 2);
 
             if (altarLabels == null) return elementsToProcess;
 
@@ -61,7 +61,7 @@ namespace ClickIt.Features.Altars
                         && (DynamicAccess.TryReadBool(el, DynamicAccessProfiles.IsVisible, out bool isVisible)
                             ? isVisible
                             : el.IsVisible))
-                        elementsToProcess.Add((el, path, item));
+                        elementsToProcess.Add((el, path, item, label));
 
             }
 

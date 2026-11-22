@@ -6,6 +6,29 @@ namespace ClickIt.Tests.Features.Altars
         private static readonly RectangleF Window = new(100f, 100f, 1280f, 720f);
 
         [TestMethod]
+        [TestCategory("Regression")]
+        public void SourceLabelVisibility_RejectsStreamedOutLabelEvenWhenRootIsStillVisible()
+        {
+            var root = new AltarProbeElement(new RectangleF(200, 200, 120, 40));
+            var label = new SourceLabelProbe { IsVisible = true, Label = root };
+
+            AltarOverlay.IsSourceLabelVisible(label).Should().BeTrue();
+            label.IsVisible = false;
+            AltarOverlay.IsSourceLabelVisible(label).Should().BeFalse();
+            label.IsVisible = true;
+            root.IsVisible = false;
+            AltarOverlay.IsSourceLabelVisible(label).Should().BeFalse();
+            label.Label = null;
+            AltarOverlay.IsSourceLabelVisible(label).Should().BeFalse();
+        }
+
+        public sealed class SourceLabelProbe
+        {
+            public bool IsVisible { get; set; }
+            public AltarProbeElement? Label { get; set; }
+        }
+
+        [TestMethod]
         public void SourceProjectionRejectsDistantAltarWithOptionIntersectingTheCorner()
         {
             RectangleF top = new(-201, -149, 492, 90);
@@ -14,6 +37,19 @@ namespace ClickIt.Tests.Features.Altars
             LabelGeometry.IsRectOnScreen(bottom, Window).Should().BeTrue();
             AltarOverlay.IsSourceNearOptions(new Vector2(-2310, -5215), top, bottom).Should().BeFalse();
             AltarOverlay.IsSourceNearOptions(new Vector2(0, 0), top, bottom).Should().BeTrue();
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void SourceProjectionRejectsStreamOutRectanglesThatJumpBelowTheAltar()
+        {
+            RectangleF top = new(-199.8f, -137.7f, 490.7f, 124.2f);
+            RectangleF bottom = new(-137.0f, 56.0f, 365.2f, 174.8f);
+
+            LabelGeometry.IsRectOnScreen(bottom, new RectangleF(0, 0, 1920, 1080)).Should().BeTrue();
+            AltarOverlay.IsSourceNearOptions(new Vector2(182.9f, -458.2f), top, bottom).Should().BeFalse();
+            AltarOverlay.IsSourceNearOptions(new Vector2(1199f, 483f),
+                new RectangleF(1017, 54, 491, 124), new RectangleF(1080, 293, 365, 175)).Should().BeTrue();
         }
 
         [TestMethod]

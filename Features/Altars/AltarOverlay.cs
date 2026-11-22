@@ -63,6 +63,9 @@ namespace ClickIt.Features.Altars
 
         private void RenderSingleAltar(DeferredDrawQueue drawQueue, RectangleF windowArea, GameController? gameController, PrimaryAltarComponent altar)
         {
+            if (altar.SourceEntity != null && (altar.SourceLabel is not { } label || !IsSourceLabelVisible(label)))
+                return;
+
             // Mod recognition controls whether automation may choose, but it must not suppress the warning overlay for unmatched mods.
             if (!AreModElementsVisible(altar))
             {
@@ -106,6 +109,13 @@ namespace ClickIt.Features.Altars
             DrawWeightTexts(drawQueue, altarWeights.Value, topModsTopLeft, bottomModsTopLeft);
         }
 
+        internal static bool IsSourceLabelVisible(object label)
+            => DynamicAccess.TryReadBool(label, DynamicAccessProfiles.IsVisible, out bool visible) && visible
+                && DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? root)
+                && root != null
+                && DynamicAccess.TryReadBool(root, DynamicAccessProfiles.IsValid, out bool valid) && valid
+                && DynamicAccess.TryReadBool(root, DynamicAccessProfiles.IsVisible, out bool rootVisible) && rootVisible;
+
         internal static bool TryProjectSource(GameController? gameController, Entity entity, out Vector2 source)
         {
             source = default;
@@ -131,7 +141,7 @@ namespace ClickIt.Features.Altars
             float verticalAllowance = bottom.Bottom - top.Top;
             return source.X >= SystemMath.Min(top.Left, bottom.Left) - horizontalAllowance
                 && source.X <= SystemMath.Max(top.Right, bottom.Right) + horizontalAllowance
-                && source.Y >= top.Top - verticalAllowance
+                && source.Y >= top.Top
                 && source.Y <= bottom.Bottom + verticalAllowance;
         }
 
