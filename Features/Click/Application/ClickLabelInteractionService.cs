@@ -14,7 +14,8 @@ namespace ClickIt.Features.Click.Application
         Action<string>? LogError = null,
         HarvestEncounterUpgrade? HarvestUpgrade = null,
         Action<Func<string>>? CraftingLog = null,
-        InventoryInteractionPolicy? Inventory = null);
+        InventoryInteractionPolicy? Inventory = null,
+        Func<Vector2, string, bool>? IsClientPointClickable = null);
 
     internal sealed class ClickLabelInteractionService(ClickLabelInteractionServiceDependencies dependencies)
     {
@@ -105,7 +106,8 @@ namespace ClickIt.Features.Click.Application
             bool avoidCursorMove = false,
             string? outsideWindowLogMessage = null,
             IntervalKind interval = IntervalKind.Click,
-            Func<Element?, bool>? validateSettledHover = null)
+            Func<Element?, bool>? validateSettledHover = null,
+            Vector2? clientClickPosition = null)
         {
             return _dependencies.ExecuteInteraction(new InteractionExecutionRequest(
                 ClickPosition: clickPos,
@@ -120,7 +122,8 @@ namespace ClickIt.Features.Click.Application
                         ? "[PerformLabelHoldClick] Skipping hold click - cursor outside PoE window"
                         : "[PerformLabelClick] Skipping label click - cursor outside PoE window"),
                 Interval: interval,
-                ValidateSettledHover: validateSettledHover));
+                ValidateSettledHover: validateSettledHover,
+                ClientClickPosition: clientClickPosition));
         }
 
         internal float? TryGetCursorDistanceSquaredToEntity(Entity? entity, Vector2 cursorAbsolute, Vector2 windowTopLeft)
@@ -516,11 +519,12 @@ namespace ClickIt.Features.Click.Application
         internal bool PerformMechanicInteraction(Vector2 clickPos, bool useHoldClick)
             => ExecuteInteraction(clickPos, null, _dependencies.GameController, useHoldClick);
 
-        internal bool PerformManualCursorInteraction(Vector2 clickPos, bool useHoldClick)
-            => ExecuteInteraction(clickPos, null, _dependencies.GameController, useHoldClick, allowWhenHotkeyInactive: true, avoidCursorMove: true);
+        internal bool PerformManualCursorInteraction(Vector2 clickPos, bool useHoldClick, Vector2? clientClickPosition = null)
+            => ExecuteInteraction(clickPos, null, _dependencies.GameController, useHoldClick, allowWhenHotkeyInactive: true,
+                avoidCursorMove: true, clientClickPosition: clientClickPosition);
 
         internal bool PerformResolvedLabelInteraction(Vector2 clickPos, LabelOnGround label, string? mechanicId,
-            bool allowWhenHotkeyInactive = false)
+            bool allowWhenHotkeyInactive = false, Vector2? clientClickPosition = null)
         {
             CaptureBlightChestDebug(label, mechanicId, "click", requireChestMechanic: true);
             return ExecuteInteraction(
@@ -531,7 +535,8 @@ namespace ClickIt.Features.Click.Application
                 _dependencies.GameController,
                 SettlersMechanicPolicy.RequiresHoldClick(mechanicId),
                 forceUiHoverVerification: OffscreenPathingMath.ShouldForceUiHoverVerificationForLabel(label),
-                allowWhenHotkeyInactive: allowWhenHotkeyInactive);
+                allowWhenHotkeyInactive: allowWhenHotkeyInactive,
+                clientClickPosition: clientClickPosition);
         }
 
         private void CaptureBlightChestDebug(LabelOnGround? label, string? mechanicId, string reason, bool requireChestMechanic)
@@ -590,7 +595,7 @@ namespace ClickIt.Features.Click.Application
                 label,
                 windowTopLeft,
                 allLabels,
-                point => _dependencies.IsClickableInEitherSpace(point, path));
+                point => (_dependencies.IsClientPointClickable ?? _dependencies.IsClickableInEitherSpace)(point, path));
             if (clickResolvable)
             {
                 clickPos = resolvedClickPos;

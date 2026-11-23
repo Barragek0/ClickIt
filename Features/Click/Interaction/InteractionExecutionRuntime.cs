@@ -10,7 +10,8 @@ namespace ClickIt.Features.Click.Interaction
         bool AvoidCursorMove,
         string OutsideWindowLogMessage,
         IntervalKind Interval = IntervalKind.Click,
-        Func<Element?, bool>? ValidateSettledHover = null);
+        Func<Element?, bool>? ValidateSettledHover = null,
+        Vector2? ClientClickPosition = null);
 
     internal readonly record struct InteractionExecutionRuntimeDependencies(
         Func<string, bool> EnsureCursorInsideGameWindowForClick,
@@ -39,7 +40,7 @@ namespace ClickIt.Features.Click.Interaction
             if (!_dependencies.EnsureCursorInsideGameWindowForClick(request.OutsideWindowLogMessage))
                 return false;
 
-            if (!_dependencies.IsClickPositionAllowed(request.ClickPosition))
+            if (!_dependencies.IsClickPositionAllowed(request.ClientClickPosition ?? request.ClickPosition))
             {
                 _dependencies.DebugLog($"[InteractionExecutionRuntime] Skipping interaction inside blocked UI rectangle at {request.ClickPosition}.");
                 return false;

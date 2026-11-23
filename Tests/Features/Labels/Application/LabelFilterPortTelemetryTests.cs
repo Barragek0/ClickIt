@@ -131,7 +131,6 @@ namespace ClickIt.Tests.Features.Labels.Application
             => InteractionRuleTestFactory.CreateInventoryInteractionPolicy(allowClosedDoorPast: false);
 
         private static ClickSettings CreateClickSettings(
-            int clickDistance = 50,
             bool clickSettlersOre = true,
             bool clickSettlersCopper = true,
             bool clickSettlersPetrifiedWood = false,
@@ -139,7 +138,6 @@ namespace ClickIt.Tests.Features.Labels.Application
             bool clickSettlersVerisium = false)
             => new()
             {
-                ClickDistance = clickDistance,
                 ClickSettlersOre = clickSettlersOre,
                 ClickSettlersCopper = clickSettlersCopper,
                 ClickSettlersPetrifiedWood = clickSettlersPetrifiedWood,

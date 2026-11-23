@@ -268,7 +268,7 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void TryResolveSettlersMechanic_RejectsEntityProbe_WhenSeededDistanceExceedsClickDistance()
+        public void TryResolveSettlersMechanic_DoesNotRejectVisibleMechanic_ByWorldDistance()
         {
             ClickItSettings settings = CreateSettings(clickDistance: 20, debugMode: false);
             SettlersOreTargetSelector selector = CreateSelector(
@@ -286,8 +286,8 @@ namespace ClickIt.Tests.Features.Click
                 .GetMethod("TryResolveSettlersMechanic", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .Invoke(selector, args)!;
 
-            resolved.Should().BeFalse();
-            args[1].Should().Be(string.Empty);
+            resolved.Should().BeTrue();
+            args[1].Should().Be(MechanicIds.SettlersVerisium);
             args[2].Should().Be(MechanicIds.SettlersVerisiumMarker);
         }
 

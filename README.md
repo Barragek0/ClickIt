@@ -18,7 +18,7 @@ Path of Exile automation plugin for the [ExileCore / ExileAPI](https://www.owned
 3. Copy `ClickIt.dll` into `ExileAPI/Plugins/Compiled/ClickIt`.
 4. Launch the game and hold `F1` (default) to enable clicking.
 
-Recommended first settings: **Search Radius** `100` for 1080p, **Click Frequency Target** ~`80`, and **Lazy Mode** off until the basics look right.
+ClickIt searches the full game window and clicks only visible points outside blocked UI regions. Off-screen targets are considered only by bounded pathfinding. Recommended first settings: **Click Frequency Target** ~`80` and **Lazy Mode** off until the basics look right.
 
 ## How It Works
 
@@ -28,7 +28,7 @@ ClickIt reads the game state, collects the labels and interactions available aro
 
 - **Not clicking** — verify the plugin is loaded in ExileAPI, you're holding the correct hotkey, and the targets are visible/clickable in game. Turn on the debug overlay to confirm what it sees. `Left-handed` should only be enabled when using a left-handed mouse.
 - **Chest clicks feel off** — adjust `Chest Height Offset`.
-- **Poor performance** — lower `Search Radius`, if that doesn't help, reduce the `Click Frequency Target`.
+- **Poor performance** — increase `Click Frequency Target` to reduce click attempts; target acquisition is limited to the game window and off-screen pathfinding has its own bounded search budget.
 
 ## For Developers
 

@@ -73,7 +73,8 @@ namespace ClickIt.Features.Click
             message => _errorHandler.LogError(message),
             HarvestUpgrade,
             ClickAutomationSupport.CraftingLog,
-            _inventory));
+            _inventory,
+            IsClientPointClickable: PointIsInClickableArea));
 
         private ChestLootSettlementTracker ChestLootSettlement => field ??= new(new ChestLootSettlementTrackerDependencies(
             _settings,
@@ -112,7 +113,9 @@ namespace ClickIt.Features.Click
             ClickAutomationSupport.IsInsideWindowInEitherSpace,
             PathfindingLabelSuppression,
             DebugLog: ClickAutomationSupport.DebugLog,
-            IsLabelFullyOverlapped: _labelClickPointResolver.IsLabelFullyOverlapped));
+            IsLabelFullyOverlapped: _labelClickPointResolver.IsLabelFullyOverlapped,
+            ShouldApproachAltar: AltarAutomation.ShouldApproachAltar,
+            IsBlightLabelRegionClickable: region => IsBlightMenuRegionClickable?.Invoke(region) == true));
 
         private OffscreenPathingCoordinator OffscreenPathing => field ??= new(new OffscreenPathingCoordinatorDependencies(
             _settings,
@@ -203,7 +206,8 @@ namespace ClickIt.Features.Click
         {
             IsEssenceClickingEnabled = () => _settings.ClickEssences.Value,
             IsStrongboxClickingEnabled = () => _settings.ClickStrongboxes.Value,
-            ShouldSuppressLockedStrongboxClick = LockedStrongboxLabelSuppression.ShouldSuppress
+            ShouldSuppressLockedStrongboxClick = LockedStrongboxLabelSuppression.ShouldSuppress,
+            IsClientPointClickable = PointIsInClickableArea
         });
 
         private BlightChestTransitionSuppression BlightChestTransitionSuppression => field ??= new();

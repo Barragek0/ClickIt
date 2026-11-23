@@ -230,28 +230,26 @@ namespace ClickIt.Tests.Features.Labels.Application
         }
 
         [TestMethod]
-        public void TryFindLockedChestRestrictionReason_ReturnsReason_ForLockedNonStrongboxWithinDistance()
+        public void TryFindLockedChestRestrictionReason_ReturnsReason_ForLockedNonStrongboxOnScreen()
         {
             string? reason = LazyModeBlockerService.TryFindLockedChestRestrictionReason(
             [
-                new LockedChestCandidate(12f, "Metadata/Chests/Standard", true, false)
-            ],
-                clickDistance: 50);
+                new LockedChestCandidate(true, "Metadata/Chests/Standard", true, false)
+            ]);
 
             reason.Should().Be("Locked chest detected (Metadata/Chests/Standard)");
         }
 
         [TestMethod]
-        public void TryFindLockedChestRestrictionReason_IgnoresStrongboxes_EmptyPaths_AndDistantCandidates()
+        public void TryFindLockedChestRestrictionReason_IgnoresStrongboxes_EmptyPaths_Offscreen_AndUnlockedCandidates()
         {
             string? reason = LazyModeBlockerService.TryFindLockedChestRestrictionReason(
             [
-                new LockedChestCandidate(12f, string.Empty, true, false),
-                new LockedChestCandidate(12f, "Metadata/Chests/Strongbox", true, true),
-                new LockedChestCandidate(60f, "Metadata/Chests/Distant", true, false),
-                new LockedChestCandidate(10f, "Metadata/Chests/Unlocked", false, false)
-            ],
-                clickDistance: 50);
+                new LockedChestCandidate(true, string.Empty, true, false),
+                new LockedChestCandidate(true, "Metadata/Chests/Strongbox", true, true),
+                new LockedChestCandidate(false, "Metadata/Chests/Offscreen", true, false),
+                new LockedChestCandidate(true, "Metadata/Chests/Unlocked", false, false)
+            ]);
 
             reason.Should().BeNull();
         }

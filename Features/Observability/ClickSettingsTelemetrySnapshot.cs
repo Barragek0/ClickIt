@@ -19,7 +19,7 @@ namespace ClickIt.Features.Observability
             string line1 = string.Join("  ", new[]
             {
                 $"Toggle:HT={F(settings.ClickHotkeyToggleMode.Value)} MC={F(settings.ClickOnManualUiHoverOnly.Value)} LM={F(settings.LazyMode.Value)} LH={F(settings.LeftHanded.Value)}",
-                $"Click:R={settings.ClickDistance.Value} f={settings.ClickFrequencyTarget.Value}ms vW={F(settings.VerifyCursorInGameWindowBeforeClick.Value)} vH={F(settings.VerifyUIHoverWhenNotLazy.Value)} aO={F(settings.AvoidOverlappingLabelClickPoints.Value)}",
+                $"Click:search=viewport f={settings.ClickFrequencyTarget.Value}ms vW={F(settings.VerifyCursorInGameWindowBeforeClick.Value)} vH={F(settings.VerifyUIHoverWhenNotLazy.Value)} aO={F(settings.AvoidOverlappingLabelClickPoints.Value)}",
                 $"Safety:bP={F(settings.BlockOnOpenLeftRightPanel.Value)} tI={F(settings.ToggleItems.Value)} ti={settings.ToggleItemsIntervalMs.Value} pT={settings.ToggleItemsPostToggleClickBlockMs.Value}"
             });
 

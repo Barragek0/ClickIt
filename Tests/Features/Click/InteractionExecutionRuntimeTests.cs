@@ -3,6 +3,37 @@ namespace ClickIt.Tests.Features.Click
     [TestClass]
     public class InteractionExecutionRuntimeTests
     {
+        [DataTestMethod]
+        [DataRow(false)]
+        [DataRow(true)]
+        public void Execute_UsesClientPointForAreaCheck_AndScreenPointForDispatch(bool clientPointAllowed)
+        {
+            Vector2 clientPoint = new(100, 200);
+            Vector2 screenPoint = new(450, 360);
+            Vector2? dispatchedPoint = null;
+            var runtime = new InteractionExecutionRuntime(new InteractionExecutionRuntimeDependencies(
+                _ => true,
+                point => point == clientPoint && clientPointAllowed,
+                _ => { },
+                (point, _, _, _, _, _, _) => { dispatchedPoint = point; return true; },
+                (_, _, _, _, _, _) => false,
+                () => { }));
+
+            bool executed = runtime.Execute(new InteractionExecutionRequest(
+                ClickPosition: screenPoint,
+                ExpectedElement: null,
+                Controller: null,
+                UseHoldClick: false,
+                ForceUiHoverVerification: false,
+                AllowWhenHotkeyInactive: false,
+                AvoidCursorMove: false,
+                OutsideWindowLogMessage: "outside",
+                ClientClickPosition: clientPoint));
+
+            executed.Should().Be(clientPointAllowed);
+            dispatchedPoint.Should().Be(clientPointAllowed ? screenPoint : null);
+        }
+
         [TestMethod]
         public void Execute_ReturnsFalse_WhenCursorGateRejects()
         {

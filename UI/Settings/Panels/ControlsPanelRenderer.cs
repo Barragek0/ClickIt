@@ -20,7 +20,6 @@ namespace ClickIt.UI.Settings.Panels
 
             DrawSliderWidthSection(_settings.ControlsSliderWidthStart, _settings.ControlsSliderWidthEnd, () =>
             {
-                SettingsUiRenderHelpers.DrawRangeNodeControl("Search Radius##ControlsSearchRadius", _settings.ClickDistance, 0, 300, "Radius the plugin will search in for interactable objects. A value of 100 is recommended for 1080p, though, you may need to increase this on higher resolutions.");
                 SettingsUiRenderHelpers.DrawRangeNodeControl("Click Frequency Target (ms)##ControlsClickFrequencyTarget", _settings.ClickFrequencyTarget, 80, 250, "Target milliseconds between clicks for non-altar/shrine actions. Higher = less frequent clicks.\n\nThe plugin will try to maintain this target as best it can, but heavy CPU load or many visible labels may increase delays.");
                 SettingsUiRenderHelpers.DrawRangeNodeControl("Chest Height Offset##ControlsChestHeightOffset", _settings.ChestHeightOffset, -100, 100, "If you're experiencing a lot of missclicking for chests specifically (clicking too high or low),\nchange this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value");
                 SettingsUiRenderHelpers.DrawRangeNodeControl("Toggle Item View Interval (ms)##ControlsToggleItemsInterval", _settings.ToggleItemsIntervalMs, 500, 10000, "How often Toggle Item View is allowed to trigger.\n1000 ms = 1 second.");

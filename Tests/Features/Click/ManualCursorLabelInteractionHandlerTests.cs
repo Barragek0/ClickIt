@@ -87,7 +87,8 @@ namespace ClickIt.Tests.Features.Click
 
             clicked.Should().BeTrue();
             requests.Should().ContainSingle();
-            requests[0].ClickPosition.Should().Be(new Vector2(25f, 40f));
+            requests[0].ClickPosition.Should().Be(new Vector2(10f, 10f), "manual mode clicks where the cursor already is");
+            requests[0].ClientClickPosition.Should().Be(new Vector2(10f, 10f));
             requests[0].AllowWhenHotkeyInactive.Should().BeTrue();
             requests[0].AvoidCursorMove.Should().BeTrue();
             requests[0].UseHoldClick.Should().BeFalse();

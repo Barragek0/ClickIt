@@ -17,7 +17,6 @@ namespace ClickIt.Tests.Features.Labels.Selection
 
             ClickSettings result = factory.Create(null);
 
-            result.ClickDistance.Should().Be(settings.ClickDistance.Value);
             result.ClickLeagueChests.Should().Be(settings.ClickLeagueChests.Value);
             result.ClickSettlersOre.Should().Be(settings.ClickSettlersOre.Value);
             result.ClickStrongboxes.Should().Be(settings.ClickStrongboxes.Value);

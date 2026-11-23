@@ -165,7 +165,8 @@ namespace ClickIt.Tests.Features.Click
                 ClickDebugPublisher: clickDebugPublisher ?? ClickTestDebugPublisherFactory.Create(),
                 DebugLog: static _ => { })
             {
-                ShouldSuppressLockedStrongboxClick = shouldSuppressLockedStrongboxClick ?? (static (_, _) => false)
+                ShouldSuppressLockedStrongboxClick = shouldSuppressLockedStrongboxClick ?? (static (_, _) => false),
+                CanResolveClickablePoint = static (_, _, _) => true
             });
         }
 

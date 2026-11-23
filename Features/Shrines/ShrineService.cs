@@ -102,8 +102,7 @@ namespace ClickIt.Features.Shrines
             return [.. shrines];
         }
 
-        public Entity? GetNearestShrineInRange(
-            int clickDistance,
+        public Entity? GetNearestClickableShrine(
             Func<Vector2, bool>? isInClickableArea = null,
             Func<Entity, float>? cursorDistanceResolver = null)
         {
@@ -119,10 +118,6 @@ namespace ClickIt.Features.Shrines
                     continue;
 
                 if (!DynamicAccess.TryReadFloat(shrine, DynamicAccessProfiles.DistancePlayer, out float distance))
-                    continue;
-
-                // Early distance check to avoid expensive calculations
-                if (distance > clickDistance)
                     continue;
 
                 if (isInClickableArea != null)

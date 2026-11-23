@@ -17,17 +17,17 @@ namespace ClickIt.Tests.Features.Shrines
 
             service.InvalidateCache();
 
-            service.GetNearestShrineInRange(100).Should().BeNull();
+            service.GetNearestClickableShrine().Should().BeNull();
         }
 
         [TestMethod]
-        public void GetNearestShrineInRange_ReturnsNull_WhenCacheContainsOnlyNullEntries()
+        public void GetNearestClickableShrine_ReturnsNull_WhenCacheContainsOnlyNullEntries()
         {
             var service = CreateService();
 
             SeedNullShrineCache(service, cacheTimestampMs: 0);
 
-            var nearest = service.GetNearestShrineInRange(100);
+            var nearest = service.GetNearestClickableShrine();
 
             nearest.Should().BeNull();
         }
