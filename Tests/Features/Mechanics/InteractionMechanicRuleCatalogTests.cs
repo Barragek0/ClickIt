@@ -8,6 +8,21 @@ namespace ClickIt.Tests.Features.Mechanics
 
         [DataTestMethod]
         [TestCategory("Settings")]
+        [DataRow(false, "Metadata/Terrain/Leagues/Delve/Objects/DelveNodeNoEncounter", null)]
+        [DataRow(true, "Metadata/Terrain/Leagues/Delve/Objects/DelveNodeNoEncounter", MechanicIds.DelveCrawler)]
+        [DataRow(false, "Metadata/Terrain/Leagues/Delve/Objects/DelveNode", null)]
+        [DataRow(true, "Metadata/Terrain/Leagues/Delve/Objects/DelveNode", MechanicIds.DelveCrawler)]
+        [DataRow(true, "Metadata/Terrain/Leagues/Delve/Objects/DelveNodeOther", MechanicIds.DelveCrawler)]
+        [DataRow(true, "Metadata/Terrain/Leagues/Delve/Objects/EncounterSpawners/WaterSpawnerEffect", null)]
+        public void TryResolve_CrawlerUsesItsOwnToggleAndPathMarker(bool enabled, string path, string? expected)
+        {
+            ClickSettings settings = new() { ClickDelveCrawler = enabled };
+            InteractionMechanicRuleCatalog.TryResolve(settings, path, DummyLabel, null, CreateInventoryInteractionPolicy())
+                .Should().Be(expected);
+        }
+
+        [DataTestMethod]
+        [TestCategory("Settings")]
         [DataRow(false, false, false)]
         [DataRow(false, true, false)]
         [DataRow(true, false, false)]
@@ -43,6 +58,18 @@ namespace ClickIt.Tests.Features.Mechanics
             ClickSettings settings = new() { ClickFates = clickFates };
             InteractionMechanicRuleCatalog.TryResolve(settings, path, DummyLabel, null, CreateInventoryInteractionPolicy())
                 .Should().Be(expected);
+        }
+
+        [DataTestMethod]
+        [TestCategory("Settings")]
+        [DataRow(false, null)]
+        [DataRow(true, MechanicIds.Memories)]
+        public void TryResolve_MemoriesFollowsItsToggle(bool clickMemories, string? expected)
+        {
+            ClickSettings settings = new() { ClickMemories = clickMemories };
+            InteractionMechanicRuleCatalog.TryResolve(settings,
+                "Metadata/Terrain/Leagues/MapAtlasMemory/Objects/BeginMemoryLine",
+                DummyLabel, null, CreateInventoryInteractionPolicy()).Should().Be(expected);
         }
 
         [DataTestMethod]

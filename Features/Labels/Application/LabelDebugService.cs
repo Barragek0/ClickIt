@@ -71,7 +71,7 @@ namespace ClickIt.Features.Labels.Application
             int total = 0;
             int nullLabel = 0;
             int nullEntity = 0;
-            int outOfDistance = 0;
+            int offscreen = 0;
             int untargetable = 0;
             int noMechanic = 0;
             int worldItem = 0;
@@ -79,6 +79,24 @@ namespace ClickIt.Features.Labels.Application
             int settlersPathSeen = 0;
             int settlersMechanicMatched = 0;
             int settlersMechanicDisabled = 0;
+            int lockedDelveChests = 0;
+            int crawlerLabels = 0;
+            List<string> delveDetails = [];
+
+            RectangleF windowArea = default;
+            bool canCheckScreen = false;
+            if (_gameController != null)
+            {
+                try
+                {
+                    windowArea = _gameController.Window.GetWindowRectangleTimeCache;
+                    canCheckScreen = true;
+                }
+                catch
+                {
+                    canCheckScreen = true;
+                }
+            }
 
             for (int i = start; i < end; i++)
             {
@@ -99,6 +117,22 @@ namespace ClickIt.Features.Labels.Application
                 }
 
                 string path = item.Path ?? string.Empty;
+                if (MechanicIds.IsDelveCrawlerPath(path))
+                {
+                    crawlerLabels++;
+                    bool hasElement = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? element) && element != null;
+                    string visible = hasElement && DynamicAccess.TryReadBool(element, DynamicAccessProfiles.IsVisible, out bool isVisible)
+                        ? isVisible.ToString() : "unreadable";
+                    string complete = MechanicClassifier.TryGetDelveEncounterComplete(item, out bool isComplete)
+                        ? isComplete.ToString() : "unreadable";
+                    if (delveDetails.Count < 8)
+                        delveDetails.Add($"crawlerVisible={visible} encounterComplete={complete}");
+                }
+                bool lockedDelve = MechanicClassifier.IsLockedDelveChest(item);
+                if (lockedDelve)
+                    lockedDelveChests++;
+                if (path.Contains("DelveChests/", StringComparison.OrdinalIgnoreCase) && delveDetails.Count < 8)
+                    delveDetails.Add($"{path} locked={lockedDelve}");
                 bool isSettlersPath = MechanicClassifier.TryGetSettlersOreMechanicId(path, out _);
                 if (isSettlersPath)
                     settlersPathSeen++;
@@ -110,9 +144,10 @@ namespace ClickIt.Features.Labels.Application
                         worldItemMetadataRejected++;
                 }
 
-                if (item.DistancePlayer > clickSettings.ClickDistance)
+                if (canCheckScreen && (windowArea.Width <= 0 || windowArea.Height <= 0
+                    || !LabelGeometry.TryGetLabelRectOnScreen(label, windowArea, out _)))
                 {
-                    outOfDistance++;
+                    offscreen++;
                     continue;
                 }
 
@@ -141,14 +176,18 @@ namespace ClickIt.Features.Labels.Application
                 total,
                 nullLabel,
                 nullEntity,
-                outOfDistance,
+                offscreen,
                 untargetable,
                 noMechanic,
                 worldItem,
                 worldItemMetadataRejected,
                 settlersPathSeen,
                 settlersMechanicMatched,
-                settlersMechanicDisabled);
+                settlersMechanicDisabled,
+                lockedDelveChests,
+                crawlerLabels,
+                clickSettings.DelveEncounterComplete,
+                string.Join("; ", delveDetails));
         }
 
         public void LogSelectionDiagnostics(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)

@@ -146,6 +146,12 @@ namespace ClickIt.Features.Click.Application
         private bool TryClickStickyLabel(Entity stickyTarget, Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels, out bool needsApproach)
         {
             needsApproach = false;
+            if (MechanicClassifier.IsLockedDelveChest(stickyTarget)
+                && !MechanicClassifier.HasVisibleDelveCompletionLabel(allLabels))
+            {
+                ClearStickyOffscreenTarget();
+                return false;
+            }
             if (DynamicAccess.TryReadString(stickyTarget, DynamicAccessProfiles.Path, out string path)
                 && OffscreenPathingMath.IsEldritchAltarPath(path))
                 return false;
@@ -194,7 +200,8 @@ namespace ClickIt.Features.Click.Application
             if (_dependencies.HandleSpecialLabel?.Invoke(stickyLabel, mechanicId, windowTopLeft) == true)
                 return true;
 
-            bool clickedLabel = _dependencies.LabelInteraction.PerformResolvedLabelInteraction(clickPos, stickyLabel, mechanicId);
+            bool clickedLabel = _dependencies.LabelInteraction.PerformResolvedLabelInteraction(
+                clickPos, stickyLabel, mechanicId, clientClickPosition: clickPos - windowTopLeft);
             if (!clickedLabel)
             {
                 ClearStickyOffscreenTarget();

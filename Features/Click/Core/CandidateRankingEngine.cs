@@ -155,6 +155,9 @@ namespace ClickIt.Features.Click.Core
                 if (!other.Exists)
                     continue;
 
+                if (other.MechanicId == MechanicIds.DelveCrawler && candidate.MechanicId != MechanicIds.DelveCrawler)
+                    continue;
+
                 MechanicRank otherRank = BuildRank(other, context);
                 if (CompareRanks(candidateRank, otherRank) >= 0)
                     return false;

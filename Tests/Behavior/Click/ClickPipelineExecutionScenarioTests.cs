@@ -10,7 +10,6 @@ namespace ClickIt.Tests.Behavior.Click
         private static ClickPipelineScenarioFactory.ScenarioConfig BaseConfig()
             => new()
             {
-                ClickDistance = 100,
                 ClickItems = true,
                 ClickStrongboxes = true,
             };
@@ -32,6 +31,43 @@ namespace ClickIt.Tests.Behavior.Click
 
         private static DecisionResult HiddenGroundItemsDecision()
             => new(TrySettlers: false, TryLostShipment: false, TryShrine: false, GroundItemsVisible: false);
+
+        [DataTestMethod]
+        [TestCategory("Scenario")]
+        [DataRow("DelveNode")]
+        [DataRow("DelveNodeNoEncounter")]
+        public void CrawlerAlone_IsClickedWhenEnabled(string nodeName)
+        {
+            var config = BaseConfig();
+            config.ClickDelveCrawler = true;
+            config.WalkTowardOffscreenLabels = false;
+            var harness = new ClickPipelineScenarioFactory.ScenarioHarness(config);
+            RectangleF rect = new(500, 300, 160, 40);
+            var crawler = ClickPipelineScenarioFactory.CreateLabel(rect,
+                EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/" + nodeName, distancePlayer: 1, address: 1), 0x1001);
+            var result = harness.ExecutionEngine.Execute(harness.CreateContext(true, [crawler]),
+                harness.CreateCandidates(crawler, MechanicIds.DelveCrawler), GroundItemsDecision());
+            result.ShouldRunPostActions.Should().BeTrue();
+            harness.InteractionsExecuted.Should().Be(1);
+            AssertPointInside(rect, harness.LastClickPosition!.Value);
+        }
+
+        [TestMethod]
+        [TestCategory("Scenario")]
+        public void CrawlerWithOffscreenChest_DoesNotClickCrawler()
+        {
+            var config = BaseConfig();
+            config.ClickDelveCrawler = true;
+            var harness = new ClickPipelineScenarioFactory.ScenarioHarness(config);
+            var crawler = ClickPipelineScenarioFactory.CreateLabel(new RectangleF(500, 300, 160, 40),
+                EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/DelveNodeNoEncounter", distancePlayer: 1, address: 1), 0x1001);
+            var chest = Strongbox(80, 2, false, new RectangleF(2200, 600, 160, 40));
+            harness.CurrentLabels = [crawler, chest];
+            var result = harness.ExecutionEngine.Execute(harness.CreateContext(true, harness.CurrentLabels),
+                harness.CreateCandidates(crawler, MechanicIds.DelveCrawler), GroundItemsDecision());
+            result.ShouldRunPostActions.Should().BeFalse();
+            harness.InteractionsExecuted.Should().Be(0);
+        }
 
         [TestMethod]
         public void UnobscuredStrongboxOnScreen_IsClickedInPlace()
@@ -340,12 +376,12 @@ namespace ClickIt.Tests.Behavior.Click
         [TestMethod]
         public void PostChestLootSettle_BlocksWalkToFarLabel_NoOffscreenPathfinding()
         {
-            // During the post-chest-loot-settle wait, a label beyond ClickDistance (which would normally be walked to per Spec 11) must NOT be walked toward - the tick waits for drops to settle instead of pathfinding off-screen.
+            // During the post-chest-loot-settle wait, a visible label must not be walked toward - the tick waits for drops to settle instead.
             var config = BaseConfig();
             config.CaptureClickDebug = true;
             var harness = new ClickPipelineScenarioFactory.ScenarioHarness(config);
             RectangleF rect = new(500f, 300f, 160f, 40f);
-            LabelOnGround box = Strongbox(150f, 0x01, locked: false, rect); // beyond ClickDistance 100 -> would normally be walked to
+            LabelOnGround box = Strongbox(150f, 0x01, locked: false, rect);
             var labels = new List<LabelOnGround> { box };
             harness.CurrentLabels = labels;
 
@@ -363,12 +399,11 @@ namespace ClickIt.Tests.Behavior.Click
         }
 
         [TestMethod]
-        public void LabelBeyondClickDistance_IsWalkedTo_NotClicked()
+        public void VisibleClickableLabel_IsClickedRegardlessOfWorldDistance()
         {
-            // Spec 11: a label beyond ClickDistance is walked to even when its click point resolves. The scan normally filters far labels at eligibility, but a hover-preference or hidden path can surface one here - it must never be clicked in place.
             var harness = new ClickPipelineScenarioFactory.ScenarioHarness(BaseConfig());
             RectangleF rect = new(500f, 300f, 160f, 40f);
-            LabelOnGround box = Strongbox(150f, 0x01, locked: false, rect); // beyond ClickDistance 100
+            LabelOnGround box = Strongbox(5000f, 0x01, locked: false, rect);
             var labels = new List<LabelOnGround> { box };
             harness.CurrentLabels = labels;
 
@@ -377,8 +412,8 @@ namespace ClickIt.Tests.Behavior.Click
                 harness.CreateCandidates(box, MechanicIds.Strongboxes),
                 GroundItemsDecision());
 
-            result.ShouldRunPostActions.Should().BeFalse("a label beyond ClickDistance is walked to, never clicked");
-            harness.InteractionsExecuted.Should().Be(0);
+            result.ShouldRunPostActions.Should().BeTrue("the resolved point is visible and clickable");
+            harness.InteractionsExecuted.Should().Be(1);
         }
 
         [TestMethod]

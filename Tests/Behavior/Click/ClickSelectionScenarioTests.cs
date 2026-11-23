@@ -10,7 +10,6 @@ namespace ClickIt.Tests.Behavior.Click
         private static ClickPipelineScenarioFactory.ScenarioConfig BaseConfig()
             => new()
             {
-                ClickDistance = 100,
                 ClickItems = true,
                 ClickStrongboxes = true,
             };
@@ -26,6 +25,49 @@ namespace ClickIt.Tests.Behavior.Click
                 rect,
                 ClickPipelineScenarioFactory.CreateWorldItem(distance, address),
                 address + 0x1000);
+
+        [TestMethod]
+        [TestCategory("Scenario")]
+        public void CrawlerAndVisibleChest_SelectsChestEvenWhenCrawlerIsCloser()
+        {
+            var config = BaseConfig();
+            config.ClickDelveCrawler = true;
+            var harness = new ClickPipelineScenarioFactory.ScenarioHarness(config);
+            var crawler = ClickPipelineScenarioFactory.CreateLabel(new RectangleF(100, 100, 100, 30),
+                EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/DelveNodeNoEncounter", distancePlayer: 1, address: 1), 0x1001);
+            var chest = Strongbox(80, 2, false, new RectangleF(800, 600, 160, 40));
+            harness.ScanEngine.ResolveNextLabelCandidate([crawler, chest]).Should().BeSameAs(chest);
+        }
+
+        [TestMethod]
+        [TestCategory("Scenario")]
+        public void CrawlerIsSelectedWhenChestIsDisabled()
+        {
+            var config = BaseConfig();
+            config.ClickDelveCrawler = true;
+            config.ClickStrongboxes = false;
+            var harness = new ClickPipelineScenarioFactory.ScenarioHarness(config);
+            var crawler = ClickPipelineScenarioFactory.CreateLabel(new RectangleF(100, 100, 100, 30),
+                EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/DelveNodeNoEncounter", distancePlayer: 1, address: 1), 0x1001);
+            var chest = Strongbox(80, 2, false, new RectangleF(800, 600, 160, 40));
+            harness.ScanEngine.ResolveNextLabelCandidate([crawler, chest]).Should().BeSameAs(crawler);
+        }
+
+        [TestMethod]
+        [TestCategory("Scenario")]
+        public void CrawlerWithOffscreenChest_FindsChestForTraversal()
+        {
+            var config = BaseConfig();
+            config.ClickDelveCrawler = true;
+            var harness = new ClickPipelineScenarioFactory.ScenarioHarness(config);
+            var crawler = ClickPipelineScenarioFactory.CreateLabel(new RectangleF(100, 100, 100, 30),
+                EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/DelveNodeNoEncounter", distancePlayer: 1, address: 1), 0x1001);
+            var chest = Strongbox(80, 2, false, new RectangleF(2200, 600, 160, 40));
+            harness.CurrentLabels = [crawler, chest];
+            harness.ScanEngine.ResolveNextLabelCandidate(harness.CurrentLabels).Should().BeSameAs(crawler);
+            DynamicAccess.TryGetLabelItemOnGround(chest, out Entity? chestEntity).Should().BeTrue();
+            harness.TraversalResolver.ResolveCrawlerFallbackTarget(new HashSet<long>()).Should().BeSameAs(chestEntity);
+        }
 
         [TestMethod]
         public void SingleWorldItem_IsSelected_WithItemsMechanic()
@@ -104,25 +146,50 @@ namespace ClickIt.Tests.Behavior.Click
         }
 
         [TestMethod]
-        public void OutOfDistanceLabel_Rejected_CloserLabelSelected()
+        public void VisibleLabel_IsSelectedRegardlessOfWorldDistance()
         {
             var harness = new ClickPipelineScenarioFactory.ScenarioHarness(BaseConfig());
-            LabelOnGround outOfRange = Strongbox(150f, 0x01, locked: false, new RectangleF(100f, 100f, 160f, 40f));
-            LabelOnGround inRange = WorldItem(30f, 0x02, new RectangleF(800f, 600f, 60f, 20f));
+            LabelOnGround visibleFarLabel = Strongbox(5000f, 0x01, locked: false, new RectangleF(100f, 100f, 160f, 40f));
 
-            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([outOfRange, inRange], 0, 2, isAcceptable: null);
+            LabelOnGround? selected = harness.SelectionService.GetNextLabelToClick([visibleFarLabel], 0, 1, isAcceptable: null);
 
-            selected.Should().BeSameAs(inRange, "a strongbox beyond ClickDistance must be rejected, the in-range label selected");
+            selected.Should().BeSameAs(visibleFarLabel, "visible labels are eligible by viewport position, not a world-space radius");
         }
 
         [TestMethod]
-        public void AllLabelsOutOfDistance_SelectsNothing()
+        public void Scan_UpperCornerLabelAtHighResolution_IsSelectedWhenClickable()
+        {
+            ClickPipelineScenarioFactory.ScenarioConfig config = BaseConfig();
+            config.Window = new RectangleF(0f, 0f, 3840f, 2160f);
+            var harness = new ClickPipelineScenarioFactory.ScenarioHarness(config);
+            LabelOnGround upperRightLabel = Strongbox(5000f, 0x01, locked: false, new RectangleF(3740f, 8f, 90f, 36f));
+
+            LabelOnGround? selected = harness.ScanEngine.ResolveNextLabelCandidate([upperRightLabel]);
+
+            selected.Should().BeSameAs(upperRightLabel,
+                "a clickable label anywhere in the game viewport, including the far corner at high resolution, is eligible regardless of world distance");
+        }
+
+        [TestMethod]
+        public void Scan_UnavailableViewport_DoesNotSelectLabel()
+        {
+            ClickPipelineScenarioFactory.ScenarioConfig config = BaseConfig();
+            config.Window = RectangleF.Empty;
+            var harness = new ClickPipelineScenarioFactory.ScenarioHarness(config);
+            LabelOnGround label = Strongbox(10f, 0x01, locked: false, new RectangleF(100f, 100f, 90f, 36f));
+
+            harness.ScanEngine.ResolveNextLabelCandidate([label]).Should().BeNull(
+                "an unreadable or empty viewport cannot establish a safe on-screen click point");
+        }
+
+        [TestMethod]
+        public void OffscreenLabel_IsNotSelectedForDirectClick()
         {
             var harness = new ClickPipelineScenarioFactory.ScenarioHarness(BaseConfig());
-            LabelOnGround farA = Strongbox(150f, 0x01, locked: false, new RectangleF(100f, 100f, 160f, 40f));
-            LabelOnGround farB = WorldItem(200f, 0x02, new RectangleF(800f, 600f, 60f, 20f));
+            LabelOnGround offscreen = Strongbox(10f, 0x01, locked: false, new RectangleF(2100f, 100f, 160f, 40f));
 
-            harness.SelectionService.GetNextLabelToClick([farA, farB], 0, 2, isAcceptable: null).Should().BeNull();
+            harness.SelectionService.GetNextLabelToClick([offscreen], 0, 1, isAcceptable: null)
+                .Should().BeNull("the viewport prefilter must exclude off-screen labels before direct click selection");
         }
 
         [TestMethod]
@@ -166,6 +233,24 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround? selected = harness.ScanEngine.ResolveNextLabelCandidate([inner, outer]);
 
             selected.Should().BeSameAs(outer, "a fully overlapped label must be skipped by the scan");
+        }
+
+        [DataTestMethod]
+        [DataRow(0f, 0f)]
+        [DataRow(350f, 160f)]
+        [DataRow(-1200f, 160f)]
+        public void Scan_LabelBehindBlockedUi_IsSkipped_ForNextClickableLabel(float windowX, float windowY)
+        {
+            var config = BaseConfig();
+            config.Window = new RectangleF(windowX, windowY, 1920f, 1080f);
+            config.BlockedRects.Add(new RectangleF(windowX + 100f, windowY + 100f, 160f, 40f));
+            var harness = new ClickPipelineScenarioFactory.ScenarioHarness(config);
+            LabelOnGround blocked = WorldItem(10f, 0x01, new RectangleF(100f, 100f, 160f, 40f));
+            LabelOnGround clickable = WorldItem(20f, 0x02, new RectangleF(500f, 300f, 60f, 20f));
+
+            LabelOnGround? selected = harness.ScanEngine.ResolveNextLabelCandidate([blocked, clickable]);
+
+            selected.Should().BeSameAs(clickable, "selection must use a point outside blocked UI regions before any click or walk decision");
         }
 
         [TestMethod]

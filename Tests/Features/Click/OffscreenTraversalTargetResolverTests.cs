@@ -97,6 +97,14 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
+        public void IsOffscreenWalkableStructure_ExcludesDelveSpawnerEffects()
+        {
+            OffscreenTraversalTargetResolver.IsOffscreenWalkableStructure(
+                EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/EncounterSpawners/WaterSpawnerEffect"))
+                .Should().BeFalse();
+        }
+
+        [TestMethod]
         public void IsOffscreenWalkableStructure_True_ForShrinePaths()
         {
             OffscreenTraversalTargetResolver.IsOffscreenWalkableStructure(EntityProbeFactory.Create(path: "Metadata/DarkShrine/Shrine"))

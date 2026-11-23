@@ -13,7 +13,7 @@ namespace ClickIt.Tests.Features.Labels.Selection
 
             bool result = LabelEligibilityEngine.TryBuildCandidate(
                 label,
-                new ClickSettings { ClickDistance = 999 },
+                new ClickSettings(),
                 (_, _) =>
                 {
                     targetableCallCount++;
@@ -35,6 +35,26 @@ namespace ClickIt.Tests.Features.Labels.Selection
         }
 
         [TestMethod]
+        public void TryBuildCandidate_DoesNotApplyWorldDistanceLimit_ToScreenEligibility()
+        {
+            Entity item = EntityProbeFactory.Create(path: "Metadata/Items/Currency/Currency", type: EntityType.WorldItem, distancePlayer: 500f);
+            LabelOnGround label = new LabelProbe { ItemOnGround = item };
+
+            bool result = LabelEligibilityEngine.TryBuildCandidate(
+                label,
+                new ClickSettings(),
+                (_, _) => true,
+                (_, _, _) => MechanicIds.Items,
+                out _,
+                out string? mechanicId,
+                out LabelCandidateRejectReason rejectReason);
+
+            result.Should().BeTrue("world distance no longer limits viewport-based clicking");
+            mechanicId.Should().Be(MechanicIds.Items);
+            rejectReason.Should().Be(LabelCandidateRejectReason.None);
+        }
+
+        [TestMethod]
         public void TryBuildCandidate_ReturnsFalse_WhenChestIsLocked()
         {
             // A locked chest (the strongbox overlay's red frame) must be rejected even when a mechanic would otherwise match, so it never enters the clickable label scope.
@@ -45,7 +65,7 @@ namespace ClickIt.Tests.Features.Labels.Selection
             int mechanicResolverCallCount = 0;
             bool result = LabelEligibilityEngine.TryBuildCandidate(
                 label,
-                new ClickSettings { ClickDistance = 999 },
+                new ClickSettings(),
                 (_, _) => true,
                 (_, _, _) =>
                 {
@@ -71,7 +91,7 @@ namespace ClickIt.Tests.Features.Labels.Selection
 
             bool result = LabelEligibilityEngine.TryBuildCandidate(
                 label,
-                new ClickSettings { ClickDistance = 999 },
+                new ClickSettings(),
                 (_, _) => true,
                 (_, _, _) => MechanicIds.BasicChests,
                 out _,
@@ -81,5 +101,66 @@ namespace ClickIt.Tests.Features.Labels.Selection
             result.Should().BeTrue();
             rejectReason.Should().Be(LabelCandidateRejectReason.None);
         }
+
+        [TestMethod]
+        public void TryBuildCandidate_RejectsLockedDelveChestEvenWhenEntityTypeIsNotChest()
+        {
+            Entity item = EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/Encounter/Chest", type: EntityType.Monster);
+            EntityProbeFactory.WithComponent<Chest>(item, new LockedChestProbe { IsLocked = true });
+            LabelOnGround label = new LabelProbe { ItemOnGround = item };
+
+            bool result = LabelEligibilityEngine.TryBuildCandidate(
+                label,
+                new ClickSettings(),
+                (_, _) => true,
+                (_, _, _) => MechanicIds.DelveEncounterInitiators,
+                out _, out _, out LabelCandidateRejectReason rejectReason);
+
+            result.Should().BeFalse();
+            rejectReason.Should().Be(LabelCandidateRejectReason.LockedChest);
+        }
+
+        [DataTestMethod]
+        [TestCategory("Regression")]
+        [DataRow("DelveNode", true, 1, true)]
+        [DataRow("DelveNodeNoEncounter", true, 1, true)]
+        [DataRow("DelveNode", true, 0, false)]
+        [DataRow("DelveNode", true, 2, false)]
+        [DataRow("DelveNode", false, 1, false)]
+        public void DelveChestCompletion_RequiresVisibleNodeAndCompletedState(string node, bool visible, int value, bool expected)
+        {
+            Entity crawler = EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/" + node);
+            var stateMachine = (DelveStateMachineProbe)RuntimeHelpers.GetUninitializedObject(typeof(DelveStateMachineProbe));
+            stateMachine.States = [new DelveStateProbe { Name = "encounter_complete", Value = value }];
+            EntityProbeFactory.WithComponent<StateMachine>(crawler, stateMachine);
+            LabelOnGround crawlerLabel = new LabelProbe { ItemOnGround = crawler, Label = new DelveElementProbe { IsVisible = visible } };
+            Entity chest = EntityProbeFactory.Create(path: "Metadata/Chests/DelveChests/DelveChestArmourMovementSpeed", type: EntityType.Chest);
+            EntityProbeFactory.WithComponent<Chest>(chest, new LockedChestProbe { IsLocked = true });
+            LabelOnGround chestLabel = new LabelProbe { ItemOnGround = chest };
+
+            bool complete = MechanicClassifier.HasVisibleDelveCompletionLabel([crawlerLabel]);
+            complete.Should().Be(expected);
+            bool accepted = LabelEligibilityEngine.TryBuildCandidate(chestLabel, new ClickSettings { DelveEncounterComplete = complete },
+                (_, _) => true, (_, _, _) => MechanicIds.LeagueChests, out _, out _, out _);
+            accepted.Should().Be(expected);
+        }
+
+        [TestMethod]
+        [TestCategory("Boundary")]
+        public void DelveChestCompletion_MissingStateDoesNotConfirmCompletion()
+        {
+            Entity crawler = EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/DelveNode");
+            LabelOnGround label = new LabelProbe { ItemOnGround = crawler, Label = new DelveElementProbe { IsVisible = true } };
+            MechanicClassifier.HasVisibleDelveCompletionLabel([label]).Should().BeFalse();
+
+            var stateMachine = (DelveStateMachineProbe)RuntimeHelpers.GetUninitializedObject(typeof(DelveStateMachineProbe));
+            stateMachine.States = [new DelveStateProbe { Name = "other", Value = 1 }];
+            EntityProbeFactory.WithComponent<StateMachine>(crawler, stateMachine);
+            MechanicClassifier.HasVisibleDelveCompletionLabel([label]).Should().BeFalse();
+        }
+
+        public sealed class DelveElementProbe { public bool IsVisible { get; set; } }
+        public sealed class DelveStateProbe { public string Name { get; set; } = string.Empty; public int Value { get; set; } }
+        public sealed class DelveStateMachineProbe : StateMachine { public new object[] States { get; set; } = []; }
     }
 }

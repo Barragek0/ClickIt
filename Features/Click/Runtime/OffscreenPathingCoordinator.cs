@@ -546,6 +546,14 @@ namespace ClickIt.Features.Click.Runtime
             if (!_dependencies.StickyTargetHandler.TryResolveStickyOffscreenTarget(out Entity? stickyTarget) || stickyTarget == null)
                 return false;
 
+            if (DynamicAccess.TryReadString(stickyTarget, DynamicAccessProfiles.Path, out string stickyPath)
+                && MechanicIds.IsDelveCrawlerPath(stickyPath))
+            {
+                ClearStickyOffscreenTarget();
+                if (!_dependencies.Settings.ClickDelveCrawler.Value || TryHandleCrawlerFallback())
+                    return true;
+            }
+
             if (_dependencies.StickyTargetHandler.TryClickStickyTargetIfPossible(stickyTarget, windowTopLeft, allLabels, out bool needsApproach))
                 return true;
 
@@ -556,6 +564,32 @@ namespace ClickIt.Features.Click.Runtime
             }
             // The label click failed, so fall to fresh resolution instead of re-walking a stale target.
             _ = TryWalkTowardOffscreenTarget();
+            return true;
+        }
+
+        // Probe fresh competing targets before committing to the Crawler. A no-route result rejects
+        // that target for this pass; other failures retain the safety gate and consume the tick.
+        internal bool TryHandleCrawlerFallback()
+        {
+            if (!_dependencies.Settings.WalkTowardOffscreenLabels.Value)
+                return false;
+
+            HashSet<long> excluded = [];
+            for (int i = 0; i < 32; i++)
+            {
+                Entity? target = _dependencies.TraversalTargetResolver.ResolveCrawlerFallbackTarget(excluded);
+                if (target == null)
+                    return false;
+                long address = DynamicAccess.TryGetDynamicValue(target, DynamicAccessProfiles.Address, out object? rawAddress)
+                    && rawAddress != null ? Convert.ToInt64(rawAddress) : 0;
+                if (address == 0 || !excluded.Add(address))
+                    return true;
+                if (TryWalkTowardOffscreenTarget(target))
+                    return true;
+                if (_blockedTargetAddress != address || Environment.TickCount64 - _blockedAtMs >= NoRouteBackoffMs)
+                    return true;
+                ClearStickyOffscreenTarget();
+            }
             return true;
         }
 

@@ -56,10 +56,12 @@ namespace ClickIt.Features.Labels.Classification
                 return mechanicId;
 
             if (IsHarvestBossSeedPath(path)
+                || MechanicIds.IsDelveCrawlerPath(path)
                 || path.Contains(MechanicIds.BetrayalCorpseSculpturePath, StringComparison.OrdinalIgnoreCase)
                 || path.Contains(MechanicIds.BeyondInitiatorPath, StringComparison.OrdinalIgnoreCase)
                 || path.Contains(MechanicIds.SentinelEncounterPath, StringComparison.OrdinalIgnoreCase)
-                || MechanicIds.IsFatesPath(path))
+                || MechanicIds.IsFatesPath(path)
+                || path.Contains(MechanicIds.BeginMemoryLinePath, StringComparison.OrdinalIgnoreCase))
                 return null;
 
             if (type == EntityType.WorldItem)
@@ -572,6 +574,63 @@ namespace ClickIt.Features.Labels.Classification
         // A chest that reports IsLocked (the strongbox overlay's red-frame condition) cannot be opened, so it is excluded from every click path regardless of its mechanic resolution.
         internal static bool IsLockedChest(object item)
             => TryGetChestLocked(item, out bool isLocked) && isLocked;
+
+        // Delve chest labels can arrive through the shared entity and label feeds with a stale or non-Chest entity type.
+        // Their Chest component remains the authoritative lock state, so check the path as well as the component.
+        internal static bool IsLockedDelveChest(object item)
+            => DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string path)
+                && path.Contains("Delve", StringComparison.OrdinalIgnoreCase)
+                && IsLockedChest(item);
+
+        internal static bool HasVisibleDelveCompletionLabel(IReadOnlyList<LabelOnGround>? labels)
+        {
+            if (labels == null)
+                return false;
+            foreach (LabelOnGround label in labels)
+            {
+                if (DynamicAccess.TryGetLabelItemOnGround(label, out Entity? entity)
+                    && entity != null
+                    && DynamicAccess.TryReadString(entity, DynamicAccessProfiles.Path, out string path)
+                    && path.Contains(MechanicIds.DelveCrawlerPath, StringComparison.OrdinalIgnoreCase)
+                    && DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? element)
+                    && element != null
+                    && DynamicAccess.TryReadBool(element, DynamicAccessProfiles.IsVisible, out bool visible)
+                    && visible
+                    && TryGetDelveEncounterComplete(entity, out bool complete)
+                    && complete)
+                    return true;
+            }
+            return false;
+        }
+
+        internal static bool TryGetDelveEncounterComplete(Entity entity, out bool complete)
+        {
+            complete = false;
+            if (!DynamicAccess.TryGetComponent<StateMachine>(entity, out object? machine)
+                || !DynamicAccess.TryGetDynamicValue(machine, static stateMachine => stateMachine.States, out object? rawStates)
+                || rawStates is not IEnumerable states)
+                return false;
+
+            try
+            {
+                foreach (object? state in states)
+                {
+                    if (DynamicAccess.TryReadString(state, static entry => entry.Name, out string name)
+                        && string.Equals(name, "encounter_complete", StringComparison.Ordinal)
+                        && DynamicAccess.TryReadInt(state, static entry => entry.Value, out int value))
+                    {
+                        complete = value == 1;
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                return false;
+            }
+
+            return false;
+        }
 
         // Brinerot Plunder chests have a broken IsLocked (game bug); the click decision uses IsOpened instead: an unopened chest (IsOpened=false) is clickable to open, an already-opened chest (IsOpened=true) is skipped. IsLocked is never consulted for this chest type.
         internal static bool IsBrinerotPlunderChestOpened(object? item)

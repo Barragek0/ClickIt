@@ -13,18 +13,21 @@ namespace ClickIt.Features.Labels.Application
         Func<bool> ShouldCaptureLabelDebug,
         Action<LabelDebugEvent> PublishLabelDebugStage,
         LabelCandidateBuilder TryBuildLabelCandidate,
-        Func<LabelOnGround?, string?> GetMechanicIdForLabelCore);
+        Func<LabelOnGround?, string?> GetMechanicIdForLabelCore)
+    {
+        public Func<RectangleF>? GetViewport { get; init; }
+    }
 
     internal sealed class LabelSelectionService(LabelSelectionServiceDependencies dependencies) : ILabelSelectionService
     {
         private readonly LabelSelectionServiceDependencies _dependencies = dependencies;
 
-        // Selection cache (single-threaded click coroutine): the full label scan only re-runs when the label-list reference changes, a new range is queried, or the cached result goes stale. A null result must not be pinned for the life of a stable label set - validity, distance, and lock state change without the label-list reference changing (a pinned null deadlocks item pickup), so entries are time-bounded like the other click caches.
+        // Selection cache (single-threaded click coroutine): the full label scan only re-runs when the label-list reference changes, a new range is queried, or the cached result goes stale. A null result must not be pinned for the life of a stable label set because screen position, clickability, and lock state can change without the label-list reference changing.
         private IReadOnlyList<LabelOnGround>? _selectionCacheLabelsRef;
         private readonly Dictionary<(int Start, int MaxCount), (LabelOnGround? Selected, long AtMs)> _selectionCacheByRange = new();
         private const long SelectionCacheWindowMs = 250;
 
-        // Per-label build cache: the selection scan re-runs whenever the 50ms label-list reference changes (and on every suppression-fallback range), and each candidate build costs ~13 DLR reads on the obfuscated game types (the dominant Acquire allocation). The build result is static per entity, so it is cached on the label ADDRESS (stable across snapshots even when wrapper instances differ) with a long window. Distance and label rect are re-read fresh on every scan, so out-of-range rejection and ranking stay live as the player moves. The interaction path re-validates the chosen label before clicking.
+        // Per-label build cache: each candidate build costs ~13 DLR reads on the obfuscated game types, so static mechanic resolution is cached on the label ADDRESS (stable across snapshots even when wrapper instances differ). Distance and label geometry are re-read fresh on every scan; the interaction path re-validates the chosen label before clicking.
         private readonly record struct CachedLabelScanEntry(
             LabelCandidateBuildResult Candidate,
             float Distance,
@@ -37,7 +40,7 @@ namespace ClickIt.Features.Labels.Application
         private readonly record struct CachedLabelRectEntry(RectangleF Rect, bool HasRect);
         private readonly Dictionary<long, CachedLabelRectEntry> _rectCache = [];
         private long _rectCacheWindowStartMs;
-        private const long RectCacheWindowMs = 250;
+        private const long RectCacheWindowMs = 50;
 
         public LabelOnGround? GetNextLabelToClick(
             IReadOnlyList<LabelOnGround>? allLabels,
@@ -52,9 +55,23 @@ namespace ClickIt.Features.Labels.Application
                 if (_selectionCacheByRange.TryGetValue((startIndex, maxCount), out (LabelOnGround? Selected, long AtMs) cached)
                     && now - cached.AtMs < SelectionCacheWindowMs)
                 {
-                    // A gated selection re-validates the cached label against the predicate: a lock/unlock or overlap change within the cache window must not pin a now-suppressed label (the old per-suppression re-query bypassed the cache by using fresh range keys; the single-pass gated scan must re-run only when the cached result is no longer acceptable).
-                    if (isAcceptable == null || cached.Selected == null || isAcceptable(cached.Selected, default))
+                    // Revalidate a cached selection with its current mechanic and point. The predicate includes screen geometry and blocked UI areas, so a default candidate cannot safely answer it.
+                    if (isAcceptable == null || cached.Selected == null)
                         return cached.Selected;
+
+                    ClickSettings cachedClickSettings = _dependencies.CreateClickSettings(allLabels);
+                    CachedLabelScanEntry cachedEntry = GetOrBuildScanEntry(cached.Selected, cachedClickSettings, GetWindowArea());
+                    if (cachedEntry.Candidate.MechanicId == MechanicIds.DelveCrawler)
+                        _buildCache.Clear();
+                    else if (cachedEntry.Candidate.Success)
+                    {
+                        bool stillEligible = _dependencies.TryBuildLabelCandidate(cached.Selected, cachedClickSettings,
+                            out Entity? item, out string? mechanicId, out _);
+                        if (stillEligible && mechanicId == cachedEntry.Candidate.MechanicId
+                            && isAcceptable(cached.Selected, BuildResult(true, item, mechanicId, LabelCandidateRejectReason.None)))
+                            return cached.Selected;
+                        _buildCache.Remove(cached.Selected.Address);
+                    }
                 }
             }
             else
@@ -151,10 +168,20 @@ namespace ClickIt.Features.Labels.Application
             return new LabelCandidateBuildResult(success, item, mechanicId, entityPath, rejectReason);
         }
 
-        private CachedLabelScanEntry GetOrBuildScanEntry(LabelOnGround label, ClickSettings clickSettings)
+        private CachedLabelScanEntry GetOrBuildScanEntry(LabelOnGround label, ClickSettings clickSettings, RectangleF windowArea)
         {
             long address = label.Address;
             long now = Environment.TickCount64;
+            bool hasRect = TryGetCachedLabelRect(label, out RectangleF rect);
+            if ((_dependencies.GameController != null || _dependencies.GetViewport != null)
+                && (windowArea.Width <= 0 || windowArea.Height <= 0 || !hasRect || !LabelGeometry.IsRectOnScreen(rect, windowArea)))
+            {
+                return new CachedLabelScanEntry(
+                    new LabelCandidateBuildResult(false, null, null, null, LabelCandidateRejectReason.NotVisible),
+                    float.MaxValue,
+                    rect,
+                    hasRect);
+            }
 
             // Per-entry TTL: only rebuild entries that have expired, preventing a burst of rebuilds when a global window expires on a dense field.
             if (_buildCache.TryGetValue(address, out (LabelCandidateBuildResult Result, long AtMs) cached)
@@ -174,26 +201,7 @@ namespace ClickIt.Features.Labels.Application
                 }
 
                 Entity? buildItem = candidate.Item;
-                float distance = buildItem != null
-                    && DynamicAccess.TryReadFloat(buildItem, DynamicAccessProfiles.DistancePlayer, out float resolvedDistance)
-                    ? resolvedDistance
-                    : float.MaxValue;
-
-                if (candidate.RejectReason == LabelCandidateRejectReason.OutOfDistance
-                    && distance <= clickSettings.ClickDistance)
-                {
-                    candidate = _dependencies.TryBuildLabelCandidate(label, clickSettings, out buildItem, out string? freshMechanicId, out LabelCandidateRejectReason freshRejectReason)
-                        ? BuildResult(true, buildItem, freshMechanicId, LabelCandidateRejectReason.None)
-                        : BuildResult(false, buildItem, freshMechanicId, freshRejectReason);
-                    _buildCache[address] = (candidate, now);
-                    distance = buildItem != null
-                        && DynamicAccess.TryReadFloat(buildItem, DynamicAccessProfiles.DistancePlayer, out float reResolvedDistance)
-                        ? reResolvedDistance
-                        : distance;
-                }
-
-                bool hasRect = TryGetCachedLabelRect(label, out RectangleF rect);
-                return new CachedLabelScanEntry(candidate, distance, rect, hasRect);
+                return new CachedLabelScanEntry(candidate, ReadDistance(buildItem), rect, hasRect);
             }
 
             // Cache miss or expired: build fresh.
@@ -223,27 +231,27 @@ namespace ClickIt.Features.Labels.Application
             }
 
             Entity? buildItem2 = freshCandidate.Item;
-            float freshDistance = buildItem2 != null
-                && DynamicAccess.TryReadFloat(buildItem2, DynamicAccessProfiles.DistancePlayer, out float freshResolvedDistance)
-                ? freshResolvedDistance
-                : float.MaxValue;
-
-            if (freshCandidate.RejectReason == LabelCandidateRejectReason.OutOfDistance
-                && freshDistance <= clickSettings.ClickDistance)
-            {
-                freshCandidate = _dependencies.TryBuildLabelCandidate(label, clickSettings, out buildItem2, out string? freshMechanicId3, out LabelCandidateRejectReason freshRejectReason3)
-                    ? BuildResult(true, buildItem2, freshMechanicId3, LabelCandidateRejectReason.None)
-                    : BuildResult(false, buildItem2, freshMechanicId3, freshRejectReason3);
-                _buildCache[address] = (freshCandidate, now);
-                freshDistance = buildItem2 != null
-                    && DynamicAccess.TryReadFloat(buildItem2, DynamicAccessProfiles.DistancePlayer, out float reResolvedDistance2)
-                    ? reResolvedDistance2
-                    : freshDistance;
-            }
-
-            bool freshHasRect = TryGetCachedLabelRect(label, out RectangleF freshRect);
-            return new CachedLabelScanEntry(freshCandidate, freshDistance, freshRect, freshHasRect);
+            return new CachedLabelScanEntry(freshCandidate, ReadDistance(buildItem2), rect, hasRect);
         }
+
+        private RectangleF GetWindowArea()
+        {
+            try
+            {
+                return _dependencies.GetViewport?.Invoke()
+                    ?? _dependencies.GameController?.Window?.GetWindowRectangleTimeCache
+                    ?? default;
+            }
+            catch
+            {
+                return default;
+            }
+        }
+
+        private static float ReadDistance(Entity? item)
+            => item != null && DynamicAccess.TryReadFloat(item, DynamicAccessProfiles.DistancePlayer, out float distance)
+                ? distance
+                : float.MaxValue;
 
         private bool TryGetCachedLabelRect(LabelOnGround label, out RectangleF rect)
         {
@@ -269,16 +277,23 @@ namespace ClickIt.Features.Labels.Application
         // Cursor + window rect are stable within a single scan; resolving them once per scan instead of per label avoids a GetCursorPos syscall per scanned label.
         private readonly record struct CursorRankContext(Vector2 Absolute, Vector2 Client, bool HasWindow);
 
-        private CursorRankContext ResolveCursorRankContext()
+        private CursorRankContext ResolveCursorRankContext(out RectangleF windowArea)
         {
-            if (_dependencies.GameController?.Window == null)
+            windowArea = GetWindowArea();
+            if (!(windowArea.Width > 0 && windowArea.Height > 0))
                 return default;
 
-            RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
-            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            SystemDrawingPoint cursor = Mouse.GetCursorPosition();
-            Vector2 cursorAbsolute = new(cursor.X, cursor.Y);
-            return new CursorRankContext(cursorAbsolute, cursorAbsolute - windowTopLeft, true);
+            try
+            {
+                Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+                SystemDrawingPoint cursor = Mouse.GetCursorPosition();
+                Vector2 cursorAbsolute = new(cursor.X, cursor.Y);
+                return new CursorRankContext(cursorAbsolute, cursorAbsolute - windowTopLeft, true);
+            }
+            catch
+            {
+                return default;
+            }
         }
 
         private float ComputeCursorDistance(RectangleF rect, bool hasRect, in CursorRankContext context)
@@ -308,7 +323,7 @@ namespace ClickIt.Features.Labels.Application
             int start = SystemMath.Max(0, startIndex);
             int end = SystemMath.Min(allLabels.Count, endExclusive);
             // One GetOrBuildScanEntry per label (candidate + rank together) halves the per-label live DLR reads (distance + label rect) that dominate the LabelScan stage.
-            CursorRankContext cursorContext = ResolveCursorRankContext();
+            CursorRankContext cursorContext = ResolveCursorRankContext(out RectangleF windowArea);
             LabelSelectionResult selection = LabelSelectionEngine.SelectNextLabelByPriority(
                 allLabels,
                 start,
@@ -316,7 +331,7 @@ namespace ClickIt.Features.Labels.Application
                 clickSettings,
                 label =>
                 {
-                    CachedLabelScanEntry entry = GetOrBuildScanEntry(label, clickSettings);
+                    CachedLabelScanEntry entry = GetOrBuildScanEntry(label, clickSettings, windowArea);
                     return new LabelScanEntry(
                         entry.Candidate,
                         new LabelRankInput(entry.Distance, ComputeCursorDistance(entry.Rect, entry.HasRect, cursorContext)));

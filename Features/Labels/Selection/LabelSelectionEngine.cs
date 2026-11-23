@@ -30,7 +30,6 @@ namespace ClickIt.Features.Labels.Selection
             => rejectReason switch
             {
                 LabelCandidateRejectReason.NullItem => this with { NullOrDistanceRejected = NullOrDistanceRejected + 1 },
-                LabelCandidateRejectReason.OutOfDistance => this with { NullOrDistanceRejected = NullOrDistanceRejected + 1 },
                 LabelCandidateRejectReason.Untargetable => this with { UntargetableRejected = UntargetableRejected + 1 },
                 LabelCandidateRejectReason.NotVisible => this with { UntargetableRejected = UntargetableRejected + 1 },
                 LabelCandidateRejectReason.LockedChest => this with { UntargetableRejected = UntargetableRejected + 1 },
@@ -52,8 +51,7 @@ namespace ClickIt.Features.Labels.Selection
         Untargetable = 2,
         NoMechanic = 3,
         NotVisible = 4,
-        OutOfDistance = 5,
-        LockedChest = 6
+        LockedChest = 5
     }
 
     internal static class LabelSelectionEngine
@@ -96,15 +94,8 @@ namespace ClickIt.Features.Labels.Selection
                 if (!candidate.Success)
                 {
                     stats = stats.AddReject(candidate.RejectReason);
-                    // Labels are distance-sorted, so once a label is out of range the rest are too and will be rejected as OutOfDistance. Only break once a within-range candidate exists so the walk fallback (null result) still triggers when nothing is in range.
-                    if (candidate.RejectReason == LabelCandidateRejectReason.OutOfDistance && hasBestScore)
-                        break;
                     continue;
                 }
-
-                // Skip labels the caller's suppression gate rejects (overlap/locked/lever/ultimatum/blight) INLINE so one pass yields the best acceptable label.
-                if (isAcceptable != null && !isAcceptable(label, candidate))
-                    continue;
 
                 LabelRankInput rankInput = entry.Rank;
                 MechanicRank score = MechanicCandidateRanker.Build(
@@ -116,8 +107,14 @@ namespace ClickIt.Features.Labels.Selection
                 if (score.Ignored)
                     stats = stats.IncrementIgnoredByDistance();
 
-                if (!hasBestScore || MechanicCandidateRanker.Compare(score, bestScore) < 0)
+                bool isCrawler = candidate.MechanicId == MechanicIds.DelveCrawler;
+                bool bestIsCrawler = bestMechanicId == MechanicIds.DelveCrawler;
+                if (!hasBestScore || (isCrawler != bestIsCrawler ? !isCrawler : MechanicCandidateRanker.Compare(score, bestScore) < 0))
                 {
+                    // Only resolve expensive clickability for a candidate that could improve the current choice.
+                    if (isAcceptable != null && !isAcceptable(label, candidate))
+                        continue;
+
                     bestCandidate = label;
                     bestScore = score;
                     hasBestScore = true;

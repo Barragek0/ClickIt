@@ -18,11 +18,11 @@ namespace ClickIt.Features.Click.Runtime
         internal static bool IsHeistHazardsPath(string? path)
             => ContainsAny(path, HeistHazardsPathMarker);
 
-        internal static bool ShouldSkipLostShipmentEntity(bool isValid, float distance, int clickDistance, bool isOpened)
-            => !isValid || isOpened || distance > clickDistance;
+        internal static bool ShouldSkipLostShipmentEntity(bool isValid, bool isOpened)
+            => !isValid || isOpened;
 
-        internal static bool ShouldSkipSettlersOreEntity(bool isValid, float distance, int clickDistance)
-            => !isValid || distance > clickDistance;
+        internal static bool ShouldSkipSettlersOreEntity(bool isValid)
+            => !isValid;
 
         internal static bool ArePlayerDistancesEquivalent(float left, float right)
             => SystemMath.Abs(left - right) <= 0.001f;

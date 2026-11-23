@@ -60,6 +60,25 @@ namespace ClickIt.Tests.Features.Labels.Selection
         private static LabelOnGround CreateLabel()
             => (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
 
+        [DataTestMethod]
+        [TestCategory("Regression")]
+        [DataRow(true, false)]
+        [DataRow(false, true)]
+        public void SelectNextLabelByPriority_CrawlerYieldsToAcceptableChest(bool chestAcceptable, bool crawlerExpected)
+        {
+            LabelOnGround crawler = CreateLabel();
+            LabelOnGround chest = CreateLabel();
+            IReadOnlyList<LabelOnGround> labels = [crawler, chest];
+            LabelSelectionResult result = LabelSelectionEngine.SelectNextLabelByPriority(
+                labels, 0, labels.Count, CreateClickSettings(),
+                label => new LabelScanEntry(CreateSuccessfulCandidate(ReferenceEquals(label, crawler)
+                    ? MechanicIds.DelveCrawler : MechanicIds.BasicChests),
+                    new LabelRankInput(ReferenceEquals(label, crawler) ? 1f : 100f, 0f)),
+                (label, _) => ReferenceEquals(label, crawler) || chestAcceptable);
+
+            result.SelectedCandidate.Should().BeSameAs(crawlerExpected ? crawler : chest);
+        }
+
         [TestMethod]
         public void SelectNextLabelByPriority_GatedSelection_SkipsSuppressedLabels_AndPicksBestAcceptable()
         {

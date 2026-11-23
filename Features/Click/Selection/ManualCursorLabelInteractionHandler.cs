@@ -23,6 +23,11 @@ namespace ClickIt.Features.Click.Selection
             if (hoveredLabel == null)
                 return false;
 
+            if (DynamicAccess.TryGetLabelItemOnGround(hoveredLabel, out Entity? hoveredItem)
+                && hoveredItem != null && MechanicClassifier.IsLockedDelveChest(hoveredItem)
+                && !MechanicClassifier.HasVisibleDelveCompletionLabel(allLabels))
+                return false;
+
             // Altars are only ever clicked via the altar automation (which evaluates the top/bottom options). A hovered altar label must never fall through to the generic click - a blind click lands on a fixed label point (an arbitrary altar option), not the evaluated best choice.
             if (ClickLabelSelectionMath.IsAltarLabel(hoveredLabel))
             {
@@ -42,8 +47,10 @@ namespace ClickIt.Features.Click.Selection
                 return false;
 
             bool clicked = readyToOpenUpgradedTree
-                ? _dependencies.LabelInteraction.PerformResolvedLabelInteraction(clickPos, hoveredLabel, mechanicId, allowWhenHotkeyInactive: true)
-                : _dependencies.LabelInteraction.PerformManualCursorInteraction(clickPos, SettlersMechanicPolicy.RequiresHoldClick(mechanicId));
+                ? _dependencies.LabelInteraction.PerformResolvedLabelInteraction(clickPos, hoveredLabel, mechanicId,
+                    allowWhenHotkeyInactive: true, clientClickPosition: clickPos - windowTopLeft)
+                : _dependencies.LabelInteraction.PerformManualCursorInteraction(cursorAbsolute,
+                    SettlersMechanicPolicy.RequiresHoldClick(mechanicId), clientClickPosition: cursorAbsolute - windowTopLeft);
             if (!clicked)
                 return false;
 

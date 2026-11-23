@@ -41,12 +41,17 @@ namespace ClickIt.Features.Mechanics.Rules
                 ? MechanicIds.Sentinel : null,
             static ctx => ctx.Settings.ClickFates && MechanicIds.IsFatesPath(ctx.Path)
                 ? MechanicIds.Fates : null,
+            static ctx => ctx.Settings.ClickMemories && ctx.Path.Contains(MechanicIds.BeginMemoryLinePath, StringComparison.OrdinalIgnoreCase)
+                ? MechanicIds.Memories : null,
             static ctx => ctx.Settings.ClickAzurite
                 && ctx.Path.Contains("AzuriteEncounterController", StringComparison.OrdinalIgnoreCase)
                     ? MechanicIds.DelveAzuriteVeins : null,
             static ctx => ctx.Settings.ClickInitialUltimatum
                 && Constants.IsUltimatumInteractablePath(ctx.Path)
                     ? MechanicIds.UltimatumInitialOverlay : null,
+            static ctx => ctx.Settings.ClickDelveCrawler
+                && MechanicIds.IsDelveCrawlerPath(ctx.Path)
+                    ? MechanicIds.DelveCrawler : null,
             static ctx => ctx.Settings.ClickDelveSpawners
                 && ctx.Path.Contains("Delve/Objects/Encounter", StringComparison.OrdinalIgnoreCase)
                     ? MechanicIds.DelveEncounterInitiators : null,

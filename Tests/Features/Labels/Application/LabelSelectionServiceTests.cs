@@ -317,35 +317,27 @@ namespace ClickIt.Tests.Features.Labels.Application
         }
 
         [TestMethod]
-        public void GetNextLabelToClick_ReevaluatesOutOfDistanceRejection_WhenPlayerClosesIn()
+        public void GetNextLabelToClick_DoesNotApplyWorldDistanceLimit()
         {
             LabelOnGround label = CreateOpaqueLabel(address: 0x1000);
             EntityProbe probe = (EntityProbe)EntityProbeFactory.Create(distancePlayer: 200f);
 
             var service = new LabelSelectionService(new LabelSelectionServiceDependencies(
                 GameController: null,
-                CreateClickSettings: static _ => TestClickSettings() with { ClickDistance = 100 },
+                CreateClickSettings: static _ => TestClickSettings(),
                 ShouldCaptureLabelDebug: static () => false,
                 PublishLabelDebugStage: static _ => { },
                 TryBuildLabelCandidate: (LabelOnGround candidate, ClickSettings _, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
                 {
                     item = probe;
                     mechanicId = MechanicIds.Items;
-                    rejectReason = probe.DistancePlayer > 100f
-                        ? LabelCandidateRejectReason.OutOfDistance
-                        : LabelCandidateRejectReason.None;
-                    return rejectReason == LabelCandidateRejectReason.None;
+                    rejectReason = LabelCandidateRejectReason.None;
+                    return true;
                 },
                 GetMechanicIdForLabelCore: static _ => null));
 
-            // Far away: rejected as out of range, so nothing is selected.
-            service.GetNextLabelToClick([label], 0, 10, isAcceptable: null).Should().BeNull("the label is initially out of distance");
-
-            // The player walks closer; the cached OutOfDistance rejection must be re-evaluated, not held for the rest of the 1s cache window.
-            probe.DistancePlayer = 10f;
-
             service.GetNextLabelToClick([label], 0, 10, isAcceptable: null).Should().BeSameAs(label,
-                "an OutOfDistance rejection must be re-checked against the live distance when the player closes in");
+                "screen bounds and the clickable point, not world distance, determine direct-click eligibility");
         }
 
         [TestMethod]

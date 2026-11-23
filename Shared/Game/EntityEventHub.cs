@@ -370,6 +370,7 @@ internal sealed class EntityEventHub
         || path.Contains("LabyrinthTrial", StringComparison.OrdinalIgnoreCase)
         || path.Contains("TrialPortal", StringComparison.OrdinalIgnoreCase)
         || path.Contains("Labyrinth/Trial", StringComparison.OrdinalIgnoreCase)
+        || MechanicIds.IsDelveOffscreenWalkTargetPath(path)
         || path.Contains(ShrinePathMarker, StringComparison.OrdinalIgnoreCase);
 }
 

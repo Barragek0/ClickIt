@@ -24,6 +24,12 @@ namespace ClickIt.Features.Click.Selection
 
         // The hovered element read by the essence/strongbox UI-hover preferences. Production reads the game's UIHoverElement; tests inject a probe so the preference path is exercised.
         public Func<Element?>? GetUiHoverElement { get; init; }
+
+        public Func<LabelOnGround, string?, IReadOnlyList<LabelOnGround>?, bool>? CanResolveClickablePoint { get; init; }
+
+        public Func<RectangleF>? GetViewport { get; init; }
+
+        public Func<Vector2, string, bool> IsClientPointClickable { get; init; } = static (_, _) => false;
     }
 
     internal sealed class LabelSelectionScanEngine(LabelSelectionScanEngineDependencies dependencies)
@@ -39,6 +45,8 @@ namespace ClickIt.Features.Click.Selection
 
             string? labelMechanicId = _dependencies.LabelInteractionPort.GetMechanicIdForLabel(label);
             if (string.IsNullOrWhiteSpace(labelMechanicId))
+                return true;
+            if (labelMechanicId == MechanicIds.DelveCrawler)
                 return true;
 
             _dependencies.MechanicPriorityContextProvider.Refresh();
@@ -104,6 +112,11 @@ namespace ClickIt.Features.Click.Selection
             {
                 // The preference must not re-target a label the scan itself would suppress (locked strongbox, fully overlapped, lever/ultimatum/blight): the click path would reject it and the tick would fall through to walking instead of clicking the ranked label.
                 if (IsHoveredLabelSuppressed(hovered, allLabels))
+                    return nextLabel;
+
+                string? hoveredMechanicId = _dependencies.LabelInteractionPort.GetMechanicIdForLabel(hovered);
+                if (string.IsNullOrWhiteSpace(hoveredMechanicId)
+                    || !CanResolveClickableLabelPoint(hovered, hoveredMechanicId, allLabels))
                     return nextLabel;
 
                 _dependencies.DebugLog(kind == UiHoverTargetKind.Essence
@@ -193,6 +206,7 @@ namespace ClickIt.Features.Click.Selection
             int overlappedSuppressed = 0;
             int blightChestTransitionSuppressed = 0;
             int lockedStrongboxSuppressed = 0;
+            int notClickableNow = 0;
 
             // Apply suppression INLINE in the selection's single pass so dense fields stay O(n) instead of O(suppressed x n).
             bool IsAcceptable(LabelOnGround label, LabelCandidateBuildResult result)
@@ -216,14 +230,22 @@ namespace ClickIt.Features.Click.Selection
                 if (suppressLockedStrongbox)
                     lockedStrongboxSuppressed++;
 
-                if (!suppressLever && !suppressUltimatum && !fullyOverlapped && !suppressBlightChestTransition && !suppressLockedStrongbox)
-                    return true;
+                if (suppressLever || suppressUltimatum || fullyOverlapped || suppressBlightChestTransition || suppressLockedStrongbox)
+                {
+                    if (fullyOverlapped)
+                        _dependencies.DebugLog("[ProcessRegularClick] Skipping fully-overlapped label");
+                    if (suppressLockedStrongbox)
+                        _dependencies.DebugLog("[ProcessRegularClick] Skipping locked strongbox label");
+                    return false;
+                }
 
-                if (fullyOverlapped)
-                    _dependencies.DebugLog("[ProcessRegularClick] Skipping fully-overlapped label");
-                if (suppressLockedStrongbox)
-                    _dependencies.DebugLog("[ProcessRegularClick] Skipping locked strongbox label");
-                return false;
+                if (!CanResolveClickableLabelPoint(label, result.MechanicId, allLabels))
+                {
+                    notClickableNow++;
+                    return false;
+                }
+
+                return true;
             }
 
             LabelOnGround? label = _dependencies.LabelSelectionService.GetNextLabelToClick(
@@ -240,7 +262,7 @@ namespace ClickIt.Features.Click.Selection
             if (examined > 0)
             {
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("FindLabelExhausted", $"range:{start}-{endExclusive} examined:{examined}");
-                _dependencies.DebugLog($"[LabelSelectDiag] exhausted range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} bt:{blightChestTransitionSuppressed} ls:{lockedStrongboxSuppressed}");
+                _dependencies.DebugLog($"[LabelSelectDiag] exhausted range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} bt:{blightChestTransitionSuppressed} ls:{lockedStrongboxSuppressed} nc:{notClickableNow}");
             }
             else if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
             {
@@ -249,6 +271,37 @@ namespace ClickIt.Features.Click.Selection
             }
 
             return null;
+        }
+
+        private bool CanResolveClickableLabelPoint(
+            LabelOnGround label,
+            string? mechanicId,
+            IReadOnlyList<LabelOnGround> allLabels)
+        {
+            if (_dependencies.CanResolveClickablePoint != null)
+                return _dependencies.CanResolveClickablePoint(label, mechanicId, allLabels);
+
+            try
+            {
+                RectangleF windowArea = _dependencies.GetViewport?.Invoke()
+                    ?? _dependencies.GameController.Window.GetWindowRectangleTimeCache;
+                if (!(windowArea.Width > 0 && windowArea.Height > 0))
+                    return false;
+
+                // The resolver probes client coordinates. Do not reinterpret a blocked probe as a point in another space.
+                return _dependencies.LabelClickPointResolver.TryCalculateClickPosition(
+                    label,
+                    default,
+                    allLabels,
+                    point => point.X >= 0 && point.X < windowArea.Width
+                        && point.Y >= 0 && point.Y < windowArea.Height
+                        && _dependencies.IsClientPointClickable(point, mechanicId ?? string.Empty),
+                    out _);
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

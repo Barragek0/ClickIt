@@ -103,7 +103,8 @@ namespace ClickIt.Features.Click.Core
 
         private bool TryExecuteMechanicSelections(ClickTickContext context, ClickCandidates candidates, DecisionResult decision, bool hiddenFallback)
         {
-            if (decision.TrySettlers && candidates.SettlersOre.HasValue)
+            bool crawlerFallback = candidates.NextLabelMechanicId == MechanicIds.DelveCrawler;
+            if ((decision.TrySettlers || crawlerFallback) && candidates.SettlersOre.HasValue)
             {
                 bool clicked = hiddenFallback
                     ? TryExecuteSettlersHidden(context, candidates.SettlersOre.Value)
@@ -112,12 +113,12 @@ namespace ClickIt.Features.Click.Core
                     return true;
             }
 
-            if (decision.TryLostShipment && candidates.LostShipment.HasValue)
+            if ((decision.TryLostShipment || crawlerFallback) && candidates.LostShipment.HasValue)
                 if (TryExecuteLostShipment(context, candidates.LostShipment.Value))
                     return true;
 
 
-            if (decision.TryShrine && context.NextShrine != null)
+            if ((decision.TryShrine || crawlerFallback) && context.NextShrine != null)
                 if (TryExecuteShrine(context))
                     return true;
 
@@ -162,17 +163,6 @@ namespace ClickIt.Features.Click.Core
                     "PostChestLootSettleBlocked", context.ChestLootSettleReason, mechanicId);
                 return true;
             }
-
-            // Spec 11: a label beyond ClickDistance is walked to even when its click point resolves. Eligibility normally filters these out, but the hover preference and hidden path can surface a far label here - never click it; walk toward it (or do nothing when the walk cannot resolve) and consume the tick so a far label is never clicked.
-            if (DynamicAccess.TryReadFloat(entity, DynamicAccessProfiles.DistancePlayer, out float entityDistance)
-                && entityDistance > _dependencies.Policy.Settings.ClickDistance.Value)
-            {
-                _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage(
-                    "WalkTowardLabel", $"Label beyond ClickDistance ({entityDistance:0.0} > {_dependencies.Policy.Settings.ClickDistance.Value}); pathfinding toward entity", mechanicId);
-                _dependencies.Pathing.OffscreenPathing.TryWalkTowardOffscreenTarget(entity);
-                return true;
-            }
-
             if (mechanicId is MechanicIds.AltarsEaterOfWorlds or MechanicIds.AltarsSearingExarch
                 && _dependencies.Mechanics.AltarAutomation.ShouldApproachAltar(entity))
             {
@@ -254,6 +244,15 @@ namespace ClickIt.Features.Click.Core
         {
             if (candidates.NextLabel == null)
                 return HandleNoVisibleLabel(context);
+
+            if (candidates.NextLabelMechanicId == MechanicIds.DelveCrawler)
+            {
+                if (!_dependencies.Policy.Settings.ClickDelveCrawler.Value
+                    || _dependencies.Selection.LabelInteractionPort.GetMechanicIdForLabel(candidates.NextLabel) != MechanicIds.DelveCrawler)
+                    return StopExecution();
+                if (_dependencies.Pathing.OffscreenPathing.TryHandleCrawlerFallback())
+                    return StopExecution();
+            }
 
             // Unified clickability check: if the selected label's click position is not in a clickable area, pathfind toward its entity instead of attempting a click that would fail.
             DynamicAccess.TryGetLabelItemOnGround(candidates.NextLabel, out Entity? nextLabelItem);
@@ -388,10 +387,13 @@ namespace ClickIt.Features.Click.Core
             LabelOnGround nextLabel = candidates.NextLabel!;
 
             // A locked strongbox (the strongbox overlay's red frame) cannot be opened, so it is never clicked even if a stale selection cache ranked it; fall through to the no-visible-label path so the plugin still walks toward other targets.
-            if (nextLabelItem != null && MechanicClassifier.IsLockedStrongbox(nextLabelItem))
+            if (nextLabelItem != null
+                && (MechanicClassifier.IsLockedStrongbox(nextLabelItem)
+                    || (MechanicClassifier.IsLockedDelveChest(nextLabelItem)
+                        && !MechanicClassifier.HasVisibleDelveCompletionLabel(context.AllLabels))))
             {
                 _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage("LockedChestSkipped",
-                    $"Strongbox is locked - not clickable | {ClickLabelSelectionMath.DescribeLabel(nextLabel)} {ClickLabelSelectionMath.DescribeCursorPosition()}", candidates.NextLabelMechanicId);
+                    $"Chest is locked - not clickable | {ClickLabelSelectionMath.DescribeLabel(nextLabel)} {ClickLabelSelectionMath.DescribeCursorPosition()}", candidates.NextLabelMechanicId);
                 return HandleNoVisibleLabel(context);
             }
 
@@ -450,7 +452,8 @@ namespace ClickIt.Features.Click.Core
             long inputStart = GC.GetAllocatedBytesForCurrentThread();
             long inputTimestamp = Stopwatch.GetTimestamp();
             double inputSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
-            bool clicked = _dependencies.Selection.LabelInteraction.PerformResolvedLabelInteraction(clickPos, nextLabel, candidates.NextLabelMechanicId);
+            bool clicked = _dependencies.Selection.LabelInteraction.PerformResolvedLabelInteraction(
+                clickPos, nextLabel, candidates.NextLabelMechanicId, clientClickPosition: clickPos - context.WindowTopLeft);
             long inputBytes = GC.GetAllocatedBytesForCurrentThread() - inputStart;
             // Exclude the intentional hover/post-click settle sleeps inside the click dispatch so Input shows the true processing cost (the host already reports those waits as the separate Sleep row).
             double inputMs = GetElapsedMs(inputTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - inputSleepBefore);

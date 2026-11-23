@@ -31,11 +31,10 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void SettlersSkipAndDistanceHelpers_PreserveSelectionMathContract()
+        public void SettlersSkipAndDistanceRankingHelpers_PreserveSelectionMathContract()
         {
-            VisibleMechanicSelectionPolicy.ShouldSkipSettlersOreEntity(isValid: false, distance: 5f, clickDistance: 10).Should().BeTrue();
-            VisibleMechanicSelectionPolicy.ShouldSkipSettlersOreEntity(isValid: true, distance: 11f, clickDistance: 10).Should().BeTrue();
-            VisibleMechanicSelectionPolicy.ShouldSkipSettlersOreEntity(isValid: true, distance: 5f, clickDistance: 10).Should().BeFalse();
+            VisibleMechanicSelectionPolicy.ShouldSkipSettlersOreEntity(isValid: false).Should().BeTrue();
+            VisibleMechanicSelectionPolicy.ShouldSkipSettlersOreEntity(isValid: true).Should().BeFalse();
 
             VisibleMechanicSelectionPolicy.ArePlayerDistancesEquivalent(10f, 10.0005f).Should().BeTrue();
             VisibleMechanicSelectionPolicy.ArePlayerDistancesEquivalent(10f, 10.01f).Should().BeFalse();

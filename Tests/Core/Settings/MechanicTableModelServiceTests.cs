@@ -12,6 +12,7 @@ namespace ClickIt.Tests.Core.Settings
             var beyond = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.Beyond).Subject;
             var sentinel = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.Sentinel).Subject;
             var fates = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.Fates).Subject;
+            var memories = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.Memories).Subject;
             beyond.Node.Should().BeSameAs(settings.ClickBeyond);
             beyond.Node.Value.Should().BeFalse();
             beyond.DefaultEnabled.Should().BeFalse();
@@ -22,6 +23,10 @@ namespace ClickIt.Tests.Core.Settings
             fates.Node.Value.Should().BeFalse();
             fates.DisplayName.Should().Be("Fates");
             fates.DefaultEnabled.Should().BeFalse();
+            memories.Node.Should().BeSameAs(settings.ClickMemories);
+            memories.Node.Value.Should().BeTrue();
+            memories.DisplayName.Should().Be("Memories");
+            memories.DefaultEnabled.Should().BeTrue();
         }
         [TestMethod]
         public void GetTableEntries_BuildsCachedEntryListFromSettingsNodes()

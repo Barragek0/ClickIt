@@ -53,7 +53,7 @@ namespace ClickIt.Features.Click.Selection
                         ? resolvedDistance
                         : float.MaxValue;
 
-                    if (VisibleMechanicSelectionPolicy.ShouldSkipSettlersOreEntity(isValid, distance, _dependencies.Settings.ClickDistance.Value))
+                    if (VisibleMechanicSelectionPolicy.ShouldSkipSettlersOreEntity(isValid))
                     {
                         if (collectDiagnostics)
                             prefiltered++;
@@ -234,7 +234,7 @@ namespace ClickIt.Features.Click.Selection
 
 
             if (!SettlersMechanicPolicy.IsEnabled(SettlersClickFlags.From(_dependencies.Settings), resolvedMechanic)
-                || VisibleMechanicSelectionPolicy.ShouldSkipSettlersOreEntity(isValid, distance, _dependencies.Settings.ClickDistance.Value))
+                || VisibleMechanicSelectionPolicy.ShouldSkipSettlersOreEntity(isValid))
                 return false;
 
 

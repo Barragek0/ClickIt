@@ -100,14 +100,12 @@ namespace ClickIt.Features.Click.Runtime
             bool blightRequiresFullLabel,
             bool labelInWindow,
             bool labelClickable,
-            bool clickPointResolvable,
-            float distance,
-            int clickDistance)
+            bool clickPointResolvable)
         {
             if (blightRequiresFullLabel && (!labelInWindow || !labelClickable))
                 return true;
 
-            return distance > clickDistance || !clickPointResolvable;
+            return !clickPointResolvable;
         }
 
         internal static bool ShouldPathfindToEntityAfterClickPointResolveFailure(

@@ -10,7 +10,6 @@ namespace ClickIt.Tests.Behavior.Click
         private static ClickPipelineScenarioFactory.ScenarioConfig BaseConfig()
             => new()
             {
-                ClickDistance = 100,
                 ClickItems = true,
                 ClickStrongboxes = true,
             };

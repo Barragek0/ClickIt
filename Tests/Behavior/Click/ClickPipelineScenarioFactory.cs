@@ -6,9 +6,9 @@ namespace ClickIt.Tests.Behavior.Click
         internal sealed class ScenarioConfig
         {
             public RectangleF Window { get; set; } = new(0f, 0f, 1920f, 1080f);
-            public int ClickDistance { get; set; } = 100;
             public bool ClickItems { get; set; } = true;
             public bool ClickStrongboxes { get; set; } = true;
+            public bool ClickDelveCrawler { get; set; }
             public bool WalkTowardOffscreenLabels { get; set; } = true;
             public bool CaptureClickDebug { get; set; }
             public int MechanicPriorityDistancePenalty { get; set; }
@@ -41,6 +41,8 @@ namespace ClickIt.Tests.Behavior.Click
             string path = DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
                 ? resolvedPath
                 : string.Empty;
+            if (MechanicIds.IsDelveCrawlerPath(path))
+                return settings.ClickDelveCrawler ? MechanicIds.DelveCrawler : null;
             if (path.Contains("strongbox", StringComparison.OrdinalIgnoreCase))
                 return settings.ClickStrongboxes && !MechanicClassifier.IsLockedStrongbox(item)
                     ? MechanicIds.Strongboxes
@@ -58,9 +60,9 @@ namespace ClickIt.Tests.Behavior.Click
         internal static ClickSettings CreateClickSettings(ScenarioConfig config)
             => new()
             {
-                ClickDistance = config.ClickDistance,
                 ClickItems = config.ClickItems,
                 ClickStrongboxes = config.ClickStrongboxes,
+                ClickDelveCrawler = config.ClickDelveCrawler,
                 MechanicPriorityIndexMap = config.MechanicPriorityIndexMap,
                 IgnoreDistanceMechanicIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase),
                 IgnoreDistanceWithinByMechanicId = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
@@ -156,6 +158,7 @@ namespace ClickIt.Tests.Behavior.Click
             public LabelSelectionScanEngine ScanEngine { get; }
             public InteractionExecutionEngine ExecutionEngine { get; }
             public ClickLabelInteractionService LabelInteraction { get; }
+            public OffscreenTraversalTargetResolver TraversalResolver { get; private set; } = null!;
             public Func<Vector2, bool> ClickableArea { get; }
 
             // The game's hovered UI element, simulated for the UI-hover essence/strongbox preferences; null means nothing is hovered (the preference is inert).
@@ -197,6 +200,7 @@ namespace ClickIt.Tests.Behavior.Click
                 GameController = ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindow(config.Window);
                 Settings = new ClickItSettings();
                 Settings.WalkTowardOffscreenLabels.Value = config.WalkTowardOffscreenLabels;
+                Settings.ClickDelveCrawler.Value = config.ClickDelveCrawler;
                 ClickableArea = CreateClickableArea(config);
                 ClickPointResolver = new LabelClickPointResolver(Settings);
                 _labelInteractionPort = new ScenarioLabelInteractionPort(config);
@@ -216,7 +220,10 @@ namespace ClickIt.Tests.Behavior.Click
                             out item,
                             out mechanicId,
                             out rejectReason),
-                    GetMechanicIdForLabelCore: _labelInteractionPort.GetMechanicIdForLabel));
+                    GetMechanicIdForLabelCore: _labelInteractionPort.GetMechanicIdForLabel)
+                {
+                    GetViewport = () => config.Window
+                });
 
                 var clickDebugPublisher = ClickTestDebugPublisherFactory.Create(
                     shouldCaptureClickDebug: () => config.CaptureClickDebug,
@@ -259,6 +266,8 @@ namespace ClickIt.Tests.Behavior.Click
                     IsEssenceClickingEnabled = static () => false,
                     IsStrongboxClickingEnabled = () => config.ClickStrongboxes,
                     ShouldSuppressLockedStrongboxClick = LockedStrongboxLabelSuppression.ShouldSuppress,
+                    GetViewport = () => config.Window,
+                    IsClientPointClickable = (point, _) => ClickableArea(point + new Vector2(config.Window.X, config.Window.Y)),
                     GetUiHoverElement = () => HoveredElement
                 });
 
@@ -406,6 +415,7 @@ namespace ClickIt.Tests.Behavior.Click
                     pathfindingLabelSuppression,
                     DebugLog: static _ => { },
                     IsLabelFullyOverlapped: ClickPointResolver.IsLabelFullyOverlapped));
+                TraversalResolver = traversalResolver;
 
                 return new OffscreenPathingCoordinator(new OffscreenPathingCoordinatorDependencies(
                     Settings,

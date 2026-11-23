@@ -2,7 +2,7 @@ namespace ClickIt.Features.Labels
 {
     internal struct ClickSettings
     {
-        public int ClickDistance { get; set; }
+        public bool DelveEncounterComplete { get; set; }
         public bool ClickItems { get; set; }
         public IReadOnlyList<string> ItemTypeWhitelistMetadata { get; set; }
         public IReadOnlyList<string> ItemTypeBlacklistMetadata { get; set; }
@@ -25,12 +25,14 @@ namespace ClickIt.Features.Labels
         public bool ClickBeyond { get; set; }
         public bool ClickSentinel { get; set; }
         public bool ClickFates { get; set; }
+        public bool ClickMemories { get; set; }
         public bool ClickRitualInitiate { get; set; }
         public bool ClickRitualCompleted { get; set; }
         public bool ClickInitialUltimatum { get; set; }
         public bool ClickOtherUltimatum { get; set; }
         public bool ClickAzurite { get; set; }
         public bool ClickDelveSpawners { get; set; }
+        public bool ClickDelveCrawler { get; set; }
         public bool HighlightEater { get; set; }
         public bool HighlightExarch { get; set; }
         public bool ClickEater { get; set; }

@@ -14,10 +14,13 @@ namespace ClickIt.Features.Click.Ranking
             string? mechanicId,
             MechanicRank rank)
         {
-            if (candidate == null || !candidate.IsValid || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(candidate) || string.IsNullOrWhiteSpace(mechanicId))
+            if (candidate == null || !DynamicAccess.TryReadBool(candidate, DynamicAccessProfiles.IsValid, out bool isValid)
+                || !isValid || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(candidate) || string.IsNullOrWhiteSpace(mechanicId))
                 return false;
 
-            if (!ShouldPromoteCandidate(rank, bestRank, hasBest))
+            bool crawler = mechanicId == MechanicIds.DelveCrawler;
+            bool bestCrawler = bestMechanicId == MechanicIds.DelveCrawler;
+            if (hasBest && (crawler != bestCrawler ? crawler : !ShouldPromoteCandidate(rank, bestRank, true)))
                 return false;
 
             best = candidate;

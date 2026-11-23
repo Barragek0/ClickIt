@@ -11,7 +11,9 @@ namespace ClickIt.Features.Click.Selection
         Func<Vector2, bool> IsInsideWindowInEitherSpace,
         PathfindingLabelSuppressionEvaluator PathfindingLabelSuppression,
         Action<string>? DebugLog = null,
-        Func<LabelOnGround, IReadOnlyList<LabelOnGround>?, bool>? IsLabelFullyOverlapped = null);
+        Func<LabelOnGround, IReadOnlyList<LabelOnGround>?, bool>? IsLabelFullyOverlapped = null,
+        Func<Entity, bool>? ShouldApproachAltar = null,
+        Func<RectangleF, bool>? IsBlightLabelRegionClickable = null);
 
     internal sealed class OffscreenTraversalTargetResolver(OffscreenTraversalTargetResolverDependencies dependencies)
     {
@@ -21,6 +23,14 @@ namespace ClickIt.Features.Click.Selection
         private Entity? _cachedWalkTarget;
         private long _cachedWalkTargetAtMs;
         private const long OffscreenTargetCacheWindowMs = 250;
+        private IReadOnlySet<long>? _crawlerFallbackExcluded;
+
+        internal Entity? ResolveCrawlerFallbackTarget(IReadOnlySet<long> excluded)
+        {
+            _crawlerFallbackExcluded = excluded;
+            try { return ResolveNearestOffscreenWalkTargetCore(); }
+            finally { _crawlerFallbackExcluded = null; }
+        }
 
         // Retains any entity that could be an offscreen walk target: an eldritch altar (path marker), an area transition (type or path marker), or a shrine (path marker). One path read + type read per EntityAdded keeps the event handler cheap. The per-category resolution still applies its own targetable/clickable filters on top of this coarse retained set.
         internal static bool IsOffscreenWalkableStructure(Entity entity)
@@ -71,12 +81,13 @@ namespace ClickIt.Features.Click.Selection
             (Entity? eldritchAltarTarget, string? eldritchAltarMechanicId) = ResolveNearestOffscreenEldritchAltarTarget(maxDistance);
             Entity? shrineTarget = ResolveNearestOffscreenShrineTarget(maxDistance);
             (Entity? areaTransitionTarget, string? areaTransitionMechanicId) = ResolveNearestOffscreenAreaTransitionTarget(maxDistance);
+            (Entity? delveTarget, string? delveMechanicId) = ResolveNearestOffscreenDelveTarget(maxDistance);
 
             _dependencies.DebugLog?.Invoke(string.Format("[TraversalResolver] ResolveNearestOffscreenWalkTarget: label={0} altar={1} shrine={2} transition={3}",
-                    labelBackedTarget?.Path ?? "null", eldritchAltarTarget?.Path ?? "null",
-                    shrineTarget != null ? "yes" : "null", areaTransitionTarget?.Path ?? "null"));
+                    DescribePath(labelBackedTarget), DescribePath(eldritchAltarTarget),
+                    shrineTarget != null ? "yes" : "null", DescribePath(areaTransitionTarget)));
 
-            if (labelBackedTarget == null && eldritchAltarTarget == null && shrineTarget == null && areaTransitionTarget == null)
+            if (labelBackedTarget == null && eldritchAltarTarget == null && shrineTarget == null && areaTransitionTarget == null && delveTarget == null)
                 return null;
 
             _dependencies.MechanicPriorityContextProvider.Refresh();
@@ -91,6 +102,7 @@ namespace ClickIt.Features.Click.Selection
             _ = MechanicCandidateResolver.TryPromoteOffscreenCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, eldritchAltarTarget, eldritchAltarMechanicId, (distance, mechanicId) => BuildMechanicRank(distance, mechanicId, mechanicPriorityContext));
             _ = MechanicCandidateResolver.TryPromoteOffscreenCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, shrineTarget, MechanicIds.Shrines, (distance, mechanicId) => BuildMechanicRank(distance, mechanicId, mechanicPriorityContext));
             _ = MechanicCandidateResolver.TryPromoteOffscreenCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, areaTransitionTarget, areaTransitionMechanicId, (distance, mechanicId) => BuildMechanicRank(distance, mechanicId, mechanicPriorityContext));
+            _ = MechanicCandidateResolver.TryPromoteOffscreenCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, delveTarget, delveMechanicId, (distance, mechanicId) => BuildMechanicRank(distance, mechanicId, mechanicPriorityContext));
 
             return best;
         }
@@ -124,6 +136,20 @@ namespace ClickIt.Features.Click.Selection
                     path));
         }
 
+        private (Entity? Target, string? MechanicId) ResolveNearestOffscreenDelveTarget(int maxDistance)
+        {
+            if (!_dependencies.Settings.ClickDelveSpawners.Value
+                && !(_crawlerFallbackExcluded != null && _dependencies.Settings.ClickLeagueChests.Value && _dependencies.Settings.ClickLeagueChestsOther.Value))
+                return (null, null);
+
+            return ResolveNearestOffscreenEntityTarget(
+                maxDistance,
+                includeEntity: static (_, path) => MechanicIds.IsDelveOffscreenWalkTargetPath(path),
+                resolveMechanicId: static (_, path) => path.Contains("/DelveChests/", StringComparison.OrdinalIgnoreCase)
+                    ? MechanicIds.LeagueChests
+                    : MechanicIds.DelveAzuriteVeins);
+        }
+
         private Entity? ResolveNearestOffscreenShrineTarget(int maxDistance)
         {
             if (!_dependencies.Settings.ClickShrines.Value)
@@ -155,8 +181,6 @@ namespace ClickIt.Features.Click.Selection
             {
                 windowArea = default;
             }
-            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-
             _dependencies.MechanicPriorityContextProvider.Refresh();
             MechanicPriorityContext mechanicPriorityContext = _dependencies.MechanicPriorityContextProvider.CreateContext();
 
@@ -180,6 +204,8 @@ namespace ClickIt.Features.Click.Selection
                     rejectedNoEntity++;
                     continue;
                 }
+                if (_crawlerFallbackExcluded != null && TryGetAddress(entity, out long labelAddress) && _crawlerFallbackExcluded.Contains(labelAddress))
+                    continue;
                 if (!TryGetOffscreenCandidateState(entity, out float distance, out _))
                 {
                     rejectedDistance++;
@@ -196,7 +222,7 @@ namespace ClickIt.Features.Click.Selection
                     continue;
                 }
 
-                if (_dependencies.IsLabelFullyOverlapped?.Invoke(label, labels) == true)
+                if (_crawlerFallbackExcluded == null && _dependencies.IsLabelFullyOverlapped?.Invoke(label, labels) == true)
                 {
                     rejectedFullyOverlapped++;
                     continue;
@@ -208,8 +234,12 @@ namespace ClickIt.Features.Click.Selection
                     rejectedNoMechanic++;
                     continue;
                 }
+                if ((MechanicClassifier.IsLockedDelveChest(entity) && !MechanicClassifier.HasVisibleDelveCompletionLabel(labels))
+                    || (_crawlerFallbackExcluded != null && (mechanicId == MechanicIds.DelveCrawler
+                        || MechanicClassifier.IsLockedStrongbox(entity))))
+                    continue;
 
-                if (!ShouldContinuePathfindingToLabel(label, entity, labels, windowTopLeft, distance))
+                if (!ShouldContinuePathfindingToLabel(label, entity, labels, windowArea, mechanicId))
                 {
                     rejectedShouldContinue++;
                     continue;
@@ -229,7 +259,7 @@ namespace ClickIt.Features.Click.Selection
             _dependencies.DebugLog?.Invoke(string.Format("[TraversalResolver] Label scan done: total={0} noEntity={1} dist={2} supp={3} noMech={4} skipCont={5} overlapped={6} best={7}",
                     labels.Count, rejectedNoEntity, rejectedDistance, rejectedSuppressed,
                     rejectedNoMechanic, rejectedShouldContinue, rejectedFullyOverlapped,
-                    best != null ? (best.Path ?? "?") : "null"));
+                    DescribePath(best)));
 
             return (best, bestMechanicId);
         }
@@ -245,7 +275,21 @@ namespace ClickIt.Features.Click.Selection
 
             void Consider(Entity entity)
             {
+                if (_crawlerFallbackExcluded != null && TryGetAddress(entity, out long address) && _crawlerFallbackExcluded.Contains(address))
+                    return;
                 if (!TryPrepareOffscreenEntityTargetCandidate(entity, maxDistance, out string path))
+                    return;
+
+                if (MechanicClassifier.IsLockedDelveChest(entity)
+                    && !MechanicClassifier.HasVisibleDelveCompletionLabel(_dependencies.VisibleLabelSnapshots.GetCachedLabels()))
+                    return;
+
+                if (_crawlerFallbackExcluded != null && MechanicIds.IsDelveOffscreenWalkTargetPath(path)
+                    && (!path.StartsWith("Metadata/Chests/DelveChests/", StringComparison.OrdinalIgnoreCase)
+                        || !_dependencies.Settings.ClickLeagueChests.Value || !_dependencies.Settings.ClickLeagueChestsOther.Value
+                        || !DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsTargetable, out bool targetable) || !targetable
+                        || (MechanicClassifier.IsLockedDelveChest(entity)
+                            && !MechanicClassifier.HasVisibleDelveCompletionLabel(_dependencies.VisibleLabelSnapshots.GetCachedLabels()))))
                     return;
 
                 if (!includeEntity(entity, path))
@@ -314,9 +358,13 @@ namespace ClickIt.Features.Click.Selection
             LabelOnGround label,
             Entity entity,
             IReadOnlyList<LabelOnGround>? allLabels,
-            Vector2 windowTopLeft,
-            float distance)
+            RectangleF windowArea,
+            string mechanicId)
         {
+            if (mechanicId is MechanicIds.AltarsEaterOfWorlds or MechanicIds.AltarsSearingExarch
+                && _dependencies.ShouldApproachAltar?.Invoke(entity) == true)
+                return true;
+
             if (!LabelGeometry.TryGetLabelRect(label, out RectangleF rect))
                 return true;
 
@@ -328,16 +376,31 @@ namespace ClickIt.Features.Click.Selection
             bool blightRequiresFullLabel = path.Contains(Constants.BlightPump, StringComparison.OrdinalIgnoreCase)
                 || path.Contains(Constants.BlightFoundation, StringComparison.OrdinalIgnoreCase);
 
-            bool labelInWindow = blightRequiresFullLabel && _dependencies.IsInsideWindowInEitherSpace(rect.Center);
-            bool labelClickable = blightRequiresFullLabel && _dependencies.IsClickableInEitherSpace(rect.Center, path);
+            bool labelInWindow = blightRequiresFullLabel && rect.Left >= 0 && rect.Top >= 0
+                && rect.Right <= windowArea.Width && rect.Bottom <= windowArea.Height;
+            bool labelClickable = labelInWindow && (_dependencies.IsBlightLabelRegionClickable?.Invoke(rect)
+                ?? _dependencies.IsClickableInEitherSpace(rect.Center, path));
 
+            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
             (bool clickResolvable, _) = _dependencies.LabelInteraction.TryResolveLabelClickPositionResult(label, null, windowTopLeft, allLabels, path);
             return OffscreenPathingMath.ShouldContinuePathfindingForLabel(
-                blightRequiresFullLabel, labelInWindow, labelClickable, clickResolvable, distance, _dependencies.Settings.ClickDistance.Value);
+                blightRequiresFullLabel, labelInWindow, labelClickable, clickResolvable);
         }
 
         private static MechanicRank BuildMechanicRank(float distance, string? mechanicId, MechanicPriorityContext mechanicPriorityContext)
             => CandidateRankingEngine.BuildRank(distance, mechanicId, mechanicPriorityContext);
+
+        private static string DescribePath(Entity? entity)
+            => entity == null ? "null" : DynamicAccess.TryReadString(entity, DynamicAccessProfiles.Path, out string path) ? path : "?";
+
+        private static bool TryGetAddress(Entity entity, out long address)
+        {
+            address = 0;
+            if (!DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.Address, out object? value) || value == null)
+                return false;
+            address = Convert.ToInt64(value);
+            return address != 0;
+        }
 
         private static bool TryGetOffscreenCandidateState(Entity entity, out float distance, out string path)
         {

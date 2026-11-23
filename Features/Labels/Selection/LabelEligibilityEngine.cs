@@ -21,27 +21,21 @@ namespace ClickIt.Features.Labels.Selection
                 return false;
             }
 
-            if (!DynamicAccess.TryReadFloat(item, DynamicAccessProfiles.DistancePlayer, out float distance)
-                || distance > clickSettings.ClickDistance)
-            {
-                rejectReason = LabelCandidateRejectReason.OutOfDistance;
-                return false;
-            }
-
             if (!isTargetableForClick(label, item))
             {
                 rejectReason = LabelCandidateRejectReason.Untargetable;
                 return false;
             }
 
-            // A locked strongbox (the strongbox overlay's red frame) cannot be opened, so it is never a click candidate even when a mechanic would otherwise match.
-            // Only check Chest entities -- most labels aren't chests, so this skips expensive DLR reads for non-chest labels.
+            // Locked strongboxes and Delve chests cannot be opened. Delve also needs a path check because its entity type can differ while the Chest component is present.
+            // Check entity type first for the general strongbox rule to avoid component reads on most labels.
             EntityType entityType = DynamicAccess.TryGetDynamicValue(item, DynamicAccessProfiles.Type, out object? rawType)
                 && rawType is EntityType resolvedType
                 ? resolvedType
                 : default;
 
-            if (entityType == EntityType.Chest && MechanicClassifier.IsLockedStrongbox(item))
+            if ((entityType == EntityType.Chest && MechanicClassifier.IsLockedStrongbox(item))
+                || (!clickSettings.DelveEncounterComplete && MechanicClassifier.IsLockedDelveChest(item)))
             {
                 rejectReason = LabelCandidateRejectReason.LockedChest;
                 return false;

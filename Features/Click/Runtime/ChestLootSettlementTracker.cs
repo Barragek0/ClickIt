@@ -76,6 +76,15 @@ namespace ClickIt.Features.Click.Runtime
             if (!ChestLootSettlementMath.ShouldContinueChestOpenRetries(state.PendingOpenConfirmationActive, chestLabelVisible) || pendingChestLabel == null)
                 return false;
 
+            if (DynamicAccess.TryGetLabelItemOnGround(pendingChestLabel, out Entity? pendingItem)
+                && pendingItem != null && MechanicClassifier.IsLockedDelveChest(pendingItem)
+                && !MechanicClassifier.HasVisibleDelveCompletionLabel(allLabels))
+            {
+                ClearPendingChestOpenConfirmation();
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("PostChestReclickLocked", "Delve chest is locked and encounter completion is unconfirmed", state.PendingOpenMechanicId);
+                return false;
+            }
+
             if (_shouldSuppressBlightChestClick(pendingChestLabel, null))
             {
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(

@@ -244,24 +244,20 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [DataTestMethod]
-        [DataRow(false, false, false, true, 50, 100, false)]
-        [DataRow(false, false, false, false, 50, 100, true)]
-        [DataRow(false, false, false, true, 150, 100, true)]
-        [DataRow(true, true, true, true, 50, 100, false)]
-        [DataRow(true, false, true, true, 50, 100, true)]
-        [DataRow(true, true, false, true, 50, 100, true)]
-        [DataRow(true, true, true, true, 150, 100, true)]
+        [DataRow(false, false, false, true, false)]
+        [DataRow(false, false, false, false, true)]
+        [DataRow(true, true, true, true, false)]
+        [DataRow(true, false, true, true, true)]
+        [DataRow(true, true, false, true, true)]
         public void ShouldContinuePathfindingForLabel_ReturnsExpected(
             bool blightRequiresFullLabel,
             bool labelInWindow,
             bool labelClickable,
             bool clickPointResolvable,
-            float distance,
-            int clickDistance,
             bool expected)
         {
             OffscreenPathingMath.ShouldContinuePathfindingForLabel(
-                    blightRequiresFullLabel, labelInWindow, labelClickable, clickPointResolvable, distance, clickDistance)
+                    blightRequiresFullLabel, labelInWindow, labelClickable, clickPointResolvable)
                 .Should()
                 .Be(expected);
         }

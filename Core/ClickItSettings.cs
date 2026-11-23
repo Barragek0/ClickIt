@@ -167,6 +167,8 @@ namespace ClickIt
         [IgnoreMenu]
         public ToggleNode ClickFates { get; set; } = new ToggleNode(false);
         [IgnoreMenu]
+        public ToggleNode ClickMemories { get; set; } = new ToggleNode(true);
+        [IgnoreMenu]
         public ToggleNode ClickRecommendedFates { get; set; } = new ToggleNode(false);
         [Menu("Harvest", "Click Harvest encounter trees to start the encounter.", 14, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
@@ -270,6 +272,9 @@ namespace ClickIt
         [Menu("Encounter Initiators", "Click delve encounter initiators.", 40, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickDelveSpawners { get; set; } = new ToggleNode(true);
+        [Menu("Crawler", "Click the Delve Crawler after other available targets.", 41, 1400)]
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickDelveCrawler { get; set; } = new ToggleNode(false);
 
         [Menu("Priorities", 124, 1400)]
         public EmptyNode PrioritiesCategory { get; set; } = new EmptyNode();

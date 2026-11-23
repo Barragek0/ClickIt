@@ -37,14 +37,18 @@ namespace ClickIt.Features.Mechanics
         public const string Beyond = "beyond";
         public const string Sentinel = "sentinel";
         public const string Fates = "fates";
+        public const string Memories = "memories";
         public const string BeyondInitiatorPath = "BeyondDemons/BeyondInitiator";
         public const string SentinelEncounterPath = "Sentinel/SentinelRandomEncounter";
         public const string FatesPath = "Augury/Objects/AuguryCardObject";
         public const string FatesBossPath = "Augury/Objects/AuguryBoss";
+        public const string BeginMemoryLinePath = "MapAtlasMemory/Objects/BeginMemoryLine";
         public const string DelveAzuriteVeins = "delve-azurite-veins";
         public const string UltimatumInitialOverlay = "ultimatum-initial-overlay";
         public const string UltimatumWindow = "ultimatum-window";
         public const string DelveEncounterInitiators = "delve-encounter-initiators";
+        public const string DelveCrawler = "delve-crawler";
+        public const string DelveCrawlerPath = "Delve/Objects/DelveNode";
         public const string CraftingRecipes = "crafting-recipes";
         public const string BreachNodes = "breach-nodes";
         public const string SettlersCrimsonIron = "settlers-crimson-iron";
@@ -77,5 +81,17 @@ namespace ClickIt.Features.Mechanics
             => !string.IsNullOrEmpty(path)
                 && (path.Contains(FatesPath, StringComparison.OrdinalIgnoreCase)
                     || path.Contains(FatesBossPath, StringComparison.OrdinalIgnoreCase));
+
+        public static bool IsDelveCrawlerPath(string? path)
+            => !string.IsNullOrEmpty(path)
+                && path.Contains(DelveCrawlerPath, StringComparison.OrdinalIgnoreCase);
+
+        public static bool IsDelveOffscreenWalkTargetPath(string? path)
+            => !string.IsNullOrEmpty(path)
+                && (path.StartsWith("Metadata/Chests/DelveChests/", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(
+                        path,
+                        "Metadata/Terrain/Leagues/Delve/Objects/EncounterControlObjects/AzuriteEncounterController",
+                        StringComparison.OrdinalIgnoreCase));
     }
 }

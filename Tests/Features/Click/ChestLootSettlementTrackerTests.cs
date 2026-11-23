@@ -4,6 +4,20 @@ namespace ClickIt.Tests.Features.Click
     public class ChestLootSettlementTrackerTests
     {
         [TestMethod]
+        [TestCategory("Regression")]
+        public void PendingLockedDelveChestWithoutCompletion_CancelsRetry()
+        {
+            var settings = new ClickItSettings();
+            var state = new ChestLootSettlementState { PendingOpenConfirmationActive = true, PendingOpenMechanicId = MechanicIds.LeagueChests, PendingOpenItemAddress = 42 };
+            Entity chest = EntityProbeFactory.Create(path: "Metadata/Chests/DelveChests/DelveChestGenericTrinkets", address: 42, type: EntityType.Chest);
+            EntityProbeFactory.WithComponent<Chest>(chest, new LockedChestProbe { IsLocked = true });
+            LabelOnGround label = new LabelProbe { ItemOnGround = chest };
+            var tracker = CreateTracker(settings, state);
+
+            tracker.TryHandlePendingChestOpenConfirmation(default, [label]).Should().BeFalse();
+            state.PendingOpenConfirmationActive.Should().BeFalse();
+        }
+        [TestMethod]
         public void StartPostChestLootSettlementWatch_SeedsWatcherState_AndTiming()
         {
             var settings = new ClickItSettings();

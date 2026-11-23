@@ -9,7 +9,7 @@ namespace ClickIt.Features.Labels.Application
         bool IsHostile);
 
     internal readonly record struct LockedChestCandidate(
-        float DistancePlayer,
+        bool IsOnScreen,
         string Path,
         bool IsLocked,
         bool IsStrongbox);
@@ -76,7 +76,7 @@ namespace ClickIt.Features.Labels.Application
                 settings: new TimedValueCacheSettings(RequireNonNegativeAge: true));
         private long _lastLazyModeRestrictionLogTimestampMs = long.MinValue;
         private volatile string _lastLazyModeRestrictionLogReason = string.Empty;
-        // Locked-chest scan cache. The label-list reference does NOT change while the visible label addresses are stable (StableLabelSetCache returns the same instance), so a reference-equality gate would never re-run the scan while the player walks — yet DistancePlayer <= ClickDistance changes with movement. A time-based cache (mirroring the nearby-monster cache) re-scans on a short cadence instead. Thread-safe: called from the render thread (LazyModeOverlay.Draw) and the click coroutine.
+        // Locked-chest checks use current screen rectangles because the shared label set can stay stable while labels move with the camera.
         private const long LockedChestScanCacheWindowMs = 200;
         private readonly TimedValueCache<IReadOnlyList<LabelOnGround>, LazyModeRestrictionResult> _lockedChestRestrictionCache
             = new(LockedChestScanCacheWindowMs);
@@ -125,15 +125,21 @@ namespace ClickIt.Features.Labels.Application
         {
             if (allLabels == null)
                 return default;
-
-            // Time-gated (not reference-gated): the label reference is stable while addresses are unchanged, but the locked-chest check depends on DistancePlayer which changes with movement — so re-scan on a short cadence rather than only on label-set change.
+            // The label set is stable while labels move with the camera, so this check is time-gated and re-reads screen rectangles on its short cadence.
             long nowMs = _nowProvider();
             if (_lockedChestRestrictionCache.TryGetValue(allLabels, nowMs, out LazyModeRestrictionResult cached))
                 return cached;
 
-            string? reason = TryFindLockedChestRestrictionReason(
-                allLabels,
-                _settings.ClickDistance.Value);
+            RectangleF windowArea;
+            try
+            {
+                windowArea = _gameController?.Window?.GetWindowRectangleTimeCache ?? default;
+            }
+            catch
+            {
+                windowArea = default;
+            }
+            string? reason = TryFindLockedChestRestrictionReason(allLabels, windowArea);
             LazyModeRestrictionResult restriction = reason == null
                 ? default
                 : new LazyModeRestrictionResult(true, reason);
@@ -183,17 +189,13 @@ namespace ClickIt.Features.Labels.Application
 
         internal static string? TryFindLockedChestRestrictionReason(
             IEnumerable<LabelOnGround> labels,
-            int clickDistance)
+            RectangleF windowArea)
         {
             foreach (LabelOnGround label in labels)
             {
                 DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item);
-                if (item == null
-                    || !DynamicAccess.TryReadFloat(item, DynamicAccessProfiles.DistancePlayer, out float distance)
-                    || distance > clickDistance)
-                {
+                if (item == null)
                     continue;
-                }
 
                 string path = DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
                     ? resolvedPath
@@ -202,7 +204,9 @@ namespace ClickIt.Features.Labels.Application
                     continue;
 
                 Chest? chest = item.GetComponent<Chest>();
-                if (chest?.IsLocked == true && !chest.IsStrongbox)
+                if (chest?.IsLocked == true && !chest.IsStrongbox
+                    && (!(windowArea.Width > 0 && windowArea.Height > 0)
+                        || LabelGeometry.TryGetLabelRectOnScreen(label, windowArea, out _)))
                     return $"Locked chest detected ({path})";
             }
 
@@ -210,12 +214,11 @@ namespace ClickIt.Features.Labels.Application
         }
 
         internal static string? TryFindLockedChestRestrictionReason(
-            IEnumerable<LockedChestCandidate> candidates,
-            int clickDistance)
+            IEnumerable<LockedChestCandidate> candidates)
         {
             foreach (LockedChestCandidate candidate in candidates)
             {
-                if (candidate.DistancePlayer > clickDistance)
+                if (!candidate.IsOnScreen)
                     continue;
 
                 if (string.IsNullOrEmpty(candidate.Path))

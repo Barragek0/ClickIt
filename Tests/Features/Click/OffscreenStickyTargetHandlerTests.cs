@@ -4,6 +4,18 @@ namespace ClickIt.Tests.Features.Click
     public class OffscreenStickyTargetHandlerTests
     {
         [TestMethod]
+        [TestCategory("Regression")]
+        public void LockedDelveStickyTargetWithoutCompletion_IsRejectedAndCleared()
+        {
+            var state = new ClickRuntimeState { StickyOffscreenTargetAddress = 42 };
+            Entity chest = EntityProbeFactory.Create(path: "Metadata/Chests/DelveChests/DelveChestGenericTrinkets", address: 42, type: EntityType.Chest);
+            EntityProbeFactory.WithComponent<Chest>(chest, new LockedChestProbe { IsLocked = true });
+            var handler = CreateHandler(state, ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(chest));
+
+            handler.TryClickStickyTargetIfPossible(chest, default, []).Should().BeFalse();
+            state.StickyOffscreenTargetAddress.Should().Be(0);
+        }
+        [TestMethod]
         public void TryResolveStickyOffscreenTarget_ReturnsFalse_WhenNoStickyTargetAddressIsSet()
         {
             var runtimeState = new ClickRuntimeState();

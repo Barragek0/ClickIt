@@ -30,7 +30,7 @@ namespace ClickIt.Features.Labels.Selection
 
             return new ClickSettings
             {
-                ClickDistance = _settings.ClickDistance.Value,
+                DelveEncounterComplete = MechanicClassifier.HasVisibleDelveCompletionLabel(allLabels),
                 ClickItems = _settings.ClickItems.Value,
                 ItemTypeWhitelistMetadata = _settings.GetItemTypeWhitelistMetadataIdentifiers(),
                 ItemTypeBlacklistMetadata = _settings.GetItemTypeBlacklistMetadataIdentifiers(),
@@ -48,6 +48,7 @@ namespace ClickIt.Features.Labels.Selection
                 ClickSulphite = _settings.ClickSulphiteVeins.Value,
                 ClickAzurite = _settings.ClickAzuriteVeins.Value,
                 ClickDelveSpawners = _settings.ClickDelveSpawners.Value,
+                ClickDelveCrawler = _settings.ClickDelveCrawler.Value,
                 HighlightEater = _settings.HighlightEaterAltars.Value,
                 HighlightExarch = _settings.HighlightExarchAltars.Value,
                 ClickEater = _settings.ClickEaterAltars.Value,
@@ -74,6 +75,7 @@ namespace ClickIt.Features.Labels.Selection
                 ClickBeyond = _settings.ClickBeyond.Value,
                 ClickSentinel = _settings.ClickSentinel.Value,
                 ClickFates = _settings.ClickFates.Value,
+                ClickMemories = _settings.ClickMemories.Value,
                 ClickRitualInitiate = _settings.ClickRitualInitiate.Value,
                 ClickRitualCompleted = _settings.ClickRitualCompleted.Value,
                 ClickInitialUltimatum = _settings.IsInitialUltimatumClickEnabled(),

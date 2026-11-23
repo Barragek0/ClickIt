@@ -96,8 +96,7 @@ namespace ClickIt.Features.Click.Runtime
             RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
             Vector2 cursorAbsolute = ManualCursorSelectionMath.GetCursorAbsolutePosition();
-            return _dependencies.ShrineService.GetNearestShrineInRange(
-                _dependencies.Settings.ClickDistance.Value,
+            return _dependencies.ShrineService.GetNearestClickableShrine(
                 isInClickableArea: pos => _dependencies.PointIsInClickableArea(pos, MechanicIds.Shrines),
                 cursorDistanceResolver: shrine =>
                 {
@@ -368,9 +367,7 @@ namespace ClickIt.Features.Click.Runtime
                 && DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsValid, out bool isValid)
                 && isValid
                 && DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsOpened, out bool isOpened)
-                && !isOpened
-                && DynamicAccess.TryReadFloat(entity, DynamicAccessProfiles.DistancePlayer, out float distance)
-                && distance <= _dependencies.Settings.ClickDistance.Value;
+                && !isOpened;
         }
 
         private bool IsSettlersCandidateUsable(SettlersOreCandidate? candidate)
@@ -381,9 +378,7 @@ namespace ClickIt.Features.Click.Runtime
             Entity entity = candidate.Value.Entity;
             return entity != null
                 && DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsValid, out bool isValid)
-                && isValid
-                && DynamicAccess.TryReadFloat(entity, DynamicAccessProfiles.DistancePlayer, out float distance)
-                && distance <= _dependencies.Settings.ClickDistance.Value;
+                && isValid;
         }
 
         private bool TryProjectEntityScreenRaw(Entity entity, out Vector2 screenPosition)
