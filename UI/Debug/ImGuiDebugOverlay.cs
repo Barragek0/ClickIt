@@ -938,7 +938,7 @@ internal sealed class ImGuiDebugOverlay(
         // Single-line settings (same data the clipboard dump shows), rendered as 2 text widgets instead of ~40 colored InlineRow widgets - ImGui is ~10x more expensive per widget than the in-game overlay's text.
         DrawLiteralColored(CHeader, "Settings:");
         DrawLiteralColored(CWhite,
-            $"Toggle:HT={Fmt(s.ClickHotkeyToggleMode.Value)} MC={Fmt(s.ClickOnManualUiHoverOnly.Value)} LM={Fmt(s.LazyMode.Value)} LH={Fmt(s.LeftHanded.Value)}  Click:R={s.ClickDistance.Value} f={s.ClickFrequencyTarget.Value}ms vW={Fmt(s.VerifyCursorInGameWindowBeforeClick.Value)} vH={Fmt(s.VerifyUIHoverWhenNotLazy.Value)} aO={Fmt(s.AvoidOverlappingLabelClickPoints.Value)}");
+            $"Toggle:HT={Fmt(s.ClickHotkeyToggleMode.Value)} MC={Fmt(s.ClickOnManualUiHoverOnly.Value)} LM={Fmt(s.LazyMode.Value)} LH={Fmt(s.LeftHanded.Value)}  Click:search=viewport f={s.ClickFrequencyTarget.Value}ms vW={Fmt(s.VerifyCursorInGameWindowBeforeClick.Value)} vH={Fmt(s.VerifyUIHoverWhenNotLazy.Value)} aO={Fmt(s.AvoidOverlappingLabelClickPoints.Value)}");
         DrawLiteralColored(CWhite,
             $"Safety:bP={Fmt(s.BlockOnOpenLeftRightPanel.Value)} tI={Fmt(s.ToggleItems.Value)} ti={s.ToggleItemsIntervalMs.Value} pT={s.ToggleItemsPostToggleClickBlockMs.Value}  Walk:wO={Fmt(s.WalkTowardOffscreenLabels.Value)} pO={Fmt(s.PrioritizeOnscreenClickableMechanicsOverPathfinding.Value)} pB={s.OffscreenPathfindingSearchBudget.Value}  Chest:bC={Fmt(s.PauseAfterOpeningBasicChests.Value)} aN={Fmt(s.AllowNearbyMechanicsWhileWaitingForChestDropsToSettle.Value)}");
     }
@@ -1755,6 +1755,9 @@ internal sealed class ImGuiDebugOverlay(
                 AppendLabels(sb);
                 AppendPathfinding(sb);
                 AppendSkillAutomation(sb);
+                sb.AppendLine("--- Delve Flare ---");
+                sb.AppendLine($"  {_lastSnapshot?.FlareDebug ?? "unavailable"}");
+                sb.AppendLine();
                 AppendUltimatum(sb);
                 AppendAltar(sb);
                 AppendHoveredItem(sb);

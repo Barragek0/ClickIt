@@ -311,6 +311,7 @@ namespace ClickIt.Core.Runtime
             {
                 if (!_settings.Enable)
                 {
+                    _state.Runtime.FlareDebug = "Plugin disabled";
                     yield return new WaitTime(250);
                     continue;
                 }
@@ -367,11 +368,17 @@ namespace ClickIt.Core.Runtime
         private IEnumerator ProcessFlare()
         {
             if (!_settings.ClickDelveFlares)
+            {
+                _state.Runtime.FlareDebug = "Flares disabled";
                 yield break;
+            }
 
             PerformanceMonitor? perf = _state.Services.PerformanceMonitor;
             if (perf == null)
+            {
+                _state.Runtime.FlareDebug = "Performance monitor unavailable";
                 yield break;
+            }
 
             perf.StartCoroutineTiming(TimingChannel.Flare);
             long start = Stopwatch.GetTimestamp();
@@ -401,20 +408,28 @@ namespace ClickIt.Core.Runtime
                         _settings.DelveFlareHealthThreshold.Value,
                         _cachedFlareEnergyShield,
                         _settings.DelveFlareEnergyShieldThreshold.Value);
-                    bool canClick = false;
+                    bool backgroundAllowed = false;
+                    string? failureReason = null;
                     if (useFlare)
                     {
-                        PluginClickRuntimeStateSnapshot runtimeState = ResolveRitualAwareRuntimeState();
-                        canClick = _state.Services.InputHandler?.CanClick(_gameController!, false, runtimeState.IsRitualActive) == true;
+                        InputHandler? inputHandler = _state.Services.InputHandler;
+                        backgroundAllowed = inputHandler?.CanPerformBackgroundAutomation(_gameController!) == true && !Mouse.DisableNativeInput;
+                        if (!backgroundAllowed && _settings.DebugMode.Value)
+                            failureReason = inputHandler == null ? "input handler unavailable" : Mouse.DisableNativeInput ? "native input disabled" : "background safety gate blocked";
                     }
 
-                    if (useFlare && canClick)
+                    if (_settings.DebugMode.Value)
+                        _state.Runtime.FlareDebug = $"evaluatedAt={now} inputsAt={_flareCacheAtMs} stacks={_cachedFlareCharges}/{_settings.DarknessDebuffStacks.Value} health={_cachedFlareHealth:F1}/{_settings.DelveFlareHealthThreshold.Value}% es={_cachedFlareEnergyShield:F1}/{_settings.DelveFlareEnergyShieldThreshold.Value}% thresholdsMet={useFlare} backgroundAllowed={backgroundAllowed} reason={failureReason ?? "none"} flareKey={_settings.DelveFlareHotkeyBinding}";
+
+                    if (useFlare && backgroundAllowed)
                     {
                         Keyboard.KeyPress(_settings.DelveFlareHotkeyBinding, 50);
                         _errorHandler.LogMessage($"Used delve flare (buff charges: {_cachedFlareCharges}, health: {_cachedFlareHealth:F1}%, es: {_cachedFlareEnergyShield:F1}%)", 5);
                         usedFlare = true;
                     }
                 }
+                else
+                    _state.Runtime.FlareDebug = "Player unavailable";
             }
 
             RecordProcessing(ProcessingSection.Flare, start, allocStart);
@@ -445,7 +460,7 @@ namespace ClickIt.Core.Runtime
 
                 int max = maxSelector(life);
                 if (max == 0)
-                    return 100f;
+                    return currentSelector(life) == 0 ? 0f : 100f;
 
                 return (float)currentSelector(life) / max * 100f;
             }

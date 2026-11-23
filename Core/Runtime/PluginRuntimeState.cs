@@ -15,6 +15,7 @@ namespace ClickIt.Core.Runtime
         public Stopwatch SecondTimer { get; } = new();
         public bool WorkFinished { get; set; }
         public bool IsShuttingDown { get; set; }
+        internal string FlareDebug { get; set; } = "No flare evaluation recorded";
         internal bool DumpAllHotkeyWasDown { get; set; }
     }
 }

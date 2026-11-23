@@ -4,6 +4,21 @@ namespace ClickIt.Tests.Core.Runtime
     public class PluginDebugTelemetryServiceTests
     {
         [TestMethod]
+        [TestCategory("Regression")]
+        public void GetSnapshot_RefreshesFlareDecisionWhileClickSnapshotIsFrozen()
+        {
+            string flare = "before";
+            var service = new PluginDebugTelemetryService(new PluginDebugTelemetryProjectionSources(
+                () => null, () => null, () => null, () => null, () => null, () => null, () => null,
+                () => null, () => null, () => null, () => null, () => null, () => null, () => null,
+                GetFlareDebug: () => flare));
+            service.FreezeSnapshot("click", 5000);
+            flare = "after";
+
+            service.GetSnapshot().FlareDebug.Should().Be("after");
+            service.TryGetFreezeState(out _, out _).Should().BeTrue();
+        }
+        [TestMethod]
         public void GetSnapshot_ReturnsEmpty_WhenNoPortsAreAvailable()
         {
             var service = new PluginDebugTelemetryService(new PluginDebugTelemetryProjectionSources(
@@ -190,7 +205,8 @@ namespace ClickIt.Tests.Core.Runtime
 
             snapshot.Click.Settings.SummaryLines.Should().HaveCount(2);
             snapshot.Click.Settings.SummaryLines[0].Should().Contain("HT=T");
-            snapshot.Click.Settings.SummaryLines[0].Should().Contain("R=91");
+            snapshot.Click.Settings.SummaryLines[0].Should().Contain("search=viewport");
+            snapshot.Click.Settings.SummaryLines[0].Should().NotContain("R=91", "the legacy radius value is no longer used for click selection");
             snapshot.Click.Settings.SummaryLines[0].Should().Contain("f=222ms");
             snapshot.Click.Settings.InitialUltimatumClickEnabled.Should().BeTrue();
             snapshot.Click.Settings.OtherUltimatumClickEnabled.Should().BeFalse();

@@ -15,7 +15,8 @@ namespace ClickIt.Core.Runtime
         Func<ClickItSettings?> GetSettings,
         Func<TimeCache<List<LabelOnGround>>?> GetCachedLabels,
         Func<ErrorHandler?> GetErrorHandler,
-        Func<FlameLinkAutomationService?>? GetSkillAutomationService = null);
+        Func<FlameLinkAutomationService?>? GetSkillAutomationService = null,
+        Func<string>? GetFlareDebug = null);
 
     internal sealed class PluginDebugTelemetryService(PluginDebugTelemetryProjectionSources projectionSources)
     {
@@ -30,7 +31,7 @@ namespace ClickIt.Core.Runtime
         internal DebugTelemetrySnapshot GetSnapshot()
         {
             if (_freezeState.TryGetFrozenSnapshot(Environment.TickCount64, out DebugTelemetrySnapshot frozenSnapshot))
-                return frozenSnapshot;
+                return frozenSnapshot with { FlareDebug = _projectionSources.GetFlareDebug?.Invoke() ?? "unavailable" };
 
             long now = Environment.TickCount64;
             if (_cachedSnapshot != null && now - _lastSnapshotBuildTimestampMs < SnapshotBuildIntervalMs)
@@ -69,6 +70,7 @@ namespace ClickIt.Core.Runtime
                 _projectionSources.GetSettings(),
                 _projectionSources.GetCachedLabels(),
                 _projectionSources.GetErrorHandler(),
-                _projectionSources.GetSkillAutomationService?.Invoke());
+                _projectionSources.GetSkillAutomationService?.Invoke()) with
+            { FlareDebug = _projectionSources.GetFlareDebug?.Invoke() ?? "unavailable" };
     }
 }

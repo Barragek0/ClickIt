@@ -13,6 +13,7 @@ namespace ClickIt.Features.Observability
         SkillAutomationTelemetrySnapshot SkillAutomation)
     {
         internal IReadOnlyList<string> CraftingTrail { get; init; } = [];
+        internal string FlareDebug { get; init; } = "unavailable";
 
         public static readonly DebugTelemetrySnapshot Empty = new(
             Click: ClickTelemetrySnapshot.Empty,
