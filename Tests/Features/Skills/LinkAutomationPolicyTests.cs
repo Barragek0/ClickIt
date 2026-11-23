@@ -1,7 +1,7 @@
 namespace ClickIt.Tests.Features.Skills;
 
 [TestClass]
-public sealed class FlameLinkAutomationPolicyTests
+public sealed class LinkAutomationPolicyTests
 {
     [TestMethod]
     [TestCategory("Settings")]
@@ -12,25 +12,31 @@ public sealed class FlameLinkAutomationPolicyTests
         settings.CastFlameLinkOnMercenaries.Value.Should().BeFalse();
         settings.CastFlameLinkOnAnimateGuardian.Value.Should().BeFalse();
         settings.CastFlameLinkOnSpectres.Value.Should().BeFalse();
+        settings.CastDestructiveLinkOnMercenaries.Value.Should().BeFalse();
+        settings.CastDestructiveLinkOnAnimateGuardian.Value.Should().BeFalse();
+        settings.CastDestructiveLinkOnSpectres.Value.Should().BeFalse();
     }
 
     [TestMethod]
     [TestCategory("Boundary")]
     public void ShouldRunInArea_RejectsHideoutAndUnknownArea()
     {
-        FlameLinkAutomationPolicy.ShouldRunInArea(isHideout: false).Should().BeTrue();
-        FlameLinkAutomationPolicy.ShouldRunInArea(isHideout: true).Should().BeFalse();
-        FlameLinkAutomationPolicy.ShouldRunInArea(isHideout: null).Should().BeFalse();
+        LinkAutomationPolicy.ShouldRunInArea(isHideout: false).Should().BeTrue();
+        LinkAutomationPolicy.ShouldRunInArea(isHideout: true).Should().BeFalse();
+        LinkAutomationPolicy.ShouldRunInArea(isHideout: null).Should().BeFalse();
     }
 
     [TestMethod]
     [TestCategory("Regression")]
     public void IsTargetBuffName_MatchesOnlyTargetBuffCaseInsensitively()
     {
-        FlameLinkAutomationPolicy.IsTargetBuffName("flame_link_target").Should().BeTrue();
-        FlameLinkAutomationPolicy.IsTargetBuffName("FLAME_LINK_TARGET").Should().BeTrue();
-        FlameLinkAutomationPolicy.IsTargetBuffName("flame_link_source").Should().BeFalse();
-        FlameLinkAutomationPolicy.IsTargetBuffName(null).Should().BeFalse();
+        LinkAutomationPolicy.IsTargetBuffName("flame_link_target").Should().BeTrue();
+        LinkAutomationPolicy.IsTargetBuffName("FLAME_LINK_TARGET").Should().BeTrue();
+        LinkAutomationPolicy.IsTargetBuffName("flame_link_source").Should().BeFalse();
+        LinkAutomationPolicy.IsTargetBuffName(null).Should().BeFalse();
+        LinkAutomationPolicy.IsTargetBuffName("critical_link_target", true).Should().BeTrue();
+        LinkAutomationPolicy.IsTargetBuffName("flame_link_target", true).Should().BeFalse();
+        LinkAutomationPolicy.IsTargetBuffName("critical_link_target").Should().BeFalse();
     }
 
     [TestMethod]
@@ -39,8 +45,8 @@ public sealed class FlameLinkAutomationPolicyTests
     {
         RectangleF gameWindow = new(100, 200, 800, 600);
 
-        bool resolved = FlameLinkAutomationPolicy.TryResolveAbsoluteScreenPoint(new Vector2(250, 300), gameWindow, out Vector2 absolutePoint);
-        bool offscreenResolved = FlameLinkAutomationPolicy.TryResolveAbsoluteScreenPoint(new Vector2(801, 300), gameWindow, out _);
+        bool resolved = LinkAutomationPolicy.TryResolveAbsoluteScreenPoint(new Vector2(250, 300), gameWindow, out Vector2 absolutePoint);
+        bool offscreenResolved = LinkAutomationPolicy.TryResolveAbsoluteScreenPoint(new Vector2(801, 300), gameWindow, out _);
 
         resolved.Should().BeTrue();
         absolutePoint.Should().Be(new Vector2(350, 500));
@@ -55,29 +61,29 @@ public sealed class FlameLinkAutomationPolicyTests
         Entity animateGuardian = EntityProbeFactory.Create(path: "guardian");
         Entity[] mercenaries = [mercenary];
         Entity[] guardians = [animateGuardian];
-        FlameLinkTargetBuffState mercenaryState = FlameLinkTargetBuffState.Missing;
+        LinkTargetBuffState mercenaryState = LinkTargetBuffState.Missing;
 
-        Entity? first = FlameLinkAutomationPolicy.SelectNextMissingTarget(
+        Entity? first = LinkAutomationPolicy.SelectNextMissingTarget(
             mercenaries,
             guardians,
             true,
             true,
-            target => ReferenceEquals(target, mercenary) ? mercenaryState : FlameLinkTargetBuffState.Missing,
+            target => ReferenceEquals(target, mercenary) ? mercenaryState : LinkTargetBuffState.Missing,
             _ => true);
-        Entity? retry = FlameLinkAutomationPolicy.SelectNextMissingTarget(
+        Entity? retry = LinkAutomationPolicy.SelectNextMissingTarget(
             mercenaries,
             guardians,
             true,
             true,
-            target => ReferenceEquals(target, mercenary) ? mercenaryState : FlameLinkTargetBuffState.Missing,
+            target => ReferenceEquals(target, mercenary) ? mercenaryState : LinkTargetBuffState.Missing,
             _ => true);
-        mercenaryState = FlameLinkTargetBuffState.Present;
-        Entity? second = FlameLinkAutomationPolicy.SelectNextMissingTarget(
+        mercenaryState = LinkTargetBuffState.Present;
+        Entity? second = LinkAutomationPolicy.SelectNextMissingTarget(
             mercenaries,
             guardians,
             true,
             true,
-            target => ReferenceEquals(target, mercenary) ? mercenaryState : FlameLinkTargetBuffState.Missing,
+            target => ReferenceEquals(target, mercenary) ? mercenaryState : LinkTargetBuffState.Missing,
             _ => true);
 
         ReferenceEquals(first, mercenary).Should().BeTrue();
@@ -94,19 +100,19 @@ public sealed class FlameLinkAutomationPolicyTests
         Entity[] mercenaries = [mercenary];
         Entity[] guardians = [animateGuardian];
 
-        Entity? guardianOnly = FlameLinkAutomationPolicy.SelectNextMissingTarget(
+        Entity? guardianOnly = LinkAutomationPolicy.SelectNextMissingTarget(
             mercenaries,
             guardians,
             castOnMercenaries: false,
             castOnAnimateGuardian: true,
-            target => ReferenceEquals(target, mercenary) ? FlameLinkTargetBuffState.Unknown : FlameLinkTargetBuffState.Missing,
+            target => ReferenceEquals(target, mercenary) ? LinkTargetBuffState.Unknown : LinkTargetBuffState.Missing,
             _ => true);
-        Entity? disabled = FlameLinkAutomationPolicy.SelectNextMissingTarget(
+        Entity? disabled = LinkAutomationPolicy.SelectNextMissingTarget(
             mercenaries,
             guardians,
             castOnMercenaries: false,
             castOnAnimateGuardian: false,
-            _ => FlameLinkTargetBuffState.Missing,
+            _ => LinkTargetBuffState.Missing,
             _ => true);
 
         ReferenceEquals(guardianOnly, animateGuardian).Should().BeTrue();
@@ -121,12 +127,12 @@ public sealed class FlameLinkAutomationPolicyTests
         Entity localMercenary = EntityProbeFactory.Create(path: "local-mercenary");
         Entity[] mercenaries = [otherPlayersMercenary, localMercenary];
 
-        Entity? target = FlameLinkAutomationPolicy.SelectNextMissingTarget(
+        Entity? target = LinkAutomationPolicy.SelectNextMissingTarget(
             mercenaries,
             [],
             castOnMercenaries: true,
             castOnAnimateGuardian: false,
-            _ => FlameLinkTargetBuffState.Missing,
+            _ => LinkTargetBuffState.Missing,
             candidate => ReferenceEquals(candidate, localMercenary));
 
         ReferenceEquals(target, localMercenary).Should().BeTrue();
@@ -138,12 +144,12 @@ public sealed class FlameLinkAutomationPolicyTests
     {
         Entity spectre = EntityProbeFactory.Create(path: "spectre");
 
-        Entity? target = FlameLinkAutomationPolicy.SelectNextMissingTarget(
+        Entity? target = LinkAutomationPolicy.SelectNextMissingTarget(
             [],
             [],
             castOnMercenaries: false,
             castOnAnimateGuardian: false,
-            _ => FlameLinkTargetBuffState.Missing,
+            _ => LinkTargetBuffState.Missing,
             _ => true,
             [spectre],
             castOnSpectres: true);
@@ -157,12 +163,12 @@ public sealed class FlameLinkAutomationPolicyTests
     {
         Entity spectre = EntityProbeFactory.Create(path: "spectre");
 
-        Entity? target = FlameLinkAutomationPolicy.SelectNextMissingTarget(
+        Entity? target = LinkAutomationPolicy.SelectNextMissingTarget(
             [],
             [],
             castOnMercenaries: false,
             castOnAnimateGuardian: false,
-            _ => FlameLinkTargetBuffState.Missing,
+            _ => LinkTargetBuffState.Missing,
             _ => true,
             [spectre],
             castOnSpectres: false);
@@ -177,12 +183,12 @@ public sealed class FlameLinkAutomationPolicyTests
         Entity mercenary = EntityProbeFactory.Create(path: "mercenary");
         Entity spectre = EntityProbeFactory.Create(path: "spectre");
 
-        Entity? target = FlameLinkAutomationPolicy.SelectNextMissingTarget(
+        Entity? target = LinkAutomationPolicy.SelectNextMissingTarget(
             [mercenary],
             [],
             castOnMercenaries: true,
             castOnAnimateGuardian: false,
-            _ => FlameLinkTargetBuffState.Missing,
+            _ => LinkTargetBuffState.Missing,
             _ => true,
             [spectre],
             castOnSpectres: true);

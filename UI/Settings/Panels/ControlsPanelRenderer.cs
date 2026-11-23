@@ -72,27 +72,43 @@ namespace ClickIt.UI.Settings.Panels
                 DrawSkillAutomationToggle(
                     "ControlsFlameLinkMercenaries",
                     "Mercenaries",
-                    _settings.CastFlameLinkOnMercenaries);
+                    _settings.CastFlameLinkOnMercenaries, _settings.CastDestructiveLinkOnMercenaries);
                 DrawSkillAutomationToggle(
                     "ControlsFlameLinkAnimateGuardian",
                     "Animate Guardian",
-                    _settings.CastFlameLinkOnAnimateGuardian);
+                    _settings.CastFlameLinkOnAnimateGuardian, _settings.CastDestructiveLinkOnAnimateGuardian);
                 DrawSkillAutomationToggle(
                     "ControlsFlameLinkSpectres",
                     "Spectres",
-                    _settings.CastFlameLinkOnSpectres);
+                    _settings.CastFlameLinkOnSpectres, _settings.CastDestructiveLinkOnSpectres);
 
+                ImGui.TreePop();
+            }
+
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.45f, 0.8f, 1.0f, 1.0f));
+            bool destructiveLinkOpen = ImGui.TreeNodeEx("Destructive Link##ControlsSkillAutomationDestructiveLink", ImGuiTreeNodeFlags.DefaultOpen);
+            ImGui.PopStyleColor();
+            SettingsUiRenderHelpers.DrawInlineTooltip("Automatically casts Destructive Link on enabled targets, even when the Click Hotkey is not held. Keeps recasting until each target has Destructive Link.");
+
+            if (destructiveLinkOpen)
+            {
+                DrawSkillAutomationToggle("ControlsDestructiveLinkMercenaries", "Mercenaries", _settings.CastDestructiveLinkOnMercenaries, _settings.CastFlameLinkOnMercenaries);
+                DrawSkillAutomationToggle("ControlsDestructiveLinkAnimateGuardian", "Animate Guardian", _settings.CastDestructiveLinkOnAnimateGuardian, _settings.CastFlameLinkOnAnimateGuardian);
+                DrawSkillAutomationToggle("ControlsDestructiveLinkSpectres", "Spectres", _settings.CastDestructiveLinkOnSpectres, _settings.CastFlameLinkOnSpectres);
                 ImGui.TreePop();
             }
 
             ImGui.TreePop();
         }
 
-        private static void DrawSkillAutomationToggle(string id, string label, ToggleNode node)
+        private static void DrawSkillAutomationToggle(string id, string label, ToggleNode node, ToggleNode other)
         {
             bool value = node.Value;
             if (ImGui.Checkbox($"{label}##{id}", ref value))
+            {
                 node.Value = value;
+                if (value) other.Value = false;
+            }
         }
 
         private void DrawLazyModeSection()

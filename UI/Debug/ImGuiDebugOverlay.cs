@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using NumVec2 = System.Numerics.Vector2;
 using NumVec4 = System.Numerics.Vector4;
 using static ClickIt.Shared.Diagnostics.DebugUiPalette;
@@ -1097,7 +1097,7 @@ internal sealed class ImGuiDebugOverlay(
             ("Tracked Spectres", data.SpectreCount.ToString(), CWhite),
             ("Targets With Cast Attempts", data.TargetsWithCastAttempts.ToString(), CWhite),
             ("Target ID", data.TargetEntityId > 0 ? data.TargetEntityId.ToString() : "<none>", CInfo),
-            ("Target Buff", data.TargetBuffState.ToString(), data.TargetBuffState == FlameLinkTargetBuffState.Missing ? CWarn : CWhite),
+            ("Target Buff", data.TargetBuffState.ToString(), data.TargetBuffState == LinkTargetBuffState.Missing ? CWarn : CWhite),
             ("Cast Attempts", data.TargetCastAttempts.ToString(), CWhite),
             ("Skill Binding", string.IsNullOrWhiteSpace(data.SkillBinding) ? "<unresolved>" : data.SkillBinding, CWhite),
             ("Skill Runtime Flags", data.SkillRuntimeState, CWhite),

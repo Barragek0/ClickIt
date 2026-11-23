@@ -1,13 +1,14 @@
 namespace ClickIt.Features.Skills;
 
-internal sealed class FlameLinkAutomationService(
+internal sealed class LinkAutomationService(
     ClickItSettings settings,
     GameController gameController,
     InputHandler inputHandler,
     Func<Vector2, bool> isPointClickable,
-    Action<string> logMessage)
+    Action<string> logMessage,
+    bool destructive = false)
 {
-    private static readonly Func<Entity, FlameLinkTargetBuffState> TargetBuffReader = ReadTargetBuffState;
+    private readonly bool _destructive = destructive;
     private readonly ClickItSettings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
     private readonly GameController _gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
     private readonly InputHandler _inputHandler = inputHandler ?? throw new ArgumentNullException(nameof(inputHandler));
@@ -25,9 +26,9 @@ internal sealed class FlameLinkAutomationService(
 
     internal void Update()
     {
-        bool castOnMercenaries = _settings.CastFlameLinkOnMercenaries?.Value == true;
-        bool castOnAnimateGuardian = _settings.CastFlameLinkOnAnimateGuardian?.Value == true;
-        bool castOnSpectres = _settings.CastFlameLinkOnSpectres?.Value == true;
+        bool castOnMercenaries = (_destructive ? _settings.CastDestructiveLinkOnMercenaries : _settings.CastFlameLinkOnMercenaries)?.Value == true;
+        bool castOnAnimateGuardian = (_destructive ? _settings.CastDestructiveLinkOnAnimateGuardian : _settings.CastFlameLinkOnAnimateGuardian)?.Value == true;
+        bool castOnSpectres = (_destructive ? _settings.CastDestructiveLinkOnSpectres : _settings.CastFlameLinkOnSpectres)?.Value == true;
         SkillAutomationTelemetrySnapshot debug = GetDebugSnapshot() with
         {
             ServiceAvailable = true,
@@ -51,7 +52,7 @@ internal sealed class FlameLinkAutomationService(
         bool? isHideout = null;
         try { isHideout = _gameController.Area?.CurrentArea?.IsHideout; }
         catch { }
-        if (!FlameLinkAutomationPolicy.ShouldRunInArea(isHideout))
+        if (!LinkAutomationPolicy.ShouldRunInArea(isHideout))
         {
             PublishDebugSnapshot(debug with { Status = isHideout.HasValue ? "Paused in hideout" : "Waiting for current area state" });
             return;
@@ -103,12 +104,12 @@ internal sealed class FlameLinkAutomationService(
             TargetsWithCastAttempts = _castAttemptsByEntityId.Count
         };
 
-        Entity? target = FlameLinkAutomationPolicy.SelectNextMissingTarget(
+        Entity? target = LinkAutomationPolicy.SelectNextMissingTarget(
             _mercenarySnapshot,
             _animateGuardianSnapshot,
             castOnMercenaries,
             castOnAnimateGuardian,
-            TargetBuffReader,
+            ReadTargetBuffState,
             IsLocallyOwnedCompanion,
             _spectreSnapshot,
             castOnSpectres);
@@ -116,7 +117,7 @@ internal sealed class FlameLinkAutomationService(
         {
             PublishDebugSnapshot(debug with
             {
-                Status = "No locally owned tracked target is missing Flame Link"
+                Status = _destructive ? "No locally owned tracked target is missing Destructive Link" : "No locally owned tracked target is missing Flame Link"
             });
             return;
         }
@@ -125,19 +126,20 @@ internal sealed class FlameLinkAutomationService(
         _castAttemptsByEntityId.TryGetValue(targetId, out int previousAttempts);
         debug = debug with
         {
-            Status = "Target is missing Flame Link",
+            Status = _destructive ? "Target is missing Destructive Link" : "Target is missing Flame Link",
             TargetEntityId = targetId,
             TargetPath = ReadTargetPath(target),
-            TargetBuffState = FlameLinkTargetBuffState.Missing,
+            TargetBuffState = LinkTargetBuffState.Missing,
             TargetCastAttempts = previousAttempts
         };
         PublishDebugSnapshot(debug);
 
         object? skillBar = _gameController.IngameState?.IngameUi?.SkillBar;
-        if (!SkillBarBindingResolver.TryFindReadySkillBinding(skillBar, "flame_link", out SkillBinding binding, out string diagnostic))
+        if (!SkillBarBindingResolver.TryFindReadySkillBinding(skillBar, _destructive ? "destructive_link" : "flame_link", out SkillBinding binding, out string diagnostic)
+            && !(_destructive && SkillBarBindingResolver.TryFindReadySkillBinding(skillBar, "critical_link", out binding, out diagnostic)))
         {
-            DebugLog($"Flame Link target is missing its buff, but no ready Flame Link key was found ({diagnostic}).");
-            PublishDebugSnapshot(debug with { Status = "No ready Flame Link binding", SkillBinding = diagnostic });
+            DebugLog($"{(_destructive ? "Destructive Link" : "Flame Link")} target is missing its buff, but no ready key was found ({diagnostic}).");
+            PublishDebugSnapshot(debug with { Status = _destructive ? "No ready Destructive Link binding" : "No ready Flame Link binding", SkillBinding = diagnostic });
             return;
         }
 
@@ -165,7 +167,7 @@ internal sealed class FlameLinkAutomationService(
         }
 
         RectangleF window = _gameController.Window?.GetWindowRectangleTimeCache ?? RectangleF.Empty;
-        if (!FlameLinkAutomationPolicy.TryResolveAbsoluteScreenPoint(targetClientPosition, window, out Vector2 targetScreenPosition)
+        if (!LinkAutomationPolicy.TryResolveAbsoluteScreenPoint(targetClientPosition, window, out Vector2 targetScreenPosition)
             || !_isPointClickable(targetClientPosition))
         {
             PublishDebugSnapshot(debug with
@@ -207,7 +209,7 @@ internal sealed class FlameLinkAutomationService(
         };
         PublishDebugSnapshot(debug);
         Input.SetCursorPos(new NumVector2(targetScreenPosition.X, targetScreenPosition.Y));
-        PublishDebugSnapshot(debug with { Status = "Cursor move requested; casting Flame Link" });
+        PublishDebugSnapshot(debug with { Status = _destructive ? "Cursor move requested; casting Destructive Link" : "Cursor move requested; casting Flame Link" });
 
         bool attempted = false;
         try
@@ -236,7 +238,7 @@ internal sealed class FlameLinkAutomationService(
             HasTargetPosition = true
         });
 
-        DebugLog($"Used Flame Link on target {targetId} with key {binding.BoundKey} (attempt {attempts}); waiting for its target buff before selecting another target.");
+        DebugLog($"Used {(_destructive ? "Destructive Link" : "Flame Link")} on target {targetId} with key {binding.BoundKey} (attempt {attempts}); waiting for its target buff before selecting another target.");
     }
 
     private bool TryRefreshLocallyOwnedCompanionAddresses()
@@ -308,7 +310,7 @@ internal sealed class FlameLinkAutomationService(
             && point.X <= window.Right
             && point.Y <= window.Bottom;
 
-    private static FlameLinkTargetBuffState ReadTargetBuffState(Entity entity)
+    private LinkTargetBuffState ReadTargetBuffState(Entity entity)
     {
         try
         {
@@ -316,11 +318,11 @@ internal sealed class FlameLinkAutomationService(
                 || !entity.IsTargetable
                 || !DynamicAccess.TryGetComponent<Buffs>(entity, out Buffs? buffs)
                 || buffs == null)
-                return FlameLinkTargetBuffState.Unknown;
+                return LinkTargetBuffState.Unknown;
 
             List<Buff> buffsList = buffs.BuffsList;
             if (buffsList == null)
-                return FlameLinkTargetBuffState.Unknown;
+                return LinkTargetBuffState.Unknown;
 
             for (int i = 0; i < buffsList.Count; i++)
             {
@@ -330,16 +332,16 @@ internal sealed class FlameLinkAutomationService(
 
                 string? name;
                 try { name = buff.Name; }
-                catch { return FlameLinkTargetBuffState.Unknown; }
-                if (FlameLinkAutomationPolicy.IsTargetBuffName(name))
-                    return FlameLinkTargetBuffState.Present;
+                catch { return LinkTargetBuffState.Unknown; }
+                if (LinkAutomationPolicy.IsTargetBuffName(name, _destructive))
+                    return LinkTargetBuffState.Present;
             }
 
-            return FlameLinkTargetBuffState.Missing;
+            return LinkTargetBuffState.Missing;
         }
         catch
         {
-            return FlameLinkTargetBuffState.Unknown;
+            return LinkTargetBuffState.Unknown;
         }
     }
 

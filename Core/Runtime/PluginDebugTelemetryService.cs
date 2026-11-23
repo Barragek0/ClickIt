@@ -15,7 +15,7 @@ namespace ClickIt.Core.Runtime
         Func<ClickItSettings?> GetSettings,
         Func<TimeCache<List<LabelOnGround>>?> GetCachedLabels,
         Func<ErrorHandler?> GetErrorHandler,
-        Func<FlameLinkAutomationService?>? GetSkillAutomationService = null,
+        Func<LinkAutomationService?>? GetSkillAutomationService = null,
         Func<string>? GetFlareDebug = null);
 
     internal sealed class PluginDebugTelemetryService(PluginDebugTelemetryProjectionSources projectionSources)

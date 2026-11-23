@@ -11,8 +11,9 @@ namespace ClickIt.Core.Runtime
         private readonly Func<IEnumerator> _clickLabelStep;
         private readonly Func<IEnumerator> _manualUiHoverStep;
         private readonly Func<IEnumerator> _flareStep;
-        private readonly Func<IEnumerator> _flameLinkStep;
-        private FlameLinkAutomationService? _flameLinkAutomationService;
+        private readonly Func<IEnumerator> _linkStep;
+        private LinkAutomationService? _flameLinkAutomationService;
+        private LinkAutomationService? _destructiveLinkAutomationService;
         private long _lastCanClickFailureLogTimestampMs;
 
         public PluginLoopHost(
@@ -29,7 +30,7 @@ namespace ClickIt.Core.Runtime
             _clickLabelStep = ClickLabel;
             _manualUiHoverStep = ProcessManualUiHoverClick;
             _flareStep = ProcessFlare;
-            _flameLinkStep = ProcessFlameLinkAutomation;
+            _linkStep = ProcessLinkAutomation;
         }
         private const int ClickIdleWaitMs = 50;
         private const int ClickFrequencyWaitMaxMs = 100;
@@ -80,9 +81,9 @@ namespace ClickIt.Core.Runtime
             _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.DelveFlareCoroutine);
             _state.Runtime.DelveFlareCoroutine.Priority = CoroutinePriority.Normal;
 
-            _state.Runtime.FlameLinkAutomationCoroutine = new Coroutine(FlameLinkAutomationCoroutine(), plugin, PluginCoroutineNames.FlameLinkAutomation, true);
-            _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.FlameLinkAutomationCoroutine);
-            _state.Runtime.FlameLinkAutomationCoroutine.Priority = CoroutinePriority.Normal;
+            _state.Runtime.LinkAutomationCoroutine = new Coroutine(LinkAutomationCoroutine(), plugin, PluginCoroutineNames.LinkAutomation, true);
+            _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.LinkAutomationCoroutine);
+            _state.Runtime.LinkAutomationCoroutine.Priority = CoroutinePriority.Normal;
 
             // Overlay API: owns the per-overlay refresh coroutines (cadence + timing + error routing).
             _state.Rendering.OverlayRenderHost?.StartAll(
@@ -321,7 +322,7 @@ namespace ClickIt.Core.Runtime
             }
         }
 
-        private IEnumerator FlameLinkAutomationCoroutine()
+        private IEnumerator LinkAutomationCoroutine()
         {
             if (_state.Runtime.IsShuttingDown) yield break;
 
@@ -333,29 +334,34 @@ namespace ClickIt.Core.Runtime
                     continue;
                 }
 
-                yield return Guarded(_flameLinkStep, "FlameLink");
-                yield return new WaitTime((int)FlameLinkAutomationPolicy.PollIntervalMs);
+                yield return Guarded(_linkStep, "FlameLink");
+                yield return new WaitTime((int)LinkAutomationPolicy.PollIntervalMs);
             }
         }
 
-        private IEnumerator ProcessFlameLinkAutomation()
+        private IEnumerator ProcessLinkAutomation()
         {
             InputHandler? inputHandler = _state.Services.InputHandler;
             if (inputHandler == null)
                 yield break;
 
-            _flameLinkAutomationService ??= new FlameLinkAutomationService(
+            _flameLinkAutomationService ??= new LinkAutomationService(
                 _settings,
                 _gameController,
                 inputHandler,
                 point => _state.Services.AreaService?.PointIsInClickableArea(_gameController, point, forceBlockedUiRefresh: false) == true,
                 message => _errorHandler.LogMessage(message, 5));
-            _state.Services.FlameLinkAutomationService = _flameLinkAutomationService;
+            _destructiveLinkAutomationService ??= new LinkAutomationService(
+                _settings, _gameController, inputHandler,
+                point => _state.Services.AreaService?.PointIsInClickableArea(_gameController, point, forceBlockedUiRefresh: false) == true,
+                message => _errorHandler.LogMessage(message, 5), destructive: true);
+            _state.Services.LinkAutomationService = (_settings.CastDestructiveLinkOnMercenaries.Value || _settings.CastDestructiveLinkOnAnimateGuardian.Value || _settings.CastDestructiveLinkOnSpectres.Value) ? _destructiveLinkAutomationService : _flameLinkAutomationService;
             PerformanceMonitor? performanceMonitor = _state.Services.PerformanceMonitor;
             performanceMonitor?.StartCoroutineTiming(TimingChannel.SkillAutomation);
             try
             {
                 _flameLinkAutomationService.Update();
+                _destructiveLinkAutomationService.Update();
             }
             finally
             {

@@ -88,7 +88,7 @@ namespace ClickIt
                 () => _getSettings(),
                 () => Services.CachedLabels,
                 () => Services.ErrorHandler,
-                () => Services.FlameLinkAutomationService,
+                () => Services.LinkAutomationService,
                 () => Runtime.FlareDebug));
 
         internal void InitializeCompositionRoot(ClickIt owner, ClickItSettings settings)

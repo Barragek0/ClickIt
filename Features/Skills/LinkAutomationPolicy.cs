@@ -1,13 +1,13 @@
 namespace ClickIt.Features.Skills;
 
-internal enum FlameLinkTargetBuffState
+internal enum LinkTargetBuffState
 {
     Unknown,
     Missing,
     Present
 }
 
-internal static class FlameLinkAutomationPolicy
+internal static class LinkAutomationPolicy
 {
     internal const long PollIntervalMs = 500;
     internal const string TargetBuffName = "flame_link_target";
@@ -15,8 +15,8 @@ internal static class FlameLinkAutomationPolicy
     internal static bool ShouldRunInArea(bool? isHideout)
         => isHideout == false;
 
-    internal static bool IsTargetBuffName(string? name)
-        => string.Equals(name, TargetBuffName, StringComparison.OrdinalIgnoreCase);
+    internal static bool IsTargetBuffName(string? name, bool destructive = false)
+        => string.Equals(name, destructive ? "critical_link_target" : TargetBuffName, StringComparison.OrdinalIgnoreCase);
 
     internal static bool TryResolveAbsoluteScreenPoint(Vector2 clientPoint, RectangleF gameWindow, out Vector2 absolutePoint)
     {
@@ -40,7 +40,7 @@ internal static class FlameLinkAutomationPolicy
         IReadOnlyList<Entity> animateGuardians,
         bool castOnMercenaries,
         bool castOnAnimateGuardian,
-        Func<Entity, FlameLinkTargetBuffState> readBuffState,
+        Func<Entity, LinkTargetBuffState> readBuffState,
         Func<Entity, bool> isOwnedTarget,
         IReadOnlyList<Entity>? spectres = null,
         bool castOnSpectres = false)
@@ -71,7 +71,7 @@ internal static class FlameLinkAutomationPolicy
 
     private static Entity? FindMissingTarget(
         IReadOnlyList<Entity> targets,
-        Func<Entity, FlameLinkTargetBuffState> readBuffState,
+        Func<Entity, LinkTargetBuffState> readBuffState,
         Func<Entity, bool> isOwnedTarget)
     {
         for (int i = 0; i < targets.Count; i++)
@@ -79,7 +79,7 @@ internal static class FlameLinkAutomationPolicy
             Entity? target = targets[i];
             if (target == null
                 || !isOwnedTarget(target)
-                || readBuffState(target) != FlameLinkTargetBuffState.Missing)
+                || readBuffState(target) != LinkTargetBuffState.Missing)
                 continue;
             return target;
         }

@@ -17,7 +17,7 @@ namespace ClickIt.Features.Observability.TelemetryProjection
             ClickItSettings? settings,
             TimeCache<List<LabelOnGround>>? cachedLabels,
             ErrorHandler? errorHandler,
-            FlameLinkAutomationService? skillAutomationService = null)
+            LinkAutomationService? skillAutomationService = null)
         {
             ClickTelemetrySnapshot clickTelemetry = BuildClickTelemetry(
                 clickAutomationPort,
