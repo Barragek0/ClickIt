@@ -75,12 +75,14 @@ namespace ClickIt.Features.Click.Selection
             Strongbox,
         }
 
-        internal LabelOnGround? ResolveNextLabelCandidate(IReadOnlyList<LabelOnGround>? allLabels)
+        internal LabelOnGround? ResolveNextLabelCandidate(
+            IReadOnlyList<LabelOnGround>? allLabels,
+            Func<Entity?, string?, bool>? additionalEligibility = null)
         {
-            LabelOnGround? nextLabel = FindNextLabelToClick(allLabels);
+            LabelOnGround? nextLabel = FindNextLabelToClick(allLabels, additionalEligibility);
             Element? uiHover = ResolveUiHoverElement();
-            nextLabel = PreferUiHoverLabel(nextLabel, allLabels, UiHoverTargetKind.Essence, ClickLabelSelectionMath.IsEssenceLabel, uiHover);
-            return PreferUiHoverLabel(nextLabel, allLabels, UiHoverTargetKind.Strongbox, ClickLabelSelectionMath.IsStrongboxLabel, uiHover);
+            nextLabel = PreferUiHoverLabel(nextLabel, allLabels, UiHoverTargetKind.Essence, ClickLabelSelectionMath.IsEssenceLabel, uiHover, additionalEligibility);
+            return PreferUiHoverLabel(nextLabel, allLabels, UiHoverTargetKind.Strongbox, ClickLabelSelectionMath.IsStrongboxLabel, uiHover, additionalEligibility);
         }
 
         private LabelOnGround? PreferUiHoverLabel(
@@ -88,7 +90,8 @@ namespace ClickIt.Features.Click.Selection
             IReadOnlyList<LabelOnGround>? allLabels,
             UiHoverTargetKind kind,
             Func<LabelOnGround, bool> isTargetKind,
-            Element? uiHover)
+            Element? uiHover,
+            Func<Entity?, string?, bool>? additionalEligibility)
         {
             bool isEnabled = kind == UiHoverTargetKind.Essence
                 ? _dependencies.IsEssenceClickingEnabled()
@@ -116,6 +119,9 @@ namespace ClickIt.Features.Click.Selection
 
                 string? hoveredMechanicId = _dependencies.LabelInteractionPort.GetMechanicIdForLabel(hovered);
                 if (string.IsNullOrWhiteSpace(hoveredMechanicId)
+                    || (additionalEligibility != null
+                        && (!DynamicAccess.TryGetLabelItemOnGround(hovered, out Entity? hoveredItem)
+                            || !additionalEligibility(hoveredItem, hoveredMechanicId)))
                     || !CanResolveClickableLabelPoint(hovered, hoveredMechanicId, allLabels))
                     return nextLabel;
 
@@ -189,16 +195,22 @@ namespace ClickIt.Features.Click.Selection
             return uiHover != null ? $"0x{uiHover.Address:X}" : "none";
         }
 
-        private LabelOnGround? FindNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels)
+        private LabelOnGround? FindNextLabelToClick(
+            IReadOnlyList<LabelOnGround>? allLabels,
+            Func<Entity?, string?, bool>? additionalEligibility)
         {
             if (allLabels == null || allLabels.Count == 0)
                 return null;
 
             int searchLimit = SystemMath.Max(0, allLabels.Count);
-            return FindLabelInRange(allLabels, 0, searchLimit);
+            return FindLabelInRange(allLabels, 0, searchLimit, additionalEligibility);
         }
 
-        private LabelOnGround? FindLabelInRange(IReadOnlyList<LabelOnGround> allLabels, int start, int endExclusive)
+        private LabelOnGround? FindLabelInRange(
+            IReadOnlyList<LabelOnGround> allLabels,
+            int start,
+            int endExclusive,
+            Func<Entity?, string?, bool>? additionalEligibility)
         {
             int examined = 0;
             int leverSuppressed = 0;
@@ -238,6 +250,9 @@ namespace ClickIt.Features.Click.Selection
                         _dependencies.DebugLog("[ProcessRegularClick] Skipping locked strongbox label");
                     return false;
                 }
+
+                if (additionalEligibility != null && !additionalEligibility(result.Item, result.MechanicId))
+                    return false;
 
                 if (!CanResolveClickableLabelPoint(label, result.MechanicId, allLabels))
                 {

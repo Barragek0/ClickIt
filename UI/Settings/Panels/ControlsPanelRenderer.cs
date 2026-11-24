@@ -101,7 +101,7 @@ namespace ClickIt.UI.Settings.Panels
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1.0f, 0.3f, 0.3f, 1.0f));
             bool vaalMoltenShellOpen = ImGui.TreeNodeEx("Vaal Molten Shell##ControlsVaalMoltenShell", ImGuiTreeNodeFlags.DefaultOpen);
             ImGui.PopStyleColor();
-            SettingsUiRenderHelpers.DrawInlineTooltip("Enabled Life and Energy Shield thresholds must both be met. If any monster conditions are enabled, at least one of them must also be met.\n\nFor example, with Life below 90% and Magic, Rare and Unique monster conditions enabled, Life must be below 90% and any one of those monster conditions must be met.\n\nAlways use when available overrides the other conditions.");
+            SettingsUiRenderHelpers.DrawInlineTooltip("Enabled Life and Energy Shield thresholds must both be met. If any monster conditions are enabled, at least one of them must also be met.\n\nFor example, with Life below 90 percent and Magic, Rare and Unique monster conditions enabled, Life must be below 90 percent and any one of those monster conditions must be met.\n\nAlways use when available overrides the other conditions.");
             if (vaalMoltenShellOpen)
             {
                 bool always = _settings.VaalMoltenShellAlways.Value;
@@ -149,7 +149,7 @@ namespace ClickIt.UI.Settings.Panels
         private static void DrawVaalPercent(string label, ToggleNode enabled, RangeNode<int> threshold)
         {
             bool value = enabled.Value;
-            if (ImGui.Checkbox($"Enable below {label} %##Vaal{label}Enabled", ref value))
+            if (ImGui.Checkbox($"Below {label} %##Vaal{label}Enabled", ref value))
                 enabled.Value = value;
             if (value)
             {
@@ -164,7 +164,7 @@ namespace ClickIt.UI.Settings.Panels
         private void DrawVaalMonsterRule(string rarity, ToggleNode enabled, RangeNode<int> countNode, RangeNode<int> distanceNode)
         {
             bool value = enabled.Value;
-            if (ImGui.Checkbox($"Enable when##Vaal{rarity}Enabled", ref value))
+            if (ImGui.Checkbox($"When##Vaal{rarity}Enabled", ref value))
                 enabled.Value = value;
             ImGui.SameLine();
             ImGui.SetNextItemWidth(78f);

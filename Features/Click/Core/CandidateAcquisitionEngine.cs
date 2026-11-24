@@ -8,6 +8,17 @@ namespace ClickIt.Features.Click.Core
         {
             int allLabelsCount = context.AllLabels?.Count ?? 0;
             bool captureClickDebug = _dependencies.Telemetry.ClickDebugPublisher.ShouldCaptureClickDebug();
+            string? firstSettlementRejection = null;
+            Func<Entity?, string?, bool>? settlementEligibility = context.IsPostChestLootSettleBlocking
+                ? (entity, mechanicId) =>
+                {
+                    bool allowed = _dependencies.Selection.ChestLootSettlement
+                        .ShouldAllowMechanicInteractionDuringPostChestLootSettlement(mechanicId, entity, out string decision);
+                    if (!allowed && firstSettlementRejection == null)
+                        firstSettlementRejection = decision;
+                    return allowed;
+                }
+                : null;
             string labelSourceSummary = _dependencies.Telemetry.ShouldCaptureClickDebug()
                 ? _dependencies.Selection.LabelInteraction.BuildLabelSourceDebugSummary(context.AllLabels)
                 : string.Empty;
@@ -28,7 +39,9 @@ namespace ClickIt.Features.Click.Core
                 long labelScanStart = GC.GetAllocatedBytesForCurrentThread();
                 long labelScanTimestamp = Stopwatch.GetTimestamp();
                 double labelScanSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
-                LabelOnGround? hiddenLabel = _dependencies.Selection.LabelSelectionScan.ResolveNextLabelCandidate(context.AllLabels);
+                LabelOnGround? hiddenLabel = _dependencies.Selection.LabelSelectionScan.ResolveNextLabelCandidate(context.AllLabels, settlementEligibility);
+                if (hiddenLabel == null && firstSettlementRejection != null)
+                    PublishChestSettleRejection(firstSettlementRejection);
                 string? hiddenLabelMechanicId = hiddenLabel != null
                     ? _dependencies.Selection.LabelInteractionPort.GetMechanicIdForLabel(hiddenLabel)
                     : null;
@@ -65,7 +78,9 @@ namespace ClickIt.Features.Click.Core
             long visLabelScanStart = GC.GetAllocatedBytesForCurrentThread();
             long visLabelScanTimestamp = Stopwatch.GetTimestamp();
             double visLabelScanSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
-            LabelOnGround? nextLabel = _dependencies.Selection.LabelSelectionScan.ResolveNextLabelCandidate(context.AllLabels);
+            LabelOnGround? nextLabel = _dependencies.Selection.LabelSelectionScan.ResolveNextLabelCandidate(context.AllLabels, settlementEligibility);
+            if (nextLabel == null && firstSettlementRejection != null)
+                PublishChestSettleRejection(firstSettlementRejection);
             string? nextLabelMechanicId = nextLabel != null
                 ? _dependencies.Selection.LabelInteractionPort.GetMechanicIdForLabel(nextLabel)
                 : null;
@@ -93,6 +108,12 @@ namespace ClickIt.Features.Click.Core
 
             return new ClickCandidates(visibleMechanicSelection.LostShipment, visibleMechanicSelection.Settlers, nextLabel, nextLabelMechanicId);
         }
+
+        private void PublishChestSettleRejection(string decision)
+            => _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage(
+                "PostChestLootSettleBlocked",
+                $"No nearby label candidate passed the settle bypass ({decision})",
+                null);
 
         private static double GetElapsedMs(long startTimestamp)
             => StopwatchMath.ElapsedMs(startTimestamp);

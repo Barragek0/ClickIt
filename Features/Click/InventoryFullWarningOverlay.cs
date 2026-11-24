@@ -63,7 +63,10 @@ namespace ClickIt.Features.Click
             int? dynamite = null;
             try
             {
-                if (ctx.Settings.ShowLowDelveFlaresWarning.Value || ctx.Settings.ShowLowDelveDynamiteWarning.Value)
+                bool isAzuriteMine = ctx.GameController?.Area?.CurrentArea?.DisplayName?.Contains(
+                    "Azurite Mine", StringComparison.OrdinalIgnoreCase) == true;
+                if (isAzuriteMine
+                    && (ctx.Settings.ShowLowDelveFlaresWarning.Value || ctx.Settings.ShowLowDelveDynamiteWarning.Value))
                 {
                     object? skillBar = ctx.GameController?.IngameState?.IngameUi?.SkillBar;
                     if (ctx.Settings.ShowLowDelveFlaresWarning.Value)

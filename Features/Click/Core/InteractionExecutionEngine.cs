@@ -199,9 +199,6 @@ namespace ClickIt.Features.Click.Core
 
         private ExecutionResult ExecuteHiddenRemainder(ClickTickContext context, ClickCandidates candidates)
         {
-            if (TryPublishPostChestLootSettleBlock(context))
-                return StopExecution();
-
             if (candidates.NextLabel != null)
             {
                 _dependencies.Telemetry.DebugLog("[ExecuteHidden] NextLabel exists, checking clickability");
@@ -220,6 +217,11 @@ namespace ClickIt.Features.Click.Core
                     _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenLabelNull",
                         $"labelsInContext={context.AllLabels?.Count ?? 0} settlers={candidates.SettlersOre.HasValue} lostShipment={candidates.LostShipment.HasValue}", null);
             }
+
+            // Hidden item labels may be approached during the nearby bypass, but the
+            // item cannot be clicked until ground-item labels are visible again.
+            if (TryPublishPostChestLootSettleBlock(context))
+                return StopExecution();
 
             if (_dependencies.Policy.Settings.WalkTowardOffscreenLabels.Value)
             {
