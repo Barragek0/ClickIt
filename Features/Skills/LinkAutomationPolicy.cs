@@ -9,7 +9,7 @@ internal enum LinkTargetBuffState
 
 internal static class LinkAutomationPolicy
 {
-    internal const long PollIntervalMs = 500;
+    internal const long PollIntervalMs = 100;
     internal const string TargetBuffName = "flame_link_target";
 
     internal static bool ShouldRunInArea(bool? isHideout)
