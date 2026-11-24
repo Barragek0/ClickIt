@@ -116,6 +116,57 @@ namespace ClickIt
         public ToggleNode CastDestructiveLinkOnSpectres { get; set; } = new ToggleNode(false);
 
         [IgnoreMenu]
+        public ToggleNode VaalMoltenShellAlways { get; set; } = new ToggleNode(false);
+
+        [IgnoreMenu]
+        public ToggleNode VaalMoltenShellLifeEnabled { get; set; } = new ToggleNode(true);
+
+        [IgnoreMenu]
+        public ToggleNode VaalMoltenShellEnergyShieldEnabled { get; set; } = new ToggleNode(false);
+
+        [IgnoreMenu]
+        public ToggleNode VaalMoltenShellNormalEnabled { get; set; } = new ToggleNode(false);
+
+        [IgnoreMenu]
+        public ToggleNode VaalMoltenShellMagicEnabled { get; set; } = new ToggleNode(true);
+
+        [IgnoreMenu]
+        public ToggleNode VaalMoltenShellRareEnabled { get; set; } = new ToggleNode(true);
+
+        [IgnoreMenu]
+        public ToggleNode VaalMoltenShellUniqueEnabled { get; set; } = new ToggleNode(true);
+
+        [IgnoreMenu]
+        public RangeNode<int> VaalMoltenShellLifePercent { get; set; } = new RangeNode<int>(90, 1, 100);
+
+        [IgnoreMenu]
+        public RangeNode<int> VaalMoltenShellEnergyShieldPercent { get; set; } = new RangeNode<int>(90, 1, 100);
+
+        [IgnoreMenu]
+        public RangeNode<int> VaalMoltenShellNormalCount { get; set; } = new RangeNode<int>(1, 1, 9);
+
+        [IgnoreMenu]
+        public RangeNode<int> VaalMoltenShellNormalDistance { get; set; } = new RangeNode<int>(50, 1, 99);
+
+        [IgnoreMenu]
+        public RangeNode<int> VaalMoltenShellMagicCount { get; set; } = new RangeNode<int>(1, 1, 9);
+
+        [IgnoreMenu]
+        public RangeNode<int> VaalMoltenShellMagicDistance { get; set; } = new RangeNode<int>(50, 1, 99);
+
+        [IgnoreMenu]
+        public RangeNode<int> VaalMoltenShellRareCount { get; set; } = new RangeNode<int>(1, 1, 9);
+
+        [IgnoreMenu]
+        public RangeNode<int> VaalMoltenShellRareDistance { get; set; } = new RangeNode<int>(50, 1, 99);
+
+        [IgnoreMenu]
+        public RangeNode<int> VaalMoltenShellUniqueCount { get; set; } = new RangeNode<int>(1, 1, 9);
+
+        [IgnoreMenu]
+        public RangeNode<int> VaalMoltenShellUniqueDistance { get; set; } = new RangeNode<int>(50, 1, 99);
+
+        [IgnoreMenu]
         [JsonIgnore]
         public CustomNode PathfindingSliderWidthEnd { get; internal set; } = new();
 
@@ -164,25 +215,25 @@ namespace ClickIt
         public int LazyModeNormalMonsterBlockCount { get; set; } = 0;
 
         [IgnoreMenu]
-        public int LazyModeNormalMonsterBlockDistance { get; set; } = 10;
+        public int LazyModeNormalMonsterBlockDistance { get; set; } = 50;
 
         [IgnoreMenu]
         public int LazyModeMagicMonsterBlockCount { get; set; } = 3;
 
         [IgnoreMenu]
-        public int LazyModeMagicMonsterBlockDistance { get; set; } = 10;
+        public int LazyModeMagicMonsterBlockDistance { get; set; } = 50;
 
         [IgnoreMenu]
         public int LazyModeRareMonsterBlockCount { get; set; } = 1;
 
         [IgnoreMenu]
-        public int LazyModeRareMonsterBlockDistance { get; set; } = 10;
+        public int LazyModeRareMonsterBlockDistance { get; set; } = 50;
 
         [IgnoreMenu]
         public int LazyModeUniqueMonsterBlockCount { get; set; } = 1;
 
         [IgnoreMenu]
-        public int LazyModeUniqueMonsterBlockDistance { get; set; } = 10;
+        public int LazyModeUniqueMonsterBlockDistance { get; set; } = 50;
 
         [IgnoreMenu]
         [JsonIgnore]

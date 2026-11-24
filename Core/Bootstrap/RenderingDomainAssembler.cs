@@ -30,6 +30,7 @@ namespace ClickIt.Core.Bootstrap
             AltarChoiceEvaluator altarChoiceEvaluator = new(settings, logMessage);
             overlayRenderHost.Register(new AltarOverlay(core.WeightCalculator, altarChoiceEvaluator, core.AltarService, logMessage));
             overlayRenderHost.Register(new LazyModeOverlay(core.InputHandler, core.LazyModeBlockerService));
+            overlayRenderHost.Register(new MonsterDistancePreviewOverlay());
             overlayRenderHost.Register(new ClickHotkeyToggleOverlay(core.InputHandler));
             InventoryFullWarningOverlay inventoryFullWarningOverlay = new(
                 core.AreaService, core.InventoryProbeService.GetLatestDebug,

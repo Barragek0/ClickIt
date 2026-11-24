@@ -89,6 +89,20 @@ namespace ClickIt.UI.Settings
             DrawRangeNodeControl(rangeLabel, rangeNode, min, max, rangeTooltip, useStandardWidth, rangeWidthOverride);
         }
 
+        internal static void DrawDistancePreviewButton(ClickItSettings settings, string id)
+        {
+            bool active = string.Equals(settings.TransientState.DistancePreview, id, StringComparison.Ordinal);
+            if (active)
+            {
+                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.12f, 0.55f, 0.18f, 1f));
+                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.18f, 0.68f, 0.24f, 1f));
+                ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.10f, 0.45f, 0.15f, 1f));
+            }
+            if (ImGui.Button($"Preview##DistancePreview{id}"))
+                settings.TransientState.DistancePreview = active ? null : id;
+            if (active)
+                ImGui.PopStyleColor(3);
+        }
         internal static void DrawInlineTooltip(string tooltip)
         {
             ImGui.SameLine();

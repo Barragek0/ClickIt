@@ -98,9 +98,91 @@ namespace ClickIt.UI.Settings.Panels
                 ImGui.TreePop();
             }
 
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1.0f, 0.3f, 0.3f, 1.0f));
+            bool vaalMoltenShellOpen = ImGui.TreeNodeEx("Vaal Molten Shell##ControlsVaalMoltenShell", ImGuiTreeNodeFlags.DefaultOpen);
+            ImGui.PopStyleColor();
+            SettingsUiRenderHelpers.DrawInlineTooltip("Enabled Life and Energy Shield thresholds must both be met. If any monster conditions are enabled, at least one of them must also be met.\n\nFor example, with Life below 90% and Magic, Rare and Unique monster conditions enabled, Life must be below 90% and any one of those monster conditions must be met.\n\nAlways use when available overrides the other conditions.");
+            if (vaalMoltenShellOpen)
+            {
+                bool always = _settings.VaalMoltenShellAlways.Value;
+                if (ImGui.Checkbox("Always use when available##VaalMoltenShellAlways", ref always))
+                    _settings.VaalMoltenShellAlways.Value = always;
+                if (!always)
+                {
+                    float labelWidth = ImGui.CalcTextSize("AND").X;
+                    float bracketIndent = (labelWidth * 2f) + 48f;
+                    ImGui.Indent(bracketIndent);
+                    NumVector2 start = ImGui.GetCursorScreenPos();
+                    DrawVaalPercent("Life", _settings.VaalMoltenShellLifeEnabled, _settings.VaalMoltenShellLifePercent);
+                    DrawVaalPercent("Energy Shield", _settings.VaalMoltenShellEnergyShieldEnabled, _settings.VaalMoltenShellEnergyShieldPercent);
+                    float thresholdsBottom = ImGui.GetItemRectMax().Y;
+                    float monstersTop = ImGui.GetCursorScreenPos().Y;
+                    DrawVaalMonsterRule("Normal", _settings.VaalMoltenShellNormalEnabled, _settings.VaalMoltenShellNormalCount, _settings.VaalMoltenShellNormalDistance);
+                    DrawVaalMonsterRule("Magic", _settings.VaalMoltenShellMagicEnabled, _settings.VaalMoltenShellMagicCount, _settings.VaalMoltenShellMagicDistance);
+                    DrawVaalMonsterRule("Rare", _settings.VaalMoltenShellRareEnabled, _settings.VaalMoltenShellRareCount, _settings.VaalMoltenShellRareDistance);
+                    DrawVaalMonsterRule("Unique", _settings.VaalMoltenShellUniqueEnabled, _settings.VaalMoltenShellUniqueCount, _settings.VaalMoltenShellUniqueDistance);
+                    float monstersBottom = ImGui.GetItemRectMax().Y;
+                    float innerX = start.X - 12f;
+                    DrawVaalConditionBracket(innerX, start.Y, thresholdsBottom, "AND");
+                    DrawVaalConditionBracket(innerX, monstersTop, monstersBottom, "OR");
+                    DrawVaalConditionBracket(innerX - labelWidth - 24f, start.Y, monstersBottom, "AND");
+                    ImGui.Unindent(bracketIndent);
+                }
+                ImGui.TreePop();
+            }
             ImGui.TreePop();
         }
 
+        private static void DrawVaalConditionBracket(float x, float top, float bottom, string label)
+        {
+            ImDrawListPtr drawList = ImGui.GetWindowDrawList();
+            uint color = ImGui.GetColorU32(ImGuiCol.TextDisabled);
+            float middle = (top + bottom) * 0.5f;
+            float textWidth = ImGui.CalcTextSize(label).X;
+            drawList.AddLine(new NumVector2(x, top), new NumVector2(x, bottom), color, 1f);
+            drawList.AddLine(new NumVector2(x, top), new NumVector2(x + 7f, top), color, 1f);
+            drawList.AddLine(new NumVector2(x, bottom), new NumVector2(x + 7f, bottom), color, 1f);
+            drawList.AddLine(new NumVector2(x - 5f, middle), new NumVector2(x, middle), color, 1f);
+            drawList.AddText(new NumVector2(x - textWidth - 9f, middle - (ImGui.GetTextLineHeight() * 0.5f)), color, label);
+        }
+
+        private static void DrawVaalPercent(string label, ToggleNode enabled, RangeNode<int> threshold)
+        {
+            bool value = enabled.Value;
+            if (ImGui.Checkbox($"Enable below {label} %##Vaal{label}Enabled", ref value))
+                enabled.Value = value;
+            if (value)
+            {
+                ImGui.SameLine();
+                ImGui.SetNextItemWidth(160f);
+                int percent = threshold.Value;
+                if (ImGui.SliderInt($"##Vaal{label}Percent", ref percent, 1, 100, "%d%%"))
+                    threshold.Value = percent;
+            }
+        }
+
+        private void DrawVaalMonsterRule(string rarity, ToggleNode enabled, RangeNode<int> countNode, RangeNode<int> distanceNode)
+        {
+            bool value = enabled.Value;
+            if (ImGui.Checkbox($"Enable when##Vaal{rarity}Enabled", ref value))
+                enabled.Value = value;
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(78f);
+            int count = countNode.Value;
+            if (ImGui.InputInt($"##Vaal{rarity}Count", ref count))
+                countNode.Value = SystemMath.Clamp(count, 1, 9);
+            ImGui.SameLine();
+            ImGui.TextUnformatted($"{rarity} Monsters are within");
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(88f);
+            int distance = distanceNode.Value;
+            if (ImGui.InputInt($"##Vaal{rarity}Distance", ref distance))
+                distanceNode.Value = SystemMath.Clamp(distance, 1, 99);
+            ImGui.SameLine();
+            ImGui.TextUnformatted("Distance");
+            ImGui.SameLine();
+            SettingsUiRenderHelpers.DrawDistancePreviewButton(_settings, $"Vaal{rarity}");
+        }
         private static void DrawSkillAutomationToggle(string id, string label, ToggleNode node, ToggleNode other)
         {
             bool value = node.Value;

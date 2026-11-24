@@ -69,7 +69,7 @@ namespace ClickIt.UI.Settings.Panels
             ImGui.TextDisabled("Set count to 0 to disable a specific rarity rule.");
         }
 
-        private static void DrawRuleRows(IReadOnlyList<LazyModeNearbyMonsterRuleDescriptor> rows)
+        private void DrawRuleRows(IReadOnlyList<LazyModeNearbyMonsterRuleDescriptor> rows)
         {
             foreach (LazyModeNearbyMonsterRuleDescriptor row in rows)
                 DrawRuleRow(
@@ -81,7 +81,7 @@ namespace ClickIt.UI.Settings.Panels
 
         }
 
-        private static void DrawRuleRow(string rowId, string rarityLabel, int currentCount, int currentDistance, Action<int, int> apply)
+        private void DrawRuleRow(string rowId, string rarityLabel, int currentCount, int currentDistance, Action<int, int> apply)
         {
             int count = currentCount;
             int distance = currentDistance;
@@ -106,6 +106,8 @@ namespace ClickIt.UI.Settings.Panels
             ImGui.SameLine();
             ImGui.AlignTextToFramePadding();
             ImGui.TextUnformatted("Distance");
+            ImGui.SameLine();
+            SettingsUiRenderHelpers.DrawDistancePreviewButton(_settings, $"Lazy{rowId}");
 
             if (changed || count != currentCount || distance != currentDistance)
                 apply(count, distance);

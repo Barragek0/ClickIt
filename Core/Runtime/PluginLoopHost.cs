@@ -14,6 +14,7 @@ namespace ClickIt.Core.Runtime
         private readonly Func<IEnumerator> _linkStep;
         private LinkAutomationService? _flameLinkAutomationService;
         private LinkAutomationService? _destructiveLinkAutomationService;
+        private VaalMoltenShellAutomationService? _vaalMoltenShellAutomationService;
         private long _lastCanClickFailureLogTimestampMs;
 
         public PluginLoopHost(
@@ -355,6 +356,7 @@ namespace ClickIt.Core.Runtime
                 _settings, _gameController, inputHandler,
                 point => _state.Services.AreaService?.PointIsInClickableArea(_gameController, point, forceBlockedUiRefresh: false) == true,
                 message => _errorHandler.LogMessage(message, 5), destructive: true);
+            _vaalMoltenShellAutomationService ??= new VaalMoltenShellAutomationService(_settings, _gameController, inputHandler);
             _state.Services.LinkAutomationService = (_settings.CastDestructiveLinkOnMercenaries.Value || _settings.CastDestructiveLinkOnAnimateGuardian.Value || _settings.CastDestructiveLinkOnSpectres.Value) ? _destructiveLinkAutomationService : _flameLinkAutomationService;
             PerformanceMonitor? performanceMonitor = _state.Services.PerformanceMonitor;
             performanceMonitor?.StartCoroutineTiming(TimingChannel.SkillAutomation);
@@ -362,6 +364,7 @@ namespace ClickIt.Core.Runtime
             {
                 _flameLinkAutomationService.Update();
                 _destructiveLinkAutomationService.Update();
+                _vaalMoltenShellAutomationService.Update();
             }
             finally
             {

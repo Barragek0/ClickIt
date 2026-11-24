@@ -4,6 +4,18 @@ namespace ClickIt.Tests.Core.Settings
     public class ClickItSettingsMigrationTests
     {
         [TestMethod]
+        public void NearbyMonsterDistances_DefaultToFifty_AndPreserveSavedValues()
+        {
+            var settings = JsonConvert.DeserializeObject<ClickItSettings>("{\"LazyModeNormalMonsterBlockDistance\":17}");
+            settings.Should().NotBeNull();
+            settings!.LazyModeNormalMonsterBlockDistance.Should().Be(17);
+            settings.LazyModeMagicMonsterBlockDistance.Should().Be(50);
+            settings.LazyModeRareMonsterBlockDistance.Should().Be(50);
+            settings.LazyModeUniqueMonsterBlockDistance.Should().Be(50);
+            new ClickItSettings().LazyModeNormalMonsterBlockDistance.Should().Be(50);
+        }
+
+        [TestMethod]
         public void LegacyJsonWithoutVersion_IsMigrated()
         {
             const string legacyJson = "{\"UltimatumModifierPriority\":[\"Ruin\",\"Choking Miasma\"]}";
