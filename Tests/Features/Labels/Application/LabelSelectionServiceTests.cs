@@ -177,6 +177,33 @@ namespace ClickIt.Tests.Features.Labels.Application
         }
 
         [TestMethod]
+        [TestCategory("Regression")]
+        public void GetNextLabelToClick_RechecksEmptySelectionWhenLabelBecomesClickable()
+        {
+            LabelOnGround label = CreateOpaqueLabel(address: 0x1000);
+            bool clickable = false;
+            var service = new LabelSelectionService(new LabelSelectionServiceDependencies(
+                GameController: null,
+                CreateClickSettings: static _ => TestClickSettings(),
+                ShouldCaptureLabelDebug: static () => false,
+                PublishLabelDebugStage: static _ => { },
+                TryBuildLabelCandidate: static (LabelOnGround _, ClickSettings _, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
+                {
+                    item = EntityProbeFactory.Create();
+                    mechanicId = MechanicIds.Items;
+                    rejectReason = LabelCandidateRejectReason.None;
+                    return true;
+                },
+                GetMechanicIdForLabelCore: static _ => null));
+            IReadOnlyList<LabelOnGround> labels = [label];
+            bool Accept(LabelOnGround _, LabelCandidateBuildResult __) => clickable;
+
+            service.GetNextLabelToClick(labels, 0, 10, Accept).Should().BeNull();
+            clickable = true;
+            System.Threading.Thread.Sleep(80);
+            service.GetNextLabelToClick(labels, 0, 10, Accept).Should().BeSameAs(label);
+        }
+        [TestMethod]
         public void GetNextLabelToClick_Invalidates_WhenLabelsReferenceChanges()
         {
             LabelOnGround firstLabel = CreateOpaqueLabel(address: 0x1000);

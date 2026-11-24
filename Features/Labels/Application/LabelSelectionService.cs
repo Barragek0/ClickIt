@@ -26,6 +26,7 @@ namespace ClickIt.Features.Labels.Application
         private IReadOnlyList<LabelOnGround>? _selectionCacheLabelsRef;
         private readonly Dictionary<(int Start, int MaxCount), (LabelOnGround? Selected, long AtMs)> _selectionCacheByRange = new();
         private const long SelectionCacheWindowMs = 250;
+        private const long EmptySelectionCacheWindowMs = 50;
 
         // Per-label build cache: each candidate build costs ~13 DLR reads on the obfuscated game types, so static mechanic resolution is cached on the label ADDRESS (stable across snapshots even when wrapper instances differ). Distance and label geometry are re-read fresh on every scan; the interaction path re-validates the chosen label before clicking.
         private readonly record struct CachedLabelScanEntry(
@@ -53,7 +54,8 @@ namespace ClickIt.Features.Labels.Application
             if (ReferenceEquals(allLabels, _selectionCacheLabelsRef))
             {
                 if (_selectionCacheByRange.TryGetValue((startIndex, maxCount), out (LabelOnGround? Selected, long AtMs) cached)
-                    && now - cached.AtMs < SelectionCacheWindowMs)
+                    && now - cached.AtMs >= 0
+                    && now - cached.AtMs < (cached.Selected == null ? EmptySelectionCacheWindowMs : SelectionCacheWindowMs))
                 {
                     // Revalidate a cached selection with its current mechanic and point. The predicate includes screen geometry and blocked UI areas, so a default candidate cannot safely answer it.
                     if (isAcceptable == null || cached.Selected == null)

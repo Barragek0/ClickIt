@@ -15,6 +15,7 @@ namespace ClickIt.Features.Labels.Selection
         private readonly Dictionary<long, CachedLabelData> _labelDataCache = [];
         private long _labelDataCacheWindowStartMs;
         private const long LabelDataCacheWindowMs = 1000;
+        private const long InvalidLabelCacheWindowMs = 50;
 
         // TimeCache.Value runs the scan on whichever thread first accesses it after expiry, so the shared cache must be serialized.
         private readonly Lock _scanLock = new();
@@ -84,7 +85,8 @@ namespace ClickIt.Features.Labels.Selection
                     long address = label.Address;
 
                     if (_labelDataCache.TryGetValue(address, out CachedLabelData cached)
-                        && now - cached.AtMs < LabelDataCacheWindowMs)
+                        && now - cached.AtMs >= 0
+                        && now - cached.AtMs < (cached.Valid ? LabelDataCacheWindowMs : InvalidLabelCacheWindowMs))
                     {
                         if (cached.Valid)
                             validLabels.Add(label);
