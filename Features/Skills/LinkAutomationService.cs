@@ -49,9 +49,7 @@ internal sealed class LinkAutomationService(
             return;
         }
 
-        bool? isHideout = null;
-        try { isHideout = _gameController.Area?.CurrentArea?.IsHideout; }
-        catch { }
+        bool? isHideout = AreaClassification.IsSafeArea(_gameController);
         if (!LinkAutomationPolicy.ShouldRunInArea(isHideout))
         {
             PublishDebugSnapshot(debug with { Status = isHideout.HasValue ? "Paused in hideout" : "Waiting for current area state" });

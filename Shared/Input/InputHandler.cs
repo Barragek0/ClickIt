@@ -352,22 +352,10 @@ namespace ClickIt.Shared.Input
         }
 
         private static bool IsInTownOrHideout(GameController gameController)
-        {
-            if (gameController == null)
-                return false;
-
-            AreaInstance? area = gameController.Area?.CurrentArea;
-            if (area == null)
-                return false;
-
-            return IsTownOrHideoutArea(area.IsHideout, area.IsTown);
-        }
+            => AreaClassification.IsSafeArea(gameController) == true;
 
         internal static bool HasOpenSidePanels(long leftPanelAddress, long rightPanelAddress)
             => leftPanelAddress != 0 || rightPanelAddress != 0;
-
-        internal static bool IsTownOrHideoutArea(bool isHideout, bool isTown)
-            => isHideout || isTown;
 
         private bool IsInToggleItemsPostClickBlockWindow()
             => _toggleItemsController.IsInPostClickBlockWindow();

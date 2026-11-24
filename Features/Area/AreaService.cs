@@ -56,8 +56,7 @@ namespace ClickIt.Features.Area
 
         internal static bool IsInMap(GameController? gameController)
         {
-            AreaInstance? area = gameController?.Area?.CurrentArea;
-            return area != null && !area.IsHideout && !area.IsTown;
+            return AreaClassification.IsSafeArea(gameController) == false;
         }
 
         public bool PointIsInClickableArea(Vector2 point)

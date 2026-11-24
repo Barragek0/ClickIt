@@ -232,8 +232,7 @@ namespace ClickIt.Features.Area
 
         private static bool IsInTownOrHideout(GameController? gameController)
         {
-            AreaInstance? area = gameController?.Area?.CurrentArea;
-            return area != null && (area.IsHideout || area.IsTown);
+            return AreaClassification.IsSafeArea(gameController) == true;
         }
 
         private static long ResolveCurrentAreaHash(GameController? gameController)
