@@ -236,7 +236,7 @@ namespace ClickIt.UI.Settings.Panels
         {
             ImGui.Spacing();
             SettingsUiRenderHelpers.DrawToggleNodeControl(
-                "Flares##MechanicsDelveFlares",
+                "Use Flares##MechanicsDelveFlares",
                 _settings.ClickDelveFlares,
                 "Use flares when darkness stacks and health or energy shield thresholds are reached.");
             SettingsUiRenderHelpers.DrawRangeNodeControl(
@@ -261,6 +261,22 @@ namespace ClickIt.UI.Settings.Panels
                 _settings.DelveFlareHotkey,
                 "Flare Hotkey##MechanicsDelveFlareHotkey",
                 "Set this to your in-game keybind for flares. The plugin will press this button to use a flare.");
+            DrawDelveSupplyWarning("Flares", _settings.ShowLowDelveFlaresWarning, _settings.LowDelveFlaresThreshold);
+            DrawDelveSupplyWarning("Dynamite", _settings.ShowLowDelveDynamiteWarning, _settings.LowDelveDynamiteThreshold);
+        }
+
+        private static void DrawDelveSupplyWarning(string supply, ToggleNode enabled, RangeNode<int> threshold)
+        {
+            bool value = enabled.Value;
+            if (ImGui.Checkbox($"Show warning when less than##DelveWarning{supply}", ref value))
+                enabled.Value = value;
+            ImGui.SameLine();
+            int count = Math.Clamp(threshold.Value, 1, 10);
+            ImGui.SetNextItemWidth(78f);
+            if (ImGui.InputInt($"##DelveWarningThreshold{supply}", ref count, 1, 1))
+                threshold.Value = Math.Clamp(count, 1, 10);
+            ImGui.SameLine();
+            ImGui.TextUnformatted(supply);
         }
 
         private void DrawUltimatumSettings()

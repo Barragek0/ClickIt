@@ -72,6 +72,17 @@ namespace ClickIt.Tests.Features.Labels.Classification
         [DataRow("Metadata/Chests/Blight/BlightChestObject", "Blight Cyst", MechanicIds.BlightCyst)]
         [DataRow("Metadata/Chests/LegionChests/Warhoard", "Legion Chest", MechanicIds.LegionChest)]
         [DataRow("Metadata/Chests/Breach/BreachBoxChest02", "Grasping Coffers", MechanicIds.BreachGraspingCoffers)]
+        [DataRow("Metadata/Chests/DelveChests/Resonator", "Resonator Stash", MechanicIds.DelveResonatorStash)]
+        [DataRow("Metadata/Chests/DelveChests/FossilisedRemains", "Fossilised Remains", MechanicIds.DelveFossil)]
+        [DataRow("Metadata/Chests/DelveChests/DelveChestSpecialArmour", "Special Armour", MechanicIds.DelveSpecialArmour)]
+        [DataRow("Metadata/Chests/DelveChests/DelveChestSpecialWeapon", "Special Weapon", MechanicIds.DelveSpecialWeapon)]
+        [DataRow("Metadata/Chests/DelveChests/DelveChestSpecialTrinket", "Special Trinket", MechanicIds.DelveSpecialTrinket)]
+        [DataRow("Metadata/Chests/DelveChests/DynamiteCurrency", "Currency", MechanicIds.DelveCurrency)]
+        [DataRow("Metadata/Chests/DelveChest/UnknownCurrency", "Currency", MechanicIds.DelveCurrency)]
+        [DataRow("Metadata/Chests/DelveChest/UnknownResonator", "Resonator", MechanicIds.DelveResonatorStash)]
+        [DataRow("Metadata/Chests/DelveChests/SomeMapChest", "Maps", MechanicIds.DelveMaps)]
+        [DataRow("Metadata/Chests/DelveChests/SuppliesFlares", "Flare Cache", MechanicIds.DelveFlareChests)]
+        [DataRow("Metadata/Chests/DelveChests/SuppliesDynamite", "Dynamite Cache", MechanicIds.DelveDynamiteChests)]
         [DataRow("Metadata/Chests/SynthesisChests/SynthesisChest", "Synthesised Stash", MechanicIds.SynthesisSynthesisedStash)]
         [DataRow("Metadata/LeagueDeepwater/CursedTreasure/Chest", "Cursed Treasure", MechanicIds.AllflameCursedTreasure)]
         [DataRow("Metadata/LeagueDeepwater/BrinerotStores/Chest", "Brinerot Plunder", MechanicIds.AllflameBrinerotPlunder)]
@@ -92,6 +103,15 @@ namespace ClickIt.Tests.Features.Labels.Classification
                 MechanicIds.BlightCyst,
                 MechanicIds.LegionChest,
                 MechanicIds.BreachGraspingCoffers,
+                MechanicIds.DelveResonatorStash,
+                MechanicIds.DelveFossil,
+                MechanicIds.DelveMaps,
+                MechanicIds.DelveFlareChests,
+                MechanicIds.DelveDynamiteChests,
+                MechanicIds.DelveSpecialArmour,
+                MechanicIds.DelveSpecialWeapon,
+                MechanicIds.DelveSpecialTrinket,
+                MechanicIds.DelveCurrency,
                 MechanicIds.SynthesisSynthesisedStash,
                 MechanicIds.AllflameCursedTreasure,
                 MechanicIds.AllflameBrinerotPlunder,
@@ -114,6 +134,93 @@ namespace ClickIt.Tests.Features.Labels.Classification
             mechanicId.Should().Be(expectedMechanicId);
         }
 
+        [DataTestMethod]
+        [DataRow("Metadata/Chests/DelveChests/Resonator", "Resonator Stash", MechanicIds.DelveResonatorStash)]
+        [DataRow("Metadata/Chests/DelveChests/FossilisedRemains", "Fossilised Remains", MechanicIds.DelveFossil)]
+        [DataRow("Metadata/Chests/DelveChests/DelveChestSpecialArmour", "Special Armour", MechanicIds.DelveSpecialArmour)]
+        [DataRow("Metadata/Chests/DelveChests/DelveChestSpecialWeapon", "Special Weapon", MechanicIds.DelveSpecialWeapon)]
+        [DataRow("Metadata/Chests/DelveChests/DelveChestSpecialTrinket", "Special Trinket", MechanicIds.DelveSpecialTrinket)]
+        [DataRow("Metadata/Chests/DelveChests/DynamiteCurrency", "Currency", MechanicIds.DelveCurrency)]
+        [DataRow("Metadata/Chests/DelveChest/UnknownCurrency", "Currency", MechanicIds.DelveCurrency)]
+        [DataRow("Metadata/Chests/DelveChest/UnknownResonator", "Resonator", MechanicIds.DelveResonatorStash)]
+        [DataRow("Metadata/Chests/DelveChests/SomeMapChest", "Maps", MechanicIds.DelveMaps)]
+        [DataRow("Metadata/Chests/DelveChests/SuppliesFlares", "Flare Cache", MechanicIds.DelveFlareChests)]
+        [DataRow("Metadata/Chests/DelveChests/SuppliesDynamite", "Dynamite Cache", MechanicIds.DelveDynamiteChests)]
+        public void DelveChestSpecificToggle_DoesNotFallBackToOther(string path, string name, string id)
+        {
+            var settings = new ClickItSettings();
+            settings.ClickDelveSealedLockbox.Value = true;
+            settings.ClickDelveSpecialWeapon.Value = true;
+            settings.ClickDelveMaps.Value = true;
+            settings.ClickDelveFallbackJewellery.Value = true;
+            settings.ClickDelveFallbackArmour.Value = true;
+            var enabled = ClickSettingsFactory.BuildEnabledLeagueChestSpecificIds(settings, true);
+            MechanicClassifier.GetChestMechanicIdFromConfiguredRules(false, true, true, enabled, EntityType.Chest, path, name).Should().Be(id);
+            settings.ClickDelveResonatorStash.Value = false;
+            settings.ClickDelveFossil.Value = false;
+            settings.ClickDelveMaps.Value = false;
+            settings.ClickDelveFlareChests.Value = false;
+            settings.ClickDelveDynamiteChests.Value = false;
+            settings.ClickDelveSealedLockbox.Value = false;
+            settings.ClickDelveSpecialArmour.Value = false;
+            settings.ClickDelveSpecialWeapon.Value = false;
+            settings.ClickDelveSpecialTrinket.Value = false;
+            settings.ClickDelveCurrency.Value = false;
+            enabled = ClickSettingsFactory.BuildEnabledLeagueChestSpecificIds(settings, true);
+            MechanicClassifier.GetChestMechanicIdFromConfiguredRules(false, true, true, enabled, EntityType.Chest, path, name).Should().BeNull();
+            MechanicClassifier.GetChestMechanicIdFromConfiguredRules(false, false, true, enabled, EntityType.Chest, path, name).Should().BeNull();
+        }
+        [DataTestMethod]
+        [DataRow("Metadata/Chests/DelveChests/UnknownTrinket", MechanicIds.DelveFallbackJewellery)]
+        [DataRow("Metadata/Chests/DelveChests/UnknownArmour", MechanicIds.DelveFallbackArmour)]
+        [DataRow("Metadata/Chests/DelveChest/UnknownWeapon", MechanicIds.DelveFallbackWeapons)]
+        public void DelveFallbacks_RespectSettingsAndSpecificRules(string path, string fallbackId)
+        {
+            var settings = new ClickItSettings();
+            settings.ClickDelveSealedLockbox.Value = true;
+            settings.ClickDelveSpecialWeapon.Value = true;
+            settings.ClickDelveFallbackJewellery.Value = true;
+            settings.ClickDelveFallbackArmour.Value = true;
+            settings.ClickDelveFallbackWeapons.Value = true;
+            var enabled = ClickSettingsFactory.BuildEnabledLeagueChestSpecificIds(settings, true);
+            MechanicClassifier.GetChestMechanicIdFromConfiguredRules(false, true, true, enabled, EntityType.Chest, path, "Reward").Should().Be(fallbackId);
+            settings.ClickDelveSpecialTrinket.Value = false;
+            enabled = ClickSettingsFactory.BuildEnabledLeagueChestSpecificIds(settings, true);
+            MechanicClassifier.GetChestMechanicIdFromConfiguredRules(false, true, true, enabled, EntityType.Chest,
+                "Metadata/Chests/DelveChests/DelveChestSpecialTrinket", "Reward").Should().BeNull();
+            settings.ClickDelveSpecialWeapon.Value = false;
+            enabled = ClickSettingsFactory.BuildEnabledLeagueChestSpecificIds(settings, true);
+            MechanicClassifier.GetChestMechanicIdFromConfiguredRules(false, true, true, enabled, EntityType.Chest,
+                "Metadata/Chests/DelveChests/DelveChestSpecialWeapon", "Reward").Should().BeNull();
+            settings.ClickDelveFallbackJewellery.Value = false;
+            settings.ClickDelveFallbackArmour.Value = false;
+            settings.ClickDelveFallbackWeapons.Value = false;
+            settings.ClickDelveFallbackCurrency.Value = false;
+            enabled = ClickSettingsFactory.BuildEnabledLeagueChestSpecificIds(settings, true);
+            MechanicClassifier.GetChestMechanicIdFromConfiguredRules(false, true, true, enabled, EntityType.Chest, path, "Reward").Should().BeNull();
+        }
+
+        [DataTestMethod]
+        [DataRow("Metadata/Chests/DelveChests/Flares")]
+        [DataRow("Metadata/Chests/DelveChests/Dynamite")]
+        [DataRow("Metadata/Chests/Other/SuppliesFlares")]
+        [DataRow("Metadata/Chests/Other/SuppliesDynamite")]
+        public void DelveSupplies_RequireAllPathFragments(string path)
+        {
+            var settings = new ClickItSettings();
+            var enabled = ClickSettingsFactory.BuildEnabledLeagueChestSpecificIds(settings, true);
+            MechanicClassifier.GetChestMechanicIdFromConfiguredRules(false, true, false, enabled, EntityType.Chest, path, "Cache").Should().BeNull();
+        }
+
+        [TestMethod]
+        public void DelveCurrencyPrimary_DisabledDoesNotFallBack()
+        {
+            var settings = new ClickItSettings();
+            settings.ClickDelveCurrency.Value = false;
+            var enabled = ClickSettingsFactory.BuildEnabledLeagueChestSpecificIds(settings, true);
+            MechanicClassifier.GetChestMechanicIdFromConfiguredRules(false, true, true, enabled, EntityType.Chest,
+                "Metadata/Chests/DelveChests/DynamiteCurrency", "Reward").Should().BeNull();
+        }
         private static ClickSettings CreateFullyEnabledInteractionSettings()
             => new()
             {

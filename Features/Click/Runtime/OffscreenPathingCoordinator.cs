@@ -951,7 +951,10 @@ namespace ClickIt.Features.Click.Runtime
 
             bool isValid = reads.IsValid;
             bool isHidden = reads.IsHidden;
-            if (!isValid || isHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target))
+            if (!isValid || isHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target)
+                || !OffscreenPathingMath.IsEligibleDelveTraversalTarget(target, targetPath)
+                || (MechanicIds.IsDelveRewardChestPath(targetPath)
+                    && !MechanicClassifier.IsUnopenedTargetableDelveChest(target)))
             {
                 AddPathfindingStage($"Walk: target REJECTED path={targetPath} valid={isValid} hidden={isHidden} minimap={OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target)}");
                 _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] ResolveTraversalTarget: target rejected valid={isValid} hidden={isHidden}");

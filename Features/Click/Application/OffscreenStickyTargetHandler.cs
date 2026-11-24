@@ -71,6 +71,15 @@ namespace ClickIt.Features.Click.Application
                 return false;
             }
 
+            if (!OffscreenPathingMath.IsEligibleDelveTraversalTarget(target, stickyPath)
+                || (MechanicIds.IsDelveRewardChestPath(stickyPath)
+                    && !MechanicClassifier.IsUnopenedTargetableDelveChest(target)))
+            {
+                ClearStickyOffscreenTarget();
+                target = null;
+                return false;
+            }
+
             if (ShrineService.IsShrine(target) && !ShrineService.IsClickableShrineCandidate(target))
             {
                 ClearStickyOffscreenTarget();

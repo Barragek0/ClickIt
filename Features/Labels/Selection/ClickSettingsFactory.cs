@@ -89,7 +89,7 @@ namespace ClickIt.Features.Labels.Selection
 
         private static readonly HashSet<string> s_emptyEnabledLeagueChestIds = new(StringComparer.OrdinalIgnoreCase);
 
-        // League-chest-specific-id HashSet cache: the 13 booleans change only when the user edits settings, so the 13-bool snapshot is a stable cache key. Saves the per-scan HashSet allocation when the scan runs repeatedly with the same settings.
+        // League-chest-specific-id HashSet cache: the 25 booleans change only when the user edits settings, so the 25-bool snapshot is a stable cache key. Saves the per-scan HashSet allocation when the scan runs repeatedly with the same settings.
         private static HashSet<string>? s_cachedLeagueChestIds;
         private static long s_cachedLeagueChestFlags;
 
@@ -98,7 +98,7 @@ namespace ClickIt.Features.Labels.Selection
             if (!leagueChestsEnabled)
                 return s_emptyEnabledLeagueChestIds;
 
-            // Pack the 13 booleans into a snapshot key (2 bits per value, 7 booleans per qword). When the snapshot matches the cache, return the cached HashSet without re-allocating.
+            // Pack the 25 booleans into a snapshot key (1 bit per value). When the snapshot matches the cache, return the cached HashSet without re-allocating.
             long flags = PackLeagueChestFlags(settings);
             if (flags == s_cachedLeagueChestFlags && s_cachedLeagueChestIds != null)
                 return s_cachedLeagueChestIds;
@@ -113,6 +113,18 @@ namespace ClickIt.Features.Labels.Selection
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickBlightCyst.Value, MechanicIds.BlightCyst);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickLegionChest.Value, MechanicIds.LegionChest);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickBreachGraspingCoffers.Value, MechanicIds.BreachGraspingCoffers);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickDelveResonatorStash.Value, MechanicIds.DelveResonatorStash);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickDelveFossil.Value, MechanicIds.DelveFossil);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickDelveMaps.Value, MechanicIds.DelveMaps);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickDelveFlareChests.Value, MechanicIds.DelveFlareChests);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickDelveDynamiteChests.Value, MechanicIds.DelveDynamiteChests);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickDelveSpecialArmour.Value, MechanicIds.DelveSpecialArmour);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickDelveSpecialWeapon.Value, MechanicIds.DelveSpecialWeapon);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickDelveSpecialTrinket.Value, MechanicIds.DelveSpecialTrinket);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickDelveCurrency.Value, MechanicIds.DelveCurrency);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickDelveFallbackJewellery.Value, MechanicIds.DelveFallbackJewellery);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickDelveFallbackArmour.Value, MechanicIds.DelveFallbackArmour);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickDelveFallbackWeapons.Value, MechanicIds.DelveFallbackWeapons);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickSynthesisSynthesisedStash.Value, MechanicIds.SynthesisSynthesisedStash);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickAllflameCursedTreasure.Value, MechanicIds.AllflameCursedTreasure);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickAllflameBrinerotPlunder.Value, MechanicIds.AllflameBrinerotPlunder);
@@ -122,7 +134,7 @@ namespace ClickIt.Features.Labels.Selection
             return enabled;
         }
 
-        // 13 booleans packed into a long: 1 bit per flag, occupying the low 13 bits with deterministic ordering so the bit positions are stable. The cache treats the long as a content hash of the input set.
+        // 25 booleans packed into a long: 1 bit per flag, occupying the bits 0 through 24 with deterministic ordering so the bit positions are stable. The cache treats the long as a content hash of the input set.
         private static long PackLeagueChestFlags(ClickItSettings settings)
         {
             long flags = 0;
@@ -139,6 +151,18 @@ namespace ClickIt.Features.Labels.Selection
             if (settings.ClickAllflameCursedTreasure.Value) flags |= 1L << 10;
             if (settings.ClickAllflameBrinerotPlunder.Value) flags |= 1L << 11;
             if (settings.ClickAllflameCoralNest.Value) flags |= 1L << 12;
+            if (settings.ClickDelveResonatorStash.Value) flags |= 1L << 13;
+            if (settings.ClickDelveMaps.Value) flags |= 1L << 14;
+            if (settings.ClickDelveSpecialArmour.Value) flags |= 1L << 15;
+            if (settings.ClickDelveSpecialWeapon.Value) flags |= 1L << 16;
+            if (settings.ClickDelveSpecialTrinket.Value) flags |= 1L << 17;
+            if (settings.ClickDelveCurrency.Value) flags |= 1L << 18;
+            if (settings.ClickDelveFallbackJewellery.Value) flags |= 1L << 19;
+            if (settings.ClickDelveFallbackArmour.Value) flags |= 1L << 20;
+            if (settings.ClickDelveFallbackWeapons.Value) flags |= 1L << 21;
+            if (settings.ClickDelveFlareChests.Value) flags |= 1L << 22;
+            if (settings.ClickDelveDynamiteChests.Value) flags |= 1L << 23;
+            if (settings.ClickDelveFossil.Value) flags |= 1L << 24;
             return flags;
         }
 

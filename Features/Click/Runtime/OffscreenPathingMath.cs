@@ -95,6 +95,14 @@ namespace ClickIt.Features.Click.Runtime
         internal static bool IsEldritchAltarPath(string path)
             => !string.IsNullOrWhiteSpace(GetEldritchAltarMechanicIdForPath(true, true, path));
 
+        internal static bool IsEligibleDelveTraversalTarget(Entity entity, string? path)
+        {
+            if (string.IsNullOrEmpty(path) || !path.Contains("Delve", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            return DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsTargetable, out bool targetable) && targetable;
+        }
+
         // Continue pathfinding until the label is clickable in place; blight additionally requires the full label on screen.
         internal static bool ShouldContinuePathfindingForLabel(
             bool blightRequiresFullLabel,

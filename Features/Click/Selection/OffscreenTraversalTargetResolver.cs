@@ -65,7 +65,15 @@ namespace ClickIt.Features.Click.Selection
         {
             long now = Environment.TickCount64;
             if (now - _cachedWalkTargetAtMs < OffscreenTargetCacheWindowMs)
-                return _cachedWalkTarget;
+            {
+                if (_cachedWalkTarget == null)
+                    return _cachedWalkTarget;
+                if (DynamicAccess.TryReadString(_cachedWalkTarget, DynamicAccessProfiles.Path, out string cachedPath)
+                    && OffscreenPathingMath.IsEligibleDelveTraversalTarget(_cachedWalkTarget, cachedPath)
+                    && (!MechanicIds.IsDelveRewardChestPath(cachedPath)
+                        || MechanicClassifier.IsUnopenedTargetableDelveChest(_cachedWalkTarget)))
+                    return _cachedWalkTarget;
+            }
 
             Entity? resolved = ResolveNearestOffscreenWalkTargetCore();
             _cachedWalkTarget = resolved;
@@ -139,17 +147,28 @@ namespace ClickIt.Features.Click.Selection
         private (Entity? Target, string? MechanicId) ResolveNearestOffscreenDelveTarget(int maxDistance)
         {
             if (!_dependencies.Settings.ClickDelveSpawners.Value
-                && !(_crawlerFallbackExcluded != null && _dependencies.Settings.ClickLeagueChests.Value && _dependencies.Settings.ClickLeagueChestsOther.Value))
+                && !_dependencies.Settings.ClickLeagueChests.Value)
                 return (null, null);
 
             return ResolveNearestOffscreenEntityTarget(
                 maxDistance,
                 includeEntity: static (_, path) => MechanicIds.IsDelveOffscreenWalkTargetPath(path),
-                resolveMechanicId: static (_, path) => path.Contains("/DelveChests/", StringComparison.OrdinalIgnoreCase)
-                    ? MechanicIds.LeagueChests
-                    : MechanicIds.DelveAzuriteVeins);
+                resolveMechanicId: (entity, path) => MechanicIds.IsTangledFossilInitiatorPath(path)
+                    ? (_dependencies.Settings.ClickDelveSpawners.Value ? MechanicIds.DelveEncounterInitiators : null)
+                    : path.Contains("/DelveChests/", StringComparison.OrdinalIgnoreCase) ? ResolveDelveChestMechanic(entity, path)
+                    : _dependencies.Settings.ClickDelveSpawners.Value ? MechanicIds.DelveAzuriteVeins : null);
         }
 
+        private string? ResolveDelveChestMechanic(Entity entity, string path)
+        {
+            ClickItSettings settings = _dependencies.Settings;
+            string name = DynamicAccess.TryReadString(entity, DynamicAccessProfiles.RenderName, out string renderName)
+                ? renderName : string.Empty;
+            return MechanicClassifier.GetChestMechanicIdFromConfiguredRules(
+                settings.ClickBasicChests.Value, settings.ClickLeagueChests.Value, settings.ClickLeagueChestsOther.Value,
+                ClickSettingsFactory.BuildEnabledLeagueChestSpecificIds(settings, settings.ClickLeagueChests.Value),
+                EntityType.Chest, path, name);
+        }
         private Entity? ResolveNearestOffscreenShrineTarget(int maxDistance)
         {
             if (!_dependencies.Settings.ClickShrines.Value)
@@ -211,6 +230,11 @@ namespace ClickIt.Features.Click.Selection
                     rejectedDistance++;
                     continue;
                 }
+                if (DynamicAccess.TryReadString(entity, DynamicAccessProfiles.Path, out string labelPath)
+                    && (!OffscreenPathingMath.IsEligibleDelveTraversalTarget(entity, labelPath)
+                        || (MechanicIds.IsDelveRewardChestPath(labelPath)
+                            && !MechanicClassifier.IsUnopenedTargetableDelveChest(entity))))
+                    continue;
                 if (distance > maxDistance)
                 {
                     rejectedDistance++;
@@ -285,8 +309,9 @@ namespace ClickIt.Features.Click.Selection
                     return;
 
                 if (_crawlerFallbackExcluded != null && MechanicIds.IsDelveOffscreenWalkTargetPath(path)
-                    && (!path.StartsWith("Metadata/Chests/DelveChests/", StringComparison.OrdinalIgnoreCase)
-                        || !_dependencies.Settings.ClickLeagueChests.Value || !_dependencies.Settings.ClickLeagueChestsOther.Value
+                    && !MechanicIds.IsTangledFossilInitiatorPath(path)
+                    && (!MechanicIds.IsDelveRewardChestPath(path)
+                        || ResolveDelveChestMechanic(entity, path) == null
                         || !DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsTargetable, out bool targetable) || !targetable
                         || (MechanicClassifier.IsLockedDelveChest(entity)
                             && !MechanicClassifier.HasVisibleDelveCompletionLabel(_dependencies.VisibleLabelSnapshots.GetCachedLabels()))))
@@ -345,11 +370,41 @@ namespace ClickIt.Features.Click.Selection
             if (distance > maxDistance)
                 return false;
 
+            if (!OffscreenPathingMath.IsEligibleDelveTraversalTarget(entity, path))
+                return false;
+
+            if (MechanicIds.IsDelveRewardChestPath(path)
+                && !MechanicClassifier.IsUnopenedTargetableDelveChest(entity))
+                return false;
+
             if (!TryProjectEntityScreenPosition(entity, out Vector2 screen))
                 return false;
 
-            if (_dependencies.IsClickableInEitherSpace(screen, path))
+            if (_dependencies.IsClickableInEitherSpace(screen, path)
+                && !CanApproachUnlabelledDelveTarget(entity, path, _dependencies.VisibleLabelSnapshots.GetCachedLabels()))
                 return false;
+
+            return true;
+        }
+
+        internal static bool CanApproachUnlabelledDelveTarget(Entity entity, string path, IReadOnlyList<LabelOnGround>? labels)
+        {
+            bool rewardChest = MechanicIds.IsDelveRewardChestPath(path);
+            if ((!rewardChest && !MechanicIds.IsTangledFossilInitiatorPath(path))
+                || labels == null
+                || !DynamicAccess.TryReadEntityAddress(entity, out long address) || address == 0
+                || !OffscreenPathingMath.IsEligibleDelveTraversalTarget(entity, path)
+                || (rewardChest && !MechanicClassifier.IsUnopenedTargetableDelveChest(entity)))
+                return false;
+
+            for (int i = 0; i < labels.Count; i++)
+            {
+                if (!DynamicAccess.TryGetLabelItemOnGround(labels[i], out Entity? item)
+                    || !DynamicAccess.TryReadEntityAddress(item, out long itemAddress) || itemAddress == 0)
+                    return false;
+                if (itemAddress == address)
+                    return false;
+            }
 
             return true;
         }

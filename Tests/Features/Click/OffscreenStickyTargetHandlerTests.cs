@@ -5,6 +5,33 @@ namespace ClickIt.Tests.Features.Click
     {
         [TestMethod]
         [TestCategory("Regression")]
+        public void UntargetableDelveAzurite_IsDroppedAsStickyTraversalTarget()
+        {
+            Entity target = EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/EncounterControlObjects/AzuriteEncounterController", address: 42, isTargetable: false);
+            var state = new ClickRuntimeState();
+            var handler = CreateHandler(state, ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(target));
+            handler.SetStickyOffscreenTarget(target);
+
+            handler.TryResolveStickyOffscreenTarget(out _).Should().BeFalse();
+            state.StickyOffscreenTargetAddress.Should().Be(0);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void OpenedDelveChest_IsDroppedAsStickyTraversalTarget()
+        {
+            Entity chest = EntityProbeFactory.Create(path: "Metadata/Chests/DelveChests/DelveMiningSuppliesDynamite2", address: 42, type: EntityType.Chest);
+            EntityProbeFactory.WithComponent<Chest>(chest, new OffscreenTraversalTargetResolverTests.TraversalChestProbe { IsOpened = true });
+            var state = new ClickRuntimeState();
+            var handler = CreateHandler(state, ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(chest));
+            handler.SetStickyOffscreenTarget(chest);
+
+            handler.TryResolveStickyOffscreenTarget(out _).Should().BeFalse();
+            state.StickyOffscreenTargetAddress.Should().Be(0);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
         public void LockedDelveStickyTargetWithoutCompletion_IsRejectedAndCleared()
         {
             var state = new ClickRuntimeState { StickyOffscreenTargetAddress = 42 };

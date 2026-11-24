@@ -9,6 +9,7 @@ namespace ClickIt.Core.Settings.Mechanics
         private const string LeagueChestSubgroupBlight = "Blight";
         private const string LeagueChestSubgroupLegion = "Legion";
         private const string LeagueChestSubgroupBreach = "Breach";
+        private const string LeagueChestSubgroupDelve = "Delve";
         private const string LeagueChestSubgroupSynthesis = "Synthesis";
         private const string LeagueChestSubgroupAllflame = "Allflame";
         private const string DoorsSubgroupRegular = "Regular";
@@ -83,6 +84,18 @@ namespace ClickIt.Core.Settings.Mechanics
                 new(MechanicIds.BlightCyst, "Blight Cyst", settings.ClickBlightCyst, "league-chests", true, LeagueChestSubgroupBlight),
                 new(MechanicIds.LegionChest, "Legion Chest", settings.ClickLegionChest, "league-chests", true, LeagueChestSubgroupLegion),
                 new(MechanicIds.BreachGraspingCoffers, "Grasping Coffers", settings.ClickBreachGraspingCoffers, "league-chests", true, LeagueChestSubgroupBreach),
+                new(MechanicIds.DelveCurrency, "Currency", settings.ClickDelveCurrency, "league-chests", true, LeagueChestSubgroupDelve, "Matches any chest containing currency items."),
+                new(MechanicIds.DelveResonatorStash, "Resonator", settings.ClickDelveResonatorStash, "league-chests", true, LeagueChestSubgroupDelve, "Matches any chest containing resonators."),
+                new(MechanicIds.DelveFossil, "Fossil", settings.ClickDelveFossil, "league-chests", true, LeagueChestSubgroupDelve, "Matches Delve chests containing fossils."),
+                new(MechanicIds.DelveMaps, "Maps", settings.ClickDelveMaps, "league-chests", false, LeagueChestSubgroupDelve, "Matches any chest containing maps."),
+                new(MechanicIds.DelveFlareChests, "Flares", settings.ClickDelveFlareChests, "league-chests", true, LeagueChestSubgroupDelve, "Contains flares."),
+                new(MechanicIds.DelveDynamiteChests, "Dynamite", settings.ClickDelveDynamiteChests, "league-chests", true, LeagueChestSubgroupDelve, "Contains Dynamite."),
+                new(MechanicIds.DelveSpecialArmour, "Special Armour", settings.ClickDelveSpecialArmour, "league-chests", true, LeagueChestSubgroupDelve, "Contains armour that can have Delve-specific modifiers, such as 'Reduced Cold Damage Taken'."),
+                new(MechanicIds.DelveSpecialTrinket, "Special Jewellery", settings.ClickDelveSpecialTrinket, "league-chests", true, LeagueChestSubgroupDelve, "Contains jewellery that can have Delve-specific modifiers, such as 'Curse Enemies with Frostbite on Hit'."),
+                new(MechanicIds.DelveSpecialWeapon, "Special Weapon", settings.ClickDelveSpecialWeapon, "league-chests", false, LeagueChestSubgroupDelve, "Contains weapons that can have Delve-specific modifiers, such as 'Adds x to x Chaos Damage to Spells'."),
+                new(MechanicIds.DelveFallbackArmour, "Armour", settings.ClickDelveFallbackArmour, "league-chests", false, LeagueChestSubgroupDelve, IsFallback: true),
+                new(MechanicIds.DelveFallbackJewellery, "Jewellery", settings.ClickDelveFallbackJewellery, "league-chests", false, LeagueChestSubgroupDelve, IsFallback: true),
+                new(MechanicIds.DelveFallbackWeapons, "Weapons", settings.ClickDelveFallbackWeapons, "league-chests", false, LeagueChestSubgroupDelve, IsFallback: true),
                 new(MechanicIds.SynthesisSynthesisedStash, "Synthesised Stash", settings.ClickSynthesisSynthesisedStash, "league-chests", true, LeagueChestSubgroupSynthesis),
                 new(MechanicIds.AllflameCursedTreasure, "Cursed Treasure", settings.ClickAllflameCursedTreasure, "league-chests", true, LeagueChestSubgroupAllflame),
                 new(MechanicIds.AllflameBrinerotPlunder, "Brinerot Plunder", settings.ClickAllflameBrinerotPlunder, "league-chests", true, LeagueChestSubgroupAllflame),
@@ -121,7 +134,7 @@ namespace ClickIt.Core.Settings.Mechanics
                 new(MechanicIds.DelveAzuriteVeins, "Azurite Veins", settings.ClickAzuriteVeins, "delve", true),
                 new(MechanicIds.DelveSulphiteVeins, "Sulphite Veins", settings.ClickSulphiteVeins, "delve", true),
                 new(MechanicIds.DelveEncounterInitiators, "Encounter Initiators", settings.ClickDelveSpawners, "delve", true),
-                new(MechanicIds.DelveCrawler, "Crawler", settings.ClickDelveCrawler, "delve", true),
+                new(MechanicIds.DelveCrawler, "Crawler", settings.ClickDelveCrawler, "delve", true, Tooltip: "Eligible chests within pathfinding range are clicked or approached before the Crawler."),
                 new(MechanicIds.UltimatumInitialOverlay, "Initial Ultimatum Overlay", settings.ClickInitialUltimatum, "ultimatum", false),
                 new(MechanicIds.UltimatumWindow, "Ultimatum Window", settings.ClickUltimatumChoices, "ultimatum", false),
                 new(MechanicIds.AltarsSearingExarch, "Searing Exarch", settings.ClickExarchAltars, "altars", false),

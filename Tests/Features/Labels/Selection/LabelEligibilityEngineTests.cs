@@ -122,6 +122,23 @@ namespace ClickIt.Tests.Features.Labels.Selection
 
         [DataTestMethod]
         [TestCategory("Regression")]
+        [DataRow("Metadata/Chests/DelveChests/TangledFossilChest", true)]
+        [DataRow("metadata/chests/delvechests/tangledfossilchest", true)]
+        [DataRow("Metadata/Chests/DelveChests/OtherFossilChest", false)]
+        public void DelveEncounterInitiator_IsNotTreatedAsLockedRewardChest(string path, bool expected)
+        {
+            Entity item = EntityProbeFactory.Create(path: path, type: EntityType.Chest);
+            EntityProbeFactory.WithComponent<Chest>(item, new LockedChestProbe { IsLocked = true });
+            LabelOnGround label = new LabelProbe { ItemOnGround = item };
+
+            MechanicClassifier.IsLockedDelveChest(item).Should().Be(!expected);
+            bool accepted = LabelEligibilityEngine.TryBuildCandidate(label, new ClickSettings { DelveEncounterComplete = false },
+                (_, _) => true, (_, _, _) => MechanicIds.DelveEncounterInitiators, out _, out _, out _);
+            accepted.Should().Be(expected);
+        }
+
+        [DataTestMethod]
+        [TestCategory("Regression")]
         [DataRow("DelveNode", true, 1, true)]
         [DataRow("DelveNodeNoEncounter", true, 1, true)]
         [DataRow("DelveNode", true, 0, false)]

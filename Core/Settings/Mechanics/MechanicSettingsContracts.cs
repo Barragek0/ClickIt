@@ -8,5 +8,7 @@ namespace ClickIt.Core.Settings.Mechanics
         ToggleNode Node,
         string? GroupId = null,
         bool DefaultEnabled = false,
-        string? Subgroup = null);
+        string? Subgroup = null,
+        string? Tooltip = null,
+        bool IsFallback = false);
 }

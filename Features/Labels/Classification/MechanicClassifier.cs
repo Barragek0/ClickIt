@@ -27,10 +27,22 @@ namespace ClickIt.Features.Labels.Classification
             new(MechanicIds.BlightCyst, static (_, path) => IsBlightCystPath(path)),
             new(MechanicIds.LegionChest, static (_, path) => IsLegionChestPath(path)),
             new(MechanicIds.BreachGraspingCoffers, static (_, path) => IsBreachGraspingCoffersPath(path)),
+            new(MechanicIds.DelveSpecialArmour, static (_, path) => path?.Contains("DelveChests/DelveChestSpecialArmour", StringComparison.OrdinalIgnoreCase) == true),
+            new(MechanicIds.DelveSpecialWeapon, static (_, path) => path?.Contains("DelveChests/DelveChestSpecialWeapon", StringComparison.OrdinalIgnoreCase) == true),
+            new(MechanicIds.DelveSpecialTrinket, static (_, path) => path?.Contains("DelveChests/DelveChestSpecialTrinket", StringComparison.OrdinalIgnoreCase) == true),
             new(MechanicIds.SynthesisSynthesisedStash, static (_, path) => IsSynthesisSynthesisedStashPath(path)),
             new(MechanicIds.AllflameCursedTreasure, static (_, path) => IsAllflameCursedTreasurePath(path)),
             new(MechanicIds.AllflameBrinerotPlunder, static (_, path) => IsAllflameBrinerotPlunderPath(path)),
-            new(MechanicIds.AllflameCoralNest, static (_, path) => IsAllflameCoralNestPath(path))
+            new(MechanicIds.AllflameCoralNest, static (_, path) => IsAllflameCoralNestPath(path)),
+            new(MechanicIds.DelveFlareChests, static (_, path) => path?.Contains("DelveChests", StringComparison.OrdinalIgnoreCase) == true && path.Contains("Flares", StringComparison.OrdinalIgnoreCase) && path.Contains("Supplies", StringComparison.OrdinalIgnoreCase)),
+            new(MechanicIds.DelveDynamiteChests, static (_, path) => path?.Contains("DelveChests", StringComparison.OrdinalIgnoreCase) == true && path.Contains("Dynamite", StringComparison.OrdinalIgnoreCase) && path.Contains("Supplies", StringComparison.OrdinalIgnoreCase)),
+            new(MechanicIds.DelveFossil, static (_, path) => path?.Contains("DelveChests", StringComparison.OrdinalIgnoreCase) == true && path.Contains("Fossil", StringComparison.OrdinalIgnoreCase)),
+            new(MechanicIds.DelveMaps, static (_, path) => path?.Contains("DelveChests", StringComparison.OrdinalIgnoreCase) == true && path.Contains("Map", StringComparison.OrdinalIgnoreCase)),
+            new(MechanicIds.DelveCurrency, static (_, path) => path?.Contains("DelveChest", StringComparison.OrdinalIgnoreCase) == true && path.Contains("Currency", StringComparison.OrdinalIgnoreCase)),
+            new(MechanicIds.DelveResonatorStash, static (_, path) => path?.Contains("DelveChest", StringComparison.OrdinalIgnoreCase) == true && path.Contains("Resonator", StringComparison.OrdinalIgnoreCase)),
+            new(MechanicIds.DelveFallbackJewellery, static (_, path) => path?.Contains("DelveChests", StringComparison.OrdinalIgnoreCase) == true && path.Contains("Trinket", StringComparison.OrdinalIgnoreCase)),
+            new(MechanicIds.DelveFallbackArmour, static (_, path) => path?.Contains("DelveChests", StringComparison.OrdinalIgnoreCase) == true && path.Contains("Armour", StringComparison.OrdinalIgnoreCase)),
+            new(MechanicIds.DelveFallbackWeapons, static (_, path) => path?.Contains("DelveChest", StringComparison.OrdinalIgnoreCase) == true && path.Contains("Weapon", StringComparison.OrdinalIgnoreCase)),
         ];
 
         internal static string? GetClickableMechanicId(
@@ -57,6 +69,7 @@ namespace ClickIt.Features.Labels.Classification
 
             if (IsHarvestBossSeedPath(path)
                 || MechanicIds.IsDelveCrawlerPath(path)
+                || MechanicIds.IsTangledFossilInitiatorPath(path)
                 || path.Contains(MechanicIds.BetrayalCorpseSculpturePath, StringComparison.OrdinalIgnoreCase)
                 || path.Contains(MechanicIds.BeyondInitiatorPath, StringComparison.OrdinalIgnoreCase)
                 || path.Contains(MechanicIds.SentinelEncounterPath, StringComparison.OrdinalIgnoreCase)
@@ -132,6 +145,9 @@ namespace ClickIt.Features.Labels.Classification
             string renderName,
             bool brinerotPlunderOpened = false)
         {
+            if (MechanicIds.IsTangledFossilInitiatorPath(path))
+                return null;
+
             if (IsHeistHazardsPath(path))
             {
                 if (!clickLeagueChests)
@@ -580,7 +596,13 @@ namespace ClickIt.Features.Labels.Classification
         internal static bool IsLockedDelveChest(object item)
             => DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string path)
                 && path.Contains("Delve", StringComparison.OrdinalIgnoreCase)
+                && !MechanicIds.IsTangledFossilInitiatorPath(path)
                 && IsLockedChest(item);
+
+        internal static bool IsUnopenedTargetableDelveChest(Entity entity)
+            => DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsTargetable, out bool targetable) && targetable
+                && DynamicAccess.TryGetComponent<Chest>(entity, out object? chest) && chest != null
+                && DynamicAccess.TryReadBool(chest, DynamicAccessProfiles.IsOpened, out bool opened) && !opened;
 
         internal static bool HasVisibleDelveCompletionLabel(IReadOnlyList<LabelOnGround>? labels)
         {

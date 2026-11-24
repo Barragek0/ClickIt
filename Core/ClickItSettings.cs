@@ -53,6 +53,34 @@ namespace ClickIt
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickBreachGraspingCoffers { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickDelveResonatorStash { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickDelveFossil { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickDelveMaps { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickDelveFlareChests { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickDelveDynamiteChests { get; set; } = new ToggleNode(true);
+        [IgnoreMenu]
+        public ToggleNode ClickDelveSealedLockbox { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickDelveSpecialArmour { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickDelveSpecialWeapon { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickDelveSpecialTrinket { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickDelveCurrency { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickDelveFallbackJewellery { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickDelveFallbackArmour { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickDelveFallbackWeapons { get; set; } = new ToggleNode(false);
+        [IgnoreMenu]
+        public ToggleNode ClickDelveFallbackCurrency { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickBlightCyst { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickLegionChest { get; set; } = new ToggleNode(true);
@@ -447,6 +475,14 @@ namespace ClickIt
         [Menu("Flare Energy Shield %", 8, 123)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public RangeNode<int> DelveFlareEnergyShieldThreshold { get; set; } = new RangeNode<int>(75, 2, 100);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ShowLowDelveFlaresWarning { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public RangeNode<int> LowDelveFlaresThreshold { get; set; } = new RangeNode<int>(3, 1, 10);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ShowLowDelveDynamiteWarning { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public RangeNode<int> LowDelveDynamiteThreshold { get; set; } = new RangeNode<int>(3, 1, 10);
         [Menu("", 10010, 123)]
         [JsonIgnore]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]

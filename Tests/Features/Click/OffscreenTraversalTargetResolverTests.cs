@@ -3,6 +3,62 @@ namespace ClickIt.Tests.Features.Click
     [TestClass]
     public class OffscreenTraversalTargetResolverTests
     {
+        [DataTestMethod]
+        [TestCategory("Regression")]
+        [DataRow(true, true)]
+        [DataRow(false, false)]
+        public void DelveAzuriteTraversal_RequiresTargetableEntity(bool targetable, bool expected)
+        {
+            const string path = "Metadata/Terrain/Leagues/Delve/Objects/EncounterControlObjects/AzuriteEncounterController";
+            Entity target = EntityProbeFactory.Create(path: path, address: 42, isTargetable: targetable);
+            OffscreenPathingMath.IsEligibleDelveTraversalTarget(target, path).Should().Be(expected);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void OtherTraversalTargets_DoNotGainDelveTargetabilityRequirement()
+        {
+            Entity target = EntityProbeFactory.Create(path: "Metadata/AreaTransition/Test", isTargetable: false);
+            OffscreenPathingMath.IsEligibleDelveTraversalTarget(target, "Metadata/AreaTransition/Test").Should().BeTrue();
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void UnlabelledDelveChest_CanBeApproachedOnScreenOnlyWhileUnopenedAndTargetable()
+        {
+            const string path = "Metadata/Chests/DelveChests/FossilTest";
+            Entity target = EntityProbeFactory.Create(path: path, address: 42, type: EntityType.Chest);
+            var chest = new TraversalChestProbe();
+            EntityProbeFactory.WithComponent<Chest>(target, chest);
+
+            OffscreenTraversalTargetResolver.CanApproachUnlabelledDelveTarget(target, path, []).Should().BeTrue();
+            OffscreenTraversalTargetResolver.CanApproachUnlabelledDelveTarget(target, path, null).Should().BeFalse();
+            OffscreenTraversalTargetResolver.CanApproachUnlabelledDelveTarget(target, "Metadata/Terrain/Leagues/Delve/Objects/EncounterSpawners/WaterSpawnerEffect", []).Should().BeFalse();
+            chest.IsOpened = true;
+            MechanicClassifier.IsUnopenedTargetableDelveChest(target).Should().BeFalse();
+            OffscreenTraversalTargetResolver.CanApproachUnlabelledDelveTarget(target, path, []).Should().BeFalse();
+            chest.IsOpened = false;
+            ((EntityProbe)target).IsTargetable = false;
+            OffscreenTraversalTargetResolver.CanApproachUnlabelledDelveTarget(target, path, []).Should().BeFalse();
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void UnlabelledDelveChest_WithVisibleLabel_IsNotApproachedAsUnlabelled()
+        {
+            const string path = "Metadata/Chests/DelveChests/FossilTest";
+            Entity target = EntityProbeFactory.Create(path: path, address: 42, type: EntityType.Chest);
+            EntityProbeFactory.WithComponent<Chest>(target, new TraversalChestProbe());
+            LabelOnGround label = OffscreenStickyTargetGraphShaper.CreateVisibleLabel(target);
+
+            OffscreenTraversalTargetResolver.CanApproachUnlabelledDelveTarget(target, path, [label]).Should().BeFalse();
+        }
+
+        public sealed class TraversalChestProbe : Chest
+        {
+            public new bool IsOpened { get; set; }
+        }
+
         [TestMethod]
         public void ResolveNearestOffscreenWalkTarget_ReturnsNull_AndDoesNotRefreshPriorities_WhenNoCandidateSourcesExist()
         {

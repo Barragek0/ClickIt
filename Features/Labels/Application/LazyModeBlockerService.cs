@@ -200,7 +200,7 @@ namespace ClickIt.Features.Labels.Application
                 string path = DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
                     ? resolvedPath
                     : string.Empty;
-                if (path.Length == 0)
+                if (path.Length == 0 || MechanicIds.IsTangledFossilInitiatorPath(path))
                     continue;
 
                 Chest? chest = item.GetComponent<Chest>();
@@ -313,7 +313,7 @@ namespace ClickIt.Features.Labels.Application
             return FinalizeNearbyMonsterRestriction(restrictionSettings, counts);
         }
 
-        private static NearbyMonsterRestrictionSettings BuildNearbyMonsterRestrictionSettings(
+        internal static NearbyMonsterRestrictionSettings BuildNearbyMonsterRestrictionSettings(
             int normalThreshold,
             int normalDistance,
             int magicThreshold,
@@ -361,7 +361,7 @@ namespace ClickIt.Features.Labels.Application
                     uniqueDistance));
         }
 
-        private static NearbyMonsterCounts CountNearbyMonsters(
+        internal static NearbyMonsterCounts CountNearbyMonsters(
             IEnumerable<Entity?> entities,
             NearbyMonsterRestrictionSettings restrictionSettings)
         {
@@ -387,7 +387,7 @@ namespace ClickIt.Features.Labels.Application
             return counts;
         }
 
-        private static NearbyMonsterCounts CountNearbyMonsters(
+        internal static NearbyMonsterCounts CountNearbyMonsters(
             IEnumerable<NearbyMonsterCandidate> candidates,
             NearbyMonsterRestrictionSettings restrictionSettings)
         {

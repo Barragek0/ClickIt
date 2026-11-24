@@ -92,6 +92,7 @@ namespace ClickIt.Tests.Features.Mechanics
         [DataRow("Metadata/Terrain/BetrayalMakeChoice/Some", MechanicIds.Betrayal)]
         [DataRow("Metadata/Terrain/BlightPump/Some", MechanicIds.Blight)]
         [DataRow("Metadata/Terrain/Delve/Objects/Encounter/Node", MechanicIds.DelveEncounterInitiators)]
+        [DataRow("Metadata/Chests/DelveChests/TangledFossilChest", MechanicIds.DelveEncounterInitiators)]
         public void TryResolve_ReturnsExpectedMechanic_ForEnabledPathRules(string path, string expectedMechanicId)
         {
             ClickSettings settings = new()
@@ -111,6 +112,20 @@ namespace ClickIt.Tests.Features.Mechanics
                 CreateInventoryInteractionPolicy());
 
             mechanicId.Should().Be(expectedMechanicId);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void TangledFossil_UsesInitiatorSettingAndNeverFallsBackToChest()
+        {
+            const string path = "Metadata/Chests/DelveChests/TangledFossilChest";
+            ClickSettings settings = new() { ClickDelveSpawners = false };
+            InteractionMechanicRuleCatalog.TryResolve(settings, path, DummyLabel, null, CreateInventoryInteractionPolicy()).Should().BeNull();
+            MechanicClassifier.GetChestMechanicIdFromConfiguredRules(false, true, true,
+                new HashSet<string> { MechanicIds.DelveFossil }, EntityType.Chest, path, "Tangled Fossilised Remains").Should().BeNull();
+            settings.ClickDelveSpawners = true;
+            InteractionMechanicRuleCatalog.TryResolve(settings, path, DummyLabel, null, CreateInventoryInteractionPolicy())
+                .Should().Be(MechanicIds.DelveEncounterInitiators);
         }
 
         [TestMethod]

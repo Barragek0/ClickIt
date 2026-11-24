@@ -14,6 +14,18 @@ namespace ClickIt.Features.Mechanics
         public const string HeistSecureRepository = "heist-secure-repository";
         public const string HeistHazards = "heist-hazards";
         public const string BreachGraspingCoffers = "breach-grasping-coffers";
+        public const string DelveResonatorStash = "delve-resonator-stash";
+        public const string DelveFossil = "delve-fossil";
+        public const string DelveMaps = "delve-maps";
+        public const string DelveFlareChests = "delve-flare-chests";
+        public const string DelveDynamiteChests = "delve-dynamite-chests";
+        public const string DelveSpecialArmour = "delve-special-armour";
+        public const string DelveSpecialWeapon = "delve-special-weapon";
+        public const string DelveSpecialTrinket = "delve-special-trinket";
+        public const string DelveCurrency = "delve-currency";
+        public const string DelveFallbackJewellery = "delve-fallback-jewellery";
+        public const string DelveFallbackArmour = "delve-fallback-armour";
+        public const string DelveFallbackWeapons = "delve-fallback-weapons";
         public const string BlightCyst = "blight-cyst";
         public const string LegionChest = "legion-chest";
         public const string SynthesisSynthesisedStash = "synthesis-synthesised-stash";
@@ -85,6 +97,15 @@ namespace ClickIt.Features.Mechanics
         public static bool IsDelveCrawlerPath(string? path)
             => !string.IsNullOrEmpty(path)
                 && path.Contains(DelveCrawlerPath, StringComparison.OrdinalIgnoreCase);
+
+        public static bool IsTangledFossilInitiatorPath(string? path)
+            => !string.IsNullOrEmpty(path)
+                && path.Contains("DelveChests/TangledFossil", StringComparison.OrdinalIgnoreCase);
+
+        public static bool IsDelveRewardChestPath(string? path)
+            => !string.IsNullOrEmpty(path)
+                && path.StartsWith("Metadata/Chests/DelveChests/", StringComparison.OrdinalIgnoreCase)
+                && !IsTangledFossilInitiatorPath(path);
 
         public static bool IsDelveOffscreenWalkTargetPath(string? path)
             => !string.IsNullOrEmpty(path)

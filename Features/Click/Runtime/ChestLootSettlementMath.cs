@@ -176,6 +176,18 @@ namespace ClickIt.Features.Click.Runtime
                || string.Equals(mechanicId, MechanicIds.HeistSecureRepository, StringComparison.OrdinalIgnoreCase)
                || string.Equals(mechanicId, MechanicIds.BlightCyst, StringComparison.OrdinalIgnoreCase)
                || string.Equals(mechanicId, MechanicIds.BreachGraspingCoffers, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.DelveResonatorStash, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.DelveFossil, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.DelveMaps, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.DelveFlareChests, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.DelveDynamiteChests, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.DelveSpecialArmour, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.DelveSpecialWeapon, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.DelveSpecialTrinket, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.DelveCurrency, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.DelveFallbackJewellery, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.DelveFallbackArmour, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.DelveFallbackWeapons, StringComparison.OrdinalIgnoreCase)
                || string.Equals(mechanicId, MechanicIds.SynthesisSynthesisedStash, StringComparison.OrdinalIgnoreCase);
 
         private static bool IsHeistChestRenderName(string? entityRenderName)

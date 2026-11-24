@@ -39,6 +39,7 @@ namespace ClickIt.Tests.Core.Settings
             var secureRepository = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.HeistSecureRepository).Subject;
             var heistHazards = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.HeistHazards).Subject;
             var legionChest = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.LegionChest).Subject;
+            var resonator = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.DelveResonatorStash).Subject;
             var regularDoors = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.Doors).Subject;
             var heistDoors = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.HeistDoors).Subject;
             var alvaTempleDoors = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.AlvaTempleDoors).Subject;
@@ -55,6 +56,15 @@ namespace ClickIt.Tests.Core.Settings
             legionChest.GroupId.Should().Be("league-chests");
             legionChest.Subgroup.Should().Be("Legion");
             legionChest.DefaultEnabled.Should().BeTrue();
+            resonator.Node.Should().BeSameAs(settings.ClickDelveResonatorStash);
+            resonator.Subgroup.Should().Be("Delve");
+            resonator.DisplayName.Should().Be("Resonator");
+            var delve = entries.Where(entry => entry.Subgroup == "Delve").ToArray();
+            delve.Select(entry => entry.DisplayName).Should().Equal("Currency", "Resonator", "Fossil", "Maps", "Flares", "Dynamite", "Special Armour", "Special Jewellery", "Special Weapon", "Armour", "Jewellery", "Weapons");
+            delve.Select(entry => entry.DefaultEnabled).Should().Equal(true, true, true, false, true, true, true, true, false, false, false, false);
+            delve.Select(entry => entry.Node.Value).Should().Equal(true, true, true, false, true, true, true, true, false, false, false, false);
+            entries.Where(entry => entry.Subgroup == "Delve" && entry.IsFallback).Select(entry => entry.DisplayName).Should().Equal("Armour", "Jewellery", "Weapons");
+            entries.Where(entry => entry.Subgroup == "Delve" && !entry.IsFallback).Should().HaveCount(9).And.OnlyContain(entry => !string.IsNullOrWhiteSpace(entry.Tooltip));
             regularDoors.Node.Should().BeSameAs(settings.ClickDoors);
             regularDoors.GroupId.Should().Be("doors");
             heistDoors.Node.Should().BeSameAs(settings.ClickHeistDoors);

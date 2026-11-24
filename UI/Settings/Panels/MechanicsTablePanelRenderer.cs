@@ -442,14 +442,35 @@ namespace ClickIt.UI.Settings.Panels
             bool searchIsEmpty,
             bool subgroupMatchesSearch)
         {
+            bool hasFallback = false;
             for (int i = 0; i < subgroupEntries.Length; i++)
             {
                 MechanicToggleTableEntry entry = subgroupEntries[i];
                 if (!searchIsEmpty && !subgroupMatchesSearch && !SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, entry.DisplayName))
                     continue;
-
+                if (entry.IsFallback)
+                {
+                    hasFallback = true;
+                    continue;
+                }
                 DrawMechanicSubmenuCheckbox(listId, groupId, entry);
             }
+
+            if (!hasFallback)
+                return;
+
+            bool fallbackOpen = ImGui.TreeNodeEx($"Fallbacks##MechanicFallbacks_{listId}_{groupId}", ImGuiTreeNodeFlags.None);
+            SettingsUiRenderHelpers.DrawInlineTooltip("Delve chests can have many different names and metadata paths, and adding every single one would be impractical and unnecessary.\n\nThese options catch matching chest types not covered by the primary options above.\n\nPrimary options above are always checked first.");
+            if (!fallbackOpen)
+                return;
+
+            for (int i = 0; i < subgroupEntries.Length; i++)
+            {
+                MechanicToggleTableEntry entry = subgroupEntries[i];
+                if (entry.IsFallback && (searchIsEmpty || subgroupMatchesSearch || SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, entry.DisplayName)))
+                    DrawMechanicSubmenuCheckbox(listId, groupId, entry);
+            }
+            ImGui.TreePop();
         }
 
         private void DrawUngroupedMechanicEntries(
@@ -483,6 +504,8 @@ namespace ClickIt.UI.Settings.Panels
                 entry.Node.Value = enabled;
 
 
+            if (!string.IsNullOrWhiteSpace(entry.Tooltip))
+                SettingsUiRenderHelpers.DrawInlineTooltip(entry.Tooltip);
             if (string.Equals(entry.Id, MechanicIds.HeistHazards, StringComparison.OrdinalIgnoreCase))
                 SettingsUiRenderHelpers.DrawInlineTooltip("Hazards are objects that block your path and must be destroyed to get past.");
 
