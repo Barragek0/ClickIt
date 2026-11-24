@@ -456,7 +456,7 @@ namespace ClickIt
         [Menu("Ritual", 122, 1400)]
         public EmptyNode Ritual { get; set; } = new EmptyNode();
 
-        [Menu("Flares", "Use flares when all of these conditions are true:\n\n-> Your darkness debuff stacks are at least the 'Darkness Debuff Stacks' value.\n-> Your health is below the 'Use flare below Health' value.\n-> Your energy shield is below the 'Use flare below Energy Shield' value.\n\nIf you're playing CI and have 1 max life, set Health to 100.\n\nIf you have no energy shield, set Energy Shield to 100.", 4, 123)]
+        [Menu("Use Flares", "Use flares when all of these conditions are true:\n\n-> Your darkness debuff stacks are at least the 'Darkness Debuff Stacks' value.\n-> Your health is below the 'Use flare below Health' value.\n-> Your energy shield is below the 'Use flare below Energy Shield' value.\n\nIf you're playing CI and have 1 max life, set Health to 100.\n\nIf you have no energy shield, set Energy Shield to 100.", 4, 123)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickDelveFlares { get; set; } = new ToggleNode(false);
         [Menu("Flare Hotkey", "Set this to your in-game keybind for flares. The plugin will press this button to use a flare.", 5, 123)]
