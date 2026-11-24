@@ -166,6 +166,63 @@ namespace ClickIt.Tests.Features.Click
             queue.GetPendingTextSnapshot().Should().BeEmpty();
         }
 
+        [DataTestMethod]
+        [TestCategory("Regression")]
+        [DataRow("0/12", 0)]
+        [DataRow(" 3 /12", 3)]
+        [DataRow("12/12", 12)]
+        [DataRow("-1/12", null)]
+        [DataRow("unavailable", null)]
+        [DataRow("/12", null)]
+        public void ReadDelveSupplyCount_ReadsTheSpecifiedSkillBarBranch(string text, int? expected)
+        {
+            var flare = new SupplyElement();
+            flare.Children[1] = new SupplyElement { Text = text };
+            var dynamite = new SupplyElement();
+            dynamite.Children[1] = new SupplyElement { Text = "7/12" };
+            var row = new SupplyElement();
+            row.Children[2] = flare;
+            row.Children[3] = dynamite;
+            var container = new SupplyElement();
+            container.Children[0] = row;
+            var skillBar = new SupplyElement();
+            skillBar.Children[13] = container;
+
+            InventoryFullWarningOverlay.ReadDelveSupplyCount(skillBar, 2).Should().Be(expected);
+            InventoryFullWarningOverlay.ReadDelveSupplyCount(skillBar, 3).Should().Be(7);
+            InventoryFullWarningOverlay.ReadDelveSupplyCount(null, 2).Should().BeNull();
+        }
+
+        public sealed class SupplyElement
+        {
+            public Dictionary<int, SupplyElement> Children { get; } = new();
+            public string Text { get; set; } = string.Empty;
+            public SupplyElement? GetChildAtIndex(int index) => Children.GetValueOrDefault(index);
+        }
+
+        [DataTestMethod]
+        [TestCategory("Boundary")]
+        [DataRow(null, 3, false)]
+        [DataRow(0, 3, true)]
+        [DataRow(2, 3, true)]
+        [DataRow(3, 3, false)]
+        [DataRow(4, 3, false)]
+        [DataRow(10, 99, false)]
+        [DataRow(9, 99, true)]
+        public void IsLowDelveSupply_RequiresReadableCountBelowThreshold(int? count, int threshold, bool expected)
+            => InventoryFullWarningOverlay.IsLowDelveSupply(count, threshold).Should().Be(expected);
+
+        [TestMethod]
+        [TestCategory("Settings")]
+        public void DelveSupplyWarnings_DefaultToEnabledBelowThree()
+        {
+            var settings = new ClickItSettings();
+            settings.ShowLowDelveFlaresWarning.Value.Should().BeTrue();
+            settings.LowDelveFlaresThreshold.Value.Should().Be(3);
+            settings.ShowLowDelveDynamiteWarning.Value.Should().BeTrue();
+            settings.LowDelveDynamiteThreshold.Value.Should().Be(3);
+        }
+
         private static OverlayRenderContext CreateRenderContext(DeferredDrawQueue queue)
             => new(
                 Settings: new ClickItSettings(),

@@ -25,6 +25,8 @@ namespace ClickIt.Features.Click
         private readonly Func<string?>? _getHarvestCurrencyWarning;
         private long _lastInventoryFullBlockedTimestampMs;
         private long _lastProcessedInventoryDebugSequence = long.MinValue;
+        private sealed record DelveSupplies(int? Flares, int? Dynamite, long Timestamp);
+        private DelveSupplies? _delveSupplies;
 
         public InventoryFullWarningOverlay(AreaService? areaService, Func<InventoryDebugSnapshot>? getLatestInventoryDebug,
             Func<string?>? getHarvestCurrencyWarning = null)
@@ -46,7 +48,7 @@ namespace ClickIt.Features.Click
 
         public RenderSection Section => RenderSection.InventoryFullWarning;
 
-        public OverlayRefreshPolicy RefreshPolicy => OverlayRefreshPolicy.None;
+        public OverlayRefreshPolicy RefreshPolicy => OverlayRefreshPolicy.Throttled(250);
 
         public TimingChannel? RefreshTimingChannel => null;
 
@@ -57,6 +59,38 @@ namespace ClickIt.Features.Click
 
         public void Refresh(OverlayRefreshContext ctx)
         {
+            int? flares = null;
+            int? dynamite = null;
+            try
+            {
+                if (ctx.Settings.ShowLowDelveFlaresWarning.Value || ctx.Settings.ShowLowDelveDynamiteWarning.Value)
+                {
+                    object? skillBar = ctx.GameController?.IngameState?.IngameUi?.SkillBar;
+                    if (ctx.Settings.ShowLowDelveFlaresWarning.Value)
+                        flares = ReadDelveSupplyCount(skillBar, 2);
+                    if (ctx.Settings.ShowLowDelveDynamiteWarning.Value)
+                        dynamite = ReadDelveSupplyCount(skillBar, 3);
+                }
+            }
+            catch
+            {
+                // Unavailable UI must clear old counts, including during area transitions.
+                flares = null;
+                dynamite = null;
+            }
+            Volatile.Write(ref _delveSupplies, new DelveSupplies(flares, dynamite, Environment.TickCount64));
+        }
+
+        internal static int? ReadDelveSupplyCount(object? skillBar, int supplyIndex)
+        {
+            if (!DynamicAccess.TryGetChildAtIndex(skillBar, 13, out object? container)
+                || !DynamicAccess.TryGetChildAtIndex(container, 0, out object? row)
+                || !DynamicAccess.TryGetChildAtIndex(row, supplyIndex, out object? supply)
+                || !DynamicAccess.TryGetChildAtIndex(supply, 1, out object? label)
+                || !DynamicAccess.TryReadString(label, static element => element.Text, out string text))
+                return null;
+            int slash = text.IndexOf('/');
+            return slash > 0 && int.TryParse(text.AsSpan(0, slash).Trim(), out int count) && count >= 0 ? count : null;
         }
 
         public void Draw(OverlayRenderContext ctx)
@@ -75,7 +109,13 @@ namespace ClickIt.Features.Click
             bool showInventoryWarning = ShouldShowInventoryFullWarning(now, _lastInventoryFullBlockedTimestampMs);
             string? harvestWarning = _getHarvestCurrencyWarning?.Invoke();
             string? essenceWarning = EssenceCurrencyWarning?.Invoke();
-            if (!showInventoryWarning && harvestWarning == null && essenceWarning == null)
+            DelveSupplies? supplies = Volatile.Read(ref _delveSupplies);
+            bool fresh = supplies != null && now - supplies.Timestamp is >= 0 and <= 1000;
+            int? flareCount = fresh && ctx.Settings.ShowLowDelveFlaresWarning.Value ? supplies!.Flares : null;
+            int? dynamiteCount = fresh && ctx.Settings.ShowLowDelveDynamiteWarning.Value ? supplies!.Dynamite : null;
+            bool showFlareWarning = IsLowDelveSupply(flareCount, ctx.Settings.LowDelveFlaresThreshold.Value);
+            bool showDynamiteWarning = IsLowDelveSupply(dynamiteCount, ctx.Settings.LowDelveDynamiteThreshold.Value);
+            if (!showInventoryWarning && harvestWarning == null && essenceWarning == null && !showFlareWarning && !showDynamiteWarning)
                 return;
 
             RectangleF windowRect = ctx.WindowArea;
@@ -102,7 +142,19 @@ namespace ClickIt.Features.Click
 
                 EnqueueBoldWarningText(ctx.DrawQueue, pos + new Vector2(0, offsetY), essenceWarning, 32);
             }
+
+            float supplyOffset = (showInventoryWarning ? InventoryFullWarningTextSize : 0f)
+                + (harvestWarning != null ? 32f : 0f) + (essenceWarning != null ? 32f : 0f);
+            if (showFlareWarning)
+            {
+                EnqueueBoldWarningText(ctx.DrawQueue, pos + new Vector2(0, supplyOffset), $"Low Flares: {flareCount}", 32);
+                supplyOffset += 32f;
+            }
+            if (showDynamiteWarning)
+                EnqueueBoldWarningText(ctx.DrawQueue, pos + new Vector2(0, supplyOffset), $"Low Dynamite: {dynamiteCount}", 32);
         }
+
+        internal static bool IsLowDelveSupply(int? count, int threshold) => count.HasValue && count.Value < SystemMath.Clamp(threshold, 1, 10);
 
         private static void EnqueueBoldWarningText(DeferredDrawQueue drawQueue, Vector2 centerPosition, string text, int textSize)
         {
