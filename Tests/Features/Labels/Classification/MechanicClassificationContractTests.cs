@@ -78,6 +78,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
         [DataRow("Metadata/Chests/DelveChests/DelveChestSpecialWeapon", "Special Weapon", MechanicIds.DelveSpecialWeapon)]
         [DataRow("Metadata/Chests/DelveChests/DelveChestSpecialTrinket", "Special Trinket", MechanicIds.DelveSpecialTrinket)]
         [DataRow("Metadata/Chests/DelveChests/DynamiteCurrency", "Currency", MechanicIds.DelveCurrency)]
+        [DataRow("Metadata/Chests/DelveChests/DelveChestCurrencyMaps", "Currency Maps", MechanicIds.DelveCurrency)]
         [DataRow("Metadata/Chests/DelveChest/UnknownCurrency", "Currency", MechanicIds.DelveCurrency)]
         [DataRow("Metadata/Chests/DelveChest/UnknownResonator", "Resonator", MechanicIds.DelveResonatorStash)]
         [DataRow("Metadata/Chests/DelveChests/SomeMapChest", "Maps", MechanicIds.DelveMaps)]
