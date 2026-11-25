@@ -256,7 +256,7 @@ namespace ClickIt.Tests.Features.Click
                 _ => true,
                 (_, _) => true,
                 _ => { },
-                (_, _) => { },
+                (_, _, _) => { },
                 () => { },
                 () => false,
                 _ => { });

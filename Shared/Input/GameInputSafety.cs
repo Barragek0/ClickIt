@@ -2,6 +2,9 @@ namespace ClickIt.Shared.Input
 {
     internal static class GameInputSafety
     {
+        internal static bool ShouldBlockInput(bool isPaused, bool allowWhenPaused)
+            => isPaused && !allowWhenPaused;
+
         internal static bool IsPaused(GameController? gameController)
         {
             if (gameController == null

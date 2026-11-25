@@ -49,7 +49,7 @@ namespace ClickIt.Tests.Features.Click
                 _ => true,
                 (_, _) => true,
                 _ => { },
-                (_, _) => { },
+                (_, _, _) => { },
                 () => { },
                 () => false,
                 debugEvents.Add));
@@ -174,7 +174,8 @@ namespace ClickIt.Tests.Features.Click
                 new Vector2(100f, 200f),
                 "outside",
                 "reject",
-                "click");
+                "click",
+                false);
 
             result.Should().BeFalse();
         }
@@ -195,7 +196,8 @@ namespace ClickIt.Tests.Features.Click
                 new Vector2(100f, 200f),
                 "outside",
                 "reject",
-                "click");
+                "click",
+                false);
 
             result.Should().BeFalse();
             logs.Should().ContainSingle().Which.Should().Contain("reject");
@@ -205,11 +207,16 @@ namespace ClickIt.Tests.Features.Click
         public void TryClickElement_ReturnsTrue_WhenClickExecutes()
         {
             List<(Vector2 ClickPosition, Element? ClickElement)> clicks = [];
+            bool? allowWhenPaused = null;
             int clickIntervals = 0;
             UltimatumAutomationService service = CreateService(
                 ensureCursorInsideGameWindowForClick: static _ => true,
                 isClickableInEitherSpace: static (_, _) => true,
-                performClick: (clickPosition, element) => clicks.Add((clickPosition, element)),
+                performClick: (clickPosition, element, allowPaused) =>
+                {
+                    clicks.Add((clickPosition, element));
+                    allowWhenPaused = allowPaused;
+                },
                 recordClickInterval: () => clickIntervals++);
             TestOptionElement element = new(new RectangleF(10f, 20f, 30f, 40f));
 
@@ -220,12 +227,14 @@ namespace ClickIt.Tests.Features.Click
                 new Vector2(100f, 200f),
                 "outside",
                 "reject",
-                "click");
+                "click",
+                false);
 
             result.Should().BeTrue();
             clicks.Should().ContainSingle();
             clicks[0].ClickPosition.Should().Be(new Vector2(125f, 240f));
             clicks[0].ClickElement.Should().BeSameAs(element);
+            allowWhenPaused.Should().BeFalse("the initial Ultimatum choice path must remain blocked while paused");
             clickIntervals.Should().Be(1);
         }
 
@@ -263,7 +272,7 @@ namespace ClickIt.Tests.Features.Click
             UltimatumAutomationService service = CreateService(
                 ensureCursorInsideGameWindowForClick: static _ => true,
                 isClickableInEitherSpace: static (_, _) => true,
-                performClick: (clickPosition, element) => clicks.Add((clickPosition, element)),
+                performClick: (clickPosition, element, _) => clicks.Add((clickPosition, element)),
                 recordClickInterval: () => clickIntervals++);
 
             bool result = InvokePrivate<bool>(service, "TryClickBeginButton", label, new Vector2(100f, 200f));
@@ -464,7 +473,7 @@ namespace ClickIt.Tests.Features.Click
                 publishUltimatumDebug: debugEvents.Add,
                 ensureCursorInsideGameWindowForClick: static _ => true,
                 isClickableInEitherSpace: (_, _) => clickableCalls++ == 0,
-                performClick: (clickPosition, element) => clicks.Add((clickPosition, element)));
+                performClick: (clickPosition, element, _) => clicks.Add((clickPosition, element)));
 
             bool result = service.TryClickPreferredModifier(label, new Vector2(100f, 200f));
 
@@ -491,7 +500,7 @@ namespace ClickIt.Tests.Features.Click
                 publishUltimatumDebug: debugEvents.Add,
                 ensureCursorInsideGameWindowForClick: static _ => true,
                 isClickableInEitherSpace: static (_, _) => true,
-                performClick: (clickPosition, element) => clicks.Add((clickPosition, element)),
+                performClick: (clickPosition, element, _) => clicks.Add((clickPosition, element)),
                 recordClickInterval: static () => { });
 
             bool result = service.TryClickPreferredModifier(label, new Vector2(100f, 200f));
@@ -562,7 +571,7 @@ namespace ClickIt.Tests.Features.Click
                 shouldCaptureUltimatumDebug: static () => true,
                 ensureCursorInsideGameWindowForClick: static _ => true,
                 isClickableInEitherSpace: static (_, _) => true,
-                performClick: (clickPosition, element) => clicks.Add((clickPosition, element)));
+                performClick: (clickPosition, element, _) => clicks.Add((clickPosition, element)));
 
             bool result = service.TryClickPreferredModifier(label, new Vector2(100f, 200f));
 
@@ -584,7 +593,7 @@ namespace ClickIt.Tests.Features.Click
             Action<UltimatumDebugEvent>? publishUltimatumDebug = null,
             Func<string, bool>? ensureCursorInsideGameWindowForClick = null,
             Func<Vector2, string, bool>? isClickableInEitherSpace = null,
-            Action<Vector2, Element?>? performClick = null,
+            Action<Vector2, Element?, bool>? performClick = null,
             Action? recordClickInterval = null,
             Func<bool>? shouldCaptureUltimatumDebug = null)
         {
@@ -596,7 +605,7 @@ namespace ClickIt.Tests.Features.Click
             publishUltimatumDebug ??= static _ => { };
             ensureCursorInsideGameWindowForClick ??= static _ => true;
             isClickableInEitherSpace ??= static (_, _) => true;
-            performClick ??= static (_, _) => { };
+            performClick ??= static (_, _, _) => { };
             recordClickInterval ??= static () => { };
             shouldCaptureUltimatumDebug ??= static () => false;
 

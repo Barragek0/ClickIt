@@ -19,7 +19,7 @@ namespace ClickIt.Tests.Features.Click
                 _ => false,
                 (_, _) => true,
                 _ => { },
-                (_, _) => clicked = true,
+                (_, _, _) => clicked = true,
                 () => recorded = true);
 
             result.Should().BeFalse();
@@ -42,7 +42,7 @@ namespace ClickIt.Tests.Features.Click
                 _ => true,
                 (_, _) => false,
                 msg => debugLine = msg,
-                (_, _) => { },
+                (_, _, _) => { },
                 () => { });
 
             result.Should().BeFalse();
@@ -59,7 +59,7 @@ namespace ClickIt.Tests.Features.Click
             bool result = UltimatumElementClickExecutor.TryClickElement(
                 new RectangleF(10, 10, 100, 40), null!, new Vector2(100, 200),
                 "outside", "reject", "click", _ => true, (point, _) => point.X < 40,
-                _ => { }, (point, _) => clicked = point, () => { });
+                _ => { }, (point, _, _) => clicked = point, () => { });
             result.Should().BeTrue();
             clicked.X.Should().BeInRange(110, 140);
             clicked.Y.Should().BeInRange(210, 250);
@@ -81,12 +81,36 @@ namespace ClickIt.Tests.Features.Click
                 _ => true,
                 (_, _) => true,
                 _ => { },
-                (pos, _) => clickedPos = pos,
+                (pos, _, _) => clickedPos = pos,
                 () => recorded = true);
 
             result.Should().BeTrue();
             clickedPos.Should().Be(new Vector2(125, 240));
             recorded.Should().BeTrue();
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void TryClickElement_ForwardsPausedOverride_WhenEnabledForPanelInteraction()
+        {
+            bool? forwardedPauseOverride = null;
+
+            bool result = UltimatumElementClickExecutor.TryClickElement(
+                new RectangleF(10, 20, 30, 40),
+                null!,
+                new Vector2(100, 200),
+                "outside-window",
+                "reject",
+                "click",
+                _ => true,
+                (_, _) => true,
+                _ => { },
+                (_, _, allowWhenPaused) => forwardedPauseOverride = allowWhenPaused,
+                () => { },
+                allowWhenPaused: true);
+
+            result.Should().BeTrue();
+            forwardedPauseOverride.Should().BeTrue();
         }
     }
 }

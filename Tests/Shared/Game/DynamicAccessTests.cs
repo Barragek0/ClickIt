@@ -156,6 +156,10 @@ namespace ClickIt.Tests.Shared.Game
         [TestCategory("Regression")]
         public void GameInputSafety_ReportsPausedState_AndFailsClosedWhenUnavailable()
         {
+            GameInputSafety.ShouldBlockInput(isPaused: true, allowWhenPaused: false).Should().BeTrue();
+            GameInputSafety.ShouldBlockInput(isPaused: true, allowWhenPaused: true).Should().BeFalse();
+            GameInputSafety.ShouldBlockInput(isPaused: false, allowWhenPaused: false).Should().BeFalse();
+
             GameInputSafety.TryReadPausedState(new PublicDynamicPausedStateFixture { IsPaused = true }, out bool paused).Should().BeTrue();
             paused.Should().BeTrue();
 

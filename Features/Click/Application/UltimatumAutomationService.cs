@@ -8,7 +8,7 @@ namespace ClickIt.Features.Click.Application
         Func<string, bool> EnsureCursorInsideGameWindowForClick,
         Func<Vector2, string, bool> IsClickableInEitherSpace,
         Action<Func<string>> DebugLog,
-        Action<Vector2, Element?> PerformClick,
+        Action<Vector2, Element?, bool> PerformClick,
         Action RecordClickInterval,
         Func<bool> ShouldCaptureUltimatumDebug,
         Action<UltimatumDebugEvent> PublishUltimatumDebug);
@@ -195,7 +195,7 @@ namespace ClickIt.Features.Click.Application
             return clickedBeginButton;
         }
 
-        private bool TryClickElement(Element element, Vector2 windowTopLeft, string outsideWindowLog, string rejectedClickableAreaLogPrefix, string clickLog)
+        private bool TryClickElement(Element element, Vector2 windowTopLeft, string outsideWindowLog, string rejectedClickableAreaLogPrefix, string clickLog, bool allowWhenPaused = false)
         {
             RectangleF rect = element.GetClientRect();
 
@@ -209,8 +209,9 @@ namespace ClickIt.Features.Click.Application
                 _dependencies.EnsureCursorInsideGameWindowForClick,
                 _dependencies.IsClickableInEitherSpace,
                 message => _dependencies.DebugLog(() => message),
-                (clickPos, clickElement) => _dependencies.PerformClick(clickPos, clickElement),
-                _dependencies.RecordClickInterval);
+                (clickPos, clickElement, allowPaused) => _dependencies.PerformClick(clickPos, clickElement, allowPaused),
+                _dependencies.RecordClickInterval,
+                allowWhenPaused);
         }
 
         private bool PublishInitialFailure(string stage, string notes, int candidateCount = 0)

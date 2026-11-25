@@ -24,9 +24,10 @@ namespace ClickIt.Features.Click.Interaction
             bool allowWhenHotkeyInactive = false,
             bool avoidCursorMove = false,
             IntervalKind interval = IntervalKind.Click,
-            Func<Element?, bool>? validateSettledHover = null)
+            Func<Element?, bool>? validateSettledHover = null,
+            bool allowWhenPaused = false)
         {
-            if (GameInputSafety.IsPaused(gameController))
+            if (IsPausedInputBlocked(gameController, allowWhenPaused))
                 return false;
 
             _clickSleepStartMs = ClickPipelineTiming.ReadSleepTimeMs();
@@ -41,7 +42,7 @@ namespace ClickIt.Features.Click.Interaction
                 "InteractionExecutor: UIHover verification failed for current mode. Skipping click.",
                 logExpectedElementMissing: true,
                 out Stopwatch swTotal,
-                out SystemDrawingPoint before, validateSettledHover))
+                out SystemDrawingPoint before, validateSettledHover, allowWhenPaused))
                 return false;
 
             if (validateSettledHover != null)
@@ -53,20 +54,20 @@ namespace ClickIt.Features.Click.Interaction
                         || ShouldSkipClickWhenNotLazyAndHotkeyInactive(
                             _settings?.LazyMode?.Value == true, _isClickHotkeyActive(), allowWhenHotkeyInactive))
                     {
-                        RestoreCursorIfLazyMode(before, gameController);
+                        RestoreCursorIfLazyMode(before, gameController, allowWhenPaused);
                         swTotal.Stop();
                         return false;
                     }
                 }
                 catch
                 {
-                    RestoreCursorIfLazyMode(before, gameController);
+                    RestoreCursorIfLazyMode(before, gameController, allowWhenPaused);
                     swTotal.Stop();
                     return false;
                 }
             }
 
-            if (GameInputSafety.IsPaused(gameController))
+            if (IsPausedInputBlocked(gameController, allowWhenPaused))
                 return false;
 
             if (_settings?.LeftHanded?.Value == true)
@@ -77,7 +78,7 @@ namespace ClickIt.Features.Click.Interaction
             _performanceMonitor.MarkInterval(interval);
             _performanceMonitor.RecordClickDispatch();
             ClickPipelineTiming.Sleep(10);
-            RestoreCursorIfLazyMode(before, gameController);
+            RestoreCursorIfLazyMode(before, gameController, allowWhenPaused);
             MarkLazyModeClickCompleted();
             Interlocked.Increment(ref _successfulClickSequence);
             // Exclude the safety sleeps (hover settle + post-click settle) so the recorded click cost is the true processing time, not the deliberate wait time.
@@ -203,10 +204,11 @@ namespace ClickIt.Features.Click.Interaction
             bool logExpectedElementMissing,
             out Stopwatch swTotal,
             out SystemDrawingPoint before,
-            Func<Element?, bool>? validateSettledHover = null)
+            Func<Element?, bool>? validateSettledHover = null,
+            bool allowWhenPaused = false)
         {
             swTotal = Stopwatch.StartNew();
-            if (GameInputSafety.IsPaused(gameController))
+            if (IsPausedInputBlocked(gameController, allowWhenPaused))
             {
                 before = default;
                 swTotal.Stop();
@@ -239,7 +241,7 @@ namespace ClickIt.Features.Click.Interaction
 
             if (!avoidCursorMove && !Mouse.DisableNativeInput)
             {
-                if (GameInputSafety.IsPaused(gameController))
+                if (IsPausedInputBlocked(gameController, allowWhenPaused))
                 {
                     swTotal.Stop();
                     return false;
@@ -250,7 +252,7 @@ namespace ClickIt.Features.Click.Interaction
             int settleMs = _settings?.LazyMode?.Value == true ? _settings.LazyModeUIHoverSleep.Value : 10;
             ClickPipelineTiming.Sleep(validateSettledHover == null ? settleMs : SystemMath.Max(settleMs, 60));
 
-            if (GameInputSafety.IsPaused(gameController))
+            if (IsPausedInputBlocked(gameController, allowWhenPaused))
             {
                 swTotal.Stop();
                 return false;
@@ -265,14 +267,14 @@ namespace ClickIt.Features.Click.Interaction
                     if (state == null || !validateSettledHover(state.UIHoverElement)
                         || ShouldSkipClickWhenNotLazyAndHotkeyInactive(_settings?.LazyMode?.Value == true, _isClickHotkeyActive(), allowWhenHotkeyInactive))
                     {
-                        RestoreCursorIfLazyMode(before, gameController);
+                        RestoreCursorIfLazyMode(before, gameController, allowWhenPaused);
                         swTotal.Stop();
                         return false;
                     }
                 }
                 catch
                 {
-                    RestoreCursorIfLazyMode(before, gameController);
+                    RestoreCursorIfLazyMode(before, gameController, allowWhenPaused);
                     swTotal.Stop();
                     return false;
                 }
@@ -288,7 +290,7 @@ namespace ClickIt.Features.Click.Interaction
             if (ShouldSkipClickDueToHoverMismatch(lazyModeEnabled, verifyUiHoverWhenNotLazy, expectedAddress, hoverAddress, forceUiHoverVerification))
             {
                 _errorHandler?.LogMessage(true, true, hoverMismatchMessage, 5);
-                RestoreCursorIfLazyMode(before, gameController);
+                RestoreCursorIfLazyMode(before, gameController, allowWhenPaused);
                 swTotal.Stop();
                 return false;
             }
@@ -322,9 +324,12 @@ namespace ClickIt.Features.Click.Interaction
                 _lastClickTimestampMs = Environment.TickCount64;
         }
 
-        private void RestoreCursorIfLazyMode(SystemDrawingPoint before, GameController? gameController)
+        private static bool IsPausedInputBlocked(GameController? gameController, bool allowWhenPaused)
+            => GameInputSafety.ShouldBlockInput(GameInputSafety.IsPaused(gameController), allowWhenPaused);
+
+        private void RestoreCursorIfLazyMode(SystemDrawingPoint before, GameController? gameController, bool allowWhenPaused = false)
         {
-            if (!GameInputSafety.IsPaused(gameController) && _settings?.LazyMode?.Value == true && _settings.RestoreCursorInLazyMode?.Value == true)
+            if (!IsPausedInputBlocked(gameController, allowWhenPaused) && _settings?.LazyMode?.Value == true && _settings.RestoreCursorInLazyMode?.Value == true)
                 try
                 {
                     int restoreDelayMs = _settings?.LazyModeRestoreCursorDelayMs?.Value ?? 10;
@@ -334,7 +339,7 @@ namespace ClickIt.Features.Click.Interaction
                     if (!LabelClickPointSearch.TryValidateAutomationScreenPoint(beforeVec, gameController, out _))
                         return;
 
-                    if (!Mouse.DisableNativeInput && !GameInputSafety.IsPaused(gameController))
+                    if (!Mouse.DisableNativeInput && !IsPausedInputBlocked(gameController, allowWhenPaused))
                         Input.SetCursorPos(new NumVector2(beforeVec.X, beforeVec.Y));
 
                     _errorHandler?.LogMessage(true, true, $"InteractionExecutor: Restored cursor to {before}", 5);

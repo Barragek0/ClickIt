@@ -152,6 +152,33 @@ namespace ClickIt.Tests.Shared.Input
                 isGamePaused: true).Should().BeFalse();
         }
 
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void ShouldAllowClickWithoutInputState_CanOverridePauseWhileRetainingOtherGates()
+        {
+            InputHandler.ShouldAllowClickWithoutInputState(
+                isPoeActive: true,
+                isPanelOpen: false,
+                isInTownOrHideout: false,
+                isInToggleItemsPostClickBlockWindow: false,
+                isEscapeState: false,
+                uiBlockingReason: null,
+                blockOnOpenPanels: false,
+                isGamePaused: true,
+                allowWhenPaused: true).Should().BeTrue();
+
+            InputHandler.ShouldAllowClickWithoutInputState(
+                isPoeActive: true,
+                isPanelOpen: false,
+                isInTownOrHideout: false,
+                isInToggleItemsPostClickBlockWindow: false,
+                isEscapeState: false,
+                uiBlockingReason: "Chat is open.",
+                blockOnOpenPanels: false,
+                isGamePaused: true,
+                allowWhenPaused: true).Should().BeFalse();
+        }
+
         [DataTestMethod]
         [DataRow(true, false, false, false, null, true)]
         [DataRow(false, false, false, false, null, false)]

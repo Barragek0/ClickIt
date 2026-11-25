@@ -368,7 +368,7 @@ namespace ClickIt.Tests.Features.Click.Interaction
                 () => true,
                 new ErrorHandler(settings, static (_, _) => { }, (message, _) => messages.Add(message)));
 
-            InvokePrivateVoid(executor, "RestoreCursorIfLazyMode", [new System.Drawing.Point(10, 20), null]);
+            InvokePrivateVoid(executor, "RestoreCursorIfLazyMode", [new System.Drawing.Point(10, 20), null, false]);
 
             messages.Should().BeEmpty();
         }
@@ -388,7 +388,7 @@ namespace ClickIt.Tests.Features.Click.Interaction
                 () => true,
                 new ErrorHandler(settings, static (_, _) => { }, (message, _) => messages.Add(message)));
 
-            InvokePrivateVoid(executor, "RestoreCursorIfLazyMode", [new System.Drawing.Point(10, 20), null]);
+            InvokePrivateVoid(executor, "RestoreCursorIfLazyMode", [new System.Drawing.Point(10, 20), null, false]);
 
             messages.Should().BeEmpty();
         }
@@ -408,7 +408,7 @@ namespace ClickIt.Tests.Features.Click.Interaction
                 () => true,
                 new ErrorHandler(settings, static (_, _) => { }, (message, _) => messages.Add(message)));
 
-            InvokePrivateVoid(executor, "RestoreCursorIfLazyMode", [new System.Drawing.Point(-5000, -5000), null]);
+            InvokePrivateVoid(executor, "RestoreCursorIfLazyMode", [new System.Drawing.Point(-5000, -5000), null, false]);
 
             messages.Should().BeEmpty();
         }
@@ -440,7 +440,8 @@ namespace ClickIt.Tests.Features.Click.Interaction
                 logExpectedElementMissing,
                 null,
                 null,
-                null
+                null,
+                false
             ];
 
             bool result = InvokePrivate<bool>(executor, "TryPrepareClickExecution", args);

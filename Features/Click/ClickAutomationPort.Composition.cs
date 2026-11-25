@@ -53,7 +53,7 @@ namespace ClickIt.Features.Click
             ClickAutomationSupport.EnsureCursorInsideGameWindowForClick,
             ClickAutomationSupport.IsClickableInEitherSpace,
             ClickAutomationSupport.DebugLog,
-            (clickPos, clickElement) => { LockedInteractionDispatcher.PerformClick(clickPos, clickElement, _gameController); },
+            (clickPos, clickElement, allowWhenPaused) => { LockedInteractionDispatcher.PerformClick(clickPos, clickElement, _gameController, allowWhenPaused: allowWhenPaused); },
             _performanceMonitor.RecordClickInterval,
             ClickAutomationSupport.ShouldCaptureUltimatumDebug,
             ClickAutomationSupport.PublishUltimatumEvent));

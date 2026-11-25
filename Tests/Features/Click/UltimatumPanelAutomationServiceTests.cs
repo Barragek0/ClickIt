@@ -25,7 +25,7 @@ namespace ClickIt.Tests.Features.Click
                     gruelingDebugInvoked = true;
                     return true;
                 },
-                tryClickElement: (_, _, _, _, _) =>
+                tryClickElement: (_, _, _, _, _, _) =>
                 {
                     clickInvoked = true;
                     return false;
@@ -65,7 +65,7 @@ namespace ClickIt.Tests.Features.Click
                     gruelingDebugInvoked = true;
                     return true;
                 },
-                tryClickElement: (_, _, _, _, _) =>
+                tryClickElement: (_, _, _, _, _, _) =>
                 {
                     clickInvoked = true;
                     return true;
@@ -168,6 +168,7 @@ namespace ClickIt.Tests.Features.Click
         {
             List<UltimatumDebugEvent> debugEvents = [];
             List<Element> clickedElements = [];
+            bool? allowWhenPaused = null;
             var settings = new ClickItSettings();
             settings.ClickUltimatumChoices.Value = true;
             UltimatumPanel panel = (UltimatumPanel)RuntimeHelpers.GetUninitializedObject(typeof(UltimatumPanel));
@@ -177,9 +178,10 @@ namespace ClickIt.Tests.Features.Click
             UltimatumPanelAutomationService service = CreateService(
                 settings: settings,
                 publishUltimatumDebug: debugEvents.Add,
-                tryClickElement: (element, _, _, _, _) =>
+                tryClickElement: (element, _, _, _, _, allowPaused) =>
                 {
                     clickedElements.Add(element);
+                    allowWhenPaused = allowPaused;
                     return true;
                 },
                 panelRuntimeSeam: new StubUltimatumPanelRuntimeSeam
@@ -193,6 +195,7 @@ namespace ClickIt.Tests.Features.Click
 
             result.Should().BeTrue();
             clickedElements.Should().Equal(choiceElement, confirmElement);
+            allowWhenPaused.Should().BeTrue();
             debugEvents.Should().ContainSingle();
             debugEvents[0].Stage.Should().Be("PanelHandled");
             debugEvents[0].ClickedChoice.Should().BeTrue();
@@ -213,7 +216,7 @@ namespace ClickIt.Tests.Features.Click
             UltimatumPanelAutomationService service = CreateService(
                 settings: settings,
                 publishUltimatumDebug: debugEvents.Add,
-                tryClickElement: (element, _, _, _, _) => element != choiceElement,
+                tryClickElement: (element, _, _, _, _, _) => element != choiceElement,
                 panelRuntimeSeam: new StubUltimatumPanelRuntimeSeam
                 {
                     VisiblePanel = panel,
@@ -247,7 +250,7 @@ namespace ClickIt.Tests.Features.Click
                 settings: settings,
                 publishUltimatumDebug: debugEvents.Add,
                 isGruelingGauntletPassiveActive: static () => true,
-                tryClickElement: (element, _, _, _, _) =>
+                tryClickElement: (element, _, _, _, _, _) =>
                 {
                     clickedElements.Add(element);
                     return true;
@@ -287,7 +290,7 @@ namespace ClickIt.Tests.Features.Click
                 settings: settings,
                 publishUltimatumDebug: debugEvents.Add,
                 isGruelingGauntletPassiveActive: static () => true,
-                tryClickElement: (_, _, _, _, _) =>
+                tryClickElement: (_, _, _, _, _, _) =>
                 {
                     clickInvoked = true;
                     return true;
@@ -324,7 +327,7 @@ namespace ClickIt.Tests.Features.Click
                 settings: settings,
                 publishUltimatumDebug: debugEvents.Add,
                 isGruelingGauntletPassiveActive: static () => true,
-                tryClickElement: static (_, _, _, _, _) => false,
+                tryClickElement: static (_, _, _, _, _, _) => false,
                 panelRuntimeSeam: new StubUltimatumPanelRuntimeSeam
                 {
                     VisiblePanel = panel,
@@ -356,7 +359,7 @@ namespace ClickIt.Tests.Features.Click
                 settings: settings,
                 publishUltimatumDebug: debugEvents.Add,
                 isGruelingGauntletPassiveActive: static () => true,
-                tryClickElement: (element, _, _, _, _) =>
+                tryClickElement: (element, _, _, _, _, _) =>
                 {
                     clickedElements.Add(element);
                     return true;
@@ -393,7 +396,7 @@ namespace ClickIt.Tests.Features.Click
                 settings: settings,
                 publishUltimatumDebug: debugEvents.Add,
                 isGruelingGauntletPassiveActive: static () => true,
-                tryClickElement: static (_, _, _, _, _) => false,
+                tryClickElement: static (_, _, _, _, _, _) => false,
                 panelRuntimeSeam: new StubUltimatumPanelRuntimeSeam
                 {
                     VisiblePanel = panel,
@@ -421,7 +424,7 @@ namespace ClickIt.Tests.Features.Click
 
             UltimatumPanelAutomationService service = CreateService(
                 isGruelingGauntletPassiveActive: static () => true,
-                tryClickElement: (_, _, _, _, _) =>
+                tryClickElement: (_, _, _, _, _, _) =>
                 {
                     clickInvoked = true;
                     return true;
@@ -457,7 +460,7 @@ namespace ClickIt.Tests.Features.Click
             bool clickInvoked = false;
 
             UltimatumPanelAutomationService service = CreateService(
-                tryClickElement: (_, _, _, _, _) =>
+                tryClickElement: (_, _, _, _, _, _) =>
                 {
                     clickInvoked = true;
                     return true;
@@ -480,7 +483,7 @@ namespace ClickIt.Tests.Features.Click
             bool clickInvoked = false;
 
             UltimatumPanelAutomationService service = CreateService(
-                tryClickElement: (_, _, _, _, _) =>
+                tryClickElement: (_, _, _, _, _, _) =>
                 {
                     clickInvoked = true;
                     return true;
@@ -498,7 +501,7 @@ namespace ClickIt.Tests.Features.Click
             GameController? gameController = null,
             bool useNullGameController = false,
             Action<UltimatumDebugEvent>? publishUltimatumDebug = null,
-            Func<Element, Vector2, string, string, string, bool>? tryClickElement = null,
+            Func<Element, Vector2, string, string, string, bool, bool>? tryClickElement = null,
             Func<bool>? isGruelingGauntletPassiveActive = null,
             Func<bool>? getGruelingGauntletDetectionForDebug = null,
             IUltimatumPanelRuntimeSeam? panelRuntimeSeam = null)
@@ -507,7 +510,7 @@ namespace ClickIt.Tests.Features.Click
             if (!useNullGameController)
                 gameController ??= ExileCoreOpaqueFactory.CreateOpaqueGameController();
             publishUltimatumDebug ??= static _ => { };
-            tryClickElement ??= static (_, _, _, _, _) => false;
+            tryClickElement ??= static (_, _, _, _, _, _) => false;
             isGruelingGauntletPassiveActive ??= static () => false;
             getGruelingGauntletDetectionForDebug ??= static () => false;
 
@@ -518,7 +521,7 @@ namespace ClickIt.Tests.Features.Click
                 _ => true,
                 (_, _) => true,
                 _ => { },
-                (_, _) => { },
+                (_, _, _) => { },
                 () => { },
                 () => false,
                 publishUltimatumDebug);

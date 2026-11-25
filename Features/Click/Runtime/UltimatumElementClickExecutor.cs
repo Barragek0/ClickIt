@@ -12,8 +12,9 @@ namespace ClickIt.Features.Click.Runtime
             Func<string, bool> ensureCursorInsideGameWindowForClick,
             Func<Vector2, string, bool> isClickableInEitherSpace,
             Action<string> debugLog,
-            Action<Vector2, Element> performLockedClick,
-            Action recordClickInterval)
+            Action<Vector2, Element, bool> performLockedClick,
+            Action recordClickInterval,
+            bool allowWhenPaused = false)
         {
             if (!ensureCursorInsideGameWindowForClick(outsideWindowLog))
                 return false;
@@ -28,7 +29,7 @@ namespace ClickIt.Features.Click.Runtime
             Vector2 clickPos = clientPoint + windowTopLeft;
             debugLog($"{clickLog} {clickPos}");
 
-            performLockedClick(clickPos, element);
+            performLockedClick(clickPos, element, allowWhenPaused);
             recordClickInterval();
             return true;
         }

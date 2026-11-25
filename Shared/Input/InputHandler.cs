@@ -28,12 +28,18 @@ namespace ClickIt.Shared.Input
             => _toggleItemsController.GetToggleItemsPostClickBlockMs();
 
         public bool CanClick(GameController gameController, bool hasLazyModeRestrictedItemsOnScreen = false, bool isRitualActive = false)
+            => CanClick(gameController, hasLazyModeRestrictedItemsOnScreen, isRitualActive, allowWhenPaused: false);
+
+        internal bool CanClickForPausedUiInteractions(GameController gameController, bool hasLazyModeRestrictedItemsOnScreen, bool isRitualActive)
+            => CanClick(gameController, hasLazyModeRestrictedItemsOnScreen, isRitualActive, allowWhenPaused: true);
+
+        private bool CanClick(GameController gameController, bool hasLazyModeRestrictedItemsOnScreen, bool isRitualActive, bool allowWhenPaused)
         {
             if (gameController == null)
                 return false;
             if (!IsClickKeyStateActive(hasLazyModeRestrictedItemsOnScreen))
                 return false;
-            return TryGetClickFailureReason(gameController, hasLazyModeRestrictedItemsOnScreen, isRitualActive, out _);
+            return TryGetClickFailureReason(gameController, hasLazyModeRestrictedItemsOnScreen, isRitualActive, out _, allowWhenPaused);
         }
 
         internal bool CanPerformBackgroundAutomation(GameController gameController)
@@ -69,6 +75,14 @@ namespace ClickIt.Shared.Input
             bool hasLazyModeRestrictedItemsOnScreen,
             bool isRitualActive,
             out string? failureReason)
+            => TryGetClickFailureReason(gameController, hasLazyModeRestrictedItemsOnScreen, isRitualActive, out failureReason, allowWhenPaused: false);
+
+        private bool TryGetClickFailureReason(
+            GameController gameController,
+            bool hasLazyModeRestrictedItemsOnScreen,
+            bool isRitualActive,
+            out string? failureReason,
+            bool allowWhenPaused)
         {
             failureReason = null;
             bool keyState = IsClickKeyStateActive(hasLazyModeRestrictedItemsOnScreen);
@@ -91,7 +105,8 @@ namespace ClickIt.Shared.Input
                     isEscapeState,
                     uiBlockingReason,
                     blockOnOpenPanels,
-                    isGamePaused)
+                    isGamePaused,
+                    allowWhenPaused)
                 && (!isRitualActive || clickHotkeyHeld);
 
             if (!allowed)
@@ -103,7 +118,7 @@ namespace ClickIt.Shared.Input
                     isEscapeState,
                     uiBlockingReason,
                     blockOnOpenPanels,
-                    isGamePaused);
+                    GameInputSafety.ShouldBlockInput(isGamePaused, allowWhenPaused));
 
             return allowed;
         }
@@ -241,6 +256,12 @@ namespace ClickIt.Shared.Input
         }
 
         public bool CanClickWithoutInputState(GameController gameController)
+            => CanClickWithoutInputState(gameController, allowWhenPaused: false);
+
+        internal bool CanClickWithoutInputStateForPausedUiInteractions(GameController gameController)
+            => CanClickWithoutInputState(gameController, allowWhenPaused: true);
+
+        private bool CanClickWithoutInputState(GameController gameController, bool allowWhenPaused)
         {
             if (gameController == null)
                 return false;
@@ -253,7 +274,8 @@ namespace ClickIt.Shared.Input
                 isEscapeState: IsEscapeState(gameController),
                 uiBlockingReason: GetUiBlockingReason(gameController),
                 blockOnOpenPanels: _settings?.BlockOnOpenLeftRightPanel?.Value == true,
-                isGamePaused: GameInputSafety.IsPaused(gameController));
+                isGamePaused: GameInputSafety.IsPaused(gameController),
+                allowWhenPaused: allowWhenPaused);
         }
 
         internal static bool ShouldAllowClickWithoutInputState(
@@ -264,14 +286,15 @@ namespace ClickIt.Shared.Input
             bool isEscapeState,
             string? uiBlockingReason,
             bool blockOnOpenPanels,
-            bool isGamePaused = false)
+            bool isGamePaused = false,
+            bool allowWhenPaused = false)
         {
             return isPoeActive
                 && (!blockOnOpenPanels || !isPanelOpen)
                 && !isInTownOrHideout
                 && !isInToggleItemsPostClickBlockWindow
                 && !isEscapeState
-                && !isGamePaused
+                && !GameInputSafety.ShouldBlockInput(isGamePaused, allowWhenPaused)
                 && string.IsNullOrEmpty(uiBlockingReason);
         }
 

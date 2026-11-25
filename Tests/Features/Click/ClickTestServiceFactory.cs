@@ -53,7 +53,7 @@ namespace ClickIt.Tests.Features.Click
                 EnsureCursorInsideGameWindowForClick: static _ => true,
                 IsClickableInEitherSpace: static (_, _) => true,
                 DebugLog: static _ => { },
-                PerformClick: static (_, _) => { },
+                PerformClick: static (_, _, _) => { },
                 RecordClickInterval: static () => { },
                 ShouldCaptureUltimatumDebug: static () => false,
                 PublishUltimatumDebug: static _ => { }));

@@ -1,3 +1,4 @@
+
 namespace ClickIt.Core.Runtime
 {
     public partial class PluginLoopHost
@@ -201,6 +202,15 @@ namespace ClickIt.Core.Runtime
             bool manualUiHoverMode = ResolveManualUiHoverMode(hotkeyActive);
             if (manualUiHoverMode)
             {
+                if (GameInputSafety.IsPaused(_gameController)
+                    && _state.Services.InputHandler?.CanClickWithoutInputStateForPausedUiInteractions(_gameController) == true
+                    && clickPort.TryHandlePausedUiInteractions())
+                {
+                    _state.Runtime.WorkFinished = true;
+                    yield return new WaitTime(ClickIdleWaitMs);
+                    yield break;
+                }
+
                 _state.Runtime.WorkFinished = true;
                 yield return new WaitTime(ClickIdleWaitMs);
                 yield break;
@@ -221,6 +231,16 @@ namespace ClickIt.Core.Runtime
                 targetTime);
             if (gateDecision.IsBlocked)
             {
+                if (gateDecision.ReadyByTime
+                    && gateDecision.FailureReason == "Game is paused."
+                    && _state.Services.InputHandler?.CanClickForPausedUiInteractions(_gameController, runtimeState.HasLazyModeRestrictedItems, runtimeState.IsRitualActive) == true
+                    && clickPort.TryHandlePausedUiInteractions())
+                {
+                    _state.Runtime.WorkFinished = true;
+                    yield return new WaitTime(ClickIdleWaitMs);
+                    yield break;
+                }
+
                 if (gateDecision.ShouldCancelOffscreenPathing)
                     clickPort.CancelOffscreenPathingState();
 

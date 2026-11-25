@@ -104,7 +104,7 @@ namespace ClickIt.Features.Click
             _mechanicPriorityContextProvider = new MechanicPriorityContextProvider(settings, new MechanicPrioritySnapshotService());
             _autoAuguryFatesClickService = new AutoAuguryFatesClickService(settings, dependencies.PluginManager,
                 _gameController, ClickAutomationSupport.IsClickableInEitherSpace,
-                (position, validateSettledHover, controlClick) =>
+                (position, validateSettledHover, controlClick, allowWhenPaused) =>
                 {
                     if (!ClickAutomationSupport.EnsureCursorInsideGameWindowForClick("[AutoAugury] Cursor outside game window")
                         || Input.GetKeyState(Keys.ControlKey))
@@ -114,7 +114,7 @@ namespace ClickIt.Features.Click
                         if (controlClick && !Mouse.DisableNativeInput)
                             Keyboard.KeyDown(Keys.LControlKey);
                         return LockedInteractionDispatcher.PerformClick(
-                            position, null, _gameController, validateSettledHover: validateSettledHover);
+                            position, null, _gameController, validateSettledHover: validateSettledHover, allowWhenPaused: allowWhenPaused);
                     }
                     finally
                     {
@@ -161,6 +161,23 @@ namespace ClickIt.Features.Click
                 yield break;
 
             yield return RegularClick.Run();
+        }
+
+        internal bool TryHandlePausedUiInteractions()
+        {
+            if (!GameInputSafety.IsPaused(_gameController))
+                return false;
+            if (_autoAuguryFatesClickService.TryHandlePanel())
+                return true;
+
+            RectangleF window;
+            try
+            {
+                window = GameWindowRectResolver.Resolve(_gameController);
+            }
+            catch { return false; }
+
+            return UltimatumAutomation.TryHandlePanelUi(new Vector2(window.X, window.Y));
         }
 
         internal bool IsAutoAuguryPluginAvailable()

@@ -5,7 +5,7 @@ internal sealed class AutoAuguryFatesClickService(
     PluginManager? pluginManager,
     GameController gameController,
     Func<Vector2, string, bool> isClickable,
-    Func<Vector2, Func<Element?, bool>, bool, bool> performClick,
+    Func<Vector2, Func<Element?, bool>, bool, bool, bool> performClick,
     Action recordClickInterval,
     Action<string> debugLog)
 {
@@ -16,7 +16,7 @@ internal sealed class AutoAuguryFatesClickService(
     private readonly PluginManager? _pluginManager = pluginManager;
     private readonly GameController _gameController = gameController;
     private readonly Func<Vector2, string, bool> _isClickable = isClickable;
-    private readonly Func<Vector2, Func<Element?, bool>, bool, bool> _performClick = performClick;
+    private readonly Func<Vector2, Func<Element?, bool>, bool, bool, bool> _performClick = performClick;
     private readonly Action _recordClickInterval = recordClickInterval;
     private readonly Action<string> _debugLog = debugLog;
     private PendingClick? _pending;
@@ -157,7 +157,8 @@ internal sealed class AutoAuguryFatesClickService(
                 cards.Count(static card => card.Selected));
             long targetAddress = targetElement.Address;
             string failure = "input dispatcher rejected click before hover validation";
-            bool sent = _performClick(absolute, hover =>
+            // Fate cards and their confirmation remain interactive while the paused game displays this UI.
+            Func<Element?, bool> validateSettledHover = hover =>
             {
                 SystemDrawingPoint cursor = Mouse.GetCursorPosition();
                 RectangleF currentWindow = GameWindowRectResolver.Resolve(_gameController);
@@ -202,7 +203,8 @@ internal sealed class AutoAuguryFatesClickService(
                     && currentConfirm == confirm
                     && BoundsMatch(confirm ? latest.ConfirmRect : currentTarget.Rect, rect)
                     && (confirm || string.Equals(currentTarget.Fate, target.Fate, StringComparison.Ordinal));
-            }, !advice.AtBoss && !confirm);
+            };
+            bool sent = _performClick(absolute, validateSettledHover, !advice.AtBoss && !confirm, true);
             if (sent)
             {
                 _pending = next;

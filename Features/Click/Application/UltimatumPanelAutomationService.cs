@@ -3,7 +3,7 @@ namespace ClickIt.Features.Click.Application
 {
     internal sealed record UltimatumPanelAutomationServiceDependencies(
         UltimatumAutomationServiceDependencies Automation,
-        Func<Element, Vector2, string, string, string, bool> TryClickElement,
+        Func<Element, Vector2, string, string, string, bool, bool> TryClickElement,
         Func<bool> IsGruelingGauntletPassiveActive,
         Func<bool> GetGruelingGauntletDetectionForDebug,
         IUltimatumPanelRuntimeSeam? PanelRuntimeSeam = null);
@@ -177,7 +177,8 @@ namespace ClickIt.Features.Click.Application
                 return false;
             }
 
-            return _dependencies.TryClickElement(best.ChoiceElement, windowTopLeft, "[TryClickUltimatumPanelChoice] Skipping click - cursor outside PoE window.", $"[TryClickUltimatumPanelChoice] Rejected by clickable-area check. best='{best.ModifierName}',", $"[TryClickUltimatumPanelChoice] Clicking choice '{best.ModifierName}' (priority={best.PriorityIndex}) at");
+            // The active choice window is interactive during pause; the initial ground-label overlay is handled separately.
+            return _dependencies.TryClickElement(best.ChoiceElement, windowTopLeft, "[TryClickUltimatumPanelChoice] Skipping click - cursor outside PoE window.", $"[TryClickUltimatumPanelChoice] Rejected by clickable-area check. best='{best.ModifierName}',", $"[TryClickUltimatumPanelChoice] Clicking choice '{best.ModifierName}' (priority={best.PriorityIndex}) at", true);
         }
 
         private bool TryClickPanelTakeRewards(UltimatumPanel panelObj, Vector2 windowTopLeft)
@@ -186,7 +187,7 @@ namespace ClickIt.Features.Click.Application
             if (!_panelRuntimeSeam.TryResolveTakeRewardsButton(panelObj, message => automation.DebugLog(() => message), out Element resolvedTakeRewardsElement))
                 return false;
 
-            return _dependencies.TryClickElement(resolvedTakeRewardsElement, windowTopLeft, "[TryClickUltimatumPanelTakeRewards] Skipping click - cursor outside PoE window.", "[TryClickUltimatumPanelTakeRewards] Rejected by clickable-area check.", "[TryClickUltimatumPanelTakeRewards] Clicking Take Rewards at");
+            return _dependencies.TryClickElement(resolvedTakeRewardsElement, windowTopLeft, "[TryClickUltimatumPanelTakeRewards] Skipping click - cursor outside PoE window.", "[TryClickUltimatumPanelTakeRewards] Rejected by clickable-area check.", "[TryClickUltimatumPanelTakeRewards] Clicking Take Rewards at", true);
         }
 
         private bool TryClickPanelConfirm(UltimatumPanel panelObj, Vector2 windowTopLeft)
@@ -195,7 +196,7 @@ namespace ClickIt.Features.Click.Application
             if (!_panelRuntimeSeam.TryResolveConfirmButton(panelObj, message => automation.DebugLog(() => message), out Element confirmElement))
                 return false;
 
-            return _dependencies.TryClickElement(confirmElement, windowTopLeft, "[TryClickUltimatumPanelConfirm] Skipping click - cursor outside PoE window.", "[TryClickUltimatumPanelConfirm] Rejected by clickable-area check.", "[TryClickUltimatumPanelConfirm] Clicking ConfirmButton at");
+            return _dependencies.TryClickElement(confirmElement, windowTopLeft, "[TryClickUltimatumPanelConfirm] Skipping click - cursor outside PoE window.", "[TryClickUltimatumPanelConfirm] Rejected by clickable-area check.", "[TryClickUltimatumPanelConfirm] Clicking ConfirmButton at", true);
         }
     }
 }
