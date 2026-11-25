@@ -344,6 +344,35 @@ namespace ClickIt.Tests.Features.Labels.Application
         }
 
         [TestMethod]
+        [TestCategory("Regression")]
+        public void GetNextLabelToClick_RechecksUngatedCachedTargetWhenRadiusIsEnabled()
+        {
+            LabelOnGround label = CreateOpaqueLabel(address: 0x1000);
+            EntityProbe probe = (EntityProbe)EntityProbeFactory.Create(distancePlayer: 80f);
+            bool enabled = false;
+            var service = new LabelSelectionService(new LabelSelectionServiceDependencies(
+                GameController: null,
+                CreateClickSettings: _ => TestClickSettings() with { ClickDistanceEnabled = enabled, ClickDistance = 100 },
+                ShouldCaptureLabelDebug: static () => false,
+                PublishLabelDebugStage: static _ => { },
+                TryBuildLabelCandidate: (LabelOnGround _, ClickSettings _, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
+                {
+                    item = probe;
+                    mechanicId = MechanicIds.Items;
+                    rejectReason = LabelCandidateRejectReason.None;
+                    return true;
+                },
+                GetMechanicIdForLabelCore: static _ => null));
+            IReadOnlyList<LabelOnGround> labels = [label];
+
+            service.GetNextLabelToClick(labels, 0, 1, null).Should().BeSameAs(label);
+            probe.DistancePlayer = 101f;
+            enabled = true;
+
+            service.GetNextLabelToClick(labels, 0, 1, null).Should().BeNull();
+        }
+
+        [TestMethod]
         public void GetNextLabelToClick_DoesNotApplyWorldDistanceLimit()
         {
             LabelOnGround label = CreateOpaqueLabel(address: 0x1000);

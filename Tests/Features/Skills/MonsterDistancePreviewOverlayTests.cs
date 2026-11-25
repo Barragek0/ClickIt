@@ -15,6 +15,7 @@ public sealed class MonsterDistancePreviewOverlayTests
         settings.LazyModeMagicMonsterBlockDistance = 66;
         settings.LazyModeRareMonsterBlockDistance = 77;
         settings.LazyModeUniqueMonsterBlockDistance = 88;
+        settings.ClickDistance.Value = 100;
         MonsterDistancePreviewOverlay.ResolveDistance(settings, "VaalNormal").Should().Be(11);
         MonsterDistancePreviewOverlay.ResolveDistance(settings, "VaalMagic").Should().Be(22);
         MonsterDistancePreviewOverlay.ResolveDistance(settings, "VaalRare").Should().Be(33);
@@ -23,6 +24,9 @@ public sealed class MonsterDistancePreviewOverlayTests
         MonsterDistancePreviewOverlay.ResolveDistance(settings, "LazyMagic").Should().Be(66);
         MonsterDistancePreviewOverlay.ResolveDistance(settings, "LazyRare").Should().Be(77);
         MonsterDistancePreviewOverlay.ResolveDistance(settings, "LazyUnique").Should().Be(88);
+        MonsterDistancePreviewOverlay.ResolveDistance(settings, "ClickSearchRadius").Should().Be(100);
+        settings.ClickDistance.Value = 147;
+        MonsterDistancePreviewOverlay.ResolveDistance(settings, "ClickSearchRadius").Should().Be(147);
         settings.VaalMoltenShellNormalDistance.Value = 17;
         MonsterDistancePreviewOverlay.ResolveDistance(settings, "VaalNormal").Should().Be(17);
         MonsterDistancePreviewOverlay.ResolveDistance(settings, null).Should().Be(0);

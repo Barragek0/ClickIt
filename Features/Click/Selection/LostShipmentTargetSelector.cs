@@ -101,6 +101,8 @@ namespace ClickIt.Features.Click.Selection
 
             if (VisibleMechanicSelectionPolicy.ShouldSkipLostShipmentEntity(isValid, isOpened))
                 return false;
+            if (_dependencies.Settings.ClickDistanceEnabled.Value && distance > _dependencies.Settings.ClickDistance.Value)
+                return false;
 
             string path = DynamicAccess.TryReadString(entity, DynamicAccessProfiles.Path, out string resolvedPath)
                 ? resolvedPath
@@ -128,6 +130,8 @@ namespace ClickIt.Features.Click.Selection
             bool isOpened = DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsOpened, out bool resolvedIsOpened) && resolvedIsOpened;
 
             if (VisibleMechanicSelectionPolicy.ShouldSkipLostShipmentEntity(isValid, isOpened))
+                return false;
+            if (_dependencies.Settings.ClickDistanceEnabled.Value && distance > _dependencies.Settings.ClickDistance.Value)
                 return false;
 
             string path = DynamicAccess.TryReadString(entity, DynamicAccessProfiles.Path, out string resolvedPath)

@@ -104,7 +104,9 @@ namespace ClickIt.Features.Click.Runtime
                         return float.MaxValue;
 
                     return ManualCursorSelectionMath.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, shrineScreenAbsolute, windowTopLeft);
-                });
+                },
+                isDistanceEligible: distance => !_dependencies.Settings.ClickDistanceEnabled.Value
+                    || distance <= _dependencies.Settings.ClickDistance.Value);
         }
 
         public bool HasClickableShrine()
@@ -131,20 +133,37 @@ namespace ClickIt.Features.Click.Runtime
 
         public bool TryClickShrineInteraction(Entity shrine)
         {
+            if (!IsWithinSearchRadius(shrine))
+                return false;
+
             if (!TryProjectEntityScreenRaw(shrine, out Vector2 shrineClickPos))
                 return false;
 
-            return TryClickDirectMechanic(shrineClickPos, onSuccess: () => TryHandleSuccessfulMechanicAftermath(shrine, invalidateShrineCache: true));
+            RectangleF window = GameWindowRectResolver.Resolve(_dependencies.GameController);
+            if (window.Width <= 0 || window.Height <= 0)
+                return false;
+
+            return TryClickDirectMechanic(shrineClickPos + new Vector2(window.X, window.Y),
+                onSuccess: () => TryHandleSuccessfulMechanicAftermath(shrine, invalidateShrineCache: true),
+                clientPosition: shrineClickPos);
         }
 
         public bool TryClickLostShipmentInteraction(LostShipmentCandidate candidate)
         {
+            if (!IsWithinSearchRadius(candidate.Entity))
+                return false;
+
             _dependencies.DebugLog("[ProcessRegularClick] Clicking Lost Shipment candidate via ItemOnGround position.");
-            return TryClickDirectMechanic(candidate.ClickPosition, onSuccess: () => TryHandleSuccessfulMechanicAftermath(candidate.Entity, invalidateShrineCache: false));
+            return TryClickDirectMechanic(candidate.ClickPosition,
+                onSuccess: () => TryHandleSuccessfulMechanicAftermath(candidate.Entity, invalidateShrineCache: false),
+                clientPosition: ToClientClickPosition(candidate.ClickPosition));
         }
 
         public bool TryClickSettlersOre(SettlersOreCandidate candidate)
         {
+            if (!IsWithinSearchRadius(candidate.Entity))
+                return false;
+
             if (!TryBuildSettlersClickPlan(candidate, out SettlersClickPlan plan))
                 return false;
 
@@ -209,9 +228,9 @@ namespace ClickIt.Features.Click.Runtime
             return true;
         }
 
-        private bool TryClickDirectMechanic(Vector2 clickPosition, Action onSuccess)
+        private bool TryClickDirectMechanic(Vector2 clickPosition, Action onSuccess, Vector2? clientPosition = null)
         {
-            if (!_dependencies.LabelInteraction.PerformMechanicClick(clickPosition))
+            if (!_dependencies.LabelInteraction.PerformMechanicClick(clickPosition, clientClickPosition: clientPosition))
                 return false;
 
             onSuccess();
@@ -283,12 +302,20 @@ namespace ClickIt.Features.Click.Runtime
         {
             if (useHiddenFallbackCache)
             {
-                return cacheState.TryGetHiddenFallbackCandidates(
+                bool found = cacheState.TryGetHiddenFallbackCandidates(
                     now,
                     labelCount,
                     HiddenFallbackCandidateCacheWindowMs,
                     out lostShipmentCandidate,
                     out settlersOreCandidate);
+                if (found)
+                {
+                    if (lostShipmentCandidate.HasValue && !IsWithinSearchRadius(lostShipmentCandidate.Value.Entity))
+                        lostShipmentCandidate = null;
+                    if (settlersOreCandidate.HasValue && !IsWithinSearchRadius(settlersOreCandidate.Value.Entity))
+                        settlersOreCandidate = null;
+                }
+                return found;
             }
 
             return cacheState.TryGetVisibleCandidates(
@@ -365,6 +392,7 @@ namespace ClickIt.Features.Click.Runtime
 
             Entity entity = candidate.Value.Entity;
             return entity != null
+                && IsWithinSearchRadius(entity)
                 && DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsValid, out bool isValid)
                 && isValid
                 && DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsOpened, out bool isOpened)
@@ -378,6 +406,7 @@ namespace ClickIt.Features.Click.Runtime
 
             Entity entity = candidate.Value.Entity;
             return entity != null
+                && IsWithinSearchRadius(entity)
                 && DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsValid, out bool isValid)
                 && isValid;
         }

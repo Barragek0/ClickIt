@@ -3,6 +3,8 @@ namespace ClickIt.Features.Labels
     internal struct ClickSettings
     {
         public bool DelveEncounterComplete { get; set; }
+        public bool ClickDistanceEnabled { get; set; }
+        public int ClickDistance { get; set; }
         public bool ClickItems { get; set; }
         public IReadOnlyList<string> ItemTypeWhitelistMetadata { get; set; }
         public IReadOnlyList<string> ItemTypeBlacklistMetadata { get; set; }

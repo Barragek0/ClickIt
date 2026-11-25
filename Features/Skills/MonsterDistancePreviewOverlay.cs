@@ -60,6 +60,7 @@ internal sealed class MonsterDistancePreviewOverlay : IOverlay
             "LazyMagic" => SettingsNormalizationService.SanitizeLazyModeNearbyMonsterDistance(settings.LazyModeMagicMonsterBlockDistance),
             "LazyRare" => SettingsNormalizationService.SanitizeLazyModeNearbyMonsterDistance(settings.LazyModeRareMonsterBlockDistance),
             "LazyUnique" => SettingsNormalizationService.SanitizeLazyModeNearbyMonsterDistance(settings.LazyModeUniqueMonsterBlockDistance),
+            "ClickSearchRadius" => SystemMath.Clamp(settings.ClickDistance.Value, 0, 300),
             _ => 0
         };
 }

@@ -22,6 +22,43 @@ namespace ClickIt.Tests.Features.Labels.Selection
             result.Stats.ConsideredCandidates.Should().Be(0);
         }
 
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void SelectNextLabelByPriority_SearchRadiusEnabled_SkipsCandidatesOutsideRadius()
+        {
+            LabelOnGround outside = CreateLabel();
+            LabelOnGround inside = CreateLabel();
+            IReadOnlyList<LabelOnGround> labels = [outside, inside];
+            ClickSettings settings = CreateClickSettings() with { ClickDistanceEnabled = true, ClickDistance = 100 };
+
+            LabelSelectionResult result = LabelSelectionEngine.SelectNextLabelByPriority(
+                labels,
+                0,
+                labels.Count,
+                settings,
+                label => new LabelScanEntry(
+                    CreateSuccessfulCandidate("items"),
+                    new LabelRankInput(ReferenceEquals(label, outside) ? 101f : 100f, 0f)));
+
+            result.SelectedCandidate.Should().BeSameAs(inside);
+            result.Stats.IgnoredByDistanceCandidates.Should().Be(1);
+        }
+
+        [TestMethod]
+        [TestCategory("Boundary")]
+        public void SelectNextLabelByPriority_SearchRadiusDisabled_DoesNotRejectDistantCandidates()
+        {
+            LabelOnGround distant = CreateLabel();
+            LabelSelectionResult result = LabelSelectionEngine.SelectNextLabelByPriority(
+                [distant],
+                0,
+                1,
+                CreateClickSettings() with { ClickDistance = 100 },
+                _ => new LabelScanEntry(CreateSuccessfulCandidate("items"), new LabelRankInput(500f, 0f)));
+
+            result.SelectedCandidate.Should().BeSameAs(distant);
+        }
+
         private static ClickSettings CreateClickSettings(
             IReadOnlyDictionary<string, int>? priorityIndexMap = null,
             IReadOnlySet<string>? ignoreDistanceSet = null,

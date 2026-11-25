@@ -18,7 +18,7 @@ namespace ClickIt.Features.Click.Core
                         firstSettlementRejection = decision;
                     return allowed;
                 }
-                : null;
+            : null;
             string labelSourceSummary = _dependencies.Telemetry.ShouldCaptureClickDebug()
                 ? _dependencies.Selection.LabelInteraction.BuildLabelSourceDebugSummary(context.AllLabels)
                 : string.Empty;

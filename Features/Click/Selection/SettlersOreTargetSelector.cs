@@ -59,6 +59,9 @@ namespace ClickIt.Features.Click.Selection
                             prefiltered++;
                         return;
                     }
+                    if (_dependencies.Settings.ClickDistanceEnabled.Value
+                        && distance > _dependencies.Settings.ClickDistance.Value)
+                        return;
 
                     if (!TryBuildSettlersCandidate(
                             entity,

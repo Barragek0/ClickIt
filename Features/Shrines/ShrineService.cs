@@ -104,7 +104,8 @@ namespace ClickIt.Features.Shrines
 
         public Entity? GetNearestClickableShrine(
             Func<Vector2, bool>? isInClickableArea = null,
-            Func<Entity, float>? cursorDistanceResolver = null)
+            Func<Entity, float>? cursorDistanceResolver = null,
+            Func<float, bool>? isDistanceEligible = null)
         {
             Entity? nearestShrine = null;
             float minDistance = float.MaxValue;
@@ -118,6 +119,9 @@ namespace ClickIt.Features.Shrines
                     continue;
 
                 if (!DynamicAccess.TryReadFloat(shrine, DynamicAccessProfiles.DistancePlayer, out float distance))
+                    continue;
+
+                if (isDistanceEligible != null && !isDistanceEligible(distance))
                     continue;
 
                 if (isInClickableArea != null)

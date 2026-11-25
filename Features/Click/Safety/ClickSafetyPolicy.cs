@@ -2,6 +2,11 @@ namespace ClickIt.Features.Click.Safety
 {
     internal sealed class ClickSafetyPolicy
     {
+        internal static bool IsWithinSearchRadius(ClickItSettings settings, Entity? entity)
+            => !settings.ClickDistanceEnabled.Value
+                || (DynamicAccess.TryReadFloat(entity, DynamicAccessProfiles.DistancePlayer, out float distance)
+                    && distance >= 0f && distance <= settings.ClickDistance.Value);
+
         public static bool IsPointClickableInEitherSpace(Vector2 clientPoint, Vector2 windowTopLeft, Func<Vector2, string, bool> clickabilityCheck, string path)
         {
             return clickabilityCheck(clientPoint, path)

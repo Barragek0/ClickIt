@@ -23,8 +23,11 @@ namespace ClickIt.Features.Click.Selection
             if (hoveredLabel == null)
                 return false;
 
-            if (DynamicAccess.TryGetLabelItemOnGround(hoveredLabel, out Entity? hoveredItem)
-                && hoveredItem != null && MechanicClassifier.IsLockedDelveChest(hoveredItem)
+            DynamicAccess.TryGetLabelItemOnGround(hoveredLabel, out Entity? hoveredItem);
+            if (!ClickSafetyPolicy.IsWithinSearchRadius(_dependencies.Settings, hoveredItem))
+                return false;
+
+            if (hoveredItem != null && MechanicClassifier.IsLockedDelveChest(hoveredItem)
                 && !MechanicClassifier.HasVisibleDelveCompletionLabel(allLabels))
                 return false;
 

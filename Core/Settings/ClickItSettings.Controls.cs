@@ -23,8 +23,10 @@ namespace ClickIt
         public CustomNode ControlsSliderWidthStart { get; internal set; } = new();
 
         [IgnoreMenu]
-        // Retained only so existing settings files continue to deserialize. Click selection now uses the game viewport and clickable-point checks.
         public RangeNode<int> ClickDistance { get; set; } = new RangeNode<int>(100, 0, 300);
+
+        [IgnoreMenu]
+        public ToggleNode ClickDistanceEnabled { get; set; } = new ToggleNode(false);
 
         [IgnoreMenu]
         public RangeNode<int> ClickFrequencyTarget { get; set; } = new RangeNode<int>(80, 80, 250);

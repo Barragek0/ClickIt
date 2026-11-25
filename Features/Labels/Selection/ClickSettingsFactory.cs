@@ -31,6 +31,8 @@ namespace ClickIt.Features.Labels.Selection
             return new ClickSettings
             {
                 DelveEncounterComplete = MechanicClassifier.HasVisibleDelveCompletionLabel(allLabels),
+                ClickDistanceEnabled = _settings.ClickDistanceEnabled.Value,
+                ClickDistance = _settings.ClickDistance.Value,
                 ClickItems = _settings.ClickItems.Value,
                 ItemTypeWhitelistMetadata = _settings.GetItemTypeWhitelistMetadataIdentifiers(),
                 ItemTypeBlacklistMetadata = _settings.GetItemTypeBlacklistMetadataIdentifiers(),

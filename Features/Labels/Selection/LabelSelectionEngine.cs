@@ -97,6 +97,13 @@ namespace ClickIt.Features.Labels.Selection
                     continue;
                 }
 
+                if (clickSettings.ClickDistanceEnabled
+                    && entry.Rank.Distance > clickSettings.ClickDistance)
+                {
+                    stats = stats.IncrementIgnoredByDistance();
+                    continue;
+                }
+
                 LabelRankInput rankInput = entry.Rank;
                 MechanicRank score = MechanicCandidateRanker.Build(
                     rankInput.Distance,

@@ -17,11 +17,32 @@ namespace ClickIt.Tests.Features.Labels.Selection
 
             ClickSettings result = factory.Create(null);
 
+            result.ClickDistanceEnabled.Should().BeFalse("Search Radius is optional and disabled by default");
+            result.ClickDistance.Should().Be(100);
             result.ClickLeagueChests.Should().Be(settings.ClickLeagueChests.Value);
             result.ClickSettlersOre.Should().Be(settings.ClickSettlersOre.Value);
             result.ClickStrongboxes.Should().Be(settings.ClickStrongboxes.Value);
             result.ClickLabyrinthTrials.Should().Be(settings.ClickLabyrinthTrials.Value);
             result.ClickHeistDoors.Should().Be(settings.ClickHeistDoors.Value);
+        }
+
+        [TestMethod]
+        [TestCategory("Settings")]
+        public void Create_UsesEnabledSearchRadiusAndConfiguredDistance()
+        {
+            var settings = new ClickItSettings();
+            settings.ClickDistanceEnabled.Value = true;
+            settings.ClickDistance.Value = 145;
+            var factory = new ClickSettingsFactory(
+                settings,
+                new MechanicPrioritySnapshotService(),
+                _ => false,
+                _ => false);
+
+            ClickSettings result = factory.Create(null);
+
+            result.ClickDistanceEnabled.Should().BeTrue();
+            result.ClickDistance.Should().Be(145);
         }
 
         [TestMethod]

@@ -13,6 +13,8 @@ namespace ClickIt.Features.Labels.Application
         LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
             => GetNextLabelToClick(allLabels, startIndex, maxCount, isAcceptable: null);
 
+        bool IsWithinConfiguredClickDistance(Entity? item) => true;
+
         string? GetMechanicIdForLabel(LabelOnGround? label);
     }
 }

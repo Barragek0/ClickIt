@@ -42,6 +42,7 @@ namespace ClickIt.Features.Labels.Application
         private readonly Dictionary<long, CachedLabelRectEntry> _rectCache = [];
         private long _rectCacheWindowStartMs;
         private const long RectCacheWindowMs = 50;
+        private ClickSettings _activeClickSettings;
 
         public LabelOnGround? GetNextLabelToClick(
             IReadOnlyList<LabelOnGround>? allLabels,
@@ -58,19 +59,25 @@ namespace ClickIt.Features.Labels.Application
                     && now - cached.AtMs < (cached.Selected == null ? EmptySelectionCacheWindowMs : SelectionCacheWindowMs))
                 {
                     // Revalidate a cached selection with its current mechanic and point. The predicate includes screen geometry and blocked UI areas, so a default candidate cannot safely answer it.
-                    if (isAcceptable == null || cached.Selected == null)
+                    if (cached.Selected == null)
                         return cached.Selected;
 
                     ClickSettings cachedClickSettings = _dependencies.CreateClickSettings(allLabels);
+                    _activeClickSettings = cachedClickSettings;
+                    if (isAcceptable == null && !cachedClickSettings.ClickDistanceEnabled)
+                        return cached.Selected;
+
                     CachedLabelScanEntry cachedEntry = GetOrBuildScanEntry(cached.Selected, cachedClickSettings, GetWindowArea());
                     if (cachedEntry.Candidate.MechanicId == MechanicIds.DelveCrawler)
                         _buildCache.Clear();
-                    else if (cachedEntry.Candidate.Success)
+                    else if (cachedEntry.Candidate.Success
+                        && (!cachedClickSettings.ClickDistanceEnabled
+                            || cachedEntry.Distance <= cachedClickSettings.ClickDistance))
                     {
                         bool stillEligible = _dependencies.TryBuildLabelCandidate(cached.Selected, cachedClickSettings,
                             out Entity? item, out string? mechanicId, out _);
                         if (stillEligible && mechanicId == cachedEntry.Candidate.MechanicId
-                            && isAcceptable(cached.Selected, BuildResult(true, item, mechanicId, LabelCandidateRejectReason.None)))
+                            && (isAcceptable == null || isAcceptable(cached.Selected, BuildResult(true, item, mechanicId, LabelCandidateRejectReason.None))))
                             return cached.Selected;
                         _buildCache.Remove(cached.Selected.Address);
                     }
@@ -106,6 +113,7 @@ namespace ClickIt.Features.Labels.Application
             int start = SystemMath.Max(0, startIndex);
             int end = SystemMath.Min(allLabels.Count, startIndex + SystemMath.Max(0, maxCount));
             ClickSettings clickSettings = _dependencies.CreateClickSettings(allLabels);
+            _activeClickSettings = clickSettings;
 
             if (captureDebug)
             {
@@ -253,6 +261,12 @@ namespace ClickIt.Features.Labels.Application
             => item != null && DynamicAccess.TryReadFloat(item, DynamicAccessProfiles.DistancePlayer, out float distance)
                 ? distance
                 : float.MaxValue;
+
+        public bool IsWithinConfiguredClickDistance(Entity? item)
+        {
+            return !_activeClickSettings.ClickDistanceEnabled
+                || ReadDistance(item) <= _activeClickSettings.ClickDistance;
+        }
 
         private bool TryGetCachedLabelRect(LabelOnGround label, out RectangleF rect)
         {

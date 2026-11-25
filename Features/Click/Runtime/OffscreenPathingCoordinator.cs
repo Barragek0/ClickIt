@@ -557,7 +557,13 @@ namespace ClickIt.Features.Click.Runtime
                 ClearStickyOffscreenTarget();
                 if (!_dependencies.Settings.ClickDelveCrawler.Value || TryHandleCrawlerFallback())
                     return true;
+                if (!ClickSafetyPolicy.IsWithinSearchRadius(_dependencies.Settings, stickyTarget))
+                    return false;
             }
+
+            // Keep the route committed while the target is outside click range.
+            if (!ClickSafetyPolicy.IsWithinSearchRadius(_dependencies.Settings, stickyTarget))
+                return TryWalkTowardOffscreenTarget(stickyTarget);
 
             if (_dependencies.StickyTargetHandler.TryClickStickyTargetIfPossible(stickyTarget, windowTopLeft, allLabels, out bool needsApproach))
                 return true;

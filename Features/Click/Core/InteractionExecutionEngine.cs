@@ -24,14 +24,14 @@ namespace ClickIt.Features.Click.Core
                 : ExecuteHiddenRemainder(context, candidates);
         }
 
-        private bool TryHandleBlightBlocking()
+        private bool TryHandleBlightBlocking(ClickTickContext context)
         {
             if (!_dependencies.Policy.Settings.BlightBlockOtherInteractions.Value
                 || _dependencies.Mechanics.TryProgressBlightBuilding == null
                 || (_dependencies.Mechanics.IsBlightEncounterActive?.Invoke() != true))
                 return false;
 
-            if (!TryProgressBlightBuilding())
+            if (!TryProgressBlightBuilding(context))
             {
                 Entity? blightTarget = _dependencies.Mechanics.GetBlightPathfindTarget?.Invoke();
                 if (blightTarget != null)
@@ -206,6 +206,8 @@ namespace ClickIt.Features.Click.Core
                     _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenLabelCheck",
                         $"label has entity={DynamicAccess.TryGetLabelItemOnGround(candidates.NextLabel, out _)} mechanic={candidates.NextLabelMechanicId}", candidates.NextLabelMechanicId);
                 DynamicAccess.TryGetLabelItemOnGround(candidates.NextLabel, out Entity? labelEntity);
+                if (!IsWithinSearchRadius(labelEntity, candidates.NextLabelMechanicId))
+                    return StopExecution();
                 if (labelEntity != null && TryPathfindToLabelInsteadOfClick(context, candidates.NextLabel, candidates.NextLabelMechanicId, labelEntity,
                     out _, out _, out _))
                     return StopExecution();
@@ -258,6 +260,8 @@ namespace ClickIt.Features.Click.Core
 
             // Unified clickability check: if the selected label's click position is not in a clickable area, pathfind toward its entity instead of attempting a click that would fail.
             DynamicAccess.TryGetLabelItemOnGround(candidates.NextLabel, out Entity? nextLabelItem);
+            if (!IsWithinSearchRadius(nextLabelItem, candidates.NextLabelMechanicId))
+                return StopExecution();
             if (TryPathfindToLabelInsteadOfClick(context, candidates.NextLabel, candidates.NextLabelMechanicId, nextLabelItem,
                 out bool hasClickableClickPos, out Vector2 clientClickPos, out _))
                 return StopExecution();

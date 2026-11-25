@@ -380,7 +380,8 @@ namespace ClickIt.Features.Click.Selection
             if (!TryProjectEntityScreenPosition(entity, out Vector2 screen))
                 return false;
 
-            if (_dependencies.IsClickableInEitherSpace(screen, path)
+            if (ClickSafetyPolicy.IsWithinSearchRadius(_dependencies.Settings, entity)
+                && _dependencies.IsClickableInEitherSpace(screen, path)
                 && !CanApproachUnlabelledDelveTarget(entity, path, _dependencies.VisibleLabelSnapshots.GetCachedLabels()))
                 return false;
 
@@ -416,6 +417,9 @@ namespace ClickIt.Features.Click.Selection
             RectangleF windowArea,
             string mechanicId)
         {
+            if (!ClickSafetyPolicy.IsWithinSearchRadius(_dependencies.Settings, entity))
+                return true;
+
             if (mechanicId is MechanicIds.AltarsEaterOfWorlds or MechanicIds.AltarsSearingExarch
                 && _dependencies.ShouldApproachAltar?.Invoke(entity) == true)
                 return true;

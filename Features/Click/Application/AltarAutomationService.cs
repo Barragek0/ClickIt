@@ -120,6 +120,9 @@ namespace ClickIt.Features.Click.Application
         {
             boxToClick = null;
 
+            if (!ClickSafetyPolicy.IsWithinSearchRadius(_dependencies.Settings, altar.SourceEntity))
+                return false;
+
             bool isEnabledType = (altar.AltarType == AltarType.EaterOfWorlds && clickEater)
                 || (altar.AltarType == AltarType.SearingExarch && clickExarch);
             if (!isEnabledType)

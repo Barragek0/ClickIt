@@ -119,9 +119,9 @@ namespace ClickIt.Features.Click.Selection
 
                 string? hoveredMechanicId = _dependencies.LabelInteractionPort.GetMechanicIdForLabel(hovered);
                 if (string.IsNullOrWhiteSpace(hoveredMechanicId)
-                    || (additionalEligibility != null
-                        && (!DynamicAccess.TryGetLabelItemOnGround(hovered, out Entity? hoveredItem)
-                            || !additionalEligibility(hoveredItem, hoveredMechanicId)))
+                    || !DynamicAccess.TryGetLabelItemOnGround(hovered, out Entity? hoveredItem)
+                    || !_dependencies.LabelSelectionService.IsWithinConfiguredClickDistance(hoveredItem)
+                    || (additionalEligibility != null && !additionalEligibility(hoveredItem, hoveredMechanicId))
                     || !CanResolveClickableLabelPoint(hovered, hoveredMechanicId, allLabels))
                     return nextLabel;
 
