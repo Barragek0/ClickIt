@@ -137,6 +137,21 @@ namespace ClickIt.Tests.Shared.Input
             allowed.Should().Be(expected);
         }
 
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void ShouldAllowClickWithoutInputState_BlocksWhenGameIsPaused()
+        {
+            InputHandler.ShouldAllowClickWithoutInputState(
+                isPoeActive: true,
+                isPanelOpen: false,
+                isInTownOrHideout: false,
+                isInToggleItemsPostClickBlockWindow: false,
+                isEscapeState: false,
+                uiBlockingReason: null,
+                blockOnOpenPanels: false,
+                isGamePaused: true).Should().BeFalse();
+        }
+
         [DataTestMethod]
         [DataRow(true, false, false, false, null, true)]
         [DataRow(false, false, false, false, null, false)]
@@ -158,6 +173,19 @@ namespace ClickIt.Tests.Shared.Input
                 isPanelOpen,
                 isEscapeState,
                 uiBlockingReason).Should().Be(expected);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void ShouldAllowBackgroundAutomation_BlocksWhenGameIsPaused()
+        {
+            InputHandler.ShouldAllowBackgroundAutomation(
+                isPoeActive: true,
+                blockOnOpenPanels: false,
+                isPanelOpen: false,
+                isEscapeState: false,
+                uiBlockingReason: null,
+                isGamePaused: true).Should().BeFalse();
         }
 
         [DataTestMethod]
@@ -188,6 +216,21 @@ namespace ClickIt.Tests.Shared.Input
                 blockOnOpenPanels);
 
             reason.Should().Be(expected);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void ResolveCanClickFailureReason_ReportsPausedState()
+        {
+            InputHandler.ResolveCanClickFailureReason(
+                isPoeActive: true,
+                isPanelOpen: false,
+                isInTownOrHideout: false,
+                isInToggleItemsPostClickBlockWindow: false,
+                isEscapeState: false,
+                uiBlockingReason: null,
+                blockOnOpenPanels: false,
+                isGamePaused: true).Should().Be("Game is paused.");
         }
 
         [TestMethod]

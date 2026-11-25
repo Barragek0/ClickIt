@@ -25,6 +25,12 @@ namespace ClickIt.Features.Click.Runtime
             castPoint = default;
             debugReason = string.Empty;
 
+            if (GameInputSafety.IsPaused(_dependencies.GameController))
+            {
+                debugReason = "Skipped: game is paused.";
+                return false;
+            }
+
             int remainingNodes = _dependencies.GetRemainingOffscreenPathNodeCount();
             int minimumNodes = SystemMath.Max(1, _dependencies.Settings.OffscreenMovementSkillMinPathSubsectionLength?.Value ?? 8);
             long now = _getTimestampMs();
@@ -78,10 +84,22 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
             }
 
+            if (GameInputSafety.IsPaused(_dependencies.GameController))
+            {
+                debugReason = "Skipped: game is paused.";
+                return false;
+            }
+
             if (!Mouse.DisableNativeInput)
             {
                 Input.SetCursorPos(new NumVector2(castPoint.X, castPoint.Y));
                 ClickPipelineTiming.Sleep(10);
+            }
+
+            if (GameInputSafety.IsPaused(_dependencies.GameController))
+            {
+                debugReason = "Skipped: game is paused.";
+                return false;
             }
 
             Keyboard.KeyPress(binding.BoundKey, SkillBarBindingResolver.KeyTapDelayMs);

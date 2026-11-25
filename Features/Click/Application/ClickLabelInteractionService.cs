@@ -357,6 +357,12 @@ namespace ClickIt.Features.Click.Application
                             bool retriedHover = false;
                             while (true)
                             {
+                                if (GameInputSafety.IsPaused(_dependencies.GameController))
+                                {
+                                    outcome = "game is paused";
+                                    return false;
+                                }
+
                                 var state = _dependencies.GameController.IngameState;
                                 if (state == null || _dependencies.GameController.Window?.IsForeground() != true)
                                 {
@@ -399,11 +405,17 @@ namespace ClickIt.Features.Click.Application
                                 {
                                     SystemDrawingPoint cursor = Mouse.GetCursorPosition();
                                     if (!retriedHover && !Mouse.DisableNativeInput && Environment.TickCount64 + 200 < searchDeadline
+                                        && !GameInputSafety.IsPaused(_dependencies.GameController)
                                         && LabelClickPointSearch.IsPointInsideRect(new Vector2(cursor.X, cursor.Y) - windowTopLeft, currentRect)
                                         && (canStillClick?.Invoke() ?? true)
                                         && TryFindTooltipResetPoint(currentRect, windowTopLeft, _dependencies.IsInsideWindowInEitherSpace, out Vector2 resetPoint))
                                     {
                                         retriedHover = true;
+                                        if (GameInputSafety.IsPaused(_dependencies.GameController))
+                                        {
+                                            outcome = "game is paused";
+                                            return false;
+                                        }
                                         Input.SetCursorPos(new NumVector2(resetPoint.X, resetPoint.Y));
                                         ClickPipelineTiming.Sleep(40);
                                         SystemDrawingPoint movedCursor = Mouse.GetCursorPosition();
@@ -415,6 +427,11 @@ namespace ClickIt.Features.Click.Application
                                             || !LabelClickPointSearch.IsPointInsideRect(point - windowTopLeft, refreshedRect))
                                         {
                                             outcome = "icon or interaction changed during tooltip retry";
+                                            return false;
+                                        }
+                                        if (GameInputSafety.IsPaused(_dependencies.GameController))
+                                        {
+                                            outcome = "game is paused";
                                             return false;
                                         }
                                         Input.SetCursorPos(new NumVector2(point.X, point.Y));

@@ -26,6 +26,9 @@ namespace ClickIt.Features.Click.Interaction
             IntervalKind interval = IntervalKind.Click,
             Func<Element?, bool>? validateSettledHover = null)
         {
+            if (GameInputSafety.IsPaused(gameController))
+                return false;
+
             _clickSleepStartMs = ClickPipelineTiming.ReadSleepTimeMs();
             if (!TryPrepareClickExecution(
                 position,
@@ -63,6 +66,9 @@ namespace ClickIt.Features.Click.Interaction
                 }
             }
 
+            if (GameInputSafety.IsPaused(gameController))
+                return false;
+
             if (_settings?.LeftHanded?.Value == true)
                 Mouse.RightClick();
             else
@@ -89,6 +95,9 @@ namespace ClickIt.Features.Click.Interaction
             bool allowWhenHotkeyInactive = false,
             bool avoidCursorMove = false)
         {
+            if (GameInputSafety.IsPaused(gameController))
+                return false;
+
             _clickSleepStartMs = ClickPipelineTiming.ReadSleepTimeMs();
             if (!TryConsumeLazyModeLimiter())
                 return false;
@@ -113,17 +122,20 @@ namespace ClickIt.Features.Click.Interaction
 
             try
             {
+                if (GameInputSafety.IsPaused(gameController))
+                    return false;
+
                 if (_settings?.LeftHanded?.Value == true)
                 {
                     Mouse.RightMouseDown();
-                    while (Keyboard.IsKeyDown(clickKey))
+                    while (Keyboard.IsKeyDown(clickKey) && !GameInputSafety.IsPaused(gameController))
                         ClickPipelineTiming.Sleep(10);
                     Mouse.RightMouseUp();
                 }
                 else
                 {
                     Mouse.LeftMouseDown();
-                    while (Keyboard.IsKeyDown(clickKey))
+                    while (Keyboard.IsKeyDown(clickKey) && !GameInputSafety.IsPaused(gameController))
                         ClickPipelineTiming.Sleep(10);
                     Mouse.LeftMouseUp();
                 }
@@ -194,6 +206,12 @@ namespace ClickIt.Features.Click.Interaction
             Func<Element?, bool>? validateSettledHover = null)
         {
             swTotal = Stopwatch.StartNew();
+            if (GameInputSafety.IsPaused(gameController))
+            {
+                before = default;
+                swTotal.Stop();
+                return false;
+            }
             before = Mouse.GetCursorPosition();
 
             if (!TryConsumeLazyModeLimiter())
@@ -220,10 +238,23 @@ namespace ClickIt.Features.Click.Interaction
             }
 
             if (!avoidCursorMove && !Mouse.DisableNativeInput)
+            {
+                if (GameInputSafety.IsPaused(gameController))
+                {
+                    swTotal.Stop();
+                    return false;
+                }
                 Input.SetCursorPos(new NumVector2(executionPosition.X, executionPosition.Y));
+            }
 
             int settleMs = _settings?.LazyMode?.Value == true ? _settings.LazyModeUIHoverSleep.Value : 10;
             ClickPipelineTiming.Sleep(validateSettledHover == null ? settleMs : SystemMath.Max(settleMs, 60));
+
+            if (GameInputSafety.IsPaused(gameController))
+            {
+                swTotal.Stop();
+                return false;
+            }
 
             Element? uiHover;
             if (validateSettledHover != null)
@@ -293,7 +324,7 @@ namespace ClickIt.Features.Click.Interaction
 
         private void RestoreCursorIfLazyMode(SystemDrawingPoint before, GameController? gameController)
         {
-            if (_settings?.LazyMode?.Value == true && _settings.RestoreCursorInLazyMode?.Value == true)
+            if (!GameInputSafety.IsPaused(gameController) && _settings?.LazyMode?.Value == true && _settings.RestoreCursorInLazyMode?.Value == true)
                 try
                 {
                     int restoreDelayMs = _settings?.LazyModeRestoreCursorDelayMs?.Value ?? 10;
@@ -303,7 +334,7 @@ namespace ClickIt.Features.Click.Interaction
                     if (!LabelClickPointSearch.TryValidateAutomationScreenPoint(beforeVec, gameController, out _))
                         return;
 
-                    if (!Mouse.DisableNativeInput)
+                    if (!Mouse.DisableNativeInput && !GameInputSafety.IsPaused(gameController))
                         Input.SetCursorPos(new NumVector2(beforeVec.X, beforeVec.Y));
 
                     _errorHandler?.LogMessage(true, true, $"InteractionExecutor: Restored cursor to {before}", 5);

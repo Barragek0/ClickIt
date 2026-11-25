@@ -20,6 +20,11 @@ namespace ClickIt.Tests.Shared.Game
             public string Value { get; init; } = string.Empty;
         }
 
+        public sealed class PublicDynamicPausedStateFixture
+        {
+            public bool IsPaused { get; init; }
+        }
+
         public sealed class PublicDynamicProfileFixture
         {
             public bool IsVisible { get; init; }
@@ -145,6 +150,23 @@ namespace ClickIt.Tests.Shared.Game
             isVisible.Should().BeTrue();
             distance.Should().Be(12.5f);
             path.Should().Be("Metadata/Test");
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void GameInputSafety_ReportsPausedState_AndFailsClosedWhenUnavailable()
+        {
+            GameInputSafety.TryReadPausedState(new PublicDynamicPausedStateFixture { IsPaused = true }, out bool paused).Should().BeTrue();
+            paused.Should().BeTrue();
+
+            GameInputSafety.TryReadPausedState(new PublicDynamicPausedStateFixture { IsPaused = false }, out paused).Should().BeTrue();
+            paused.Should().BeFalse();
+
+            GameInputSafety.TryReadPausedState(new object(), out paused).Should().BeFalse();
+            GameInputSafety.IsPaused(null).Should().BeFalse();
+
+            GameController partialController = ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindowAndGame(new RectangleF(0f, 0f, 1280f, 720f));
+            GameInputSafety.IsPaused(partialController).Should().BeFalse("a partial controller without an ingame state is not considered paused");
         }
 
         [TestMethod]

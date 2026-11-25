@@ -206,6 +206,11 @@ internal sealed class LinkAutomationService(
             HasTargetPosition = true
         };
         PublishDebugSnapshot(debug);
+        if (GameInputSafety.IsPaused(_gameController))
+        {
+            PublishDebugSnapshot(debug with { Status = "Skipped: game is paused" });
+            return;
+        }
         Input.SetCursorPos(new NumVector2(targetScreenPosition.X, targetScreenPosition.Y));
         PublishDebugSnapshot(debug with { Status = _destructive ? "Cursor move requested; casting Destructive Link" : "Cursor move requested; casting Flame Link" });
 
@@ -213,13 +218,19 @@ internal sealed class LinkAutomationService(
         try
         {
             ClickPipelineTiming.Sleep(10);
+            if (GameInputSafety.IsPaused(_gameController))
+            {
+                PublishDebugSnapshot(debug with { Status = "Skipped: game is paused" });
+                return;
+            }
             attempted = true;
             Keyboard.KeyPress(binding.BoundKey, SkillBarBindingResolver.KeyTapDelayMs);
         }
         finally
         {
             // Skill automation always restores the user's cursor; the lazy-mode cursor setting only applies to ClickIt's item-click flow.
-            Input.SetCursorPos(new NumVector2(cursorBefore.X, cursorBefore.Y));
+            if (!GameInputSafety.IsPaused(_gameController))
+                Input.SetCursorPos(new NumVector2(cursorBefore.X, cursorBefore.Y));
             if (attempted)
                 RecordCastAttempt(targetId);
         }

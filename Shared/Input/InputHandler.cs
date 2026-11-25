@@ -46,7 +46,8 @@ namespace ClickIt.Shared.Input
             bool blockOnOpenPanels = _settings?.BlockOnOpenLeftRightPanel?.Value == true;
             bool escapeOpen = IsEscapeState(gameController);
             string? uiBlockingReason = GetUiBlockingReason(gameController);
-            return ShouldAllowBackgroundAutomation(foreground, blockOnOpenPanels, sidePanelOpen, escapeOpen, uiBlockingReason);
+            bool isGamePaused = GameInputSafety.IsPaused(gameController);
+            return ShouldAllowBackgroundAutomation(foreground, blockOnOpenPanels, sidePanelOpen, escapeOpen, uiBlockingReason, isGamePaused);
         }
 
         internal static bool ShouldAllowBackgroundAutomation(
@@ -54,10 +55,12 @@ namespace ClickIt.Shared.Input
             bool blockOnOpenPanels,
             bool isPanelOpen,
             bool isEscapeState,
-            string? uiBlockingReason)
+            string? uiBlockingReason,
+            bool isGamePaused = false)
             => isPoeActive
                 && (!blockOnOpenPanels || !isPanelOpen)
                 && !isEscapeState
+                && !isGamePaused
                 && string.IsNullOrEmpty(uiBlockingReason);
 
         // Single gate walk shared by the click gate, the per-frame overlay, and the debug reason: one evaluation returns both whether clicking is allowed and the blocking reason, so the UI-panel reflection reads happen once instead of being re-run per caller.
@@ -76,6 +79,7 @@ namespace ClickIt.Shared.Input
             bool isInTownOrHideout = IsInTownOrHideout(gameController);
             bool isInToggleItemsPostClickBlockWindow = IsInToggleItemsPostClickBlockWindow();
             bool isEscapeState = IsEscapeState(gameController);
+            bool isGamePaused = GameInputSafety.IsPaused(gameController);
             string? uiBlockingReason = GetUiBlockingReason(gameController);
 
             bool allowed = keyState
@@ -86,7 +90,8 @@ namespace ClickIt.Shared.Input
                     isInToggleItemsPostClickBlockWindow,
                     isEscapeState,
                     uiBlockingReason,
-                    blockOnOpenPanels)
+                    blockOnOpenPanels,
+                    isGamePaused)
                 && (!isRitualActive || clickHotkeyHeld);
 
             if (!allowed)
@@ -97,7 +102,8 @@ namespace ClickIt.Shared.Input
                     isInToggleItemsPostClickBlockWindow,
                     isEscapeState,
                     uiBlockingReason,
-                    blockOnOpenPanels);
+                    blockOnOpenPanels,
+                    isGamePaused);
 
             return allowed;
         }
@@ -246,7 +252,8 @@ namespace ClickIt.Shared.Input
                 isInToggleItemsPostClickBlockWindow: IsInToggleItemsPostClickBlockWindow(),
                 isEscapeState: IsEscapeState(gameController),
                 uiBlockingReason: GetUiBlockingReason(gameController),
-                blockOnOpenPanels: _settings?.BlockOnOpenLeftRightPanel?.Value == true);
+                blockOnOpenPanels: _settings?.BlockOnOpenLeftRightPanel?.Value == true,
+                isGamePaused: GameInputSafety.IsPaused(gameController));
         }
 
         internal static bool ShouldAllowClickWithoutInputState(
@@ -256,13 +263,15 @@ namespace ClickIt.Shared.Input
             bool isInToggleItemsPostClickBlockWindow,
             bool isEscapeState,
             string? uiBlockingReason,
-            bool blockOnOpenPanels)
+            bool blockOnOpenPanels,
+            bool isGamePaused = false)
         {
             return isPoeActive
                 && (!blockOnOpenPanels || !isPanelOpen)
                 && !isInTownOrHideout
                 && !isInToggleItemsPostClickBlockWindow
                 && !isEscapeState
+                && !isGamePaused
                 && string.IsNullOrEmpty(uiBlockingReason);
         }
 
@@ -273,8 +282,11 @@ namespace ClickIt.Shared.Input
             bool isInToggleItemsPostClickBlockWindow,
             bool isEscapeState,
             string? uiBlockingReason,
-            bool blockOnOpenPanels)
+            bool blockOnOpenPanels,
+            bool isGamePaused = false)
         {
+            if (isGamePaused)
+                return "Game is paused.";
             if (!isPoeActive)
                 return "PoE not in focus.";
             if (blockOnOpenPanels && isPanelOpen)
