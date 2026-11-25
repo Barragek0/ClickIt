@@ -241,8 +241,7 @@ namespace ClickIt.Features.Labels.Application
             try
             {
                 return _dependencies.GetViewport?.Invoke()
-                    ?? _dependencies.GameController?.Window?.GetWindowRectangleTimeCache
-                    ?? default;
+                    ?? GameWindowRectResolver.Resolve(_dependencies.GameController);
             }
             catch
             {

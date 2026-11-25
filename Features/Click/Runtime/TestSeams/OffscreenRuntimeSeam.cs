@@ -30,7 +30,7 @@ namespace ClickIt.Features.Click.Runtime.TestSeams
         }
 
         public RectangleF GetWindowRectangle(GameController gameController)
-            => gameController.Window.GetWindowRectangleTimeCache;
+            => GameWindowRectResolver.Resolve(gameController);
 
         public bool TryProjectWorldToScreen(GameController gameController, Entity target, out Vector2 targetScreen)
         {

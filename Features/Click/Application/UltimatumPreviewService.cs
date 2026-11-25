@@ -64,9 +64,7 @@ namespace ClickIt.Features.Click.Application
         }
 
         private RectangleF ResolveWindowArea()
-            => _dependencies.Automation.GameController?.Window is { } window
-                ? window.GetWindowRectangleTimeCache
-                : RectangleF.Empty;
+            => GameWindowRectResolver.Resolve(_dependencies.Automation.GameController);
 
         private bool TryGetPanelOptionPreview(out List<UltimatumPanelOptionPreview> previews)
         {

@@ -588,7 +588,7 @@ internal sealed class BlightPlanExecutor
         {
             if (gc?.Game?.IngameState?.Camera is not { } camera)
                 return false;
-            return BlightHelpers.IsGridPosOffScreen(camera, gc.Window.GetWindowRectangleTimeCache.Size, gridPos);
+            return BlightHelpers.IsGridPosOffScreen(camera, GameWindowRectResolver.Resolve(gc).Size, gridPos);
         }
         catch { return false; }
     }

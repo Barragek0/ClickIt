@@ -46,7 +46,7 @@ namespace ClickIt.Core.Runtime
                         effectiveSettings,
                         gameController,
                         graphics,
-                        gameController?.Window?.GetWindowRectangleTimeCache ?? RectangleF.Empty,
+                        GameWindowRectResolver.Resolve(gameController),
                         state.Services.CachedLabels?.Value,
                         rendering.DeferredDrawQueue);
                     rendering.OverlayRenderHost?.Render(overlayContext, services.PerformanceMonitor);

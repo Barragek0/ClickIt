@@ -22,7 +22,7 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void ResolveNextLostShipmentCandidate_ReturnsNull_AndLogsFailure_WhenWindowReadThrows()
+        public void ResolveNextLostShipmentCandidate_ReturnsNull_WhenWindowIsUnavailable()
         {
             List<string> logs = [];
 
@@ -39,8 +39,7 @@ namespace ClickIt.Tests.Features.Click
                 IsClickableInEitherSpace: static (_, _) => true));
 
             selector.ResolveNextLostShipmentCandidate().Should().BeNull();
-            logs.Should().ContainSingle();
-            logs[0].Should().Contain("[ResolveNextLostShipmentCandidate] Failed to scan hidden labels:");
+            logs.Should().BeEmpty("the shared window resolver treats a missing window as an empty client area");
         }
     }
 }

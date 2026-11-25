@@ -174,7 +174,7 @@ namespace ClickIt.Features.Observability.TelemetryProjection
 
             try
             {
-                return gameController.Window.GetWindowRectangleTimeCache;
+                return GameWindowRectResolver.Resolve(gameController);
             }
             catch
             {

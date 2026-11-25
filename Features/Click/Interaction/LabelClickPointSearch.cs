@@ -80,7 +80,7 @@ namespace ClickIt.Features.Click.Interaction
                 return false;
             }
 
-            RectangleF gameWindowRect = gameController?.Window?.GetWindowRectangleTimeCache ?? RectangleF.Empty;
+            RectangleF gameWindowRect = GameWindowRectResolver.Resolve(gameController);
             if (!IsSafeAutomationPoint(point, gameWindowRect, virtualScreenRect))
             {
                 reason = $"outside safe game window bounds {gameWindowRect}";

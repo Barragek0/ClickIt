@@ -98,7 +98,7 @@ namespace ClickIt.Features.Click.Label
             NumVector2 worldScreenRawVec = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
             Vector2 worldScreenRaw = new(worldScreenRawVec.X, worldScreenRawVec.Y);
 
-            RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
+            RectangleF windowArea = GameWindowRectResolver.Resolve(_dependencies.GameController);
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
             Vector2 worldScreenAbsolute = worldScreenRaw + windowTopLeft;
 

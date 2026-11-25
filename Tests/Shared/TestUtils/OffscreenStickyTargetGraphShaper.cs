@@ -7,7 +7,8 @@ namespace ClickIt.Tests.Shared.TestUtils
             string path = "Metadata/Monsters/Test",
             bool isValid = true,
             bool isHidden = false,
-            bool isTargetable = true)
+            bool isTargetable = true,
+            float distancePlayer = 0)
         {
             var entity = (StickyTargetProbeEntity)RuntimeHelpers.GetUninitializedObject(typeof(StickyTargetProbeEntity));
             entity.Address = address;
@@ -15,6 +16,7 @@ namespace ClickIt.Tests.Shared.TestUtils
             entity.IsValid = isValid;
             entity.IsHidden = isHidden;
             entity.IsTargetable = isTargetable;
+            entity.DistancePlayer = distancePlayer;
             entity.RenderName = "Test Sticky Target";
             entity.Type = EntityType.Monster;
             SeedBaseAddress(entity, address);
@@ -62,6 +64,8 @@ namespace ClickIt.Tests.Shared.TestUtils
         public new string Path { get; set; } = string.Empty;
 
         public new bool IsTargetable { get; set; }
+
+        public new float DistancePlayer { get; set; }
 
         public new string RenderName { get; set; } = string.Empty;
 

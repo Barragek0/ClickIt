@@ -97,6 +97,18 @@ namespace ClickIt.Tests.Features.Click.Interaction
         }
 
         [TestMethod]
+        [TestCategory("Regression")]
+        public void IsSafeAutomationPoint_UsesResolvedClientAreaBounds_InWindowedMode()
+        {
+            RectangleF virtualScreen = new(0, 0, 1920, 1080);
+            RectangleF resolvedClientArea = new(180, 120, 1280, 720);
+
+            LabelClickPointSearch.IsSafeAutomationPoint(new Vector2(179, 400), resolvedClientArea, virtualScreen).Should().BeFalse(
+                "the window frame and title bar are outside the resolved game client area");
+            LabelClickPointSearch.IsSafeAutomationPoint(new Vector2(181, 121), resolvedClientArea, virtualScreen).Should().BeTrue();
+        }
+
+        [TestMethod]
         public void HasUnblockedOverlapProbePoint_ReturnsTrue_WhenAtLeastOneProbePointIsVisible()
         {
             var target = new RectangleF(0, 0, 100, 40);

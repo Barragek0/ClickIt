@@ -512,12 +512,12 @@ namespace ClickIt.Features.Click.Application
                 forceUiHoverVerification);
         }
 
-        internal bool PerformMechanicClick(Vector2 clickPos, IntervalKind interval = IntervalKind.Click, Func<Element?, bool>? validateSettledHover = null)
+        internal bool PerformMechanicClick(Vector2 clickPos, IntervalKind interval = IntervalKind.Click, Func<Element?, bool>? validateSettledHover = null, Vector2? clientClickPosition = null)
             => ExecuteInteraction(clickPos, null, _dependencies.GameController, false,
-                interval: interval, validateSettledHover: validateSettledHover);
+                interval: interval, validateSettledHover: validateSettledHover, clientClickPosition: clientClickPosition);
 
-        internal bool PerformMechanicInteraction(Vector2 clickPos, bool useHoldClick)
-            => ExecuteInteraction(clickPos, null, _dependencies.GameController, useHoldClick);
+        internal bool PerformMechanicInteraction(Vector2 clickPos, bool useHoldClick, Vector2? clientClickPosition = null)
+            => ExecuteInteraction(clickPos, null, _dependencies.GameController, useHoldClick, clientClickPosition: clientClickPosition);
 
         internal bool PerformManualCursorInteraction(Vector2 clickPos, bool useHoldClick, Vector2? clientClickPosition = null)
             => ExecuteInteraction(clickPos, null, _dependencies.GameController, useHoldClick, allowWhenHotkeyInactive: true,

@@ -151,7 +151,9 @@ namespace ClickIt.Features.Click.Runtime
             }
 
             Vector2 clickPos = ResolveBlightIconSafeClickPosition(walkClick, targetScreen, context.TargetPath);
-            bool clicked = _dependencies.LabelInteraction.PerformMechanicClick(clickPos, interval: IntervalKind.Walk);
+            RectangleF window = _runtimeSeam.GetWindowRectangle(_dependencies.GameController);
+            bool clicked = _dependencies.LabelInteraction.PerformMechanicClick(
+                clickPos + new Vector2(window.X, window.Y), interval: IntervalKind.Walk, clientClickPosition: clickPos);
             AddPathfindingStage(clicked
                 ? $"Walk: click executed ({clickPos.X:F0},{clickPos.Y:F0})"
                 : $"Walk: click REJECTED ({clickPos.X:F0},{clickPos.Y:F0})");
@@ -365,7 +367,10 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
             var before = controller.Player.PosNum;
             string? rejection = null;
-            bool clicked = _dependencies.LabelInteraction.PerformMechanicClick(point, interval, hover =>
+            RectangleF window = _runtimeSeam.GetWindowRectangle(controller);
+            if (window.Width <= 0 || window.Height <= 0)
+                return false;
+            bool clicked = _dependencies.LabelInteraction.PerformMechanicClick(point + new Vector2(window.X, window.Y), interval, hover =>
             {
                 if (controller.Player == null || controller.IngameState?.Camera is not { } camera)
                     return false;
@@ -382,7 +387,7 @@ namespace ClickIt.Features.Click.Runtime
                     return true;
                 rejection = "Blight walk: settled hover or camera drift rejected the point";
                 return false;
-            });
+            }, clientClickPosition: point);
             if (!clicked && rejection != null)
             {
                 RememberRejectedBlightPoint(point, Environment.TickCount64);
@@ -474,7 +479,7 @@ namespace ClickIt.Features.Click.Runtime
             Vector2 offset = walkClick;
             try
             {
-                Size2F win = _dependencies.GameController?.Window.GetWindowRectangleTimeCache.Size ?? default;
+                Size2F win = GameWindowRectResolver.Resolve(_dependencies.GameController).Size;
                 bool hasWindow = win.Width > 0f && win.Height > 0f;
 
                 offset = hasWindow
@@ -731,7 +736,7 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
 
             RectangleF window = _runtimeSeam.GetWindowRectangle(_dependencies.GameController);
-            Vector2 center = OffscreenPathingMath.GetWindowCenter(window);
+            Vector2 center = new(window.Width * 0.5f, window.Height * 0.5f);
             float radius = SystemMath.Min(window.Width, window.Height) * 0.30f;
             return OffscreenPathingMath.TryComputeGridDirectionPoint(center, deltaX, deltaY, radius, out targetScreen);
         }
@@ -739,7 +744,7 @@ namespace ClickIt.Features.Click.Runtime
         private bool TryResolveOffscreenTargetScreenPoint(Entity target, out Vector2 targetScreen)
         {
             RectangleF window = _runtimeSeam.GetWindowRectangle(_dependencies.GameController);
-            Vector2 center = OffscreenPathingMath.GetWindowCenter(window);
+            Vector2 center = new(window.Width * 0.5f, window.Height * 0.5f);
             float radius = SystemMath.Min(window.Width, window.Height) * 0.30f;
             TryGetGridDelta(target, out float deltaX, out float deltaY);
 
@@ -747,10 +752,10 @@ namespace ClickIt.Features.Click.Runtime
                 && OffscreenPathingMath.TryComputeGridDirectionPoint(center, deltaX, deltaY, radius, out targetScreen))
                 return true;
 
-            if (!_runtimeSeam.TryProjectWorldToScreen(_dependencies.GameController, target, out Vector2 projected))
-                projected = default;
-
-            if (OffscreenPathingMath.IsFinite(projected) && !OffscreenPathingMath.IsNearCorner(projected, window))
+            RectangleF client = new(0, 0, window.Width, window.Height);
+            if (_runtimeSeam.TryProjectWorldToScreen(_dependencies.GameController, target, out Vector2 projected)
+                && OffscreenPathingMath.IsFinite(projected) && OffscreenPathingMath.IsInsideWindow(client, projected)
+                && !OffscreenPathingMath.IsNearCorner(projected, client))
             {
                 // Target is on screen - but can we actually click there? If the projected position falls in a blocked zone (minimap, right panel, etc.), treat the target as still offscreen so pathfinding keeps walking until it moves into a clickable area.
                 if (_dependencies.PointIsInClickableArea(projected, "offscreen"))
@@ -773,7 +778,8 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
 
             RectangleF window = _runtimeSeam.GetWindowRectangle(_dependencies.GameController);
-            if (!OffscreenPathingMath.IsInsideWindow(window, projected) || OffscreenPathingMath.IsNearCorner(projected, window))
+            RectangleF client = new(0, 0, window.Width, window.Height);
+            if (!OffscreenPathingMath.IsInsideWindow(client, projected) || OffscreenPathingMath.IsNearCorner(projected, client))
                 return false;
 
             if (!_dependencies.PointIsInClickableArea(projected, "offscreen"))
@@ -919,7 +925,7 @@ namespace ClickIt.Features.Click.Runtime
 
             RectangleF win = _runtimeSeam.GetWindowRectangle(_dependencies.GameController);
             if (OffscreenPathingMath.TryResolveDirectionalWalkClickPosition(
-                    win, targetScreen, context.TargetPath, _dependencies.PointIsInClickableArea, out walkClick))
+                    new RectangleF(0, 0, win.Width, win.Height), targetScreen, context.TargetPath, _dependencies.PointIsInClickableArea, out walkClick))
                 return true;
 
             AddPathfindingStage("Walk: directional click point FAILED");

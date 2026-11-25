@@ -196,7 +196,7 @@ namespace ClickIt.Features.Click.Application
                 yield break;
             }
 
-            RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
+            RectangleF windowArea = GameWindowRectResolver.Resolve(_dependencies.GameController);
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
 
             if (!_dependencies.EnsureCursorInsideGameWindowForClick("[ClickAltarElement] Skipping click - cursor is outside the PoE window"))
@@ -259,7 +259,7 @@ namespace ClickIt.Features.Click.Application
                 return false;
             }
 
-            return TryResolveAltarClickPoint(optionRect, _dependencies.GameController.Window.GetWindowRectangleTimeCache,
+            return TryResolveAltarClickPoint(optionRect, GameWindowRectResolver.Resolve(_dependencies.GameController),
                 point => _dependencies.IsClickableInEitherSpace(point, altarPath), out _);
         }
 
@@ -293,7 +293,7 @@ namespace ClickIt.Features.Click.Application
                 }
 
                 RectangleF rect = element.GetClientRect();
-                RectangleF window = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
+                RectangleF window = GameWindowRectResolver.Resolve(_dependencies.GameController);
                 Vector2 clientPoint;
                 if (avoidCursorMove)
                 {
@@ -314,7 +314,8 @@ namespace ClickIt.Features.Click.Application
                     ForceUiHoverVerification: false,
                     AllowWhenHotkeyInactive: allowWhenHotkeyInactive,
                     AvoidCursorMove: avoidCursorMove,
-                    OutsideWindowLogMessage: "[ClickAltarElement] Skipping altar click - cursor outside PoE window"));
+                    OutsideWindowLogMessage: "[ClickAltarElement] Skipping altar click - cursor outside PoE window",
+                    ClientClickPosition: clientPoint));
 
                 if (!executed)
                     return false;

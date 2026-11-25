@@ -53,8 +53,6 @@ namespace ClickIt.Shared.Game
                 ? corrected
                 : fallback;
 
-            resolved = NormalizeWindowRectangle(resolved);
-
             RectCache.SetValue(handle, nowMs, resolved);
             return resolved;
         }

@@ -90,7 +90,7 @@ namespace ClickIt.Features.Click
             ClickAutomationSupport = new ClickAutomationSupport(new ClickAutomationSupportDependencies(
                 Settings: settings,
                 TelemetryStore: new ClickTelemetryStore(settings),
-                GetWindowRectangle: () => _gameController.Window.GetWindowRectangleTimeCache,
+                GetWindowRectangle: () => GameWindowRectResolver.Resolve(_gameController),
                 GetCursorPosition: static () =>
                 {
                     SystemDrawingPoint cursor = Mouse.GetCursorPosition();
@@ -141,7 +141,7 @@ namespace ClickIt.Features.Click
             if (_gameController.Window == null)
                 return false;
 
-            RectangleF windowArea = _gameController.Window.GetWindowRectangleTimeCache;
+            RectangleF windowArea = GameWindowRectResolver.Resolve(_gameController);
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
             SystemDrawingPoint cursor = Mouse.GetCursorPosition();
             Vector2 cursorAbsolute = new(cursor.X, cursor.Y);

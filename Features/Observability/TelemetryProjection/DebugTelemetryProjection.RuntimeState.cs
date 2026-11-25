@@ -20,7 +20,7 @@ namespace ClickIt.Features.Observability.TelemetryProjection
             if (visibleLabels == null || visibleLabels.Count == 0)
                 return HoveredItemMetadataTelemetrySnapshot.Empty;
 
-            RectangleF windowRect = gameController?.Window.GetWindowRectangleTimeCache ?? RectangleF.Empty;
+            RectangleF windowRect = GameWindowRectResolver.Resolve(gameController);
             SystemDrawingPoint cursorPosition = Mouse.GetCursorPosition();
             bool cursorInsideWindow = IsCursorInsideWindow(windowRect, cursorPosition.X, cursorPosition.Y);
             if (!cursorInsideWindow)

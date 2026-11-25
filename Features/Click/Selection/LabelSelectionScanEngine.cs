@@ -54,7 +54,7 @@ namespace ClickIt.Features.Click.Selection
 
             float labelDistance = label.ItemOnGround?.DistancePlayer ?? float.MaxValue;
             float shrineDistance = shrine.DistancePlayer;
-            RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
+            RectangleF windowArea = GameWindowRectResolver.Resolve(_dependencies.GameController);
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
             Vector2 cursorAbsolute = ManualCursorSelectionMath.GetCursorAbsolutePosition();
             return CandidateRankingEngine.ShouldPreferShrineOverLabel(
@@ -299,7 +299,7 @@ namespace ClickIt.Features.Click.Selection
             try
             {
                 RectangleF windowArea = _dependencies.GetViewport?.Invoke()
-                    ?? _dependencies.GameController.Window.GetWindowRectangleTimeCache;
+                    ?? GameWindowRectResolver.Resolve(_dependencies.GameController);
                 if (!(windowArea.Width > 0 && windowArea.Height > 0))
                     return false;
 

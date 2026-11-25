@@ -10,13 +10,13 @@ namespace ClickIt.Features.Click.Core
         public ExecutionResult Execute(ClickTickContext context, ClickCandidates candidates, DecisionResult decision)
         {
             // Ordered decision chain (mechanics → blight → label → walk).
-            if (TryHandleBlightBlocking())
+            if (TryHandleBlightBlocking(context))
                 return StopExecution();
 
             if (TryExecuteMechanicSelections(context, candidates, decision, hiddenFallback: !decision.GroundItemsVisible))
                 return StopExecution();
 
-            if (TryProgressBlightBuilding())
+            if (TryProgressBlightBuilding(context))
                 return StopExecution();
 
             return decision.GroundItemsVisible
@@ -265,7 +265,17 @@ namespace ClickIt.Features.Click.Core
             return HandleVisibleLabel(context, candidates, nextLabelItem, hasClickableClickPos, clientClickPos);
         }
 
-        private bool TryProgressBlightBuilding()
+        private bool IsWithinSearchRadius(Entity? entity, string? mechanicId)
+        {
+            if (ClickSafetyPolicy.IsWithinSearchRadius(_dependencies.Policy.Settings, entity))
+                return true;
+
+            _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage(
+                "SearchRadiusBlocked", "Selected target is outside the enabled search radius", mechanicId);
+            return false;
+        }
+
+        private bool TryProgressBlightBuilding(ClickTickContext context)
         {
             if (_dependencies.Mechanics.TryProgressBlightBuilding == null)
                 return false;
@@ -281,7 +291,8 @@ namespace ClickIt.Features.Click.Core
                     if (action.IsMenuClick)
                     {
                         bool clicked = action.ValidateHover != null && _dependencies.Selection.LabelInteraction
-                            .PerformMechanicClick(clickPos, validateSettledHover: action.ValidateHover);
+                            .PerformMechanicClick(clickPos + context.WindowTopLeft,
+                                validateSettledHover: action.ValidateHover, clientClickPosition: clickPos);
                         if (!clicked)
                         {
                             action.OnRejected?.Invoke();

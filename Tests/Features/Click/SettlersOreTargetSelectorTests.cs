@@ -66,7 +66,7 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void ResolveNextSettlersOreCandidate_ReturnsNull_AndLogsFailure_WhenWindowReadThrows()
+        public void ResolveNextSettlersOreCandidate_ReturnsNull_WhenWindowIsUnavailable()
         {
             ClickItSettings settings = CreateSettings(clickDistance: 20, debugMode: false);
             List<string> logs = [];
@@ -80,8 +80,7 @@ namespace ClickIt.Tests.Features.Click
             SettlersOreCandidate? candidate = selector.ResolveNextSettlersOreCandidate();
 
             candidate.Should().BeNull();
-            logs.Should().ContainSingle();
-            logs[0].Should().Contain("[SettlersOre] Failed entities:");
+            logs.Should().BeEmpty("the shared window resolver treats a missing window as an empty client area");
         }
 
         [TestMethod]

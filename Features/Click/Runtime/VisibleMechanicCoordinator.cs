@@ -93,7 +93,7 @@ namespace ClickIt.Features.Click.Runtime
             if (!_dependencies.Settings.ClickShrines.Value)
                 return null;
 
-            RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
+            RectangleF windowArea = GameWindowRectResolver.Resolve(_dependencies.GameController);
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
             Vector2 cursorAbsolute = ManualCursorSelectionMath.GetCursorAbsolutePosition();
             return _dependencies.ShrineService.GetNearestClickableShrine(
@@ -197,7 +197,8 @@ namespace ClickIt.Features.Click.Runtime
         {
             bool clicked = _dependencies.LabelInteraction.PerformMechanicInteraction(
                 candidate.ClickPosition,
-                plan.UseHoldClick);
+                plan.UseHoldClick,
+                clientClickPosition: ToClientClickPosition(candidate.ClickPosition));
 
             if (!clicked)
                 return false;
@@ -379,6 +380,15 @@ namespace ClickIt.Features.Click.Runtime
             return entity != null
                 && DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsValid, out bool isValid)
                 && isValid;
+        }
+
+        private bool IsWithinSearchRadius(Entity? entity)
+            => ClickSafetyPolicy.IsWithinSearchRadius(_dependencies.Settings, entity);
+
+        private Vector2 ToClientClickPosition(Vector2 desktopPoint)
+        {
+            RectangleF window = GameWindowRectResolver.Resolve(_dependencies.GameController);
+            return CoordinateSpace.ToClient(desktopPoint, new Vector2(window.X, window.Y));
         }
 
         private bool TryProjectEntityScreenRaw(Entity entity, out Vector2 screenPosition)

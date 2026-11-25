@@ -164,7 +164,7 @@ internal sealed class LinkAutomationService(
             return;
         }
 
-        RectangleF window = _gameController.Window?.GetWindowRectangleTimeCache ?? RectangleF.Empty;
+        RectangleF window = GameWindowRectResolver.Resolve(_gameController);
         if (!LinkAutomationPolicy.TryResolveAbsoluteScreenPoint(targetClientPosition, window, out Vector2 targetScreenPosition)
             || !_isPointClickable(targetClientPosition))
         {

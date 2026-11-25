@@ -163,7 +163,7 @@ namespace ClickIt.Features.Click
             ClickAutomationSupport.DebugLog));
 
         private ClickTickContextFactory TickContextFactory => field ??= new(new ClickTickContextFactoryDependencies(
-            getWindowRectangle: () => _gameController.Window.GetWindowRectangleTimeCache,
+            getWindowRectangle: () => GameWindowRectResolver.Resolve(_gameController),
             getCursorAbsolutePosition: ManualCursorSelectionMath.GetCursorAbsolutePosition,
             tryHandleUltimatumPanelUi: TryHandleUltimatumPanelUi,
             debugLog: ClickAutomationSupport.DebugLog,

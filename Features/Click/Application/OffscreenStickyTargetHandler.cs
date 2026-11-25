@@ -127,12 +127,12 @@ namespace ClickIt.Features.Click.Application
         {
             needsApproach = false;
             if (ShrineService.IsShrine(stickyTarget))
-                return TryClickStickyShrine(stickyTarget);
+                return TryClickStickyShrine(stickyTarget, windowTopLeft);
 
             return TryClickStickyLabel(stickyTarget, windowTopLeft, allLabels, out needsApproach);
         }
 
-        private bool TryClickStickyShrine(Entity stickyTarget)
+        private bool TryClickStickyShrine(Entity stickyTarget, Vector2 windowTopLeft)
         {
             if (!TryProjectEntityScreenPosition(stickyTarget, out Vector2 shrinePos))
                 return false;
@@ -143,7 +143,8 @@ namespace ClickIt.Features.Click.Application
             if (!_dependencies.IsClickableInEitherSpace(shrinePos, path))
                 return false;
 
-            bool clickedShrine = _dependencies.LabelInteraction.PerformMechanicClick(shrinePos);
+            bool clickedShrine = _dependencies.LabelInteraction.PerformMechanicClick(
+                shrinePos + windowTopLeft, clientClickPosition: shrinePos);
             if (!clickedShrine)
                 return false;
 

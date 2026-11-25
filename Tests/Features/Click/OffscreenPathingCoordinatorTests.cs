@@ -426,7 +426,7 @@ namespace ClickIt.Tests.Features.Click
             resolvedFromPath.Should().BeFalse();
             // Projected point is not clickable, so the resolver falls back to a fixed-radius grid-direction point toward the target.
             OffscreenPathingMath.TryComputeGridDirectionPoint(
-                OffscreenPathingMath.GetWindowCenter(new RectangleF(100f, 200f, 1280f, 720f)),
+                new Vector2(640f, 360f),
                 deltaGridX: 4f,
                 deltaGridY: 1f,
                 radius: MathF.Min(1280f, 720f) * 0.30f,
@@ -578,7 +578,7 @@ namespace ClickIt.Tests.Features.Click
             bool resolved = InvokeTryResolveOffscreenTargetScreenPointFromPath(coordinator, out Vector2 targetScreen);
 
             resolved.Should().BeTrue();
-            OffscreenPathingMath.IsInsideWindow(window, targetScreen).Should().BeTrue();
+            OffscreenPathingMath.IsInsideWindow(new RectangleF(0, 0, window.Width, window.Height), targetScreen).Should().BeTrue();
         }
 
         [TestMethod]
@@ -645,15 +645,15 @@ namespace ClickIt.Tests.Features.Click
                     PlayerGrid = Vector2.Zero,
                     TargetGrid = new Vector2(5f, 1f),
                     Window = window,
-                    ProjectedPoint = new Vector2(window.Left + 5f, window.Top + 5f),
+                    ProjectedPoint = new Vector2(5f, 5f),
                     ProjectWorldToScreen = true
                 });
 
             bool resolved = InvokeTryResolveOffscreenTargetScreenPoint(coordinator, target, out Vector2 targetScreen);
 
             resolved.Should().BeTrue();
-            targetScreen.Should().NotBe(new Vector2(window.Left + 5f, window.Top + 5f));
-            OffscreenPathingMath.IsInsideWindow(window, targetScreen).Should().BeTrue();
+            targetScreen.Should().NotBe(new Vector2(5f, 5f));
+            OffscreenPathingMath.IsInsideWindow(new RectangleF(0, 0, window.Width, window.Height), targetScreen).Should().BeTrue();
         }
 
         [TestMethod]
@@ -709,7 +709,7 @@ namespace ClickIt.Tests.Features.Click
                 runtimeSeam: new StubOffscreenRuntimeSeam
                 {
                     Window = window,
-                    ProjectedPoint = new Vector2(50f, 400f),
+                    ProjectedPoint = new Vector2(-50f, 400f),
                     ProjectWorldToScreen = true
                 });
 
@@ -729,7 +729,7 @@ namespace ClickIt.Tests.Features.Click
                 runtimeSeam: new StubOffscreenRuntimeSeam
                 {
                     Window = window,
-                    ProjectedPoint = new Vector2(120f, 220f),
+                    ProjectedPoint = new Vector2(20f, 20f),
                     ProjectWorldToScreen = true
                 });
 
@@ -941,17 +941,22 @@ namespace ClickIt.Tests.Features.Click
             snapshot.ClickScreen.Should().Be(new Vector2(770f, 450f));
         }
 
-        [TestMethod]
-        public void TryWalkTowardOffscreenTarget_ReturnsTrue_WhenMovementSkillIsSkippedAndClickSucceeds()
+        [DataTestMethod]
+        [TestCategory("Regression")]
+        [DataRow(false)]
+        [DataRow(true)]
+        public void OffscreenWalk_SendsDesktopInputAndClientSafetyPoint(bool stickyOutsideRadius)
         {
             ClickItSettings settings = new()
             {
                 WalkTowardOffscreenLabels = new ToggleNode(true),
+                ClickDistanceEnabled = new ToggleNode(stickyOutsideRadius),
                 UseMovementSkillsForOffscreenPathfinding = new ToggleNode(true),
                 DebugMode = new ToggleNode(true)
             };
             ClickRuntimeState runtimeState = new();
-            Entity preferredTarget = OffscreenStickyTargetGraphShaper.CreateActiveStickyEntity(address: 64, path: "Metadata/Monsters/PublicTraversalSuccess");
+            Entity preferredTarget = OffscreenStickyTargetGraphShaper.CreateActiveStickyEntity(
+                address: 64, path: "Metadata/Monsters/PublicTraversalSuccess", distancePlayer: 150);
             List<string> debugLogs = [];
             List<string> heldTelemetry = [];
             PathfindingService pathfindingService = new();
@@ -959,10 +964,15 @@ namespace ClickIt.Tests.Features.Click
             ClickDebugPublicationService clickDebugPublisher = ClickTestDebugPublisherFactory.Create(() => true, _ => { });
             Func<Vector2, string, bool> pointIsInClickableArea = static (_, _) => true;
             ILabelInteractionPort labelInteractionPort = ClickTestServiceFactory.CreateNoOpLabelInteractionPort();
+            InteractionExecutionRequest? walkRequest = null;
             ClickLabelInteractionService labelInteraction = ClickTestServiceFactory.CreateLabelInteractionService(
                 gameController: interactionController,
                 labelInteractionPort: labelInteractionPort,
-                executeInteraction: static _ => true,
+                executeInteraction: request =>
+                {
+                    walkRequest = request;
+                    return true;
+                },
                 isClickableInEitherSpace: pointIsInClickableArea,
                 isInsideWindowInEitherSpace: static _ => true);
             MovementSkillCoordinator movementSkills = new(new MovementSkillCoordinatorDependencies(
@@ -1011,7 +1021,15 @@ namespace ClickIt.Tests.Features.Click
                     ProjectWorldToScreen = true
                 }));
 
-            bool walked = coordinator.TryWalkTowardOffscreenTarget(preferredTarget);
+            bool walked;
+            if (stickyOutsideRadius)
+            {
+                coordinator.SetStickyOffscreenTarget(preferredTarget);
+                walked = coordinator.TryHandleStickyOffscreenTarget(new Vector2(100f, 200f),
+                    [OffscreenStickyTargetGraphShaper.CreateVisibleLabel(preferredTarget)]);
+            }
+            else
+                walked = coordinator.TryWalkTowardOffscreenTarget(preferredTarget);
 
             walked.Should().BeTrue();
             heldTelemetry.Should().ContainSingle().Which.Should().Contain("Offscreen traversal click succeeded: Metadata/Monsters/PublicTraversalSuccess");
@@ -1022,6 +1040,10 @@ namespace ClickIt.Tests.Features.Click
             snapshot.TargetPath.Should().Be("Metadata/Monsters/PublicTraversalSuccess");
             snapshot.MovementSkillDebug.Should().Contain("no fresh path available");
             runtimeState.StickyOffscreenTargetAddress.Should().Be(64);
+            walkRequest.Should().NotBeNull();
+            walkRequest!.Value.Interval.Should().Be(IntervalKind.Walk);
+            walkRequest!.Value.ClientClickPosition.Should().NotBeNull();
+            walkRequest.Value.ClickPosition.Should().Be(walkRequest.Value.ClientClickPosition!.Value + new Vector2(100f, 200f));
         }
 
 

@@ -114,7 +114,7 @@ namespace ClickIt.Features.Area
 
         private void RefreshMainBlockedAreas(GameController gameController, long now)
         {
-            RectangleF winRect = gameController.Window.GetWindowRectangleTimeCache;
+            RectangleF winRect = GameWindowRectResolver.Resolve(gameController);
             (RectangleF fullScreen, RectangleF leftCombined, RectangleF rightCombined) = ResolveMainUiRegions(winRect);
 
             _blockedState.FullScreenRectangle = ToStandard(fullScreen);

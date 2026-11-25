@@ -133,7 +133,7 @@ namespace ClickIt.Features.Labels.Application
             RectangleF windowArea;
             try
             {
-                windowArea = _gameController?.Window?.GetWindowRectangleTimeCache ?? default;
+                windowArea = GameWindowRectResolver.Resolve(_gameController);
             }
             catch
             {

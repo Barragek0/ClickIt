@@ -194,7 +194,7 @@ namespace ClickIt.Features.Click.Selection
             RectangleF windowArea;
             try
             {
-                windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
+                windowArea = GameWindowRectResolver.Resolve(_dependencies.GameController);
             }
             catch
             {

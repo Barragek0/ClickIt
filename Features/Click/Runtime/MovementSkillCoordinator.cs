@@ -179,14 +179,19 @@ namespace ClickIt.Features.Click.Runtime
             RectangleF win;
             try
             {
-                win = controller.Window.GetWindowRectangleTimeCache;
+                win = GameWindowRectResolver.Resolve(controller);
             }
             catch
             {
                 return false;
             }
 
-            return MovementSkillCastPointResolver.TryResolveCastPoint(win, targetScreen, targetPath, _dependencies.PointIsInClickableArea, out castPoint);
+            if (!MovementSkillCastPointResolver.TryResolveCastPoint(new RectangleF(0, 0, win.Width, win.Height),
+                targetScreen, targetPath, _dependencies.PointIsInClickableArea, out Vector2 clientPoint))
+                return false;
+
+            castPoint = clientPoint + new Vector2(win.X, win.Y);
+            return LabelClickPointSearch.TryValidateAutomationScreenPoint(castPoint, controller, out _);
         }
     }
 }

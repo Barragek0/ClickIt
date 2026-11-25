@@ -19,7 +19,7 @@ namespace ClickIt.Features.Click.Selection
             try
             {
                 LostShipmentCandidate? best = null;
-                RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
+                RectangleF windowArea = GameWindowRectResolver.Resolve(_dependencies.GameController);
                 Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
                 Vector2 cursorAbsolute = ManualCursorSelectionMath.GetCursorAbsolutePosition();
 

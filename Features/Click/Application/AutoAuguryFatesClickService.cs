@@ -151,7 +151,7 @@ internal sealed class AutoAuguryFatesClickService(
                 return true;
             }
 
-            RectangleF window = _gameController.Window.GetWindowRectangleTimeCache;
+            RectangleF window = GameWindowRectResolver.Resolve(_gameController);
             Vector2 absolute = point + new Vector2(window.X, window.Y);
             PendingClick next = new(advice.AtBoss, confirm, target.Fate ?? string.Empty, rect,
                 cards.Count(static card => card.Selected));
@@ -160,7 +160,7 @@ internal sealed class AutoAuguryFatesClickService(
             bool sent = _performClick(absolute, hover =>
             {
                 SystemDrawingPoint cursor = Mouse.GetCursorPosition();
-                RectangleF currentWindow = _gameController.Window.GetWindowRectangleTimeCache;
+                RectangleF currentWindow = GameWindowRectResolver.Resolve(_gameController);
                 if (_gameController.Window?.IsForeground() != true || !_isClickable(point, MechanicIds.Fates))
                 {
                     failure = "window or clickable area changed";

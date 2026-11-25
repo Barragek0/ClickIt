@@ -92,7 +92,7 @@ namespace ClickIt.Core.Runtime
                 () => new OverlayRefreshContext(
                     _gameController,
                     _state.Services.CachedLabels?.Value,
-                    _gameController.Window.GetWindowRectangleTimeCache,
+                    GameWindowRectResolver.Resolve(_gameController),
                     _settings),
                 () => !_state.Runtime.IsShuttingDown,
                 _state.Services.PerformanceMonitor,

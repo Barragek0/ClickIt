@@ -89,7 +89,7 @@ namespace ClickIt.Features.Labels.Application
             {
                 try
                 {
-                    windowArea = _gameController.Window.GetWindowRectangleTimeCache;
+                    windowArea = GameWindowRectResolver.Resolve(_gameController);
                     canCheckScreen = true;
                 }
                 catch
