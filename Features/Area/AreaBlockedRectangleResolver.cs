@@ -5,6 +5,7 @@ namespace ClickIt.Features.Area
         ChatPanel,
         MapPanel,
         XpBar,
+        Delve,
     }
 
     internal static class AreaBlockedRectangleResolver
@@ -15,6 +16,7 @@ namespace ClickIt.Features.Area
             ("Chat", "ChatPanel", [1, 2, 2], false),
             ("Map", "Map", [2, 1], false),
             ("XP Bar", "GameUI", [0], false),
+            ("Delve", "SkillBar.Skills", [13, 0], false),
         ];
 
         internal static RectangleF ResolveBlockedRectangle(GameController gameController, AreaBlockedRectangleKind kind)

@@ -330,6 +330,24 @@ namespace ClickIt.Tests.Features.Area
         }
 
         [TestMethod]
+        [TestCategory("Regression")]
+        public void PointIsInClickableArea_ReturnsFalse_InDelveBlockedRectangle()
+        {
+            var svc = new AreaService();
+
+            var full = new RectangleF(0, 0, 400, 300);
+            var health = new RectangleF(0, 290, 400, 300);
+            var mana = new RectangleF(390, 290, 400, 300);
+            var buffs = new RectangleF(0, 0, 30, 30);
+            var delveBlocked = new RectangleF(120, 120, 70, 80);
+
+            ApplySnapshot(svc, full, health, mana, buffs, delveBlockedRectangle: delveBlocked);
+
+            svc.PointIsInClickableArea(new Vector2(180, 150)).Should().BeFalse();
+            svc.PointIsInClickableArea(new Vector2(230, 150)).Should().BeTrue();
+        }
+
+        [TestMethod]
         public void PointIsInClickableArea_ReturnsFalse_InButtonsBlockedRectangle()
         {
             var svc = new AreaService();
@@ -481,6 +499,7 @@ namespace ClickIt.Tests.Features.Area
             RectangleF? chatPanelBlockedRectangle = null,
             RectangleF? mapPanelBlockedRectangle = null,
             RectangleF? xpBarBlockedRectangle = null,
+            RectangleF? delveBlockedRectangle = null,
             RectangleF? buttonsBlockedRectangle = null,
             RectangleF? ritualBlockedRectangle = null,
             RectangleF? sentinelBlockedRectangle = null,
@@ -502,6 +521,7 @@ namespace ClickIt.Tests.Features.Area
                 ChatPanelBlockedRectangle = chatPanelBlockedRectangle ?? RectangleF.Empty,
                 MapPanelBlockedRectangle = mapPanelBlockedRectangle ?? RectangleF.Empty,
                 XpBarBlockedRectangle = xpBarBlockedRectangle ?? RectangleF.Empty,
+                DelveBlockedRectangle = delveBlockedRectangle ?? RectangleF.Empty,
                 ButtonRectangles = new[] { buttonsBlockedRectangle, ritualBlockedRectangle, sentinelBlockedRectangle }
                     .Where(rect => rect.HasValue).Select(rect => rect!.Value).ToArray(),
                 BuffsAndDebuffsRectangles = buffsAndDebuffsRectangles ?? [],

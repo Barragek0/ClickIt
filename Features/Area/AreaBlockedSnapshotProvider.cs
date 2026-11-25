@@ -146,6 +146,7 @@ namespace ClickIt.Features.Area
                 ? AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.MapPanel)
                 : RectangleF.Empty;
             _blockedState.XpBarBlockedRectangle = AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.XpBar);
+            _blockedState.DelveBlockedRectangle = AreaBlockedRectangleResolver.ResolveBlockedRectangle(gameController, AreaBlockedRectangleKind.Delve);
             _blockedState.ButtonRectangles.Clear();
             _blockedState.ButtonRectangles.AddRange(AreaBlockedRectangleCollectionResolver.ResolveButtonRectangles(gameController));
         }

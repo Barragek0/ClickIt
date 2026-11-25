@@ -17,6 +17,7 @@ namespace ClickIt.UI.Debug
         private static readonly Vector4 ChatColor = ToVec4(Color.Green);
         private static readonly Vector4 MapColor = ToVec4(Color.Pink);
         private static readonly Vector4 XpBarColor = ToVec4(Color.Orange);
+        private static readonly Vector4 DelveColor = ToVec4(Color.DarkOrange);
         private static readonly Vector4 ButtonsColor = ToVec4(Color.Cyan);
         private static readonly Vector4 QuestTrackerColor = ToVec4(Color.MediumPurple);
 
@@ -41,6 +42,7 @@ namespace ClickIt.UI.Debug
             DrawRect(draw, _areaService.ChatPanelBlockedRectangle, ChatColor, AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.ChatPanel));
             DrawRect(draw, _areaService.MapPanelBlockedRectangle, MapColor, AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.MapPanel));
             DrawRect(draw, _areaService.XpBarBlockedRectangle, XpBarColor, AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.XpBar));
+            DrawRect(draw, _areaService.DelveBlockedRectangle, DelveColor, AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.Delve));
             DrawRects(draw, _areaService.ButtonRectangles, ButtonsColor, "Button");
 
             DrawRect(draw, _areaService.BuffsRectangle, BuffsColor, "Buffs");

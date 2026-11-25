@@ -17,6 +17,7 @@ namespace ClickIt.Features.Area
             snapshot => snapshot.ChatPanelBlockedRectangle,
             snapshot => snapshot.MapPanelBlockedRectangle,
             snapshot => snapshot.XpBarBlockedRectangle,
+            snapshot => snapshot.DelveBlockedRectangle,
         ];
 
         private static readonly Func<AreaBlockedSnapshot, IReadOnlyList<RectangleF>>[] s_blockedCollections =
@@ -42,6 +43,7 @@ namespace ClickIt.Features.Area
         public RectangleF ChatPanelBlockedRectangle => _blockedSnapshotProvider.CurrentSnapshot.ChatPanelBlockedRectangle;
         public RectangleF MapPanelBlockedRectangle => _blockedSnapshotProvider.CurrentSnapshot.MapPanelBlockedRectangle;
         public RectangleF XpBarBlockedRectangle => _blockedSnapshotProvider.CurrentSnapshot.XpBarBlockedRectangle;
+        public RectangleF DelveBlockedRectangle => _blockedSnapshotProvider.CurrentSnapshot.DelveBlockedRectangle;
         public IReadOnlyList<RectangleF> QuestTrackerBlockedRectangles => _blockedSnapshotProvider.CurrentSnapshot.QuestTrackerBlockedRectangles;
         public IReadOnlyList<RectangleF> ButtonRectangles => _blockedSnapshotProvider.CurrentSnapshot.ButtonRectangles;
         public long? BlockedUiRefreshAgeMs => ResolveRefreshAgeMs(Environment.TickCount64, _blockedSnapshotProvider.CurrentSnapshot.LastBlockedUiRectanglesRefreshTimestampMs);

@@ -31,14 +31,19 @@ namespace ClickIt.Tests.Features.Area
             RectangleF chatRect = new(10, 20, 30, 40);
             RectangleF mapRect = new(11, 21, 31, 41);
             RectangleF xpRect = new(12, 22, 32, 42);
+            RectangleF delveRect = new(13, 23, 33, 43);
 
             AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreatePathRoot(chatRect, 1, 2, 2), AreaBlockedRectangleKind.ChatPanel).Should().Be(chatRect);
             AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreatePathRoot(mapRect, 2, 1), AreaBlockedRectangleKind.MapPanel).Should().Be(mapRect);
             AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(CreatePathRoot(xpRect, 0), AreaBlockedRectangleKind.XpBar).Should().Be(xpRect);
+            List<object?> skills = Enumerable.Range(0, 14).Select(_ => (object?)new AreaUiNodeTraversalTests.FakeNode()).ToList();
+            ((AreaUiNodeTraversalTests.FakeNode)skills[13]!).Children.Add(new AreaUiNodeTraversalTests.FakeNode { ClientRect = delveRect });
+            AreaBlockedRectangleResolver.ResolveBlockedRectangleFromRoot(skills, AreaBlockedRectangleKind.Delve).Should().Be(delveRect);
 
             AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.ChatPanel).Should().Be("Chat");
             AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.MapPanel).Should().Be("Map");
             AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.XpBar).Should().Be("XP Bar");
+            AreaBlockedRectangleResolver.GetLabel(AreaBlockedRectangleKind.Delve).Should().Be("Delve");
         }
 
         [TestMethod]

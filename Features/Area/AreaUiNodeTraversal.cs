@@ -115,6 +115,15 @@ namespace ClickIt.Features.Area
                 return child != null;
             }
 
+            if (source is IList list)
+            {
+                if (index >= list.Count)
+                    return false;
+
+                child = list[index];
+                return child != null;
+            }
+
             if (!TryReadMemberValue(source, "Children", out object? rawChildren) || rawChildren is not IEnumerable children)
                 return false;
 

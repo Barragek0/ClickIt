@@ -47,6 +47,7 @@ namespace ClickIt.Shared.Game
         internal static readonly IDynamicMemberReaderProfile IngameUiMap = new DynamicMemberReaderProfile(static ui => ui.Map);
         internal static readonly IDynamicMemberReaderProfile IngameUiGameUi = new DynamicMemberReaderProfile(static ui => ui.GameUI);
         internal static readonly IDynamicMemberReaderProfile IngameUiRoot = new DynamicMemberReaderProfile(static ui => ui.Root);
+        internal static readonly IDynamicMemberReaderProfile IngameUiSkillBarSkills = new DynamicMemberReaderProfile(static ui => ui.SkillBar.Skills);
 
         internal static readonly IDynamicMemberReaderProfile ServerData = new DynamicMemberReaderProfile(static source => source.ServerData);
         internal static readonly IDynamicMemberReaderProfile PlayerInventories = new DynamicMemberReaderProfile(static source => source.PlayerInventories);

@@ -19,6 +19,7 @@ namespace ClickIt.Features.Area
         internal RectangleF ChatPanelBlockedRectangle { get; init; } = RectangleF.Empty;
         internal RectangleF MapPanelBlockedRectangle { get; init; } = RectangleF.Empty;
         internal RectangleF XpBarBlockedRectangle { get; init; } = RectangleF.Empty;
+        internal RectangleF DelveBlockedRectangle { get; init; } = RectangleF.Empty;
         internal IReadOnlyList<RectangleF> BuffsAndDebuffsRectangles { get; init; } = [];
         internal IReadOnlyList<RectangleF> QuestTrackerBlockedRectangles { get; init; } = [];
         internal IReadOnlyList<RectangleF> ButtonRectangles { get; init; } = [];

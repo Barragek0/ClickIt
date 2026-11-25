@@ -17,6 +17,7 @@ namespace ClickIt.Features.Area
                 "Map" => TryGetIngameUiMember(ingameUi, DynamicAccessProfiles.IngameUiMap),
                 "GameUI" => TryGetIngameUiMember(ingameUi, DynamicAccessProfiles.IngameUiGameUi),
                 "Root" => TryGetIngameUiMember(ingameUi, DynamicAccessProfiles.IngameUiRoot),
+                "SkillBar.Skills" => TryGetIngameUiMember(ingameUi, DynamicAccessProfiles.IngameUiSkillBarSkills),
                 _ => null,
             };
         }

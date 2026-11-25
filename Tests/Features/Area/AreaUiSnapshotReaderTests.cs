@@ -9,6 +9,7 @@ namespace ClickIt.Tests.Features.Area
         [DataRow("Map")]
         [DataRow("GameUI")]
         [DataRow("Root")]
+        [DataRow("SkillBar.Skills")]
         public void TryResolveIngameUiProperty_ReturnsConfiguredMember(string propertyName)
         {
             object marker = new();
@@ -71,6 +72,9 @@ namespace ClickIt.Tests.Features.Area
                 case "Root":
                     ingameUi.Root = marker;
                     break;
+                case "SkillBar.Skills":
+                    ingameUi.SkillBar.Skills = marker;
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(propertyName));
             }
@@ -87,6 +91,13 @@ namespace ClickIt.Tests.Features.Area
             public object? GameUI { get; set; }
 
             public object? Root { get; set; }
+
+            public FakeSkillBar SkillBar { get; } = new();
+        }
+
+        public sealed class FakeSkillBar
+        {
+            public object? Skills { get; set; }
         }
 
         public sealed class FakeGameState
