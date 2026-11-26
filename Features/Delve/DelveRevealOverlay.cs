@@ -2,7 +2,7 @@ namespace ClickIt.Features.Delve;
 
 internal sealed class DelveRevealOverlay : IOverlay
 {
-    private const int RefreshMs = 33;
+    private const int RefreshMs = 16;
     private const int CellRefreshMs = 300;
     private const int MaxChunks = 128;
     private const int ChunkSide = 8;
