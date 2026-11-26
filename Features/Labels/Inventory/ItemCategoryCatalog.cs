@@ -76,6 +76,7 @@
             new("runegrafts", "Runegrafts", ["Items/Runegrafts/", "Items/Currency/Settlers/VillageRune", "Items/Currency/KalguuranRune"], ItemListKind.Whitelist, ["Bound Rune", "Life Rune"]),
             new("omens", "Omens", ["Items/Omens/", "Items/Currency/Azmeri/VoodooOmens", "Items/Currency/AncestralOmen"], ItemListKind.Whitelist, ["Omen of Amelioration", "Omen of Fortune"]),
             new("corpses", "Corpse Items", ["Items/Corpses/", "Items/Currency/Azmeri/", "Items/Currency/Necropolis/"], ItemListKind.Whitelist, ["Hyrri's Corpse", "Admiral Darnaw's Corpse"]),
+            new("wickerman-body-parts", "Wickerman Body Parts", "Viscera/Viscera", ItemListKind.Whitelist, ["Pocked Leg"]),
 
             new("heist-blueprints", "Heist Blueprints", ["Items/Heist/HeistBlueprint", "Items/Currency/Heist/Blueprint"], ItemListKind.Whitelist, ["Blueprint: Smuggler's Den", "Blueprint: Tunnels"]),
             new("heist-targets", "Heist Targets", "Items/Heist/HeistFinalObjective", ItemListKind.Whitelist, ["Urn of Farud", "Staff of the First Sin"]),

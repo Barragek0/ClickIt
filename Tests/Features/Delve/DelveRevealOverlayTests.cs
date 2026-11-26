@@ -9,10 +9,10 @@ public sealed class DelveRevealOverlayTests
     {
         Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
         {
-            [1] = new(new RectangleF(0, 0, 20, 20), [2], Hidden: false, Anchor: new NumVector2(.8f, .5f)),
-            [2] = new(new RectangleF(0, 20, 20, 20), [3], BehindWall: true),
-            [3] = new(new RectangleF(0, 40, 20, 20), [4], BehindWall: true),
-            [4] = new(new RectangleF(20, 40, 20, 20), [], Anchor: new NumVector2(.5f, .75f)),
+            [1] = new(new RectangleF(0, 0, 20, 20), [2], Hidden: false, Anchor: new NumVector2(.8f, .5f), HasEncounter: true),
+            [2] = new(new RectangleF(0, 20, 20, 20), [3], BehindWall: true, Anchor: new NumVector2(.2f, .7f)),
+            [3] = new(new RectangleF(0, 40, 20, 20), [4], BehindWall: true, Anchor: new NumVector2(.4f, .3f)),
+            [4] = new(new RectangleF(20, 40, 20, 20), [], Anchor: new NumVector2(.5f, .75f), HasEncounter: true),
             [5] = new(new RectangleF(20, 0, 20, 20), [6]),
             [6] = new(new RectangleF(20, 20, 20, 20), [])
         };
@@ -28,12 +28,32 @@ public sealed class DelveRevealOverlayTests
 
     [TestMethod]
     [TestCategory("Regression")]
+    public void BuildConnections_KeepsUnanchoredRunsStraightAcrossFractionalCellPositions()
+    {
+        Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
+        {
+            [1] = new(new RectangleF(0, 0, 20, 20), [2], Anchor: new NumVector2(.25f, .75f)),
+            [2] = new(new RectangleF(20, .01f, 20, 20), [3], Anchor: new NumVector2(.5f, .4f)),
+            [3] = new(new RectangleF(40, .02f, 20, 20), [4]),
+            [4] = new(new RectangleF(40, 20, 20, 20), [5]),
+            [5] = new(new RectangleF(60, 20, 20, 20), [])
+        };
+
+        DelveRevealOverlay.BuildConnections(cells).Should().Equal(
+            new ScreenLine(new NumVector2(10, 10), new NumVector2(30, 10)),
+            new ScreenLine(new NumVector2(30, 10), new NumVector2(50, 10)),
+            new ScreenLine(new NumVector2(50, 10), new NumVector2(50, 30)),
+            new ScreenLine(new NumVector2(50, 30), new NumVector2(70, 30)));
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
     public void BuildConnections_JoinsConflictingOffsetsAtTheSharedEdge()
     {
         Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
         {
-            [1] = new(new RectangleF(0, 0, 20, 20), [2], Anchor: new NumVector2(.5f, .25f)),
-            [2] = new(new RectangleF(20, 0, 20, 20), [1], Anchor: new NumVector2(.5f, .75f))
+            [1] = new(new RectangleF(0, 0, 20, 20), [2], Anchor: new NumVector2(.5f, .25f), HasEncounter: true),
+            [2] = new(new RectangleF(20, 0, 20, 20), [1], Anchor: new NumVector2(.5f, .75f), HasEncounter: true)
         };
 
         DelveRevealOverlay.BuildConnections(cells).Should().Equal(
@@ -69,9 +89,9 @@ public sealed class DelveRevealOverlayTests
         {
             [1] = new(new RectangleF(0, 0, 20, 20), [2], Hidden: false),
             [2] = new(new RectangleF(20, 0, 20, 20), linkFromRevealed ? [1, 3] : [1],
-                Hidden: false, Anchor: new NumVector2(.75f, .25f)),
+                Hidden: false, Anchor: new NumVector2(.75f, .25f), HasEncounter: true),
             [3] = new(new RectangleF(40, 0, 20, 20), linkFromRevealed ? [] : [2],
-                Anchor: new NumVector2(.25f, .25f))
+                Anchor: new NumVector2(.25f, .25f), HasEncounter: true)
         };
 
         DelveRevealOverlay.BuildConnections(cells).Should().Equal(

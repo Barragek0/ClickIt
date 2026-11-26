@@ -22,9 +22,10 @@ internal sealed class DelveRevealOverlay : IOverlay
     private readonly Dictionary<string, (bool Available, long RetryAt)> _textureLoads = new(StringComparer.Ordinal);
 
     internal readonly record struct ChartCell(RectangleF Rect, long[] Links, bool Hidden = true, bool BehindWall = false,
-        NumVector2? Anchor = null)
+        NumVector2? Anchor = null, bool HasEncounter = false)
     {
         internal bool NeedsRouteOverlay => Hidden || BehindWall;
+        internal NumVector2? RouteAnchor => HasEncounter ? Anchor : null;
     }
     private readonly record struct CellLink(long Start, long End, bool Horizontal);
     internal readonly record struct ChartMarker(RectangleF Rect, NumVector2 Anchor, DelveNodeIcon Icon);
@@ -181,10 +182,8 @@ internal sealed class DelveRevealOverlay : IOverlay
                 long[] links = hidden || behindWall ? ReadLinks(cell) : [];
                 bool needsMarker = hidden && coverage.Intersects(rect);
                 NumVector2? anchor = hidden || behindWall ? ReadAnchor(cell) : null;
-                object? feature = anchor.HasValue && (needsMarker || anchor == new NumVector2(0.5f))
-                    ? ReadNamedFeature(cell)
-                    : null;
-                cells.Add(cell.Address, new ChartCell(rect, links, hidden, behindWall, RouteAnchor(anchor, feature)));
+                object? feature = anchor.HasValue ? ReadNamedFeature(cell) : null;
+                cells.Add(cell.Address, new ChartCell(rect, links, hidden, behindWall, anchor, feature != null));
                 if (!hidden && !behindWall)
                     revealedCells.Add(cell);
                 if (needsMarker && anchor is { } markerAnchor && feature != null)
@@ -219,7 +218,13 @@ internal sealed class DelveRevealOverlay : IOverlay
                 if (!routeEntrances.Contains(cell.Address))
                     continue;
 
-                cells[cell.Address] = captured with { Links = links, Anchor = ReadAnchor(cell) };
+                NumVector2? anchor = ReadAnchor(cell);
+                cells[cell.Address] = captured with
+                {
+                    Links = links,
+                    Anchor = anchor,
+                    HasEncounter = anchor.HasValue && ReadNamedFeature(cell) != null
+                };
             }
         }
 
@@ -282,7 +287,8 @@ internal sealed class DelveRevealOverlay : IOverlay
         if (links.Count == 0)
             return [];
 
-        long[] anchors = cells.Where(static entry => entry.Value.Anchor.HasValue)
+        // IconPos can vary even on unnamed cells along one straight run.
+        long[] anchors = cells.Where(static entry => entry.Value.RouteAnchor.HasValue)
             .OrderBy(static entry => entry.Value.Hidden).ThenBy(static entry => entry.Key)
             .Select(static entry => entry.Key).ToArray();
         var laneX = ResolveLanePositions(cells, links, anchors, horizontal: false);
@@ -342,23 +348,42 @@ internal sealed class DelveRevealOverlay : IOverlay
         foreach (long address in anchors)
         {
             ChartCell cell = cells[address];
-            NumVector2 anchor = cell.Anchor.GetValueOrDefault();
+            NumVector2 anchor = cell.RouteAnchor.GetValueOrDefault();
             positions.Add(address, horizontal
                 ? cell.Rect.Y + cell.Rect.Height * anchor.Y
                 : cell.Rect.X + cell.Rect.Width * anchor.X);
             pending.Enqueue(address);
         }
 
-        while (pending.TryDequeue(out long address))
+        PropagatePositions();
+        // Use a single centerline for runs without an encounter anchor. Tiny differences
+        // in captured cell rectangles should never introduce bends.
+        foreach (CellLink link in links)
         {
-            float position = positions[address];
-            if (previous.TryGetValue(address, out long before) && positions.TryAdd(before, position))
-                pending.Enqueue(before);
-            if (next.TryGetValue(address, out long after) && positions.TryAdd(after, position))
-                pending.Enqueue(after);
+            if (link.Horizontal != horizontal)
+                continue;
+
+            var center = cells[link.Start].Rect.Center;
+            if (positions.TryAdd(link.Start, horizontal ? center.Y : center.X))
+            {
+                pending.Enqueue(link.Start);
+                PropagatePositions();
+            }
         }
 
         return positions;
+
+        void PropagatePositions()
+        {
+            while (pending.TryDequeue(out long address))
+            {
+                float position = positions[address];
+                if (previous.TryGetValue(address, out long before) && positions.TryAdd(before, position))
+                    pending.Enqueue(before);
+                if (next.TryGetValue(address, out long after) && positions.TryAdd(after, position))
+                    pending.Enqueue(after);
+            }
+        }
     }
 
     internal static ScreenLine[] ProjectConnections(IReadOnlyList<ScreenLine> connections, RectangleF clip, ChartProjection projection)
@@ -394,10 +419,6 @@ internal sealed class DelveRevealOverlay : IOverlay
 
         return new NumVector2(position.X / width, position.Y / height);
     }
-
-    // Unnamed cells behind walls often report the exact tile center as a placeholder.
-    private static NumVector2? RouteAnchor(NumVector2? anchor, object? feature)
-        => anchor == new NumVector2(0.5f) && feature == null ? null : anchor;
 
     private static object? ReadNamedFeature(DelveCell cell)
     {

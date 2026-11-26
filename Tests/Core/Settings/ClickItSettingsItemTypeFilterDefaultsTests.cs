@@ -58,6 +58,29 @@ namespace ClickIt.Tests.Core.Settings
         }
 
         [TestMethod]
+        [TestCategory("Settings")]
+        public void WickermanBodyParts_BackfillsIntoClickListAndMatchesOnlyItsMetadata()
+        {
+            const string id = "wickerman-body-parts";
+            ItemCategoryCatalog.TryGet(id, out ItemCategoryDefinition category).Should().BeTrue();
+            category.DisplayName.Should().Be("Wickerman Body Parts");
+
+            var settings = new ClickItSettings();
+            settings.ItemTypeWhitelistIds.Remove(id);
+            settings.GetItemTypeWhitelistMetadataIdentifiers().Should().Contain("Viscera/Viscera");
+            settings.ItemTypeWhitelistIds.Should().Contain(id);
+
+            settings.ItemTypeWhitelistIds.Remove(id);
+            settings.ItemTypeBlacklistIds.Add(id);
+            var blacklist = settings.GetItemTypeBlacklistMetadataIdentifiers();
+            MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(
+                "Metadata/Items/Viscera/VisceraExample", string.Empty, blacklist).Should().BeTrue();
+            MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(
+                "Metadata/Items/Viscera/OtherItem", string.Empty, blacklist).Should().BeFalse();
+            settings.GetItemTypeWhitelistMetadataIdentifiers().Should().NotContain("Viscera/Viscera");
+        }
+
+        [TestMethod]
         public void ItemTypeCatalog_ThreadsHoverExample_UsesBlightThread()
         {
             ItemCategoryCatalog.TryGet("scarabs", out ItemCategoryDefinition category).Should().BeTrue();
