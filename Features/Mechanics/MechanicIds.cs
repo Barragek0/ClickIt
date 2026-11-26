@@ -16,6 +16,7 @@ namespace ClickIt.Features.Mechanics
         public const string BreachGraspingCoffers = "breach-grasping-coffers";
         public const string DelveResonatorStash = "delve-resonator-stash";
         public const string DelveFossil = "delve-fossil";
+        public const string DelveEssence = "delve-essence";
         public const string DelveMaps = "delve-maps";
         public const string DelveFlareChests = "delve-flare-chests";
         public const string DelveDynamiteChests = "delve-dynamite-chests";

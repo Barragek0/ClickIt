@@ -60,11 +60,11 @@ namespace ClickIt.Tests.Core.Settings
             resonator.Subgroup.Should().Be("Delve");
             resonator.DisplayName.Should().Be("Resonator");
             var delve = entries.Where(entry => entry.Subgroup == "Delve").ToArray();
-            delve.Select(entry => entry.DisplayName).Should().Equal("Currency", "Resonator", "Fossil", "Maps", "Flares", "Dynamite", "Special Armour", "Special Jewellery", "Special Weapon", "Armour", "Jewellery", "Weapons");
-            delve.Select(entry => entry.DefaultEnabled).Should().Equal(true, true, true, false, true, true, true, true, false, false, false, false);
-            delve.Select(entry => entry.Node.Value).Should().Equal(true, true, true, false, true, true, true, true, false, false, false, false);
+            delve.Select(entry => entry.DisplayName).Should().Equal("Currency", "Resonator", "Fossil", "Essence", "Maps", "Flares", "Dynamite", "Special Armour", "Special Jewellery", "Special Weapon", "Armour", "Jewellery", "Weapons");
+            delve.Select(entry => entry.DefaultEnabled).Should().Equal(true, true, true, true, false, true, true, true, true, false, false, false, false);
+            delve.Select(entry => entry.Node.Value).Should().Equal(true, true, true, true, false, true, true, true, true, false, false, false, false);
             entries.Where(entry => entry.Subgroup == "Delve" && entry.IsFallback).Select(entry => entry.DisplayName).Should().Equal("Armour", "Jewellery", "Weapons");
-            entries.Where(entry => entry.Subgroup == "Delve" && !entry.IsFallback).Should().HaveCount(9).And.OnlyContain(entry => !string.IsNullOrWhiteSpace(entry.Tooltip));
+            entries.Where(entry => entry.Subgroup == "Delve" && !entry.IsFallback).Should().HaveCount(10).And.OnlyContain(entry => !string.IsNullOrWhiteSpace(entry.Tooltip));
             regularDoors.Node.Should().BeSameAs(settings.ClickDoors);
             regularDoors.GroupId.Should().Be("doors");
             heistDoors.Node.Should().BeSameAs(settings.ClickHeistDoors);

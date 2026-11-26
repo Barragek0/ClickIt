@@ -74,6 +74,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
         [DataRow("Metadata/Chests/Breach/BreachBoxChest02", "Grasping Coffers", MechanicIds.BreachGraspingCoffers)]
         [DataRow("Metadata/Chests/DelveChests/Resonator", "Resonator Stash", MechanicIds.DelveResonatorStash)]
         [DataRow("Metadata/Chests/DelveChests/FossilisedRemains", "Fossilised Remains", MechanicIds.DelveFossil)]
+        [DataRow("Metadata/Chests/delvechests/DelveChestGenericRandomEssence", "Essence Chest", MechanicIds.DelveEssence)]
         [DataRow("Metadata/Chests/DelveChests/DelveChestSpecialArmour", "Special Armour", MechanicIds.DelveSpecialArmour)]
         [DataRow("Metadata/Chests/DelveChests/DelveChestSpecialWeapon", "Special Weapon", MechanicIds.DelveSpecialWeapon)]
         [DataRow("Metadata/Chests/DelveChests/DelveChestSpecialTrinket", "Special Trinket", MechanicIds.DelveSpecialTrinket)]
@@ -106,6 +107,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
                 MechanicIds.BreachGraspingCoffers,
                 MechanicIds.DelveResonatorStash,
                 MechanicIds.DelveFossil,
+                MechanicIds.DelveEssence,
                 MechanicIds.DelveMaps,
                 MechanicIds.DelveFlareChests,
                 MechanicIds.DelveDynamiteChests,
@@ -138,6 +140,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
         [DataTestMethod]
         [DataRow("Metadata/Chests/DelveChests/Resonator", "Resonator Stash", MechanicIds.DelveResonatorStash)]
         [DataRow("Metadata/Chests/DelveChests/FossilisedRemains", "Fossilised Remains", MechanicIds.DelveFossil)]
+        [DataRow("Metadata/Chests/DelveChests/DelveChestGenericRandomEssence", "Essence Chest", MechanicIds.DelveEssence)]
         [DataRow("Metadata/Chests/DelveChests/DelveChestSpecialArmour", "Special Armour", MechanicIds.DelveSpecialArmour)]
         [DataRow("Metadata/Chests/DelveChests/DelveChestSpecialWeapon", "Special Weapon", MechanicIds.DelveSpecialWeapon)]
         [DataRow("Metadata/Chests/DelveChests/DelveChestSpecialTrinket", "Special Trinket", MechanicIds.DelveSpecialTrinket)]
@@ -159,6 +162,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
             MechanicClassifier.GetChestMechanicIdFromConfiguredRules(false, true, true, enabled, EntityType.Chest, path, name).Should().Be(id);
             settings.ClickDelveResonatorStash.Value = false;
             settings.ClickDelveFossil.Value = false;
+            settings.ClickDelveEssence.Value = false;
             settings.ClickDelveMaps.Value = false;
             settings.ClickDelveFlareChests.Value = false;
             settings.ClickDelveDynamiteChests.Value = false;

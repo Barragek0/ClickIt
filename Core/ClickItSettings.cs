@@ -57,6 +57,8 @@ namespace ClickIt
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickDelveFossil { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickDelveEssence { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickDelveMaps { get; set; } = new ToggleNode(false);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickDelveFlareChests { get; set; } = new ToggleNode(true);

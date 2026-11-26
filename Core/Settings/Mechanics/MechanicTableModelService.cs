@@ -87,6 +87,7 @@ namespace ClickIt.Core.Settings.Mechanics
                 new(MechanicIds.DelveCurrency, "Currency", settings.ClickDelveCurrency, "league-chests", true, LeagueChestSubgroupDelve, "Matches any chest containing currency items."),
                 new(MechanicIds.DelveResonatorStash, "Resonator", settings.ClickDelveResonatorStash, "league-chests", true, LeagueChestSubgroupDelve, "Matches any chest containing resonators."),
                 new(MechanicIds.DelveFossil, "Fossil", settings.ClickDelveFossil, "league-chests", true, LeagueChestSubgroupDelve, "Matches Delve chests containing fossils."),
+                new(MechanicIds.DelveEssence, "Essence", settings.ClickDelveEssence, "league-chests", true, LeagueChestSubgroupDelve, "Matches Delve chests containing Essences."),
                 new(MechanicIds.DelveMaps, "Maps", settings.ClickDelveMaps, "league-chests", false, LeagueChestSubgroupDelve, "Matches any chest containing maps."),
                 new(MechanicIds.DelveFlareChests, "Flares", settings.ClickDelveFlareChests, "league-chests", true, LeagueChestSubgroupDelve, "Contains flares."),
                 new(MechanicIds.DelveDynamiteChests, "Dynamite", settings.ClickDelveDynamiteChests, "league-chests", true, LeagueChestSubgroupDelve, "Contains Dynamite."),

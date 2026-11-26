@@ -99,6 +99,7 @@ namespace ClickIt.Features.Mechanics
             (MechanicIds.LeagueChests, MechanicIds.BreachGraspingCoffers),
             (MechanicIds.LeagueChests, MechanicIds.DelveResonatorStash),
             (MechanicIds.LeagueChests, MechanicIds.DelveFossil),
+            (MechanicIds.LeagueChests, MechanicIds.DelveEssence),
             (MechanicIds.LeagueChests, MechanicIds.DelveMaps),
             (MechanicIds.LeagueChests, MechanicIds.DelveFlareChests),
             (MechanicIds.LeagueChests, MechanicIds.DelveDynamiteChests),

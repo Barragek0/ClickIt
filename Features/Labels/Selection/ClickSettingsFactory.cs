@@ -117,6 +117,7 @@ namespace ClickIt.Features.Labels.Selection
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickBreachGraspingCoffers.Value, MechanicIds.BreachGraspingCoffers);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickDelveResonatorStash.Value, MechanicIds.DelveResonatorStash);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickDelveFossil.Value, MechanicIds.DelveFossil);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickDelveEssence.Value, MechanicIds.DelveEssence);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickDelveMaps.Value, MechanicIds.DelveMaps);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickDelveFlareChests.Value, MechanicIds.DelveFlareChests);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickDelveDynamiteChests.Value, MechanicIds.DelveDynamiteChests);
@@ -165,6 +166,7 @@ namespace ClickIt.Features.Labels.Selection
             if (settings.ClickDelveFlareChests.Value) flags |= 1L << 22;
             if (settings.ClickDelveDynamiteChests.Value) flags |= 1L << 23;
             if (settings.ClickDelveFossil.Value) flags |= 1L << 24;
+            if (settings.ClickDelveEssence.Value) flags |= 1L << 25;
             return flags;
         }
 

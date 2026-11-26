@@ -178,6 +178,7 @@ namespace ClickIt.Features.Click.Runtime
                || string.Equals(mechanicId, MechanicIds.BreachGraspingCoffers, StringComparison.OrdinalIgnoreCase)
                || string.Equals(mechanicId, MechanicIds.DelveResonatorStash, StringComparison.OrdinalIgnoreCase)
                || string.Equals(mechanicId, MechanicIds.DelveFossil, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.DelveEssence, StringComparison.OrdinalIgnoreCase)
                || string.Equals(mechanicId, MechanicIds.DelveMaps, StringComparison.OrdinalIgnoreCase)
                || string.Equals(mechanicId, MechanicIds.DelveFlareChests, StringComparison.OrdinalIgnoreCase)
                || string.Equals(mechanicId, MechanicIds.DelveDynamiteChests, StringComparison.OrdinalIgnoreCase)
