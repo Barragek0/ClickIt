@@ -9,6 +9,9 @@ namespace ClickIt.Tests.Behavior.Click
             public bool ClickItems { get; set; } = true;
             public bool ClickStrongboxes { get; set; } = true;
             public bool ClickDelveCrawler { get; set; }
+            public bool ClickDelveSpawners { get; set; }
+            public bool ClickEssences { get; set; }
+            public bool ClickDelveRewardChests { get; set; }
             public bool WalkTowardOffscreenLabels { get; set; } = true;
             public bool CaptureClickDebug { get; set; }
             public int MechanicPriorityDistancePenalty { get; set; }
@@ -43,6 +46,12 @@ namespace ClickIt.Tests.Behavior.Click
                 : string.Empty;
             if (MechanicIds.IsDelveCrawlerPath(path))
                 return settings.ClickDelveCrawler ? MechanicIds.DelveCrawler : null;
+            if (MechanicIds.IsIceCavesFossilPath(path))
+                return settings.ClickDelveSpawners ? MechanicIds.IceCavesFossil : null;
+            if (path == "Metadata/Monsters/TestEssence")
+                return settings.ClickEssences ? MechanicIds.Essences : null;
+            if (MechanicIds.IsDelveRewardChestPath(path))
+                return settings.ClickLeagueChests ? MechanicIds.LeagueChests : null;
             if (path.Contains("strongbox", StringComparison.OrdinalIgnoreCase))
                 return settings.ClickStrongboxes && !MechanicClassifier.IsLockedStrongbox(item)
                     ? MechanicIds.Strongboxes
@@ -63,6 +72,9 @@ namespace ClickIt.Tests.Behavior.Click
                 ClickItems = config.ClickItems,
                 ClickStrongboxes = config.ClickStrongboxes,
                 ClickDelveCrawler = config.ClickDelveCrawler,
+                ClickDelveSpawners = config.ClickDelveSpawners,
+                ClickEssences = config.ClickEssences,
+                ClickLeagueChests = config.ClickDelveRewardChests,
                 MechanicPriorityIndexMap = config.MechanicPriorityIndexMap,
                 IgnoreDistanceMechanicIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase),
                 IgnoreDistanceWithinByMechanicId = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
@@ -201,6 +213,8 @@ namespace ClickIt.Tests.Behavior.Click
                 Settings = new ClickItSettings();
                 Settings.WalkTowardOffscreenLabels.Value = config.WalkTowardOffscreenLabels;
                 Settings.ClickDelveCrawler.Value = config.ClickDelveCrawler;
+                Settings.ClickDelveSpawners.Value = config.ClickDelveSpawners;
+                Settings.ClickEssences.Value = config.ClickEssences;
                 ClickableArea = CreateClickableArea(config);
                 ClickPointResolver = new LabelClickPointResolver(Settings);
                 _labelInteractionPort = new ScenarioLabelInteractionPort(config);

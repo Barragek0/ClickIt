@@ -32,6 +32,66 @@ namespace ClickIt.Tests.Behavior.Click
         private static DecisionResult HiddenGroundItemsDecision()
             => new(TrySettlers: false, TryLostShipment: false, TryShrine: false, GroundItemsVisible: false);
 
+        [TestMethod]
+        [TestCategory("Regression")]
+        [DataRow(true, false)]
+        [DataRow(true, true)]
+        [DataRow(false, false)]
+        public void IceCavesFossilFallback_YieldsToEligibleEssence(bool essenceEnabled, bool essenceOffscreen)
+        {
+            var config = BaseConfig();
+            config.ClickDelveSpawners = true;
+            config.ClickEssences = essenceEnabled;
+            var harness = new ClickPipelineScenarioFactory.ScenarioHarness(config);
+            RectangleF fossilRect = new(500, 300, 160, 40);
+            RectangleF essenceRect = new(essenceOffscreen ? 2200 : 700, 300, 160, 40);
+            var fossil = ClickPipelineScenarioFactory.CreateLabel(fossilRect,
+                EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/EncounterControlObjects/IceCavesFossil", distancePlayer: 1, address: 1), 0x1001);
+            Entity essenceEntity = EntityProbeFactory.Create(path: "Metadata/Monsters/TestEssence", distancePlayer: 80, address: 2);
+            var essence = ClickPipelineScenarioFactory.CreateLabel(essenceRect, essenceEntity, 0x1002);
+            harness.CurrentLabels = [fossil, essence];
+
+            if (essenceOffscreen)
+                harness.TraversalResolver.ResolveHigherPriorityWalkTarget(
+                    new HashSet<long>(), MechanicIds.GetFallbackTier(MechanicIds.IceCavesFossil))
+                    .Should().BeSameAs(essenceEntity);
+
+            harness.ExecutionEngine.Execute(harness.CreateContext(true, harness.CurrentLabels),
+                harness.CreateCandidates(fossil, MechanicIds.IceCavesFossil), GroundItemsDecision());
+
+            // The headless host cannot supply the area and inventory reads for a real Vaal Orb click.
+            harness.InteractionsExecuted.Should().Be(essenceEnabled ? 0 : 1);
+            if (!essenceEnabled)
+                AssertPointInside(fossilRect, harness.LastClickPosition!.Value);
+        }
+
+        [DataTestMethod]
+        [TestCategory("Regression")]
+        [DataRow(true, false)]
+        [DataRow(false, false)]
+        [DataRow(true, true)]
+        public void CrawlerFallback_RechecksGroundLootBeforeDispatch(bool clickItems, bool lootBlocked)
+        {
+            var config = BaseConfig();
+            config.ClickItems = clickItems;
+            config.ClickDelveCrawler = true;
+            config.WalkTowardOffscreenLabels = false;
+            RectangleF crawlerRect = new(500, 300, 160, 40);
+            RectangleF lootRect = new(700, 410, 160, 40);
+            if (lootBlocked)
+                config.BlockedRects.Add(lootRect);
+            var harness = new ClickPipelineScenarioFactory.ScenarioHarness(config);
+            var crawler = ClickPipelineScenarioFactory.CreateLabel(crawlerRect,
+                EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/DelveNode", distancePlayer: 1, address: 1), 0x1001);
+            LabelOnGround loot = WorldItem(50, 2, lootRect);
+
+            harness.ExecutionEngine.Execute(harness.CreateContext(true, [crawler, loot]),
+                harness.CreateCandidates(crawler, MechanicIds.DelveCrawler), GroundItemsDecision());
+
+            harness.InteractionsExecuted.Should().Be(1);
+            AssertPointInside(clickItems && !lootBlocked ? lootRect : crawlerRect, harness.LastClickPosition!.Value);
+        }
+
         [DataTestMethod]
         [TestCategory("Scenario")]
         [DataRow("DelveNode")]
@@ -50,6 +110,41 @@ namespace ClickIt.Tests.Behavior.Click
             result.ShouldRunPostActions.Should().BeTrue();
             harness.InteractionsExecuted.Should().Be(1);
             AssertPointInside(rect, harness.LastClickPosition!.Value);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        [DataRow(true, true, false, true)]
+        [DataRow(false, true, false, false)]
+        [DataRow(true, false, false, false)]
+        [DataRow(true, true, true, false)]
+        public void CrawlerFallback_RechecksLiveDelveChestBeforeDispatch(bool enabled, bool targetable, bool opened, bool expectChest)
+        {
+            var config = BaseConfig();
+            config.ClickDelveCrawler = true;
+            config.ClickDelveRewardChests = enabled;
+            config.WalkTowardOffscreenLabels = false;
+            var harness = new ClickPipelineScenarioFactory.ScenarioHarness(config);
+            RectangleF crawlerRect = new(500, 300, 160, 40);
+            RectangleF chestRect = new(700, 300, 160, 40);
+            var crawler = ClickPipelineScenarioFactory.CreateLabel(crawlerRect,
+                EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/DelveNode", distancePlayer: 1, address: 1), 0x1001);
+            var chestEntity = EntityProbeFactory.Create(path: "Metadata/Chests/DelveChests/DelveChestGenericElderItem",
+                type: EntityType.Chest, isTargetable: targetable, distancePlayer: 89, address: 2);
+            EntityProbeFactory.WithComponent<Chest>(chestEntity, new DelveRewardChestProbe { IsOpened = opened });
+            var chest = ClickPipelineScenarioFactory.CreateLabel(chestRect, chestEntity, 0x1002);
+
+            harness.ExecutionEngine.Execute(harness.CreateContext(true, [crawler, chest]),
+                harness.CreateCandidates(crawler, MechanicIds.DelveCrawler), GroundItemsDecision());
+
+            harness.InteractionsExecuted.Should().Be(1);
+            AssertPointInside(expectChest ? chestRect : crawlerRect, harness.LastClickPosition!.Value);
+        }
+
+        public sealed class DelveRewardChestProbe : Chest
+        {
+            public new bool IsOpened { get; set; }
+            public new bool IsLocked => false;
         }
 
         [TestMethod]

@@ -274,7 +274,7 @@ internal sealed class EntityEventHub
         bool isMercenary = IsMercenaryPath(path);
         bool isAnimateGuardian = IsAnimateGuardianPath(path);
         bool isSpectre = IsSpectrePath(path);
-        bool isIceCaveFossil = path.Contains("EncounterControlObjects/IceCavesFossil", StringComparison.OrdinalIgnoreCase);
+        bool isIceCaveFossil = MechanicIds.IsIceCavesFossilPath(path);
         bool isOffscreen = IsOffscreenStructurePath(path) || isShrine;
         if (!isOffscreen)
         {

@@ -114,9 +114,9 @@ namespace ClickIt.Features.Labels.Selection
                 if (score.Ignored)
                     stats = stats.IncrementIgnoredByDistance();
 
-                bool isCrawler = candidate.MechanicId == MechanicIds.DelveCrawler;
-                bool bestIsCrawler = bestMechanicId == MechanicIds.DelveCrawler;
-                if (!hasBestScore || (isCrawler != bestIsCrawler ? !isCrawler : MechanicCandidateRanker.Compare(score, bestScore) < 0))
+                int tier = MechanicIds.GetFallbackTier(candidate.MechanicId);
+                int bestTier = MechanicIds.GetFallbackTier(bestMechanicId);
+                if (!hasBestScore || (tier != bestTier ? tier < bestTier : MechanicCandidateRanker.Compare(score, bestScore) < 0))
                 {
                     // Only resolve expensive clickability for a candidate that could improve the current choice.
                     if (isAcceptable != null && !isAcceptable(label, candidate))

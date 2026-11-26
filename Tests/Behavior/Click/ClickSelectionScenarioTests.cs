@@ -66,7 +66,8 @@ namespace ClickIt.Tests.Behavior.Click
             harness.CurrentLabels = [crawler, chest];
             harness.ScanEngine.ResolveNextLabelCandidate(harness.CurrentLabels).Should().BeSameAs(crawler);
             DynamicAccess.TryGetLabelItemOnGround(chest, out Entity? chestEntity).Should().BeTrue();
-            harness.TraversalResolver.ResolveCrawlerFallbackTarget(new HashSet<long>()).Should().BeSameAs(chestEntity);
+            harness.TraversalResolver.ResolveHigherPriorityWalkTarget(
+                new HashSet<long>(), MechanicIds.GetFallbackTier(MechanicIds.DelveCrawler)).Should().BeSameAs(chestEntity);
         }
 
         [TestMethod]

@@ -53,6 +53,9 @@ namespace ClickIt.Features.Mechanics.Rules
                 && MechanicIds.IsDelveCrawlerPath(ctx.Path)
                     ? MechanicIds.DelveCrawler : null,
             static ctx => ctx.Settings.ClickDelveSpawners
+                && MechanicIds.IsIceCavesFossilPath(ctx.Path)
+                    ? MechanicIds.IceCavesFossil : null,
+            static ctx => ctx.Settings.ClickDelveSpawners
                 && (ctx.Path.Contains("Delve/Objects/Encounter", StringComparison.OrdinalIgnoreCase)
                     || MechanicIds.IsTangledFossilInitiatorPath(ctx.Path))
                     ? MechanicIds.DelveEncounterInitiators : null,

@@ -46,7 +46,7 @@ namespace ClickIt.Features.Click.Selection
             string? labelMechanicId = _dependencies.LabelInteractionPort.GetMechanicIdForLabel(label);
             if (string.IsNullOrWhiteSpace(labelMechanicId))
                 return true;
-            if (labelMechanicId == MechanicIds.DelveCrawler)
+            if (MechanicIds.GetFallbackTier(labelMechanicId) > 0)
                 return true;
 
             _dependencies.MechanicPriorityContextProvider.Refresh();

@@ -18,9 +18,9 @@ namespace ClickIt.Features.Click.Ranking
                 || !isValid || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(candidate) || string.IsNullOrWhiteSpace(mechanicId))
                 return false;
 
-            bool crawler = mechanicId == MechanicIds.DelveCrawler;
-            bool bestCrawler = bestMechanicId == MechanicIds.DelveCrawler;
-            if (hasBest && (crawler != bestCrawler ? crawler : !ShouldPromoteCandidate(rank, bestRank, true)))
+            int tier = MechanicIds.GetFallbackTier(mechanicId);
+            int bestTier = MechanicIds.GetFallbackTier(bestMechanicId);
+            if (hasBest && (tier != bestTier ? tier > bestTier : !ShouldPromoteCandidate(rank, bestRank, true)))
                 return false;
 
             best = candidate;

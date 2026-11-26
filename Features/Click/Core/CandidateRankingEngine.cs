@@ -155,8 +155,12 @@ namespace ClickIt.Features.Click.Core
                 if (!other.Exists)
                     continue;
 
-                if (other.MechanicId == MechanicIds.DelveCrawler && candidate.MechanicId != MechanicIds.DelveCrawler)
+                int tier = MechanicIds.GetFallbackTier(candidate.MechanicId);
+                int otherTier = MechanicIds.GetFallbackTier(other.MechanicId);
+                if (tier < otherTier)
                     continue;
+                if (tier > otherTier)
+                    return false;
 
                 MechanicRank otherRank = BuildRank(other, context);
                 if (CompareRanks(candidateRank, otherRank) >= 0)

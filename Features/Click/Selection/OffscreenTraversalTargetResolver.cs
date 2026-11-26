@@ -24,10 +24,12 @@ namespace ClickIt.Features.Click.Selection
         private long _cachedWalkTargetAtMs;
         private const long OffscreenTargetCacheWindowMs = 250;
         private IReadOnlySet<long>? _crawlerFallbackExcluded;
+        private int _fallbackTier;
 
-        internal Entity? ResolveCrawlerFallbackTarget(IReadOnlySet<long> excluded)
+        internal Entity? ResolveHigherPriorityWalkTarget(IReadOnlySet<long> excluded, int fallbackTier)
         {
             _crawlerFallbackExcluded = excluded;
+            _fallbackTier = fallbackTier;
             try { return ResolveNearestOffscreenWalkTargetCore(); }
             finally { _crawlerFallbackExcluded = null; }
         }
@@ -69,6 +71,8 @@ namespace ClickIt.Features.Click.Selection
                 if (_cachedWalkTarget == null)
                     return _cachedWalkTarget;
                 if (DynamicAccess.TryReadString(_cachedWalkTarget, DynamicAccessProfiles.Path, out string cachedPath)
+                    && !MechanicIds.IsIceCavesFossilPath(cachedPath)
+                    && !MechanicIds.IsDelveCrawlerPath(cachedPath)
                     && OffscreenPathingMath.IsEligibleDelveTraversalTarget(_cachedWalkTarget, cachedPath)
                     && (!MechanicIds.IsDelveRewardChestPath(cachedPath)
                         || MechanicClassifier.IsUnopenedTargetableDelveChest(_cachedWalkTarget)))
@@ -261,7 +265,7 @@ namespace ClickIt.Features.Click.Selection
                 if (!_dependencies.LabelInteraction.CanSelectLabel(label, mechanicId))
                     continue;
                 if ((MechanicClassifier.IsLockedDelveChest(entity) && !MechanicClassifier.HasVisibleDelveCompletionLabel(labels))
-                    || (_crawlerFallbackExcluded != null && (mechanicId == MechanicIds.DelveCrawler
+                    || (_crawlerFallbackExcluded != null && (MechanicIds.GetFallbackTier(mechanicId) >= _fallbackTier
                         || MechanicClassifier.IsLockedStrongbox(entity))))
                     continue;
 

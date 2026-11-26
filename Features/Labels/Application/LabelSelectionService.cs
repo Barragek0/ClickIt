@@ -68,7 +68,7 @@ namespace ClickIt.Features.Labels.Application
                         return cached.Selected;
 
                     CachedLabelScanEntry cachedEntry = GetOrBuildScanEntry(cached.Selected, cachedClickSettings, GetWindowArea());
-                    if (cachedEntry.Candidate.MechanicId == MechanicIds.DelveCrawler)
+                    if (MechanicIds.GetFallbackTier(cachedEntry.Candidate.MechanicId) > 0)
                         _buildCache.Clear();
                     else if (cachedEntry.Candidate.Success
                         && (!cachedClickSettings.ClickDistanceEnabled

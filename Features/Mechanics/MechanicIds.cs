@@ -61,6 +61,18 @@ namespace ClickIt.Features.Mechanics
         public const string DelveEncounterInitiators = "delve-encounter-initiators";
         public const string DelveCrawler = "delve-crawler";
         public const string DelveCrawlerPath = "Delve/Objects/DelveNode";
+        public const string IceCavesFossil = "delve-ice-caves-fossil";
+
+        internal static bool IsIceCavesFossilPath(string? path)
+            => path?.Contains("EncounterControlObjects/IceCavesFossil", StringComparison.OrdinalIgnoreCase) == true;
+
+        internal static int GetFallbackTier(string? mechanicId)
+            => mechanicId switch
+            {
+                DelveCrawler => 2,
+                IceCavesFossil => 1,
+                _ => 0
+            };
         public const string CraftingRecipes = "crafting-recipes";
         public const string BreachNodes = "breach-nodes";
         public const string SettlersCrimsonIron = "settlers-crimson-iron";

@@ -103,8 +103,8 @@ namespace ClickIt.Features.Click.Core
 
         private bool TryExecuteMechanicSelections(ClickTickContext context, ClickCandidates candidates, DecisionResult decision, bool hiddenFallback)
         {
-            bool crawlerFallback = candidates.NextLabelMechanicId == MechanicIds.DelveCrawler;
-            if ((decision.TrySettlers || crawlerFallback) && candidates.SettlersOre.HasValue)
+            bool fallback = MechanicIds.GetFallbackTier(candidates.NextLabelMechanicId) > 0;
+            if ((decision.TrySettlers || fallback) && candidates.SettlersOre.HasValue)
             {
                 bool clicked = hiddenFallback
                     ? TryExecuteSettlersHidden(context, candidates.SettlersOre.Value)
@@ -113,12 +113,12 @@ namespace ClickIt.Features.Click.Core
                     return true;
             }
 
-            if ((decision.TryLostShipment || crawlerFallback) && candidates.LostShipment.HasValue)
+            if ((decision.TryLostShipment || fallback) && candidates.LostShipment.HasValue)
                 if (TryExecuteLostShipment(context, candidates.LostShipment.Value))
                     return true;
 
 
-            if ((decision.TryShrine || crawlerFallback) && context.NextShrine != null)
+            if ((decision.TryShrine || fallback) && context.NextShrine != null)
                 if (TryExecuteShrine(context))
                     return true;
 
@@ -208,7 +208,8 @@ namespace ClickIt.Features.Click.Core
                 DynamicAccess.TryGetLabelItemOnGround(candidates.NextLabel, out Entity? labelEntity);
                 if (!IsWithinSearchRadius(labelEntity, candidates.NextLabelMechanicId))
                     return StopExecution();
-                if (labelEntity != null && TryPathfindToLabelInsteadOfClick(context, candidates.NextLabel, candidates.NextLabelMechanicId, labelEntity,
+                if (labelEntity != null && MechanicIds.GetFallbackTier(candidates.NextLabelMechanicId) == 0
+                    && TryPathfindToLabelInsteadOfClick(context, candidates.NextLabel, candidates.NextLabelMechanicId, labelEntity,
                     out _, out _, out _))
                     return StopExecution();
             }
@@ -249,12 +250,16 @@ namespace ClickIt.Features.Click.Core
             if (candidates.NextLabel == null)
                 return HandleNoVisibleLabel(context);
 
-            if (candidates.NextLabelMechanicId == MechanicIds.DelveCrawler)
+            string? fallbackId = candidates.NextLabelMechanicId;
+            if (fallbackId is MechanicIds.DelveCrawler or MechanicIds.IceCavesFossil)
             {
-                if (!_dependencies.Policy.Settings.ClickDelveCrawler.Value
-                    || _dependencies.Selection.LabelInteractionPort.GetMechanicIdForLabel(candidates.NextLabel) != MechanicIds.DelveCrawler)
+                bool enabled = fallbackId == MechanicIds.DelveCrawler
+                    ? _dependencies.Policy.Settings.ClickDelveCrawler.Value : _dependencies.Policy.Settings.ClickDelveSpawners.Value;
+                if (!enabled || _dependencies.Selection.LabelInteractionPort.GetMechanicIdForLabel(candidates.NextLabel) != fallbackId)
                     return StopExecution();
-                if (_dependencies.Pathing.OffscreenPathing.TryHandleCrawlerFallback())
+                if (TryResolveVisibleFallbackCompetitor(context, candidates, fallbackId, out ClickCandidates competitor, out Entity? competitorEntity, out Vector2 competitorPoint))
+                    return HandleVisibleLabel(context, competitor, competitorEntity, hasClickableClickPos: true, clientClickPos: competitorPoint);
+                if (_dependencies.Pathing.OffscreenPathing.TryHandleHigherPriorityWalkTarget(fallbackId))
                     return StopExecution();
             }
 
@@ -267,6 +272,59 @@ namespace ClickIt.Features.Click.Core
                 return StopExecution();
 
             return HandleVisibleLabel(context, candidates, nextLabelItem, hasClickableClickPos, clientClickPos);
+        }
+
+        private bool TryResolveVisibleFallbackCompetitor(
+            ClickTickContext context, ClickCandidates candidates, string fallbackId, out ClickCandidates competitor,
+            out Entity? competitorEntity, out Vector2 clientPoint)
+        {
+            competitor = default;
+            competitorEntity = null;
+            clientPoint = default;
+            if (context.AllLabels is not { } labels)
+                return false;
+
+            // A traversal search excludes click-ready labels, so recheck the live labels first.
+            bool? encounterComplete = null;
+            for (int i = 0; i < labels.Count; i++)
+            {
+                LabelOnGround label = labels[i];
+                if (!DynamicAccess.TryGetLabelItemOnGround(label, out Entity? entity) || entity == null
+                    || !DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsValid, out bool valid) || !valid
+                    || !DynamicAccess.TryReadString(entity, DynamicAccessProfiles.Path, out string path)
+                    || !ClickSafetyPolicy.IsWithinSearchRadius(_dependencies.Policy.Settings, entity)
+                    || (MechanicClassifier.IsLockedDelveChest(entity)
+                        && !(encounterComplete ??= MechanicClassifier.HasVisibleDelveCompletionLabel(labels))))
+                    continue;
+
+                bool isChest = MechanicIds.IsDelveRewardChestPath(path);
+                if (isChest && !MechanicClassifier.IsUnopenedTargetableDelveChest(entity))
+                    continue;
+                bool isWorldItem = DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.Type, out object? rawType)
+                    && rawType is EntityType.WorldItem;
+                if (!isChest && !isWorldItem && fallbackId != MechanicIds.IceCavesFossil)
+                    continue;
+
+                string? mechanicId = _dependencies.Selection.LabelInteractionPort.GetMechanicIdForLabel(label);
+                if (string.IsNullOrWhiteSpace(mechanicId)
+                    || (isWorldItem && mechanicId != MechanicIds.Items)
+                    || (!isChest && !isWorldItem && (mechanicId != MechanicIds.Essences
+                        || !DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsTargetable, out bool targetable) || !targetable))
+                    || !_dependencies.Selection.LabelInteraction.CanSelectLabel(label, mechanicId)
+                    || IsBlockedByPostChestLootSettlement(context, mechanicId, entity))
+                    continue;
+                (bool resolved, Vector2 point) = _dependencies.Selection.LabelInteraction
+                    .TryResolveLabelClickPositionResult(label, mechanicId, context.WindowTopLeft, labels);
+                if (!resolved)
+                    continue;
+
+                competitor = candidates with { NextLabel = label, NextLabelMechanicId = mechanicId };
+                competitorEntity = entity;
+                clientPoint = point - context.WindowTopLeft;
+                _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage("FallbackDeferred", path, mechanicId);
+                return true;
+            }
+            return false;
         }
 
         private bool IsWithinSearchRadius(Entity? entity, string? mechanicId)

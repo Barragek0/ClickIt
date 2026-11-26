@@ -36,6 +36,8 @@ namespace ClickIt.Features.Click.Runtime
         // Last target that an A* no-route block rejected, so the coordinator can skip re-running the doomed full-budget search for the same target during the backoff window.
         private long _blockedTargetAddress;
         private long _blockedAtMs;
+        private Vector2? _blockedPlayerGrid;
+        private bool _walkRejectedNoRoute;
         private const int NoRouteBackoffMs = 2500;
 
         // The traversal target's per-tick validation reads (Path/DistancePlayer/IsValid/IsHidden) are DLR-bound dynamic reads (~9-14KB each). While walking, the same target persists across ticks, so cache them keyed by the target's address for a short window.
@@ -74,6 +76,7 @@ namespace ClickIt.Features.Click.Runtime
 
         public bool TryWalkTowardOffscreenTarget(Entity? preferredTarget = null, bool walkingToBlightTower = false, RectangleF? blightRegion = null)
         {
+            _walkRejectedNoRoute = false;
             if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("WalkTowardEntry",
                     string.Format("preferredTarget={0} setting={1}",
@@ -551,14 +554,20 @@ namespace ClickIt.Features.Click.Runtime
             if (!_dependencies.StickyTargetHandler.TryResolveStickyOffscreenTarget(out Entity? stickyTarget) || stickyTarget == null)
                 return false;
 
-            if (DynamicAccess.TryReadString(stickyTarget, DynamicAccessProfiles.Path, out string stickyPath)
-                && MechanicIds.IsDelveCrawlerPath(stickyPath))
+            if (DynamicAccess.TryReadString(stickyTarget, DynamicAccessProfiles.Path, out string stickyPath))
             {
-                ClearStickyOffscreenTarget();
-                if (!_dependencies.Settings.ClickDelveCrawler.Value || TryHandleCrawlerFallback())
-                    return true;
-                if (!ClickSafetyPolicy.IsWithinSearchRadius(_dependencies.Settings, stickyTarget))
-                    return false;
+                string? fallbackId = MechanicIds.IsDelveCrawlerPath(stickyPath) ? MechanicIds.DelveCrawler
+                    : MechanicIds.IsIceCavesFossilPath(stickyPath) ? MechanicIds.IceCavesFossil : null;
+                if (fallbackId != null)
+                {
+                    ClearStickyOffscreenTarget();
+                    bool enabled = fallbackId == MechanicIds.DelveCrawler
+                        ? _dependencies.Settings.ClickDelveCrawler.Value : _dependencies.Settings.ClickDelveSpawners.Value;
+                    if (!enabled || TryHandleHigherPriorityWalkTarget(fallbackId))
+                        return true;
+                    if (!ClickSafetyPolicy.IsWithinSearchRadius(_dependencies.Settings, stickyTarget))
+                        return false;
+                }
             }
 
             // Keep the route committed while the target is outside click range.
@@ -578,9 +587,9 @@ namespace ClickIt.Features.Click.Runtime
             return true;
         }
 
-        // Probe fresh competing targets before committing to the Crawler. A no-route result rejects
+        // Probe fresh competing targets before committing to a fallback. A no-route result rejects
         // that target for this pass; other failures retain the safety gate and consume the tick.
-        internal bool TryHandleCrawlerFallback()
+        internal bool TryHandleHigherPriorityWalkTarget(string fallbackId)
         {
             if (!_dependencies.Settings.WalkTowardOffscreenLabels.Value)
                 return false;
@@ -588,7 +597,8 @@ namespace ClickIt.Features.Click.Runtime
             HashSet<long> excluded = [];
             for (int i = 0; i < 32; i++)
             {
-                Entity? target = _dependencies.TraversalTargetResolver.ResolveCrawlerFallbackTarget(excluded);
+                Entity? target = _dependencies.TraversalTargetResolver.ResolveHigherPriorityWalkTarget(
+                    excluded, MechanicIds.GetFallbackTier(fallbackId));
                 if (target == null)
                     return false;
                 long address = DynamicAccess.TryGetDynamicValue(target, DynamicAccessProfiles.Address, out object? rawAddress)
@@ -597,7 +607,7 @@ namespace ClickIt.Features.Click.Runtime
                     return true;
                 if (TryWalkTowardOffscreenTarget(target))
                     return true;
-                if (_blockedTargetAddress != address || Environment.TickCount64 - _blockedAtMs >= NoRouteBackoffMs)
+                if (!_walkRejectedNoRoute)
                     return true;
                 ClearStickyOffscreenTarget();
             }
@@ -842,8 +852,10 @@ namespace ClickIt.Features.Click.Runtime
 
         private bool TryBuildTraversalPath(OffscreenTraversalTargetContext context, out bool builtPath)
         {
-            // Same target that A* already ruled unreachable: stay blocked without re-running the doomed full-budget search during the backoff window (behavior is unchanged, only the wasted 10-20ms/tick A* is avoided).
-            if (OffscreenPathingMath.ShouldApplyNoRouteBackoff(
+            Vector2? playerGrid = ReadPlayerGridForNoRouteBackoff();
+            // The same chest may be reachable once the player moves to another tile.
+            if (playerGrid == _blockedPlayerGrid
+                && OffscreenPathingMath.ShouldApplyNoRouteBackoff(
                     context.Target.Address,
                     _blockedTargetAddress,
                     Environment.TickCount64,
@@ -853,6 +865,7 @@ namespace ClickIt.Features.Click.Runtime
                 AddPathfindingStage($"Walk: A* no-route backoff active target={context.TargetPath}");
                 PublishOffscreenMovementDebug(context.Target, context.TargetPath, false, false, false, default, default, "BlockedNoRoute", PathfindingService.AStarNoRouteFailureReason);
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("OffscreenPathingBlockedNoRoute", $"target={context.TargetPath}");
+                _walkRejectedNoRoute = true;
                 builtPath = false;
                 return false;
             }
@@ -882,6 +895,8 @@ namespace ClickIt.Features.Click.Runtime
             {
                 _blockedTargetAddress = context.Target.Address;
                 _blockedAtMs = Environment.TickCount64;
+                _blockedPlayerGrid = playerGrid;
+                _walkRejectedNoRoute = true;
                 AddPathfindingStage($"Walk: BLOCKED - A* did not find a route target={context.TargetPath}");
                 PublishOffscreenMovementDebug(context.Target, context.TargetPath, builtPath, false, false, default, default, "BlockedNoRoute", pathfindingSnapshot.LastFailureReason);
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("OffscreenPathingBlockedNoRoute", $"target={context.TargetPath}");
@@ -892,6 +907,21 @@ namespace ClickIt.Features.Click.Runtime
             AddPathfindingStage($"Walk: no A* route - directional fallback target={context.TargetPath}");
             _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Pathfinding route not found; trying directional walk click.");
             return true;
+        }
+
+        private Vector2? ReadPlayerGridForNoRouteBackoff()
+        {
+            try
+            {
+                Entity? player = _runtimeSeam.GetPlayer(_dependencies.GameController);
+                return player != null && _runtimeSeam.TryGetGridPosition(player, out Vector2 grid)
+                    ? new Vector2(MathF.Floor(grid.X), MathF.Floor(grid.Y))
+                    : null;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private bool TryResolveTraversalClick(

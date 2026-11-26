@@ -69,6 +69,7 @@ namespace ClickIt.Features.Labels.Classification
 
             if (IsHarvestBossSeedPath(path)
                 || MechanicIds.IsDelveCrawlerPath(path)
+                || MechanicIds.IsIceCavesFossilPath(path)
                 || MechanicIds.IsTangledFossilInitiatorPath(path)
                 || path.Contains(MechanicIds.BetrayalCorpseSculpturePath, StringComparison.OrdinalIgnoreCase)
                 || path.Contains(MechanicIds.BeyondInitiatorPath, StringComparison.OrdinalIgnoreCase)
