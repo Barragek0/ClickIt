@@ -40,7 +40,7 @@ namespace ClickIt.Features.Mechanics.Rules
             static ctx => ctx.Settings.ClickSentinel && ctx.Path.Contains(MechanicIds.SentinelEncounterPath, StringComparison.OrdinalIgnoreCase)
                 ? MechanicIds.Sentinel : null,
             static ctx => ctx.Settings.ClickFates && MechanicIds.IsFatesPath(ctx.Path)
-                ? MechanicIds.Fates : null,
+                ? (MechanicIds.IsFatesBossPath(ctx.Path) ? MechanicIds.FatesBoss : MechanicIds.Fates) : null,
             static ctx => ctx.Settings.ClickMemories && ctx.Path.Contains(MechanicIds.BeginMemoryLinePath, StringComparison.OrdinalIgnoreCase)
                 ? MechanicIds.Memories : null,
             static ctx => ctx.Settings.ClickAzurite

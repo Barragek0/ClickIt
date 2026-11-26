@@ -156,6 +156,10 @@ namespace ClickIt.Features.Click.Application
 
         internal bool CanSelectLabel(LabelOnGround label, string? mechanicId)
         {
+            if (mechanicId == MechanicIds.Fates)
+                return DynamicAccess.TryGetLabelItemOnGround(label, out Entity? card)
+                    && DynamicAccess.TryReadBool(card, DynamicAccessProfiles.IsTargetable, out bool targetable) && targetable;
+
             if (!IsEssenceOpeningBlocked(label, mechanicId))
                 return true;
 

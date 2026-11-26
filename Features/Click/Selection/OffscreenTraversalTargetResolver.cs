@@ -25,13 +25,29 @@ namespace ClickIt.Features.Click.Selection
         private const long OffscreenTargetCacheWindowMs = 250;
         private IReadOnlySet<long>? _crawlerFallbackExcluded;
         private int _fallbackTier;
+        private string? _requiredMechanicId;
 
-        internal Entity? ResolveHigherPriorityWalkTarget(IReadOnlySet<long> excluded, int fallbackTier)
+        internal Entity? ResolveHigherPriorityWalkTarget(IReadOnlySet<long> excluded, int fallbackTier, string? requiredMechanicId = null)
         {
             _crawlerFallbackExcluded = excluded;
             _fallbackTier = fallbackTier;
-            try { return ResolveNearestOffscreenWalkTargetCore(); }
-            finally { _crawlerFallbackExcluded = null; }
+            _requiredMechanicId = requiredMechanicId;
+            try
+            {
+                if (requiredMechanicId == MechanicIds.Fates)
+                {
+                    const int maxDistance = OffscreenPathingMath.OffscreenPathfindingTargetSearchDistance;
+                    return ResolveNearestOffscreenLabelBackedTarget(maxDistance).Target
+                        ?? ResolveNearestOffscreenFateCard(maxDistance);
+                }
+
+                return ResolveNearestOffscreenWalkTargetCore();
+            }
+            finally
+            {
+                _crawlerFallbackExcluded = null;
+                _requiredMechanicId = null;
+            }
         }
 
         // Retains any entity that could be an offscreen walk target: an eldritch altar (path marker), an area transition (type or path marker), or a shrine (path marker). One path read + type read per EntityAdded keeps the event handler cheap. The per-category resolution still applies its own targetable/clickable filters on top of this coarse retained set.
@@ -73,6 +89,9 @@ namespace ClickIt.Features.Click.Selection
                 if (DynamicAccess.TryReadString(_cachedWalkTarget, DynamicAccessProfiles.Path, out string cachedPath)
                     && !MechanicIds.IsIceCavesFossilPath(cachedPath)
                     && !MechanicIds.IsDelveCrawlerPath(cachedPath)
+                    && !MechanicIds.IsFatesBossPath(cachedPath)
+                    && (!MechanicIds.IsFatesCardPath(cachedPath)
+                        || (_dependencies.Settings.ClickFates.Value && IsTargetableFateCard(_cachedWalkTarget, cachedPath)))
                     && OffscreenPathingMath.IsEligibleDelveTraversalTarget(_cachedWalkTarget, cachedPath)
                     && (!MechanicIds.IsDelveRewardChestPath(cachedPath)
                         || MechanicClassifier.IsUnopenedTargetableDelveChest(_cachedWalkTarget)))
@@ -94,12 +113,13 @@ namespace ClickIt.Features.Click.Selection
             Entity? shrineTarget = ResolveNearestOffscreenShrineTarget(maxDistance);
             (Entity? areaTransitionTarget, string? areaTransitionMechanicId) = ResolveNearestOffscreenAreaTransitionTarget(maxDistance);
             (Entity? delveTarget, string? delveMechanicId) = ResolveNearestOffscreenDelveTarget(maxDistance);
+            Entity? fateCardTarget = ResolveNearestOffscreenFateCard(maxDistance);
 
             _dependencies.DebugLog?.Invoke(string.Format("[TraversalResolver] ResolveNearestOffscreenWalkTarget: label={0} altar={1} shrine={2} transition={3}",
                     DescribePath(labelBackedTarget), DescribePath(eldritchAltarTarget),
                     shrineTarget != null ? "yes" : "null", DescribePath(areaTransitionTarget)));
 
-            if (labelBackedTarget == null && eldritchAltarTarget == null && shrineTarget == null && areaTransitionTarget == null && delveTarget == null)
+            if (labelBackedTarget == null && eldritchAltarTarget == null && shrineTarget == null && areaTransitionTarget == null && delveTarget == null && fateCardTarget == null)
                 return null;
 
             _dependencies.MechanicPriorityContextProvider.Refresh();
@@ -115,9 +135,18 @@ namespace ClickIt.Features.Click.Selection
             _ = MechanicCandidateResolver.TryPromoteOffscreenCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, shrineTarget, MechanicIds.Shrines, (distance, mechanicId) => BuildMechanicRank(distance, mechanicId, mechanicPriorityContext));
             _ = MechanicCandidateResolver.TryPromoteOffscreenCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, areaTransitionTarget, areaTransitionMechanicId, (distance, mechanicId) => BuildMechanicRank(distance, mechanicId, mechanicPriorityContext));
             _ = MechanicCandidateResolver.TryPromoteOffscreenCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, delveTarget, delveMechanicId, (distance, mechanicId) => BuildMechanicRank(distance, mechanicId, mechanicPriorityContext));
+            _ = MechanicCandidateResolver.TryPromoteOffscreenCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, fateCardTarget, MechanicIds.Fates, (distance, mechanicId) => BuildMechanicRank(distance, mechanicId, mechanicPriorityContext));
 
             return best;
         }
+
+        private Entity? ResolveNearestOffscreenFateCard(int maxDistance)
+            => !_dependencies.Settings.ClickFates.Value ? null : ResolveNearestOffscreenEntityTarget(
+                maxDistance, IsTargetableFateCard, static (_, _) => MechanicIds.Fates).Target;
+
+        private static bool IsTargetableFateCard(Entity entity, string path)
+            => MechanicIds.IsFatesCardPath(path)
+                && DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsTargetable, out bool targetable) && targetable;
 
         private (Entity? Target, string? MechanicId) ResolveNearestOffscreenEldritchAltarTarget(int maxDistance)
         {
@@ -262,6 +291,8 @@ namespace ClickIt.Features.Click.Selection
                     rejectedNoMechanic++;
                     continue;
                 }
+                if (_requiredMechanicId != null && mechanicId != _requiredMechanicId)
+                    continue;
                 if (!_dependencies.LabelInteraction.CanSelectLabel(label, mechanicId))
                     continue;
                 if ((MechanicClassifier.IsLockedDelveChest(entity) && !MechanicClassifier.HasVisibleDelveCompletionLabel(labels))

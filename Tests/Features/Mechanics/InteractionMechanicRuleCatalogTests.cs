@@ -52,7 +52,7 @@ namespace ClickIt.Tests.Features.Mechanics
         [DataRow(false, "Metadata/Terrain/Leagues/Augury/Objects/AuguryCardObject", null)]
         [DataRow(true, "Metadata/Terrain/Leagues/Augury/Objects/AuguryCardObject", MechanicIds.Fates)]
         [DataRow(false, "Metadata/Terrain/Leagues/Augury/Objects/AuguryBoss", null)]
-        [DataRow(true, "Metadata/Terrain/Leagues/Augury/Objects/AuguryBoss", MechanicIds.Fates)]
+        [DataRow(true, "Metadata/Terrain/Leagues/Augury/Objects/AuguryBoss", MechanicIds.FatesBoss)]
         public void TryResolve_FatesFollowsItsToggle(bool clickFates, string path, string? expected)
         {
             ClickSettings settings = new() { ClickFates = clickFates };

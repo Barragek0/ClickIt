@@ -11,6 +11,7 @@ namespace ClickIt.Tests.Behavior.Click
             public bool ClickDelveCrawler { get; set; }
             public bool ClickDelveSpawners { get; set; }
             public bool ClickEssences { get; set; }
+            public bool ClickFates { get; set; }
             public bool ClickDelveRewardChests { get; set; }
             public bool WalkTowardOffscreenLabels { get; set; } = true;
             public bool CaptureClickDebug { get; set; }
@@ -50,6 +51,10 @@ namespace ClickIt.Tests.Behavior.Click
                 return settings.ClickDelveSpawners ? MechanicIds.IceCavesFossil : null;
             if (path == "Metadata/Monsters/TestEssence")
                 return settings.ClickEssences ? MechanicIds.Essences : null;
+            if (MechanicIds.IsFatesBossPath(path))
+                return settings.ClickFates ? MechanicIds.FatesBoss : null;
+            if (MechanicIds.IsFatesCardPath(path))
+                return settings.ClickFates ? MechanicIds.Fates : null;
             if (MechanicIds.IsDelveRewardChestPath(path))
                 return settings.ClickLeagueChests ? MechanicIds.LeagueChests : null;
             if (path.Contains("strongbox", StringComparison.OrdinalIgnoreCase))
@@ -74,6 +79,7 @@ namespace ClickIt.Tests.Behavior.Click
                 ClickDelveCrawler = config.ClickDelveCrawler,
                 ClickDelveSpawners = config.ClickDelveSpawners,
                 ClickEssences = config.ClickEssences,
+                ClickFates = config.ClickFates,
                 ClickLeagueChests = config.ClickDelveRewardChests,
                 MechanicPriorityIndexMap = config.MechanicPriorityIndexMap,
                 IgnoreDistanceMechanicIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase),
@@ -215,6 +221,7 @@ namespace ClickIt.Tests.Behavior.Click
                 Settings.ClickDelveCrawler.Value = config.ClickDelveCrawler;
                 Settings.ClickDelveSpawners.Value = config.ClickDelveSpawners;
                 Settings.ClickEssences.Value = config.ClickEssences;
+                Settings.ClickFates.Value = config.ClickFates;
                 ClickableArea = CreateClickableArea(config);
                 ClickPointResolver = new LabelClickPointResolver(Settings);
                 _labelInteractionPort = new ScenarioLabelInteractionPort(config);

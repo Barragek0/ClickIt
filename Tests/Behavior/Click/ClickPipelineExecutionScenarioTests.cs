@@ -37,6 +37,39 @@ namespace ClickIt.Tests.Behavior.Click
         [DataRow(true, false)]
         [DataRow(true, true)]
         [DataRow(false, false)]
+        public void FateBoss_YieldsToAnAvailableCard(bool targetable, bool offscreen)
+        {
+            var config = BaseConfig();
+            config.ClickFates = true;
+            var harness = new ClickPipelineScenarioFactory.ScenarioHarness(config);
+            RectangleF bossRect = new(500, 300, 160, 40);
+            RectangleF cardRect = new(offscreen ? 2200 : 700, 300, 160, 40);
+            var boss = ClickPipelineScenarioFactory.CreateLabel(bossRect,
+                EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Augury/Objects/AuguryBoss", distancePlayer: 2, address: 1), 0x1001);
+            Entity cardEntity = EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Augury/Objects/AuguryCardObject",
+                isTargetable: targetable, distancePlayer: 70, address: 2);
+            var card = ClickPipelineScenarioFactory.CreateLabel(cardRect, cardEntity, 0x1002);
+            harness.CurrentLabels = [boss, card];
+            if (!offscreen)
+                harness.ScanEngine.ResolveNextLabelCandidate(harness.CurrentLabels).Should().BeSameAs(targetable ? card : boss);
+            else
+                harness.TraversalResolver.ResolveHigherPriorityWalkTarget(
+                    new HashSet<long>(), MechanicIds.GetFallbackTier(MechanicIds.FatesBoss), MechanicIds.Fates)
+                    .Should().BeSameAs(cardEntity);
+
+            harness.ExecutionEngine.Execute(harness.CreateContext(true, harness.CurrentLabels),
+                harness.CreateCandidates(boss, MechanicIds.FatesBoss), GroundItemsDecision());
+
+            harness.InteractionsExecuted.Should().Be(offscreen ? 0 : 1);
+            if (!offscreen)
+                AssertPointInside(targetable ? cardRect : bossRect, harness.LastClickPosition!.Value);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        [DataRow(true, false)]
+        [DataRow(true, true)]
+        [DataRow(false, false)]
         public void IceCavesFossilFallback_YieldsToEligibleEssence(bool essenceEnabled, bool essenceOffscreen)
         {
             var config = BaseConfig();

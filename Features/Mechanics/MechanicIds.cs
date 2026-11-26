@@ -49,6 +49,7 @@ namespace ClickIt.Features.Mechanics
         public const string Beyond = "beyond";
         public const string Sentinel = "sentinel";
         public const string Fates = "fates";
+        internal const string FatesBoss = "fates-boss";
         public const string Memories = "memories";
         public const string BeyondInitiatorPath = "BeyondDemons/BeyondInitiator";
         public const string SentinelEncounterPath = "Sentinel/SentinelRandomEncounter";
@@ -70,7 +71,7 @@ namespace ClickIt.Features.Mechanics
             => mechanicId switch
             {
                 DelveCrawler => 2,
-                IceCavesFossil => 1,
+                IceCavesFossil or FatesBoss => 1,
                 _ => 0
             };
         public const string CraftingRecipes = "crafting-recipes";
@@ -102,9 +103,13 @@ namespace ClickIt.Features.Mechanics
         /// Fates are invoked on. Both follow the single "Fates" entry in the click table.
         /// </summary>
         public static bool IsFatesPath(string? path)
-            => !string.IsNullOrEmpty(path)
-                && (path.Contains(FatesPath, StringComparison.OrdinalIgnoreCase)
-                    || path.Contains(FatesBossPath, StringComparison.OrdinalIgnoreCase));
+            => IsFatesCardPath(path) || IsFatesBossPath(path);
+
+        internal static bool IsFatesCardPath(string? path)
+            => path?.Contains(FatesPath, StringComparison.OrdinalIgnoreCase) == true;
+
+        internal static bool IsFatesBossPath(string? path)
+            => path?.Contains(FatesBossPath, StringComparison.OrdinalIgnoreCase) == true;
 
         public static bool IsDelveCrawlerPath(string? path)
             => !string.IsNullOrEmpty(path)

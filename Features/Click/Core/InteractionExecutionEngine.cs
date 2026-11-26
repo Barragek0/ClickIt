@@ -251,10 +251,14 @@ namespace ClickIt.Features.Click.Core
                 return HandleNoVisibleLabel(context);
 
             string? fallbackId = candidates.NextLabelMechanicId;
-            if (fallbackId is MechanicIds.DelveCrawler or MechanicIds.IceCavesFossil)
+            if (MechanicIds.GetFallbackTier(fallbackId) > 0 && fallbackId != null)
             {
-                bool enabled = fallbackId == MechanicIds.DelveCrawler
-                    ? _dependencies.Policy.Settings.ClickDelveCrawler.Value : _dependencies.Policy.Settings.ClickDelveSpawners.Value;
+                bool enabled = fallbackId switch
+                {
+                    MechanicIds.DelveCrawler => _dependencies.Policy.Settings.ClickDelveCrawler.Value,
+                    MechanicIds.IceCavesFossil => _dependencies.Policy.Settings.ClickDelveSpawners.Value,
+                    _ => _dependencies.Policy.Settings.ClickFates.Value
+                };
                 if (!enabled || _dependencies.Selection.LabelInteractionPort.GetMechanicIdForLabel(candidates.NextLabel) != fallbackId)
                     return StopExecution();
                 if (TryResolveVisibleFallbackCompetitor(context, candidates, fallbackId, out ClickCandidates competitor, out Entity? competitorEntity, out Vector2 competitorPoint))
@@ -304,13 +308,14 @@ namespace ClickIt.Features.Click.Core
                     continue;
                 bool isWorldItem = DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.Type, out object? rawType)
                     && rawType is EntityType.WorldItem;
-                if (!isChest && !isWorldItem && fallbackId != MechanicIds.IceCavesFossil)
+                bool isFatesCard = MechanicIds.IsFatesCardPath(path);
+                if (!isChest && !isWorldItem && !isFatesCard && fallbackId != MechanicIds.IceCavesFossil)
                     continue;
 
                 string? mechanicId = _dependencies.Selection.LabelInteractionPort.GetMechanicIdForLabel(label);
                 if (string.IsNullOrWhiteSpace(mechanicId)
                     || (isWorldItem && mechanicId != MechanicIds.Items)
-                    || (!isChest && !isWorldItem && (mechanicId != MechanicIds.Essences
+                    || (!isChest && !isWorldItem && (mechanicId != (isFatesCard ? MechanicIds.Fates : MechanicIds.Essences)
                         || !DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsTargetable, out bool targetable) || !targetable))
                     || !_dependencies.Selection.LabelInteraction.CanSelectLabel(label, mechanicId)
                     || IsBlockedByPostChestLootSettlement(context, mechanicId, entity))

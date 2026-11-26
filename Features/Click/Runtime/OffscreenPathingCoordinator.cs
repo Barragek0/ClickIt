@@ -557,12 +557,17 @@ namespace ClickIt.Features.Click.Runtime
             if (DynamicAccess.TryReadString(stickyTarget, DynamicAccessProfiles.Path, out string stickyPath))
             {
                 string? fallbackId = MechanicIds.IsDelveCrawlerPath(stickyPath) ? MechanicIds.DelveCrawler
-                    : MechanicIds.IsIceCavesFossilPath(stickyPath) ? MechanicIds.IceCavesFossil : null;
+                    : MechanicIds.IsIceCavesFossilPath(stickyPath) ? MechanicIds.IceCavesFossil
+                    : MechanicIds.IsFatesBossPath(stickyPath) ? MechanicIds.FatesBoss : null;
                 if (fallbackId != null)
                 {
                     ClearStickyOffscreenTarget();
-                    bool enabled = fallbackId == MechanicIds.DelveCrawler
-                        ? _dependencies.Settings.ClickDelveCrawler.Value : _dependencies.Settings.ClickDelveSpawners.Value;
+                    bool enabled = fallbackId switch
+                    {
+                        MechanicIds.DelveCrawler => _dependencies.Settings.ClickDelveCrawler.Value,
+                        MechanicIds.IceCavesFossil => _dependencies.Settings.ClickDelveSpawners.Value,
+                        _ => _dependencies.Settings.ClickFates.Value
+                    };
                     if (!enabled || TryHandleHigherPriorityWalkTarget(fallbackId))
                         return true;
                     if (!ClickSafetyPolicy.IsWithinSearchRadius(_dependencies.Settings, stickyTarget))
@@ -598,7 +603,8 @@ namespace ClickIt.Features.Click.Runtime
             for (int i = 0; i < 32; i++)
             {
                 Entity? target = _dependencies.TraversalTargetResolver.ResolveHigherPriorityWalkTarget(
-                    excluded, MechanicIds.GetFallbackTier(fallbackId));
+                    excluded, MechanicIds.GetFallbackTier(fallbackId),
+                    fallbackId == MechanicIds.FatesBoss ? MechanicIds.Fates : null);
                 if (target == null)
                     return false;
                 long address = DynamicAccess.TryGetDynamicValue(target, DynamicAccessProfiles.Address, out object? rawAddress)
