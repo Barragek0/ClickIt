@@ -239,7 +239,12 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void ShouldAllowMechanicInteractionDuringPostChestLootSettlement_ReturnsTrue_WhenCandidateGridIsWithinDistance_ThroughBoundedSeam()
+        [TestCategory("Regression")]
+        [DataRow(MechanicIds.LeagueChests, true)]
+        [DataRow(MechanicIds.Items, true)]
+        [DataRow(MechanicIds.DelveCrawler, false)]
+        [DataRow(MechanicIds.IceCavesFossil, false)]
+        public void NearbySettlementBypass_AllowsLootAndChestsButBlocksFallbackTargets(string mechanicId, bool expected)
         {
             var settings = new ClickItSettings();
             settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettle.Value = true;
@@ -254,14 +259,16 @@ namespace ClickIt.Tests.Features.Click
             var tracker = CreateTracker(settings, state);
 
             bool allowed = tracker.ShouldAllowMechanicInteractionDuringPostChestLootSettlement(
-                MechanicIds.LeagueChests,
+                mechanicId,
                 hasCandidateGrid: true,
                 entityGridPos: new Vector2(6f, 8f),
                 out string decision);
 
-            allowed.Should().BeTrue();
-            decision.Should().Contain("allowed");
-            decision.Should().Contain("dist:10.0");
+            allowed.Should().Be(expected);
+            if (expected)
+                decision.Should().Contain("allowed").And.Contain("dist:10.0");
+            else
+                decision.Should().Be("mechanic-not-eligible");
         }
 
         [TestMethod]

@@ -94,9 +94,10 @@ namespace ClickIt.Tests.Behavior.Click
 
         [DataTestMethod]
         [TestCategory("Scenario")]
-        [DataRow("DelveNode")]
-        [DataRow("DelveNodeNoEncounter")]
-        public void CrawlerAlone_IsClickedWhenEnabled(string nodeName)
+        [DataRow("DelveNode", false)]
+        [DataRow("DelveNodeNoEncounter", false)]
+        [DataRow("DelveNode", true)]
+        public void CrawlerAlone_WaitsForChestSettlementWhenActive(string nodeName, bool settling)
         {
             var config = BaseConfig();
             config.ClickDelveCrawler = true;
@@ -105,11 +106,13 @@ namespace ClickIt.Tests.Behavior.Click
             RectangleF rect = new(500, 300, 160, 40);
             var crawler = ClickPipelineScenarioFactory.CreateLabel(rect,
                 EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/" + nodeName, distancePlayer: 1, address: 1), 0x1001);
-            var result = harness.ExecutionEngine.Execute(harness.CreateContext(true, [crawler]),
+            var context = settling ? harness.CreatePostChestSettleContext([crawler]) : harness.CreateContext(true, [crawler]);
+            var result = harness.ExecutionEngine.Execute(context,
                 harness.CreateCandidates(crawler, MechanicIds.DelveCrawler), GroundItemsDecision());
-            result.ShouldRunPostActions.Should().BeTrue();
-            harness.InteractionsExecuted.Should().Be(1);
-            AssertPointInside(rect, harness.LastClickPosition!.Value);
+            result.ShouldRunPostActions.Should().Be(!settling);
+            harness.InteractionsExecuted.Should().Be(settling ? 0 : 1);
+            if (!settling)
+                AssertPointInside(rect, harness.LastClickPosition!.Value);
         }
 
         [TestMethod]

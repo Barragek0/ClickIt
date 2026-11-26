@@ -259,6 +259,8 @@ namespace ClickIt.Features.Click.Core
                     return StopExecution();
                 if (TryResolveVisibleFallbackCompetitor(context, candidates, fallbackId, out ClickCandidates competitor, out Entity? competitorEntity, out Vector2 competitorPoint))
                     return HandleVisibleLabel(context, competitor, competitorEntity, hasClickableClickPos: true, clientClickPos: competitorPoint);
+                if (TryPublishPostChestLootSettleBlock(context))
+                    return StopExecution();
                 if (_dependencies.Pathing.OffscreenPathing.TryHandleHigherPriorityWalkTarget(fallbackId))
                     return StopExecution();
             }

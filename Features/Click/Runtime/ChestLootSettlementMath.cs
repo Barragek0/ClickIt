@@ -74,7 +74,7 @@ namespace ClickIt.Features.Click.Runtime
         }
 
         internal static bool IsMechanicEligibleForNearbyChestLootSettlementBypass(string? mechanicId)
-            => !string.IsNullOrWhiteSpace(mechanicId);
+            => !string.IsNullOrWhiteSpace(mechanicId) && MechanicIds.GetFallbackTier(mechanicId) == 0;
 
         internal static bool IsWithinNearbyChestLootSettlementBypassDistance(Vector2 sourceGridPos, Vector2 entityGridPos, int maxDistance)
         {
