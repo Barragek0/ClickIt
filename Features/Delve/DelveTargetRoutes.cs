@@ -14,7 +14,10 @@ internal enum DelveRouteTarget
     TimeLostCavern = 128,
     StonewoodHollow = 256,
     HauntedTomb = 512,
-    SmugglersStash = 1024
+    SmugglersStash = 1024,
+    Azurite1 = 2048,
+    Azurite2 = 4096,
+    Azurite3 = 8192
 }
 
 internal static class DelveTargetRoutes
@@ -32,6 +35,9 @@ internal static class DelveTargetRoutes
                 | (settings.TargetDelveStonewoodHollow.Value ? DelveRouteTarget.StonewoodHollow : DelveRouteTarget.None)
                 | (settings.TargetDelveHauntedTomb.Value ? DelveRouteTarget.HauntedTomb : DelveRouteTarget.None)
                 | (settings.TargetDelveSmugglersStash.Value ? DelveRouteTarget.SmugglersStash : DelveRouteTarget.None)
+                | (settings.TargetDelveAzurite1.Value ? DelveRouteTarget.Azurite1 : DelveRouteTarget.None)
+                | (settings.TargetDelveAzurite2.Value ? DelveRouteTarget.Azurite2 : DelveRouteTarget.None)
+                | (settings.TargetDelveAzurite3.Value ? DelveRouteTarget.Azurite3 : DelveRouteTarget.None)
             : DelveRouteTarget.None;
 
     internal static DelveRouteTarget Classify(string name, string? asset)
@@ -41,6 +47,9 @@ internal static class DelveTargetRoutes
             ("BossAbyss", _) => DelveRouteTarget.Lich,
             ("BossVaalCity", _) => DelveRouteTarget.Architect,
             ("Minion", _) => DelveRouteTarget.MinionAuraItems,
+            ("AzuriteVein", _) => DelveRouteTarget.Azurite1,
+            ("AzuriteVeinII", _) => DelveRouteTarget.Azurite2,
+            ("AzuriteVeinIII", _) => DelveRouteTarget.Azurite3,
             (_, "Crystal Spire") => DelveRouteTarget.CrystalSpire,
             (_, "Molten Cavity") => DelveRouteTarget.MoltenCavity,
             (_, "Humid Fissure") => DelveRouteTarget.HumidFissure,

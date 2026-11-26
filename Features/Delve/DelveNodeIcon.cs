@@ -11,29 +11,61 @@ internal sealed class DelveNodeIcon
     private static readonly HttpClient TextureClient = new() { Timeout = TimeSpan.FromSeconds(8) };
     private static readonly Lazy<Task<Dictionary<string, string>>> RemoteHashes = new(() => ReadRemoteHashesAsync(TextureClient));
     private static readonly SemaphoreSlim DownloadSlots = new(4);
-    private static readonly DelveNodeIcon Generic = new(null);
+    private static readonly DelveNodeIcon Generic = new(null, null);
     // Keep the canonical GitHub filenames available even when the assembly has no embedded textures.
-    private static readonly string[] AssetNames =
+    private static readonly (string Asset, string? Tooltip)[] IconDefinitions =
     [
-        "AbyssalCity", "AbyssEncounter", "Armour", "AzuriteVein", "AzuriteVeinII", "AzuriteVeinIII",
-        "Bestiary", "Beyond", "Blood", "BossAbyss", "BossProtoVaal", "BossVaalCity", "Breach", "Chaos",
-        "Chest", "Cold", "Currency", "Curse", "Fire", "Fossil", "Gems", "Legion", "Lightning", "Maps",
-        "Minion", "ProtoVaalCity", "Strongbox", "Trinkets", "VaalCity", "WarbandChaos", "WarbandFire",
-        "WarbandLightning", "Weapons"
+        ("AbyssalCity", "Abyssal City"),
+        ("AbyssEncounter", "Abyss Items"),
+        ("Armour", "Armour"),
+        ("AzuriteVein", "Azurite Tier 1"),
+        ("AzuriteVeinII", "Azurite Tier 2"),
+        ("AzuriteVeinIII", "Azurite Tier 3"),
+        ("Bestiary", "Animalistic Items"),
+        ("Beyond", "Monsters from Beyond"),
+        ("Blood", "Physical Items"),
+        ("BossAbyss", "Lich"),
+        ("BossProtoVaal", "Aul"),
+        ("BossVaalCity", "Architect"),
+        ("Breach", "Breach"),
+        ("Chaos", "Chaos Items"),
+        ("Chest", "Items"),
+        ("Cold", "Cold Items"),
+        ("Currency", "Currency"),
+        ("Curse", "Mana or Curse Items"),
+        ("Fire", "Fire Items"),
+        ("Fossil", null),
+        ("Gems", "Gems"),
+        ("Legion", "Legion"),
+        ("Lightning", "Lightning Items"),
+        ("Maps", "Maps"),
+        ("Minion", "Minion or Aura Items"),
+        ("ProtoVaalCity", "Primeval Ruins"),
+        ("Strongbox", "Strongboxes"),
+        ("Trinkets", "Jewellery"),
+        ("VaalCity", "Vaal Outpost"),
+        ("WarbandChaos", "Chaos Items"),
+        ("WarbandFire", "Fire Items"),
+        ("WarbandLightning", "Lightning Items"),
+        ("Weapons", "Weapons")
     ];
-    private static readonly Dictionary<string, DelveNodeIcon> Icons = AssetNames.ToDictionary(static name => name,
-        static name => new DelveNodeIcon(name), StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, DelveNodeIcon> Icons = IconDefinitions.ToDictionary(static entry => entry.Asset,
+        static entry => new DelveNodeIcon(entry.Asset, entry.Tooltip), StringComparer.OrdinalIgnoreCase);
 
     internal readonly record struct TextureResult(string? Path, string? Error = null);
 
+    private readonly string? _tooltip;
     internal string? AssetName { get; }
     internal string? TextureName { get; }
 
-    private DelveNodeIcon(string? assetName)
+    private DelveNodeIcon(string? assetName, string? tooltip)
     {
         AssetName = assetName;
         TextureName = assetName == null ? null : $"ClickIt.Delve.{BundleVersion}.{assetName}";
+        _tooltip = tooltip;
     }
+
+    internal string GetTooltip(string encounterName) => _tooltip ?? encounterName;
 
     internal static DelveNodeIcon Resolve(string? image)
     {

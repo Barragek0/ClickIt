@@ -43,12 +43,12 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
     }
     internal readonly record struct CellLink(long Start, long End, bool Horizontal);
     internal readonly record struct RouteLines(ScreenLine[] Revealed, ScreenLine[] Target, ScreenLine[] FracturedWalls);
-    internal readonly record struct ChartMarker(RectangleF Rect, NumVector2 Anchor, DelveNodeIcon Icon, string? FossilName = null,
+    internal readonly record struct ChartMarker(RectangleF Rect, NumVector2 Anchor, DelveNodeIcon Icon, string? HoverText = null,
         DelveRouteTarget Target = DelveRouteTarget.None);
     internal readonly record struct Node(NumVector2 Center, float Radius, DelveNodeIcon Icon,
-        string? FossilName = null, Task<DelveNodeIcon.TextureResult>? TextureFile = null);
+        string? HoverText = null, Task<DelveNodeIcon.TextureResult>? TextureFile = null);
     private sealed record ChartSnapshot(ScreenLine[] Connections, ScreenLine[] TargetRoutes, ScreenLine[] FracturedWalls,
-        Node[] Nodes, RectangleF Clip, bool HasFossils);
+        Node[] Nodes, RectangleF Clip);
     private sealed record ChartCapture(long Address, RectangleF Coverage,
         ChartMarker[] Markers, RouteLines Lines, DelveRouteTarget Targets, long CapturedAt);
 
@@ -231,8 +231,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         Volatile.Write(ref _snapshot, new ChartSnapshot(
             revealFullMap ? ProjectConnections(capture.Lines.Revealed, clip, projection) : [],
             ProjectConnections(capture.Lines.Target, clip, projection),
-            ProjectConnections(capture.Lines.FracturedWalls, clip, projection), nodes, clip,
-            Array.Exists(nodes, static node => node.FossilName != null)));
+            ProjectConnections(capture.Lines.FracturedWalls, clip, projection), nodes, clip));
         Volatile.Write(ref _lastCapture, now);
     }
 
@@ -310,7 +309,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
                     ? DelveTargetRoutes.Classify(name, icon?.AssetName)
                     : DelveRouteTarget.None;
                 if (needsMarker && anchor is { } markerAnchor && icon != null)
-                    markers.Add(new ChartMarker(rect, markerAnchor, icon, icon.AssetName == "Fossil" ? name : null, target));
+                    markers.Add(new ChartMarker(rect, markerAnchor, icon, icon.GetTooltip(name), target));
                 if (markersOnly)
                     continue;
 
@@ -431,16 +430,23 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
             }
         }
 
-        HashSet<(long, long)> accessibleWallLinks = FindAccessibleWallLinks(cells, links);
-        links.RemoveAll(link => (cells[link.Start].BehindWall || cells[link.End].BehindWall)
-            && !accessibleWallLinks.Contains(DelveTargetRoutes.LinkKey(link.Start, link.End)));
-
+        // The red wall overlay needs a revealed approach. A green route can guide the
+        // player through darkness to reach the approach, so plan it on the full graph.
         HashSet<(long, long)> routes = targets == DelveRouteTarget.None
             ? []
             : DelveTargetRoutes.FindShortestRoutes(cells, links, targets);
-        if (targets != DelveRouteTarget.None)
-            links.RemoveAll(link => !cells[link.Start].NeedsRouteOverlay && !cells[link.End].NeedsRouteOverlay
-                && !routes.Contains(DelveTargetRoutes.LinkKey(link.Start, link.End)));
+
+        HashSet<(long, long)> accessibleWallLinks = FindAccessibleWallLinks(cells, links);
+        links.RemoveAll(link =>
+        {
+            var key = DelveTargetRoutes.LinkKey(link.Start, link.End);
+            if (routes.Contains(key))
+                return false;
+
+            ChartCell start = cells[link.Start];
+            ChartCell end = cells[link.End];
+            return start.BehindWall || end.BehindWall ? !accessibleWallLinks.Contains(key) : !(start.Hidden || end.Hidden);
+        });
 
         if (links.Count == 0)
             return new RouteLines([], [], []);
@@ -704,7 +710,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
                 rect.Y + rect.Height * (marker.Anchor.Y - 0.06f) - MarkerLiftPixels);
             float radius = MathF.Min(SystemMath.Min(rect.Width, rect.Height) * 0.42f, 32f) * zoomCorrection;
             if (clip.Contains(anchor.X - radius, anchor.Y - radius) && clip.Contains(anchor.X + radius, anchor.Y + radius))
-                nodes.Add(new Node(anchor, radius, marker.Icon, marker.FossilName));
+                nodes.Add(new Node(anchor, radius, marker.Icon, marker.HoverText));
         }
 
         return [.. nodes];
@@ -755,28 +761,28 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
             ctx.DrawQueue.EnqueueText(textureError, new Vector2(snapshot.Clip.Center.X, snapshot.Clip.Top + 30f),
                 Color.OrangeRed, 16, FontAlign.Center, shadow: true);
 
-        if (snapshot.HasFossils)
+        if (snapshot.Nodes.Length > 0)
         {
             SystemDrawingPoint cursor = Mouse.GetCursorPosition();
             var mouse = new NumVector2(cursor.X - ctx.WindowArea.X, cursor.Y - ctx.WindowArea.Y);
-            if (snapshot.Clip.Contains(mouse.X, mouse.Y) && FindHoveredFossil(snapshot.Nodes, mouse) is { } fossil)
+            if (snapshot.Clip.Contains(mouse.X, mouse.Y) && FindHoverText(snapshot.Nodes, mouse) is { } hoverText)
             {
                 bool nearRight = mouse.X > snapshot.Clip.Center.X;
                 var tooltip = new Vector2(mouse.X + (nearRight ? -12f : 12f),
                     SystemMath.Min(mouse.Y + 16f, snapshot.Clip.Bottom - 24f));
-                ctx.DrawQueue.EnqueueText(fossil, tooltip, Color.White, 16,
+                ctx.DrawQueue.EnqueueText(hoverText, tooltip, Color.White, 16,
                     nearRight ? FontAlign.Right : FontAlign.Left, shadow: true);
             }
         }
     }
 
-    internal static string? FindHoveredFossil(Node[] nodes, NumVector2 cursor)
+    internal static string? FindHoverText(Node[] nodes, NumVector2 cursor)
     {
         float nearest = float.PositiveInfinity;
         string? name = null;
         foreach (Node node in nodes)
         {
-            if (node.FossilName == null || MathF.Abs(cursor.X - node.Center.X) > node.Radius
+            if (node.HoverText == null || MathF.Abs(cursor.X - node.Center.X) > node.Radius
                 || MathF.Abs(cursor.Y - node.Center.Y) > node.Radius)
                 continue;
 
@@ -784,7 +790,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
             if (distance < nearest)
             {
                 nearest = distance;
-                name = node.FossilName;
+                name = node.HoverText;
             }
         }
         return name;

@@ -237,16 +237,16 @@ namespace ClickIt.UI.Settings.Panels
             ImGui.Spacing();
             SettingsUiRenderHelpers.DrawToggleNodeControl(
                 "Reveal Full Map##MechanicsDelveRevealMap", _settings.RevealDelveMap,
-                "Shows hidden encounters and draws red lines for known connections.");
+                "Shows hidden encounters and draws red lines for known connections.\n\nPaths won't be entirely accurate, as they are estimated based on known node connections.");
             SettingsUiRenderHelpers.DrawToggleNodeControl(
                 "Reveal Shortest Route to Targets##MechanicsDelveTargetRoutes", _settings.ShowDelveTargetRoutes,
-                "Draws green lines from the closest explored encounter to each selected target along the shortest known route.");
+                "Draws green lines from the closest explored encounter to each selected target along the shortest known route.\n\nPaths won't be entirely accurate, as they are estimated based on known node connections.");
             ImGui.Indent();
             DrawDelveTargets();
             ImGui.Unindent();
             SettingsUiRenderHelpers.DrawToggleNodeControl(
                 "Fractured Walls##MechanicsDelveFracturedWalls", _settings.RevealDelveFracturedWalls,
-                "Shows hidden routes behind fractured walls in red when the approach to the wall is already revealed.");
+                "Shows fractured-wall routes in red when the approach is revealed. Green target routes will still be shown for walls even when this is off.");
 
             SettingsUiRenderHelpers.DrawToggleNodeControl(
                 "Use Flares##MechanicsDelveFlares",
@@ -316,6 +316,19 @@ namespace ClickIt.UI.Settings.Panels
                     "Drops a Tangled Fossil. Found in Fungal Caverns.");
                 SettingsUiRenderHelpers.DrawToggleNodeControl("Smuggler's Stash", _settings.TargetDelveSmugglersStash,
                     "Target the fossil variant of Smuggler's Stash, which contains assorted fossils.");
+                ImGui.TreePop();
+            }
+
+            bool azuriteOpen = ImGui.TreeNode("Azurite##MechanicsDelveAzuriteTargets");
+            SettingsUiRenderHelpers.DrawInlineTooltip("Choose which tiers of Azurite encounters to target.");
+            if (azuriteOpen)
+            {
+                SettingsUiRenderHelpers.DrawToggleNodeControl("Azurite Tier 1", _settings.TargetDelveAzurite1,
+                    "Draw green routes to tier 1 Azurite encounters.");
+                SettingsUiRenderHelpers.DrawToggleNodeControl("Azurite Tier 2", _settings.TargetDelveAzurite2,
+                    "Draw green routes to tier 2 Azurite encounters.");
+                SettingsUiRenderHelpers.DrawToggleNodeControl("Azurite Tier 3", _settings.TargetDelveAzurite3,
+                    "Draw green routes to tier 3 Azurite encounters.");
                 ImGui.TreePop();
             }
 

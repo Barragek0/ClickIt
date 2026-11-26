@@ -5,6 +5,18 @@ public sealed class DelveNodeIconTests
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), "ClickIt.Tests", Guid.NewGuid().ToString("N"));
 
+    [TestMethod]
+    [TestCategory("Regression")]
+    [DataRow("BossProtoVaal", "The Crystal King's Throne", "Aul")]
+    [DataRow("BossAbyss", "The Lich's Tomb", "Lich")]
+    [DataRow("BossVaalCity", "The Grand Architect's Temple", "Architect")]
+    [DataRow("azuriteveiniii.dds", "Azurite Fissure", "Azurite Tier 3")]
+    [DataRow("Minion", "Grim Copse", "Minion or Aura Items")]
+    [DataRow("Fossil", "Crystal Spire", "Crystal Spire")]
+    [DataRow("Unknown", "Forgotten Chamber", "Forgotten Chamber")]
+    public void GetTooltip_UsesIconLabelOrTheSpecificEncounterName(string asset, string encounter, string expected)
+        => DelveNodeIcon.Resolve(asset).GetTooltip(encounter).Should().Be(expected);
+
     [TestCleanup]
     public void CleanUp()
     {

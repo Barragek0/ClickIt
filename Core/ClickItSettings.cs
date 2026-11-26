@@ -333,6 +333,12 @@ namespace ClickIt
         public ToggleNode TargetDelveHauntedTomb { get; set; } = new ToggleNode(false);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode TargetDelveSmugglersStash { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode TargetDelveAzurite1 { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode TargetDelveAzurite2 { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode TargetDelveAzurite3 { get; set; } = new ToggleNode(false);
 
         [Menu("Priorities", 124, 1400)]
         public EmptyNode PrioritiesCategory { get; set; } = new EmptyNode();

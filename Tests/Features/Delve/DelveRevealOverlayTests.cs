@@ -41,6 +41,15 @@ public sealed class DelveRevealOverlayTests
         settings.RevealDelveFracturedWalls.Value.Should().BeFalse();
         overlay.IsEnabled(settings).Should().BeTrue();
         DelveTargetRoutes.GetSelectedTargets(settings).Should().Be(expected);
+        settings.TargetDelveAzurite1.Value = true;
+        DelveTargetRoutes.GetSelectedTargets(settings).Should().Be(expected | DelveRouteTarget.Azurite1);
+        settings.TargetDelveAzurite1.Value = false;
+        settings.TargetDelveAzurite2.Value = true;
+        DelveTargetRoutes.GetSelectedTargets(settings).Should().Be(expected | DelveRouteTarget.Azurite2);
+        settings.TargetDelveAzurite2.Value = false;
+        settings.TargetDelveAzurite3.Value = true;
+        DelveTargetRoutes.GetSelectedTargets(settings).Should().Be(expected | DelveRouteTarget.Azurite3);
+        settings.TargetDelveAzurite3.Value = false;
         settings.TargetDelveCrystalSpire.Value = false;
         settings.TargetDelveTimeLostCavern.Value = true;
         DelveTargetRoutes.GetSelectedTargets(settings).Should()
@@ -95,13 +104,37 @@ public sealed class DelveRevealOverlayTests
                 WallSide: DelveRevealOverlay.WallApproach.West),
             [3] = new(new RectangleF(40, 0, 20, 20), [], Hidden: false, Explored: true)
         };
-        cells[1] = cells[1] with { Target = DelveRouteTarget.Aul };
-
-        var lines = DelveRevealOverlay.BuildRouteLines(cells, DelveRouteTarget.Aul);
+        var lines = DelveRevealOverlay.BuildRouteLines(cells, DelveRouteTarget.None);
 
         lines.FracturedWalls.Should().BeEmpty();
         lines.Revealed.Should().BeEmpty();
         lines.Target.Should().BeEmpty();
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    [DataRow(false)]
+    [DataRow(true)]
+    public void BuildRouteLines_TargetRouteCanReachAFracturedWallViaDarkness(bool showFracturedWalls)
+    {
+        var settings = new ClickItSettings();
+        settings.RevealDelveFracturedWalls.Value = showFracturedWalls;
+        Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
+        {
+            [1] = new(new RectangleF(0, 0, 20, 20), [2], Hidden: false, Explored: true),
+            [2] = new(new RectangleF(20, 0, 20, 20), [3]),
+            [3] = new(new RectangleF(40, 0, 20, 20), [4], BehindWall: true,
+                WallSide: DelveRevealOverlay.WallApproach.West),
+            [4] = new(new RectangleF(60, 0, 20, 20), [], BehindWall: true, Target: DelveRouteTarget.MoltenCavity)
+        };
+
+        var lines = DelveRevealOverlay.BuildRouteLines(cells, DelveTargetRoutes.GetSelectedTargets(settings));
+
+        lines.Target.Should().Equal(
+            new ScreenLine(new NumVector2(10, 10), new NumVector2(30, 10)),
+            new ScreenLine(new NumVector2(30, 10), new NumVector2(50, 10)),
+            new ScreenLine(new NumVector2(50, 10), new NumVector2(70, 10)));
+        lines.FracturedWalls.Should().BeEmpty();
     }
 
     [TestMethod]
@@ -153,6 +186,9 @@ public sealed class DelveRevealOverlayTests
     [DataRow("Lich's Tomb", "BossAbyss", (int)DelveRouteTarget.Lich)]
     [DataRow("Aul's Throne", "BossProtoVaal", (int)DelveRouteTarget.Aul)]
     [DataRow("Grim Copse", "Minion", (int)DelveRouteTarget.MinionAuraItems)]
+    [DataRow("Azurite Cavity", "AzuriteVein", (int)DelveRouteTarget.Azurite1)]
+    [DataRow("Azurite Vault", "AzuriteVeinII", (int)DelveRouteTarget.Azurite2)]
+    [DataRow("Azurite Fissure", "AzuriteVeinIII", (int)DelveRouteTarget.Azurite3)]
     [DataRow("Time-Lost Cavern", "Fossil", (int)DelveRouteTarget.TimeLostCavern)]
     [DataRow("Stonewood Hollow", "Fossil", (int)DelveRouteTarget.StonewoodHollow)]
     [DataRow("Haunted Tomb", "Fossil", (int)DelveRouteTarget.HauntedTomb)]
@@ -173,7 +209,7 @@ public sealed class DelveRevealOverlayTests
         ];
 
         DelveRevealOverlay.BuildMarkers(markers, chart, projection, revealFullMap: false, DelveRouteTarget.CrystalSpire)
-            .Should().ContainSingle().Which.FossilName.Should().Be("Crystal Spire");
+            .Should().ContainSingle().Which.HoverText.Should().Be("Crystal Spire");
         DelveRevealOverlay.BuildMarkers(markers, chart, projection).Should().HaveCount(2);
     }
 
@@ -239,17 +275,19 @@ public sealed class DelveRevealOverlayTests
 
     [TestMethod]
     [TestCategory("Regression")]
-    public void HoveredFossil_UsesTheClosestIconsEncounterName()
+    public void FindHoverText_UsesTheClosestIconAcrossEncounterTypes()
     {
         var fossil = DelveNodeIcon.Resolve("Fossil");
         DelveRevealOverlay.Node[] nodes =
         [
             new(new NumVector2(20, 20), 8f, fossil, "Smuggler's Stash"),
-            new(new NumVector2(30, 20), 8f, fossil, "Crystal Spire")
+            new(new NumVector2(30, 20), 8f, fossil, "Crystal Spire"),
+            new(new NumVector2(40, 20), 8f, DelveNodeIcon.Resolve("AzuriteVeinIII"), "Azurite Tier 3")
         ];
 
-        DelveRevealOverlay.FindHoveredFossil(nodes, new NumVector2(27, 20)).Should().Be("Crystal Spire");
-        DelveRevealOverlay.FindHoveredFossil(nodes, new NumVector2(10, 20)).Should().BeNull();
+        DelveRevealOverlay.FindHoverText(nodes, new NumVector2(27, 20)).Should().Be("Crystal Spire");
+        DelveRevealOverlay.FindHoverText(nodes, new NumVector2(37, 20)).Should().Be("Azurite Tier 3");
+        DelveRevealOverlay.FindHoverText(nodes, new NumVector2(10, 20)).Should().BeNull();
     }
 
     [TestMethod]
