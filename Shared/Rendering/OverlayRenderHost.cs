@@ -16,7 +16,7 @@ namespace ClickIt.Shared.Rendering
 
         public void StartAll(
             BaseSettingsPlugin<ClickItSettings> plugin,
-            Func<OverlayRefreshContext> refreshContextFactory,
+            Func<IOverlay, OverlayRefreshContext> refreshContextFactory,
             Func<bool> shouldContinue,
             PerformanceMonitor? performanceMonitor,
             Action<string>? logError)

@@ -24,6 +24,17 @@ namespace ClickIt.Tests.Core.Runtime
         }
 
         [TestMethod]
+        [TestCategory("Regression")]
+        public void DelveDump_PreservesConnectionsAndPrioritizesTheChartGrid()
+        {
+            var probe = new { GridElement = new { Cells = new[] { new { Connections = new[] { "west" } } } } };
+
+            string report = RuntimeObjectIntrospection.BuildReport(probe, GameStateDumpCoordinator.DelveDumpOptions);
+
+            report.Should().Contain("Root.GridElement.Cells[0].Connections[0]: String = west");
+        }
+
+        [TestMethod]
         public void DumpCoroutine_TimeLimitStopsRemainingSectionsAndReportsPartialFile()
         {
             int reads = 0;
@@ -105,6 +116,7 @@ namespace ClickIt.Tests.Core.Runtime
             InvokeResolveRoot(coordinator, GameStateDumpTarget.Cache).Should().BeNull();
             InvokeResolveRoot(coordinator, GameStateDumpTarget.Player).Should().BeNull();
             InvokeResolveRoot(coordinator, GameStateDumpTarget.IngameState).Should().BeNull();
+            InvokeResolveRoot(coordinator, GameStateDumpTarget.DelveWindow).Should().BeNull();
             InvokeResolveRoot(coordinator, GameStateDumpTarget.UiHover).Should().BeNull();
             InvokeResolveRoot(coordinator, GameStateDumpTarget.UiHoverTooltip).Should().BeNull();
             InvokeResolveRoot(coordinator, GameStateDumpTarget.UiHoverTooltipTitle).Should().BeNull();

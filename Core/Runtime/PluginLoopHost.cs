@@ -90,9 +90,9 @@ namespace ClickIt.Core.Runtime
             // Overlay API: owns the per-overlay refresh coroutines (cadence + timing + error routing).
             _state.Rendering.OverlayRenderHost?.StartAll(
                 plugin,
-                () => new OverlayRefreshContext(
+                overlay => new OverlayRefreshContext(
                     _gameController,
-                    _state.Services.CachedLabels?.Value,
+                    overlay.UsesRefreshLabels ? _state.Services.CachedLabels?.Value : null,
                     GameWindowRectResolver.Resolve(_gameController),
                     _settings),
                 () => !_state.Runtime.IsShuttingDown,

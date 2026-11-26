@@ -16,6 +16,9 @@ namespace ClickIt.Shared.Rendering
         /// <summary>Cadence knob: None (pure per-frame) or Throttled/DirtyTracked (coroutine-driven refresh).</summary>
         OverlayRefreshPolicy RefreshPolicy { get; }
 
+        /// <summary>Whether the refresh context should resolve the shared ground-label snapshot.</summary>
+        bool UsesRefreshLabels => true;
+
         /// <summary>Optional coroutine timing channel for the refresh cadence (matches the perf table's coroutine rows).</summary>
         TimingChannel? RefreshTimingChannel { get; }
 

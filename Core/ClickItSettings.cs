@@ -305,6 +305,8 @@ namespace ClickIt
         [Menu("Crawler", "Click the Delve Crawler after other available targets.", 41, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickDelveCrawler { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode RevealDelveMap { get; set; } = new ToggleNode(false);
 
         [Menu("Priorities", 124, 1400)]
         public EmptyNode PrioritiesCategory { get; set; } = new EmptyNode();

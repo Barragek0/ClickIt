@@ -4,6 +4,21 @@
     public class DeferredQueuesTests
     {
         [TestMethod]
+        public void DeferredDrawQueue_EnqueueLines_PreservesTheQueueLimitAndPendingCount()
+        {
+            var queue = new DeferredDrawQueue();
+            queue.EnqueueText("older item", new Vector2(1, 2), Color.White, 12);
+            var line = new ScreenLine(new NumVector2(1, 2), new NumVector2(3, 4));
+            var lines = new ScreenLine[8192];
+            Array.Fill(lines, line);
+
+            queue.EnqueueLines(lines, 2, Color.Red);
+
+            queue.GetPendingCount().Should().Be(4097);
+            queue.GetPendingTextSnapshot().Should().OnlyContain(text => text == string.Empty);
+        }
+
+        [TestMethod]
         public void DeferredDrawQueue_EnqueueFrame_GetPendingFrameSnapshot()
         {
             var q = new DeferredDrawQueue();

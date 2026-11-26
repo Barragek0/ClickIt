@@ -60,6 +60,7 @@ global using ClickIt.Features.Click.Runtime.TestSeams;
 global using ClickIt.Features.Click.Safety;
 global using ClickIt.Features.Click.Selection;
 global using ClickIt.Features.Click.State;
+global using ClickIt.Features.Delve;
 global using ClickIt.Features.Essence;
 global using ClickIt.Features.Labels;
 global using ClickIt.Features.Labels.Application;

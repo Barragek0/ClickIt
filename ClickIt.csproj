@@ -91,6 +91,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Features\Delve\Textures\*.webp" LogicalName="ClickIt.Delve.Textures.%(Filename)%(Extension)" />
     <Compile Remove="artifacts\**\*.cs" />
     <Compile Remove="ThirdParty\Decompiled\**\*.cs" />
     <Compile Remove="Tests\**\*.cs" />

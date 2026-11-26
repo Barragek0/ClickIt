@@ -9,7 +9,7 @@ namespace ClickIt.Shared.Rendering
     {
         private readonly Coroutine _coroutine;
         private readonly IOverlay _overlay;
-        private readonly Func<OverlayRefreshContext> _refreshContextFactory;
+        private readonly Func<IOverlay, OverlayRefreshContext> _refreshContextFactory;
         private readonly Func<bool> _shouldContinue;
         private readonly PerformanceMonitor? _performanceMonitor;
         private readonly Action<string>? _logError;
@@ -18,7 +18,7 @@ namespace ClickIt.Shared.Rendering
         public OverlayCoroutine(
             BaseSettingsPlugin<ClickItSettings> plugin,
             IOverlay overlay,
-            Func<OverlayRefreshContext> refreshContextFactory,
+            Func<IOverlay, OverlayRefreshContext> refreshContextFactory,
             Func<bool> shouldContinue,
             PerformanceMonitor? performanceMonitor,
             Action<string>? logError)
@@ -41,11 +41,15 @@ namespace ClickIt.Shared.Rendering
             {
                 // Resolve the refresh context (which can trigger the 50ms label read-model scan via CachedLabels.Value) once, so the Enable gate below and the refresh share one scan.
                 OverlayRefreshContext context;
-                try { context = _refreshContextFactory(); }
-                catch { context = default; }
+                try { context = _refreshContextFactory(_overlay); }
+                catch (Exception ex)
+                {
+                    _logError?.Invoke($"[{_overlay.Name}RefreshContext] {ex}");
+                    context = default;
+                }
 
                 // Idle-yield while the Enable master switch is off instead of terminating: a finished coroutine can never be resumed, so terminating here would leave this overlay's refresh dead after the user toggles Enable back on (until a reload).
-                if (!context.Settings.Enable)
+                if (context.Settings == null || !context.Settings.Enable)
                 {
                     yield return new WaitTime(250);
                     continue;

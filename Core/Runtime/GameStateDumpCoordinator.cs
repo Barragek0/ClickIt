@@ -14,6 +14,7 @@ internal enum GameStateDumpTarget
     UiHoverGlobalTooltip,
     UiHoverGlobalTooltipText,
     UiHoverImageDetails,
+    DelveWindow,
 }
 
 internal readonly record struct GameStateDumpSnapshot(
@@ -75,6 +76,17 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
             "AnimationController",
             "Connections",
         ]);
+    internal static readonly RuntimeObjectIntrospectionOptions DelveDumpOptions = DumpOptions with
+    {
+        Title = "Subterranean Chart Dump",
+        MaxCollectionItems = 1024,
+        MaxMembersPerObject = 64,
+        PriorityMembers = ["GridElement", "Cells", "GridPosition", "IconPos", "GameDraws", "IsVisited",
+            "IsBehindWall", "Feature", "Biome", "SulphiteCost", "Mods", "Connections", "IsLinked", "DelveCell",
+            "IsVisible", "GetClientRectCache", "Children"],
+        SkipMemberNames = [.. DumpOptions.SkipMemberNames!.Where(static name => name != "Connections")],
+        ExtraChildrenProvider = null
+    };
     private static Func<GameStateDumpCoordinator?>? s_source;
 
     private readonly DebugClipboardServiceDependencies _dependencies = dependencies;
@@ -209,7 +221,7 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
                 IEnumerator routine = RuntimeObjectIntrospection.WriteReportCoroutine(
                     ResolveRoot(target),
                     writer,
-                    DumpOptions,
+                    target == GameStateDumpTarget.DelveWindow ? DelveDumpOptions : DumpOptions,
                     onProgress: pct => PublishAreaProgress(targets, areaIndex, pct),
                     onError: error =>
                     {
@@ -391,6 +403,7 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
             GameStateDumpTarget.TheGame => gc?.Game,
             GameStateDumpTarget.Player => gc?.Player,
             GameStateDumpTarget.IngameState => gc?.IngameState,
+            GameStateDumpTarget.DelveWindow => gc?.IngameState?.IngameUi?.DelveWindow,
             GameStateDumpTarget.PluginWrappers => _dependencies.State.Services,
             GameStateDumpTarget.UiHover => gc?.IngameState?.UIHover,
             GameStateDumpTarget.UiHoverTooltip => gc?.IngameState?.UIHoverElement?.Tooltip,

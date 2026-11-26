@@ -236,6 +236,9 @@ namespace ClickIt.UI.Settings.Panels
         {
             ImGui.Spacing();
             SettingsUiRenderHelpers.DrawToggleNodeControl(
+                "Reveal Map##MechanicsDelveRevealMap", _settings.RevealDelveMap,
+                "Shows hidden encounter markers and red connections for hidden cells and routes behind fractured walls.\n\nThis feature is not always entirely accurate.");
+            SettingsUiRenderHelpers.DrawToggleNodeControl(
                 "Use Flares##MechanicsDelveFlares",
                 _settings.ClickDelveFlares,
                 "Use flares when darkness stacks and health or energy shield thresholds are reached.");

@@ -1,5 +1,7 @@
 ﻿namespace ClickIt.Shared.Rendering
 {
+    internal readonly record struct ScreenLine(NumVector2 Start, NumVector2 End);
+
     internal enum DeferredDrawKind
     {
         Frame = 0,
@@ -10,7 +12,8 @@
         CircleInWorld = 5,
         FilledCircleOnLargeMap = 6,
         FilledScreenDisc = 7,
-        Text = 8
+        Text = 8,
+        Image = 9
     }
 
     internal readonly record struct DeferredDrawItem(
@@ -44,7 +47,8 @@
         private readonly Lock _queueLock = new();
         private List<DeferredDrawItem> _items = [];
         private List<DeferredDrawItem> _spare = [];
-        private readonly NumVector2[] _polyBuffer = new NumVector2[MaxPolySegments + 1];
+        private readonly NumVector2[]?[] _polyBuffers = new NumVector2[MaxPolySegments + 1][];
+        private readonly NumVector2[]?[] _unitPolygons = new NumVector2[MaxPolySegments + 1][];
         private readonly double[] _flushSectionMs = new double[15];
         private int _pendingCount;
 
@@ -75,13 +79,7 @@
             {
                 lock (_queueLock)
                 {
-                    if (_items.Count >= MaxBufferedItems)
-                    {
-                        // Keep recent entries and shed older buffered frames to cap retained memory.
-                        int removeCount = SystemMath.Max(1, _items.Count / 2);
-                        _items.RemoveRange(0, removeCount);
-                    }
-
+                    ShedIfFull();
                     if (_items.Count > 0 && IsSameFrame(_items[^1], item))
                         return;
 
@@ -94,6 +92,12 @@
             }
         }
 
+        private void ShedIfFull()
+        {
+            if (_items.Count >= MaxBufferedItems)
+                _items.RemoveRange(0, _items.Count / 2);
+        }
+
         public void EnqueueFrame(RectangleF rectangle, Color color, int thickness)
         {
             if (thickness <= 0 || !IsValidRect(rectangle))
@@ -104,6 +108,38 @@
 
         public void EnqueueLine(NumVector2 start, NumVector2 end, int thickness, Color color)
             => Add(new DeferredDrawItem(DeferredDrawKind.Line, default, start, end, default, 0, thickness, color, 0, false, string.Empty, FontAlign.Left, 0, false));
+
+        internal void EnqueueLines(ReadOnlySpan<ScreenLine> lines, int thickness, Color color)
+        {
+            if (lines.IsEmpty)
+                return;
+
+            try
+            {
+                lock (_queueLock)
+                {
+                    foreach (ScreenLine line in lines)
+                    {
+                        ShedIfFull();
+                        _items.Add(new DeferredDrawItem(DeferredDrawKind.Line, default, line.Start, line.End, default,
+                            0, thickness, color, 0, false, string.Empty, FontAlign.Left, 0, false, CurrentSection));
+                    }
+
+                    _pendingCount = _items.Count;
+                }
+            }
+            catch
+            {
+                // Match the single-item enqueue path's error handling on the render thread.
+            }
+        }
+
+        internal void EnqueueImage(string textureName, RectangleF rect)
+        {
+            if (IsValidRect(rect))
+                Add(new DeferredDrawItem(DeferredDrawKind.Image, rect, default, default, default, 0, 0,
+                    Color.White, 0, false, textureName, FontAlign.Left, 0, false));
+        }
 
         public void EnqueueLineOnLargeMap(NumVector2 start, NumVector2 end, int thickness, Color color)
             => Add(new DeferredDrawItem(DeferredDrawKind.LineOnLargeMap, default, start, end, default, 0, thickness, color, 0, false, string.Empty, FontAlign.Left, 0, false));
@@ -149,7 +185,7 @@
             for (int i = 0; i < _spare.Count; i++)
             {
                 DeferredDrawItem item = _spare[i];
-                long start = Stopwatch.GetTimestamp();
+                long start = recordSectionFlush == null ? 0 : Stopwatch.GetTimestamp();
                 try
                 {
                     switch (item.Kind)
@@ -159,6 +195,9 @@
                             break;
                         case DeferredDrawKind.Line:
                             graphics.DrawLine(item.A, item.B, item.Thickness, item.Color);
+                            break;
+                        case DeferredDrawKind.Image:
+                            graphics.DrawImage(item.Text, item.Rect);
                             break;
                         case DeferredDrawKind.LineOnLargeMap:
                             graphics.DrawLineOnMap(item.A, item.B, item.Thickness, item.Color, VisibleSubMap.Large);
@@ -213,16 +252,23 @@
         private void DrawFilledScreenDisc(Graphics graphics, NumVector2 center, float radius, Color color, int segments)
         {
             int count = SystemMath.Min(SystemMath.Max(segments, 3), MaxPolySegments);
-            NumVector2[] buffer = _polyBuffer;
+            NumVector2[] unit = _unitPolygons[count] ??= CreateUnitPolygon(count);
+            NumVector2[] buffer = _polyBuffers[count] ??= new NumVector2[count + 1];
+            for (int i = 0; i <= count; i++)
+                buffer[i] = center + unit[i] * radius;
+            graphics.DrawConvexPolyFilled(buffer, color);
+        }
+
+        private static NumVector2[] CreateUnitPolygon(int count)
+        {
+            var vertices = new NumVector2[count + 1];
             for (int i = 0; i <= count; i++)
             {
                 float a = MathF.PI * 2f * i / count;
-                buffer[i] = new NumVector2(
-                    center.X + (MathF.Cos(a) * radius),
-                    center.Y + (MathF.Sin(a) * radius));
+                vertices[i] = new NumVector2(MathF.Cos(a), MathF.Sin(a));
             }
-            // ExileCore's DrawConvexPolyFilled reads points.Length, so pass only the filled prefix; the remaining buffer contains stale points.
-            graphics.DrawConvexPolyFilled(buffer[..(count + 1)], color);
+
+            return vertices;
         }
 
         private static double GetElapsedMs(long startTimestamp)
