@@ -85,5 +85,6 @@ namespace ClickIt.Tests.Shared.TestUtils
     public sealed class LockedChestProbe : Chest
     {
         public new bool IsLocked { get; set; }
+        public new bool IsStrongbox { get; set; }
     }
 }

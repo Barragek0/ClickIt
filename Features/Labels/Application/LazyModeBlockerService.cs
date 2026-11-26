@@ -188,9 +188,10 @@ namespace ClickIt.Features.Labels.Application
         }
 
         internal static string? TryFindLockedChestRestrictionReason(
-            IEnumerable<LabelOnGround> labels,
+            IReadOnlyList<LabelOnGround> labels,
             RectangleF windowArea)
         {
+            bool? delveEncounterComplete = null;
             foreach (LabelOnGround label in labels)
             {
                 DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item);
@@ -203,11 +204,18 @@ namespace ClickIt.Features.Labels.Application
                 if (path.Length == 0 || MechanicIds.IsTangledFossilInitiatorPath(path))
                     continue;
 
-                Chest? chest = item.GetComponent<Chest>();
-                if (chest?.IsLocked == true && !chest.IsStrongbox
+                if (DynamicAccess.TryGetComponent<Chest>(item, out object? chest)
+                    && DynamicAccess.TryReadBool(chest, DynamicAccessProfiles.IsLocked, out bool locked) && locked
+                    && DynamicAccess.TryReadBool(chest, static value => value.IsStrongbox, out bool strongbox) && !strongbox
                     && (!(windowArea.Width > 0 && windowArea.Height > 0)
                         || LabelGeometry.TryGetLabelRectOnScreen(label, windowArea, out _)))
+                {
+                    if (path.Contains("Delve", StringComparison.OrdinalIgnoreCase)
+                        && (delveEncounterComplete ??= MechanicClassifier.HasVisibleDelveCompletionLabel(labels)))
+                        continue;
+
                     return $"Locked chest detected ({path})";
+                }
             }
 
             return null;

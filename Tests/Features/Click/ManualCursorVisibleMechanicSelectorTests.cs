@@ -35,7 +35,7 @@ namespace ClickIt.Tests.Features.Click
             bool clicked = selector.TryClick(new Vector2(10f, 10f), Vector2.Zero);
 
             clicked.Should().BeTrue();
-            clickedPosition.Should().Be(clickPosition);
+            clickedPosition.Should().Be(new Vector2(10f, 10f));
             usedHoldClick.Should().BeFalse();
             handledEntity.Should().BeSameAs(entity);
         }
@@ -88,7 +88,7 @@ namespace ClickIt.Tests.Features.Click
             bool clicked = selector.TryClick(new Vector2(10f, 10f), Vector2.Zero);
 
             clicked.Should().BeTrue();
-            clickedPosition.Should().Be(new Vector2(13f, 10f));
+            clickedPosition.Should().Be(new Vector2(10f, 10f));
             handledEntity.Should().BeSameAs(settlersEntity);
         }
 

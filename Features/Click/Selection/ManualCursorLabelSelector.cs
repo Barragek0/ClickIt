@@ -190,11 +190,11 @@ namespace ClickIt.Features.Click.Selection
             if (!LabelGeometry.TryGetLabelRect(candidate, out RectangleF rect))
                 return false;
 
-            bool cursorInsideLabelRect = ManualCursorSelectionMath.IsPointInsideRectInEitherSpace(rect, cursorAbsolute, windowTopLeft);
-            if (!cursorInsideLabelRect)
+            Vector2 cursorClient = cursorAbsolute - windowTopLeft;
+            if (!rect.Contains(cursorClient.X, cursorClient.Y))
                 return false;
 
-            labelRectScore = ManualCursorSelectionMath.GetManualCursorLabelHitScore(rect, cursorAbsolute, windowTopLeft);
+            labelRectScore = Vector2.DistanceSquared(cursorClient, rect.Center);
             return true;
         }
 
@@ -218,18 +218,12 @@ namespace ClickIt.Features.Click.Selection
             if (!shouldUseGroundProjection || !TryGetGroundProjectionPoint(candidateEntity, windowTopLeft, out Vector2 projectedGroundPoint))
                 return false;
 
-            bool cursorNearGroundProjection = ManualCursorSelectionMath.IsWithinManualCursorMatchDistanceInEitherSpace(
-                cursorAbsolute,
-                projectedGroundPoint,
-                windowTopLeft,
-                ManualCursorSelectionMath.GroundProjectionSnapDistancePx);
-            if (!cursorNearGroundProjection)
+            float distanceSquared = Vector2.DistanceSquared(cursorAbsolute, projectedGroundPoint);
+            const float snapDistance = ManualCursorSelectionMath.GroundProjectionSnapDistancePx;
+            if (!(distanceSquared <= snapDistance * snapDistance))
                 return false;
 
-            groundProjectionScore = ManualCursorSelectionMath.GetManualCursorDistanceSquaredInEitherSpace(
-                cursorAbsolute,
-                projectedGroundPoint,
-                windowTopLeft);
+            groundProjectionScore = distanceSquared;
             return true;
         }
 

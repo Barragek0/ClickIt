@@ -160,6 +160,9 @@ namespace ClickIt.Tests.Features.Labels.Selection
             bool accepted = LabelEligibilityEngine.TryBuildCandidate(chestLabel, new ClickSettings { DelveEncounterComplete = complete },
                 (_, _) => true, (_, _, _) => MechanicIds.LeagueChests, out _, out _, out _);
             accepted.Should().Be(expected);
+            global::ClickIt.Features.Labels.Application.LazyModeBlockerService
+                .TryFindLockedChestRestrictionReason([crawlerLabel, chestLabel], default)
+                .Should().Be(expected ? null : "Locked chest detected (Metadata/Chests/DelveChests/DelveChestArmourMovementSpeed)");
         }
 
         [TestMethod]

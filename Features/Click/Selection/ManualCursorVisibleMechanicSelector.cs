@@ -1,7 +1,6 @@
 namespace ClickIt.Features.Click.Selection
 {
     internal readonly record struct ManualCursorVisibleMechanicSelection(
-        Vector2 ClickPosition,
         Entity? Entity,
         string? SettlersMechanicId,
         bool IsShrine);
@@ -25,8 +24,7 @@ namespace ClickIt.Features.Click.Selection
             {
                 TrySelectCandidate(
                     cursorAbsolute,
-                    windowTopLeft,
-                    shrineClickPos,
+                    shrineClickPos + windowTopLeft,
                     shrine,
                     settlersMechanicId: null,
                     isShrine: true,
@@ -40,7 +38,6 @@ namespace ClickIt.Features.Click.Selection
                 LostShipmentCandidate candidate = visibleMechanicSelection.LostShipment.Value;
                 TrySelectCandidate(
                     cursorAbsolute,
-                    windowTopLeft,
                     candidate.ClickPosition,
                     candidate.Entity,
                     settlersMechanicId: null,
@@ -54,7 +51,6 @@ namespace ClickIt.Features.Click.Selection
                 SettlersOreCandidate candidate = visibleMechanicSelection.Settlers.Value;
                 TrySelectCandidate(
                     cursorAbsolute,
-                    windowTopLeft,
                     candidate.ClickPosition,
                     candidate.Entity,
                     candidate.MechanicId,
@@ -68,8 +64,9 @@ namespace ClickIt.Features.Click.Selection
 
             ManualCursorVisibleMechanicSelection resolvedSelection = selected.Value;
             bool clicked = _dependencies.LabelInteraction.PerformManualCursorInteraction(
-                resolvedSelection.ClickPosition,
-                !resolvedSelection.IsShrine && SettlersMechanicPolicy.RequiresHoldClick(resolvedSelection.SettlersMechanicId));
+                cursorAbsolute,
+                !resolvedSelection.IsShrine && SettlersMechanicPolicy.RequiresHoldClick(resolvedSelection.SettlersMechanicId),
+                clientClickPosition: cursorAbsolute - windowTopLeft);
 
             if (!clicked)
                 return false;
@@ -86,7 +83,6 @@ namespace ClickIt.Features.Click.Selection
 
         private static void TrySelectCandidate(
             Vector2 cursorAbsolute,
-            Vector2 windowTopLeft,
             Vector2 clickPosition,
             Entity? entity,
             string? settlersMechanicId,
@@ -94,21 +90,13 @@ namespace ClickIt.Features.Click.Selection
             ref float bestDistanceSq,
             ref ManualCursorVisibleMechanicSelection? selected)
         {
-            if (!ManualCursorSelectionMath.IsWithinManualCursorMatchDistanceInEitherSpace(
-                cursorAbsolute,
-                clickPosition,
-                windowTopLeft,
-                ManualCursorSelectionMath.TargetSnapDistancePx))
-            {
-                return;
-            }
-
-            float distanceSquared = ManualCursorSelectionMath.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, clickPosition, windowTopLeft);
-            if (distanceSquared >= bestDistanceSq)
+            const float snapDistance = ManualCursorSelectionMath.TargetSnapDistancePx;
+            float distanceSquared = Vector2.DistanceSquared(cursorAbsolute, clickPosition);
+            if (!(distanceSquared <= snapDistance * snapDistance) || distanceSquared >= bestDistanceSq)
                 return;
 
             bestDistanceSq = distanceSquared;
-            selected = new ManualCursorVisibleMechanicSelection(clickPosition, entity, settlersMechanicId, isShrine);
+            selected = new ManualCursorVisibleMechanicSelection(entity, settlersMechanicId, isShrine);
         }
 
         private static bool TryProjectEntityScreenPosition(GameController gameController, Entity entity, out Vector2 clickPosition)

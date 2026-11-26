@@ -50,6 +50,20 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
+        [TestCategory("Regression")]
+        [DataRow(230f, 130f, true)]
+        [DataRow(30f, 30f, false)]
+        public void TryResolveCandidate_UsesClientRectInAnOffsetWindow(float cursorX, float cursorY, bool expected)
+        {
+            Entity item = EntityProbeFactory.Create(path: "Metadata/Items/Test", isValid: true, type: EntityType.WorldItem);
+            LabelOnGround label = CreateLabelWithRect(item, new RectangleF(10f, 20f, 40f, 20f));
+            var selector = CreateSelector(getMechanicIdForLabel: _ => "manual-cursor");
+
+            selector.TryResolveCandidate([label], new Vector2(cursorX, cursorY), new Vector2(200f, 100f), out _, out _)
+                .Should().Be(expected);
+        }
+
+        [TestMethod]
         public void TryResolveCandidate_ReturnsFalse_WhenHoveredUltimatumCandidateIsInactive()
         {
             Entity ultimatumItem = EntityProbeFactory.Create(
