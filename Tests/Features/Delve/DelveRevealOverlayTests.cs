@@ -5,12 +5,262 @@ public sealed class DelveRevealOverlayTests
 {
     [TestMethod]
     [TestCategory("Regression")]
+    public void TargetRoutes_StartAtTheClosestExploredEncounterAndKeepOtherHiddenLinksRed()
+    {
+        Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
+        {
+            [1] = new(new RectangleF(0, 0, 20, 20), [2], Hidden: false, Explored: true),
+            [2] = new(new RectangleF(20, 0, 20, 20), [3], Hidden: false),
+            [3] = new(new RectangleF(40, 0, 20, 20), [4, 5], Target: DelveRouteTarget.Aul),
+            [4] = new(new RectangleF(60, 0, 20, 20), [], Hidden: false, Explored: true),
+            [5] = new(new RectangleF(40, 20, 20, 20), [], Target: DelveRouteTarget.MoltenCavity),
+            [6] = new(new RectangleF(20, 20, 20, 20), [], Target: DelveRouteTarget.Aul)
+        };
+
+        var lines = DelveRevealOverlay.BuildRouteLines(cells, DelveRouteTarget.Aul);
+
+        lines.Target.Should().Equal(new ScreenLine(new NumVector2(50, 10), new NumVector2(70, 10)));
+        lines.Revealed.Should().BeEquivalentTo(new ScreenLine[]
+        {
+            new(new NumVector2(30, 10), new NumVector2(50, 10)),
+            new(new NumVector2(50, 10), new NumVector2(50, 30))
+        });
+    }
+
+    [TestMethod]
+    [TestCategory("Settings")]
+    public void TargetRoutes_DefaultToThreeBossesThreeFossilsAndMinionAuraItems()
+    {
+        var settings = new ClickItSettings();
+        var expected = DelveRouteTarget.Aul | DelveRouteTarget.Lich | DelveRouteTarget.Architect
+            | DelveRouteTarget.CrystalSpire | DelveRouteTarget.MoltenCavity | DelveRouteTarget.HumidFissure
+            | DelveRouteTarget.MinionAuraItems;
+        var overlay = new DelveRevealOverlay(() => string.Empty);
+        settings.RevealDelveMap.Value.Should().BeFalse();
+        settings.ShowDelveTargetRoutes.Value.Should().BeTrue();
+        settings.RevealDelveFracturedWalls.Value.Should().BeFalse();
+        overlay.IsEnabled(settings).Should().BeTrue();
+        DelveTargetRoutes.GetSelectedTargets(settings).Should().Be(expected);
+        settings.TargetDelveCrystalSpire.Value = false;
+        settings.TargetDelveTimeLostCavern.Value = true;
+        DelveTargetRoutes.GetSelectedTargets(settings).Should()
+            .Be((expected & ~DelveRouteTarget.CrystalSpire) | DelveRouteTarget.TimeLostCavern);
+        settings.ShowDelveTargetRoutes.Value = false;
+        overlay.IsEnabled(settings).Should().BeFalse();
+        settings.RevealDelveFracturedWalls.Value = true;
+        overlay.IsEnabled(settings).Should().BeTrue();
+        settings.RevealDelveFracturedWalls.Value = false;
+        overlay.IsEnabled(settings).Should().BeFalse();
+        settings.RevealDelveMap.Value = true;
+        overlay.IsEnabled(settings).Should().BeTrue();
+        DelveTargetRoutes.GetSelectedTargets(settings).Should().Be(DelveRouteTarget.None);
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void BuildRouteLines_SeparatesFracturedWallLinksFromOrdinaryHiddenLinks()
+    {
+        Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
+        {
+            [1] = new(new RectangleF(0, 0, 20, 20), [2], Hidden: false, Explored: true),
+            [2] = new(new RectangleF(20, 0, 20, 20), [3], Hidden: false, BehindWall: true,
+                WallSide: DelveRevealOverlay.WallApproach.West),
+            [3] = new(new RectangleF(40, 0, 20, 20), [], Target: DelveRouteTarget.Aul),
+            [4] = new(new RectangleF(0, 20, 20, 20), [5]),
+            [5] = new(new RectangleF(20, 20, 20, 20), [])
+        };
+
+        var red = DelveRevealOverlay.BuildRouteLines(cells, DelveRouteTarget.None);
+        red.FracturedWalls.Should().Equal(
+            new ScreenLine(new NumVector2(10, 10), new NumVector2(30, 10)),
+            new ScreenLine(new NumVector2(30, 10), new NumVector2(50, 10)));
+        red.Revealed.Should().Equal(new ScreenLine(new NumVector2(10, 30), new NumVector2(30, 30)));
+
+        var green = DelveRevealOverlay.BuildRouteLines(cells, DelveRouteTarget.Aul);
+        green.Target.Should().Equal(red.FracturedWalls);
+        green.Revealed.Should().Equal(red.Revealed);
+        green.FracturedWalls.Should().BeEmpty();
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    [DataRow(true)]
+    [DataRow(false)]
+    public void BuildRouteLines_DoesNotRevealAWallFromTheWrongSide(bool wallCellVisible)
+    {
+        Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
+        {
+            [1] = new(new RectangleF(0, 0, 20, 20), [2]),
+            [2] = new(new RectangleF(20, 0, 20, 20), [3], Hidden: !wallCellVisible, BehindWall: true,
+                WallSide: DelveRevealOverlay.WallApproach.West),
+            [3] = new(new RectangleF(40, 0, 20, 20), [], Hidden: false, Explored: true)
+        };
+        cells[1] = cells[1] with { Target = DelveRouteTarget.Aul };
+
+        var lines = DelveRevealOverlay.BuildRouteLines(cells, DelveRouteTarget.Aul);
+
+        lines.FracturedWalls.Should().BeEmpty();
+        lines.Revealed.Should().BeEmpty();
+        lines.Target.Should().BeEmpty();
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void BuildRouteLines_RevealedApproachDoesNotExposeASecondWallInDarkness()
+    {
+        Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
+        {
+            [1] = new(new RectangleF(0, 0, 20, 20), [2], Hidden: false),
+            [2] = new(new RectangleF(20, 0, 20, 20), [3], BehindWall: true,
+                WallSide: DelveRevealOverlay.WallApproach.West),
+            [3] = new(new RectangleF(40, 0, 20, 20), [4], BehindWall: true),
+            [4] = new(new RectangleF(60, 0, 20, 20), [5], BehindWall: true,
+                WallSide: DelveRevealOverlay.WallApproach.West),
+            [5] = new(new RectangleF(80, 0, 20, 20), [], BehindWall: true)
+        };
+
+        DelveRevealOverlay.BuildRouteLines(cells, DelveRouteTarget.None).FracturedWalls.Should().Equal(
+            new ScreenLine(new NumVector2(10, 10), new NumVector2(30, 10)),
+            new ScreenLine(new NumVector2(30, 10), new NumVector2(50, 10)));
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void BuildMarkers_ShrinksIconsWithNativeChartZoom()
+    {
+        var chart = new RectangleF(0, 0, 200, 200);
+        DelveRevealOverlay.ChartMarker[] markers =
+        [
+            new(new RectangleF(80, 80, 40, 40), new NumVector2(.5f), DelveNodeIcon.Resolve("Fossil"))
+        ];
+        var fullZoom = new DelveRevealOverlay.ChartProjection(chart, chart);
+        var quarterZoom = new DelveRevealOverlay.ChartProjection(chart, new RectangleF(0, 0, 50, 50), Zoom: .25f);
+
+        var fullMarker = DelveRevealOverlay.BuildMarkers(markers, chart, fullZoom).Should().ContainSingle().Which;
+        var smallMarker = DelveRevealOverlay.BuildMarkers(markers, chart, quarterZoom).Should().ContainSingle().Which;
+        fullMarker.Radius.Should().BeApproximately(16.8f, .001f);
+        smallMarker.Radius.Should().BeApproximately(2.97f, .01f);
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    [DataRow("Crystal Spire", "Fossil", (int)DelveRouteTarget.CrystalSpire)]
+    [DataRow("Molten Cavity", "Fossil", (int)DelveRouteTarget.MoltenCavity)]
+    [DataRow("Humid Fissure", "Fossil", (int)DelveRouteTarget.HumidFissure)]
+    [DataRow("Smuggler's Stash", "Fossil", (int)DelveRouteTarget.SmugglersStash)]
+    [DataRow("Smuggler's Stash", "Maps", (int)DelveRouteTarget.None)]
+    [DataRow("The Grand Architect's Temple", "BossVaalCity", (int)DelveRouteTarget.Architect)]
+    [DataRow("Lich's Tomb", "BossAbyss", (int)DelveRouteTarget.Lich)]
+    [DataRow("Aul's Throne", "BossProtoVaal", (int)DelveRouteTarget.Aul)]
+    [DataRow("Grim Copse", "Minion", (int)DelveRouteTarget.MinionAuraItems)]
+    [DataRow("Time-Lost Cavern", "Fossil", (int)DelveRouteTarget.TimeLostCavern)]
+    [DataRow("Stonewood Hollow", "Fossil", (int)DelveRouteTarget.StonewoodHollow)]
+    [DataRow("Haunted Tomb", "Fossil", (int)DelveRouteTarget.HauntedTomb)]
+    public void TargetRoutes_MatchesEncounterIdentity(string name, string asset, int target)
+        => DelveTargetRoutes.Classify(name, asset).Should().Be((DelveRouteTarget)target);
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void BuildMarkers_TargetOnlyModeShowsOnlyTheSelectedEncounters()
+    {
+        var chart = new RectangleF(0, 0, 200, 200);
+        var projection = new DelveRevealOverlay.ChartProjection(chart, chart);
+        var fossil = DelveNodeIcon.Resolve("Fossil");
+        DelveRevealOverlay.ChartMarker[] markers =
+        [
+            new(new RectangleF(20, 20, 30, 30), new NumVector2(.5f), fossil, "Crystal Spire", DelveRouteTarget.CrystalSpire),
+            new(new RectangleF(75, 20, 30, 30), new NumVector2(.5f), fossil, "Haunted Tomb", DelveRouteTarget.HauntedTomb)
+        ];
+
+        DelveRevealOverlay.BuildMarkers(markers, chart, projection, revealFullMap: false, DelveRouteTarget.CrystalSpire)
+            .Should().ContainSingle().Which.FossilName.Should().Be("Crystal Spire");
+        DelveRevealOverlay.BuildMarkers(markers, chart, projection).Should().HaveCount(2);
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void TargetRoutes_UsesSamePositionForAnEqualLengthRouteAfterAddressesChange()
+    {
+        Dictionary<long, DelveRevealOverlay.ChartCell> first = new()
+        {
+            [90] = new(new RectangleF(0, 0, 20, 20), [10], Hidden: false, Explored: true),
+            [10] = new(new RectangleF(20, 0, 20, 20), [20], Target: DelveRouteTarget.Aul),
+            [20] = new(new RectangleF(40, 0, 20, 20), [], Hidden: false, Explored: true)
+        };
+        Dictionary<long, DelveRevealOverlay.ChartCell> second = new()
+        {
+            [80] = first[20],
+            [15] = first[10] with { Links = [80, 10] },
+            [10] = first[90] with { Links = [] }
+        };
+
+        DelveRevealOverlay.BuildRouteLines(first, DelveRouteTarget.Aul).Target.Should().Equal(
+            new ScreenLine(new NumVector2(10f, 10f), new NumVector2(30f, 10f)));
+        DelveRevealOverlay.BuildRouteLines(second, DelveRouteTarget.Aul).Target.Should().Equal(
+            DelveRevealOverlay.BuildRouteLines(first, DelveRouteTarget.Aul).Target);
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    [DataRow(299L, 1000L, false)]
+    [DataRow(300L, 50L, false)]
+    [DataRow(300L, 90L, true)]
+    [DataRow(900L, 5L, true)]
+    public void IsCaptureDue_DefersRoutineTopologyRefreshWhilePanning(long ageMs, long stillMs, bool expected)
+        => DelveRevealOverlay.IsCaptureDue(ageMs, stillMs).Should().Be(expected);
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    [DataRow(true, true, 0L, 1000L, true)]
+    [DataRow(false, false, 0L, 10L, true)]
+    [DataRow(false, true, 59L, 10L, false)]
+    [DataRow(false, true, 60L, 10L, true)]
+    [DataRow(false, true, 60L, 90L, false)]
+    public void ShouldRefreshMarkers_UpdatesDuringPanWithoutWaitingForRouteCapture(
+        bool chunksChanged, bool covered, long ageMs, long stillMs, bool expected)
+        => DelveRevealOverlay.ShouldRefreshMarkers(chunksChanged, covered, ageMs, stillMs).Should().Be(expected);
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void ChartProjection_ProjectsSameLocalCellAtNewPanPosition()
+    {
+        var localGrid = new RectangleF(0, 0, 6912, 117504);
+        var grid = new RectangleF(-244.79994f, -21644.396f, 2332.8f, 39657.6f);
+        var cell = new RectangleF(2304, 64224, 144, 144);
+        var original = new DelveRevealOverlay.ChartProjection(localGrid, grid).Project(cell);
+        original.X.Should().BeApproximately(532.80005f, .01f);
+        original.Y.Should().BeApproximately(31.20293f, .01f);
+
+        var movedGrid = new RectangleF(grid.X - 80, grid.Y + 35, grid.Width, grid.Height);
+        var moved = new DelveRevealOverlay.ChartProjection(localGrid, movedGrid).Project(cell);
+        moved.X.Should().BeApproximately(original.X - 80, .01f);
+        moved.Y.Should().BeApproximately(original.Y + 35, .01f);
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void HoveredFossil_UsesTheClosestIconsEncounterName()
+    {
+        var fossil = DelveNodeIcon.Resolve("Fossil");
+        DelveRevealOverlay.Node[] nodes =
+        [
+            new(new NumVector2(20, 20), 8f, fossil, "Smuggler's Stash"),
+            new(new NumVector2(30, 20), 8f, fossil, "Crystal Spire")
+        ];
+
+        DelveRevealOverlay.FindHoveredFossil(nodes, new NumVector2(27, 20)).Should().Be("Crystal Spire");
+        DelveRevealOverlay.FindHoveredFossil(nodes, new NumVector2(10, 20)).Should().BeNull();
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
     public void BuildConnections_CarriesRevealedAndHiddenAnchorsThroughAnUnmarkedCorner()
     {
         Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
         {
             [1] = new(new RectangleF(0, 0, 20, 20), [2], Hidden: false, Anchor: new NumVector2(.8f, .5f), HasEncounter: true),
-            [2] = new(new RectangleF(0, 20, 20, 20), [3], BehindWall: true, Anchor: new NumVector2(.2f, .7f)),
+            [2] = new(new RectangleF(0, 20, 20, 20), [3], BehindWall: true, Anchor: new NumVector2(.2f, .7f),
+                WallSide: DelveRevealOverlay.WallApproach.North),
             [3] = new(new RectangleF(0, 40, 20, 20), [4], BehindWall: true, Anchor: new NumVector2(.4f, .3f)),
             [4] = new(new RectangleF(20, 40, 20, 20), [], Anchor: new NumVector2(.5f, .75f), HasEncounter: true),
             [5] = new(new RectangleF(20, 0, 20, 20), [6]),
@@ -69,7 +319,8 @@ public sealed class DelveRevealOverlayTests
         Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
         {
             [1] = new(new RectangleF(0, 0, 20, 20), [2, 4], Hidden: false),
-            [2] = new(new RectangleF(20, 0, 20, 20), [3], Hidden: false, BehindWall: true),
+            [2] = new(new RectangleF(20, 0, 20, 20), [3], Hidden: false, BehindWall: true,
+                WallSide: DelveRevealOverlay.WallApproach.West),
             [3] = new(new RectangleF(40, 0, 20, 20), [], Hidden: false, BehindWall: true),
             [4] = new(new RectangleF(0, 20, 20, 20), [1], Hidden: false)
         };

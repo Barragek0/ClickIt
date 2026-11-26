@@ -4,6 +4,37 @@ namespace ClickIt.Tests.Core.Settings
     public class ClickItSettingsMigrationTests
     {
         [TestMethod]
+        [TestCategory("Settings")]
+        public void SettingsWithoutDelveRevealOptions_UseTheNewDefaults()
+        {
+            var settings = JsonConvert.DeserializeObject<ClickItSettings>("{}")!;
+
+            settings.RevealDelveMap.Value.Should().BeFalse();
+            settings.ShowDelveTargetRoutes.Value.Should().BeTrue();
+            settings.RevealDelveFracturedWalls.Value.Should().BeFalse();
+        }
+
+        [TestMethod]
+        [TestCategory("Settings")]
+        [DataRow(false, true)]
+        [DataRow(true, false)]
+        public void OlderDelveSettings_LoadSavedTogglesAndIgnoreObsoleteOptions(bool reveal, bool green)
+        {
+            string json = JsonConvert.SerializeObject(new
+            {
+                RevealDelveMap = new ToggleNode(reveal),
+                ShowDelveTargetRoutes = new ToggleNode(green),
+                ShowDelveHiddenConnections = new ToggleNode(false),
+                DelveRevealModesIndependent = true
+            });
+            var settings = JsonConvert.DeserializeObject<ClickItSettings>(json)!;
+
+            settings.ShowDelveTargetRoutes.Value.Should().Be(green);
+            settings.RevealDelveMap.Value.Should().Be(reveal);
+            settings.RevealDelveFracturedWalls.Value.Should().BeFalse();
+        }
+
+        [TestMethod]
         public void NearbyMonsterDistances_DefaultToFifty_AndPreserveSavedValues()
         {
             var settings = JsonConvert.DeserializeObject<ClickItSettings>("{\"LazyModeNormalMonsterBlockDistance\":17}");

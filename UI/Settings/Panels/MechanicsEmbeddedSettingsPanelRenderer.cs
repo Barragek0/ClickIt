@@ -236,8 +236,18 @@ namespace ClickIt.UI.Settings.Panels
         {
             ImGui.Spacing();
             SettingsUiRenderHelpers.DrawToggleNodeControl(
-                "Reveal Map##MechanicsDelveRevealMap", _settings.RevealDelveMap,
-                "Shows hidden encounter markers and red connections for hidden cells and routes behind fractured walls.\n\nThis feature is not always entirely accurate.");
+                "Reveal Full Map##MechanicsDelveRevealMap", _settings.RevealDelveMap,
+                "Shows hidden encounters and draws red lines for known connections.");
+            SettingsUiRenderHelpers.DrawToggleNodeControl(
+                "Reveal Shortest Route to Targets##MechanicsDelveTargetRoutes", _settings.ShowDelveTargetRoutes,
+                "Draws green lines from the closest explored encounter to each selected target along the shortest known route.");
+            ImGui.Indent();
+            DrawDelveTargets();
+            ImGui.Unindent();
+            SettingsUiRenderHelpers.DrawToggleNodeControl(
+                "Fractured Walls##MechanicsDelveFracturedWalls", _settings.RevealDelveFracturedWalls,
+                "Shows hidden routes behind fractured walls in red when the approach to the wall is already revealed.");
+
             SettingsUiRenderHelpers.DrawToggleNodeControl(
                 "Use Flares##MechanicsDelveFlares",
                 _settings.ClickDelveFlares,
@@ -266,6 +276,52 @@ namespace ClickIt.UI.Settings.Panels
                 "Set this to your in-game keybind for flares. The plugin will press this button to use a flare.");
             DrawDelveSupplyWarning("Flares", _settings.ShowLowDelveFlaresWarning, _settings.LowDelveFlaresThreshold);
             DrawDelveSupplyWarning("Dynamite", _settings.ShowLowDelveDynamiteWarning, _settings.LowDelveDynamiteThreshold);
+        }
+
+        private void DrawDelveTargets()
+        {
+            bool targetsOpen = ImGui.TreeNode("Targets##MechanicsDelveTargets");
+            SettingsUiRenderHelpers.DrawInlineTooltip("Choose which encounters to highlight with green routes.");
+            if (!targetsOpen)
+                return;
+
+            bool bossOpen = ImGui.TreeNode("Boss##MechanicsDelveBossTargets");
+            SettingsUiRenderHelpers.DrawInlineTooltip("Choose which Delve boss encounters to target.");
+            if (bossOpen)
+            {
+                SettingsUiRenderHelpers.DrawToggleNodeControl("Aul", _settings.TargetDelveAul,
+                    "Target Aul at the Crystal King's Throne in the Primeval Ruins.");
+                SettingsUiRenderHelpers.DrawToggleNodeControl("Lich", _settings.TargetDelveLich,
+                    "Target Kurgal at the Lich's Tomb in the Abyssal City.");
+                SettingsUiRenderHelpers.DrawToggleNodeControl("Architect", _settings.TargetDelveArchitect,
+                    "Target Ahuatotli at the Grand Architect's Temple in the Vaal Outpost.");
+                ImGui.TreePop();
+            }
+
+            bool fossilsOpen = ImGui.TreeNode("Fossils##MechanicsDelveFossilTargets");
+            SettingsUiRenderHelpers.DrawInlineTooltip("Choose which fossil encounters to target, including Smuggler's Stash.");
+            if (fossilsOpen)
+            {
+                SettingsUiRenderHelpers.DrawToggleNodeControl("Crystal Spire", _settings.TargetDelveCrystalSpire,
+                    "Drops a Hollow Fossil. Found in the Abyssal Depths.");
+                SettingsUiRenderHelpers.DrawToggleNodeControl("Molten Cavity", _settings.TargetDelveMoltenCavity,
+                    "Drops a Faceted Fossil. Found in Magma Fissure.");
+                SettingsUiRenderHelpers.DrawToggleNodeControl("Humid Fissure", _settings.TargetDelveHumidFissure,
+                    "Drops a Fractured Fossil. Found in Sulphur Vents.");
+                SettingsUiRenderHelpers.DrawToggleNodeControl("Time-Lost Cavern", _settings.TargetDelveTimeLostCavern,
+                    "Drops a Glyphic Fossil. Found in Frozen Hollow.");
+                SettingsUiRenderHelpers.DrawToggleNodeControl("Stonewood Hollow", _settings.TargetDelveStonewoodHollow,
+                    "Drops a Bloodstained Fossil. Found in Petrified Forest.");
+                SettingsUiRenderHelpers.DrawToggleNodeControl("Haunted Tomb", _settings.TargetDelveHauntedTomb,
+                    "Drops a Tangled Fossil. Found in Fungal Caverns.");
+                SettingsUiRenderHelpers.DrawToggleNodeControl("Smuggler's Stash", _settings.TargetDelveSmugglersStash,
+                    "Target the fossil variant of Smuggler's Stash, which contains assorted fossils.");
+                ImGui.TreePop();
+            }
+
+            SettingsUiRenderHelpers.DrawToggleNodeControl("Minion or Aura Items", _settings.TargetDelveMinionAuraItems,
+                "Target encounters that contain items with Delve minion or aura modifiers.");
+            ImGui.TreePop();
         }
 
         private static void DrawDelveSupplyWarning(string supply, ToggleNode enabled, RangeNode<int> threshold)

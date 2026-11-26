@@ -307,6 +307,32 @@ namespace ClickIt
         public ToggleNode ClickDelveCrawler { get; set; } = new ToggleNode(false);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode RevealDelveMap { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ShowDelveTargetRoutes { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode RevealDelveFracturedWalls { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode TargetDelveAul { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode TargetDelveLich { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode TargetDelveArchitect { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode TargetDelveCrystalSpire { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode TargetDelveMoltenCavity { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode TargetDelveHumidFissure { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode TargetDelveMinionAuraItems { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode TargetDelveTimeLostCavern { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode TargetDelveStonewoodHollow { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode TargetDelveHauntedTomb { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode TargetDelveSmugglersStash { get; set; } = new ToggleNode(false);
 
         [Menu("Priorities", 124, 1400)]
         public EmptyNode PrioritiesCategory { get; set; } = new EmptyNode();

@@ -27,6 +27,7 @@ public sealed class DelveNodeIconTests
         }, http);
 
         result.Error.Should().BeNull();
+        result.Path.Should().Be(Path.Combine(_folder, "DelveTextures", "Currency.webp"));
         File.ReadAllBytes(result.Path!).Should().Equal(artwork);
         handler.RequestUri.Should().BeNull();
     }
@@ -54,6 +55,7 @@ public sealed class DelveNodeIconTests
         }, http);
 
         result.Error.Should().BeNull();
+        result.Path.Should().Be(Path.Combine(_folder, "DelveTextures", "Currency.webp"));
         File.ReadAllBytes(result.Path!).Should().Equal(artwork);
         handler.RequestUri.Should().Be(new Uri(
             "https://raw.githubusercontent.com/Barragek0/ClickIt/main/Features/Delve/Textures/Currency.webp"));
@@ -62,13 +64,13 @@ public sealed class DelveNodeIconTests
         using var offline = new HttpClient(offlineHandler);
         var cached = await DelveNodeIcon.LoadTextureAsync(icon.AssetName!, () => _folder, _ => null, offline);
         cached.Should().Be(result);
-        offlineHandler.RequestUri.Should().BeNull();
+        offlineHandler.RequestUri!.Host.Should().Be("api.github.com");
     }
 
     [TestMethod]
     [TestCategory("Regression")]
     [DataRow(404, "HTTP 404")]
-    [DataRow(200, "invalid WebP")]
+    [DataRow(200, "invalid or changed texture")]
     public async Task LoadTextureAsync_ReturnsAnErrorWithoutCachingFailedDownloads(int status, string reason)
     {
         using var handler = new TextureHandler(new HttpResponseMessage((System.Net.HttpStatusCode)status)
@@ -84,12 +86,54 @@ public sealed class DelveNodeIconTests
         Directory.Exists(_folder).Should().BeFalse();
     }
 
-    private static byte[] GetArtwork()
+    [TestMethod]
+    [TestCategory("Regression")]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task LoadTextureAsync_OnlyDownloadsAgainIfTheGitHubHashDiffers(bool stale)
     {
-        using Stream resource = typeof(DelveNodeIcon).Assembly.GetManifestResourceStream("ClickIt.Delve.Textures.Currency.webp")!;
+        byte[] artwork = GetArtwork();
+        string folder = Path.Combine(_folder, "DelveTextures");
+        Directory.CreateDirectory(folder);
+        string path = Path.Combine(folder, "Currency.webp");
+        File.WriteAllBytes(path, stale ? GetArtwork("Maps") : artwork);
+        const string index = """[{"name":"Currency.webp","sha":"a2b201aed231b85103ffef06851df8da5c2d3a68"}]""";
+        using var handler = new HashCheckHandler(index, artwork);
+        using var http = new HttpClient(handler);
+
+        var result = await DelveNodeIcon.LoadTextureAsync("Currency", () => _folder, _ => null, http);
+
+        handler.HashChecks.Should().Be(1);
+        handler.Downloads.Should().Be(stale ? 1 : 0);
+        result.Error.Should().BeNull();
+        result.Path.Should().Be(path);
+        File.ReadAllBytes(path).Should().Equal(artwork);
+    }
+
+    private static byte[] GetArtwork(string name = "Currency")
+    {
+        using Stream resource = typeof(DelveNodeIcon).Assembly.GetManifestResourceStream($"ClickIt.Delve.Textures.{name}.webp")!;
         using var data = new MemoryStream();
         resource.CopyTo(data);
         return data.ToArray();
+    }
+
+    private sealed class HashCheckHandler(string index, byte[] artwork) : HttpMessageHandler
+    {
+        internal int HashChecks { get; private set; }
+        internal int Downloads { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (request.RequestUri?.Host == "api.github.com")
+            {
+                HashChecks++;
+                return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent(index) });
+            }
+
+            Downloads++;
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new ByteArrayContent(artwork) });
+        }
     }
 
     private sealed class TextureHandler(HttpResponseMessage response) : HttpMessageHandler
