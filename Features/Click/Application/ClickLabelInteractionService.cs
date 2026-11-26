@@ -154,6 +154,83 @@ namespace ClickIt.Features.Click.Application
                 return TryCorruptEssenceLocked(label, windowTopLeft);
         }
 
+        internal bool CanSelectLabel(LabelOnGround label, string? mechanicId)
+        {
+            if (!IsEssenceOpeningBlocked(label, mechanicId))
+                return true;
+
+            if (!_dependencies.Settings.ClickEssences.Value)
+                return false;
+
+            lock (_essenceCorruptionLock)
+            {
+                bool sameArea = AreaUiSnapshotReader.TryReadCurrentAreaHash(_dependencies.GameController, out long areaHash)
+                    && _essenceAreaHash == areaHash;
+                DynamicAccess.TryGetLabelItemOnGround(label, out Entity? entity);
+                long id;
+                try { id = entity?.Id ?? 0; }
+                catch { return false; }
+                if (id <= 0)
+                    return false;
+                if (sameArea && _essenceSecondCorruptionLabels.Contains(id))
+                    return false;
+
+                if (sameArea && _essenceFirstCorruptionLabels.Contains(id))
+                {
+                    if (!TryReadLabelCorrupted(label, out bool corrupted))
+                        return true;
+                    if (corrupted)
+                        return IsRecrystallisationActive() && ShouldCorruptEssenceSecondTime(label);
+                    if (IsCorruptionSettling(id))
+                        return true;
+                }
+
+                if ((!sameArea || HasFirstCorruptionAttemptsLeft(id)) && CanStillCorruptFirstTime(label))
+                {
+                    if (HasVaalOrb())
+                        return true;
+                    RaiseVaalOrbWarning();
+                }
+
+                return false;
+            }
+        }
+
+        internal bool IsEssenceOpeningBlocked(LabelOnGround label, string? mechanicId)
+        {
+            if (!string.Equals(mechanicId, MechanicIds.Essences, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            EntityEventHub hub = EntityEventHub.Instance;
+            hub.EnsureSubscribed(_dependencies.GameController);
+            if (hub.IceCaveFossils.Count == 0
+                || !DynamicAccess.TryGetLabelItemOnGround(label, out Entity? essence)
+                || !TryGetGridPosition(essence, out NumVector2 essencePosition))
+                return false;
+
+            const float radius = 200f;
+            foreach (Entity fossil in hub.IceCaveFossils.Snapshot())
+            {
+                if (TryGetGridPosition(fossil, out NumVector2 fossilPosition)
+                    && NumVector2.DistanceSquared(essencePosition, fossilPosition) <= radius * radius)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetGridPosition(Entity? entity, out NumVector2 position)
+        {
+            position = default;
+            if (!DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsValid, out bool valid) || !valid
+                || !DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.GridPosNum, out object? raw)
+                || raw is not NumVector2 grid || !float.IsFinite(grid.X) || !float.IsFinite(grid.Y))
+                return false;
+
+            position = grid;
+            return true;
+        }
+
         private bool TryCorruptEssenceLocked(LabelOnGround label, Vector2 windowTopLeft)
         {
             if (!AreaUiSnapshotReader.TryReadCurrentAreaHash(_dependencies.GameController, out long areaHash))
@@ -543,6 +620,9 @@ namespace ClickIt.Features.Click.Application
         internal bool PerformResolvedLabelInteraction(Vector2 clickPos, LabelOnGround label, string? mechanicId,
             bool allowWhenHotkeyInactive = false, Vector2? clientClickPosition = null)
         {
+            if (IsEssenceOpeningBlocked(label, mechanicId))
+                return false;
+
             CaptureBlightChestDebug(label, mechanicId, "click", requireChestMechanic: true);
             return ExecuteInteraction(
                 clickPos,

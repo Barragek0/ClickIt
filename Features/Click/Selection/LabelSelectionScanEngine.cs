@@ -121,6 +121,7 @@ namespace ClickIt.Features.Click.Selection
                 if (string.IsNullOrWhiteSpace(hoveredMechanicId)
                     || !DynamicAccess.TryGetLabelItemOnGround(hovered, out Entity? hoveredItem)
                     || !_dependencies.LabelSelectionService.IsWithinConfiguredClickDistance(hoveredItem)
+                    || !_dependencies.LabelInteraction.CanSelectLabel(hovered, hoveredMechanicId)
                     || (additionalEligibility != null && !additionalEligibility(hoveredItem, hoveredMechanicId))
                     || !CanResolveClickableLabelPoint(hovered, hoveredMechanicId, allLabels))
                     return nextLabel;
@@ -254,7 +255,8 @@ namespace ClickIt.Features.Click.Selection
                 if (additionalEligibility != null && !additionalEligibility(result.Item, result.MechanicId))
                     return false;
 
-                if (!CanResolveClickableLabelPoint(label, result.MechanicId, allLabels))
+                if (!_dependencies.LabelInteraction.CanSelectLabel(label, result.MechanicId)
+                    || !CanResolveClickableLabelPoint(label, result.MechanicId, allLabels))
                 {
                     notClickableNow++;
                     return false;

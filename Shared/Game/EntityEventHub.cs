@@ -15,6 +15,7 @@ internal sealed class EntityEventHub
     private readonly Dictionary<long, Entity> _mercenaries = [];
     private readonly Dictionary<long, Entity> _animateGuardians = [];
     private readonly Dictionary<long, Entity> _spectres = [];
+    private readonly Dictionary<long, Entity> _iceCaveFossils = [];
     private GameController? _subscribedController;
     private bool _subscribed;
     private long _lastReseedMs;
@@ -32,6 +33,7 @@ internal sealed class EntityEventHub
     internal TrackedEntityView Mercenaries { get; }
     internal TrackedEntityView AnimateGuardians { get; }
     internal TrackedEntityView Spectres { get; }
+    internal TrackedEntityView IceCaveFossils { get; }
 
     internal EntityEventHub()
     {
@@ -44,6 +46,7 @@ internal sealed class EntityEventHub
         Mercenaries = new TrackedEntityView(_lock, _mercenaries);
         AnimateGuardians = new TrackedEntityView(_lock, _animateGuardians);
         Spectres = new TrackedEntityView(_lock, _spectres);
+        IceCaveFossils = new TrackedEntityView(_lock, _iceCaveFossils);
     }
 
     // Returns the accumulated entity-event cost since the last poll and resets the accumulator.
@@ -105,6 +108,7 @@ internal sealed class EntityEventHub
             _mercenaries.Clear();
             _animateGuardians.Clear();
             _spectres.Clear();
+            _iceCaveFossils.Clear();
         }
         Unsubscribe(gc);
     }
@@ -141,6 +145,7 @@ internal sealed class EntityEventHub
             _mercenaries.Clear();
             _animateGuardians.Clear();
             _spectres.Clear();
+            _iceCaveFossils.Clear();
         }
     }
 
@@ -170,6 +175,7 @@ internal sealed class EntityEventHub
             _mercenaries.Clear();
             _animateGuardians.Clear();
             _spectres.Clear();
+            _iceCaveFossils.Clear();
         }
         GameController? gc = _subscribedController;
         if (gc == null)
@@ -226,6 +232,7 @@ internal sealed class EntityEventHub
                 _lostShipment.Remove(id);
                 _mercenaries.Remove(id);
                 _animateGuardians.Remove(id);
+                _iceCaveFossils.Remove(id);
             }
         }
         finally
@@ -249,6 +256,7 @@ internal sealed class EntityEventHub
             _mercenaries.Clear();
             _animateGuardians.Clear();
             _spectres.Clear();
+            _iceCaveFossils.Clear();
         }
     }
 
@@ -266,6 +274,7 @@ internal sealed class EntityEventHub
         bool isMercenary = IsMercenaryPath(path);
         bool isAnimateGuardian = IsAnimateGuardianPath(path);
         bool isSpectre = IsSpectrePath(path);
+        bool isIceCaveFossil = path.Contains("EncounterControlObjects/IceCavesFossil", StringComparison.OrdinalIgnoreCase);
         bool isOffscreen = IsOffscreenStructurePath(path) || isShrine;
         if (!isOffscreen)
         {
@@ -284,6 +293,7 @@ internal sealed class EntityEventHub
             if (isMercenary) _mercenaries[id] = entity;
             if (isAnimateGuardian) _animateGuardians[id] = entity;
             if (isSpectre) _spectres[id] = entity;
+            if (isIceCaveFossil) _iceCaveFossils[id] = entity;
         }
     }
 

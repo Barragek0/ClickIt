@@ -42,6 +42,9 @@ namespace ClickIt.Features.Click.Selection
                 || _dependencies.LabelInteraction.TryCorruptEssence(hoveredLabel, mechanicId, windowTopLeft))
                 return true;
 
+            if (_dependencies.LabelInteraction.IsEssenceOpeningBlocked(hoveredLabel, mechanicId))
+                return false;
+
             if (_dependencies.Settings.IsInitialUltimatumClickEnabled() && UltimatumLabelMath.IsUltimatumLabel(hoveredLabel))
                 return _dependencies.UltimatumAutomation.TryClickPreferredModifier(hoveredLabel, windowTopLeft);
 

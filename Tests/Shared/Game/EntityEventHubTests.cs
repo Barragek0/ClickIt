@@ -11,6 +11,26 @@ namespace ClickIt.Tests.Shared.Game
             => EntityEventHub.Instance.Dispose();
 
         [TestMethod]
+        [TestCategory("Regression")]
+        [DataRow(200f, true, false)]
+        [DataRow(200.1f, true, true)]
+        [DataRow(100f, false, true)]
+        public void EssenceOpening_UsesDistanceFromEssenceToLiveFossil(float distance, bool fossilValid, bool expected)
+        {
+            Entity essence = EntityProbeFactory.Create(path: "Metadata/Monsters/Essence", gridX: 30);
+            Entity fossil = EntityProbeFactory.Create(
+                path: "Metadata/Terrain/Leagues/Delve/Objects/EncounterControlObjects/IceCavesFossil",
+                isValid: fossilValid, distancePlayer: 500, gridX: 30 + distance);
+            GameController controller = ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(fossil);
+            var service = global::ClickIt.Tests.Features.Click.ClickTestServiceFactory.CreateLabelInteractionService(
+                gameController: controller, executeInteraction: _ => true);
+            var label = new LabelProbe { ItemOnGround = essence };
+
+            service.PerformResolvedLabelInteraction(Vector2.Zero, label, MechanicIds.Essences).Should().Be(expected);
+            service.PerformResolvedLabelInteraction(Vector2.Zero, label, MechanicIds.BasicChests).Should().BeTrue();
+        }
+
+        [TestMethod]
         public void Reseed_ClassifiesBlightPathway_IntoBlightOnly()
         {
             Entity pathway = EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Blight/Objects/BlightPathway");

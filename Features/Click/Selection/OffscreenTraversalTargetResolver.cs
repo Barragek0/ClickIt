@@ -258,6 +258,8 @@ namespace ClickIt.Features.Click.Selection
                     rejectedNoMechanic++;
                     continue;
                 }
+                if (!_dependencies.LabelInteraction.CanSelectLabel(label, mechanicId))
+                    continue;
                 if ((MechanicClassifier.IsLockedDelveChest(entity) && !MechanicClassifier.HasVisibleDelveCompletionLabel(labels))
                     || (_crawlerFallbackExcluded != null && (mechanicId == MechanicIds.DelveCrawler
                         || MechanicClassifier.IsLockedStrongbox(entity))))
