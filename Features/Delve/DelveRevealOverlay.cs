@@ -22,7 +22,10 @@ internal sealed class DelveRevealOverlay : IOverlay
     private readonly Dictionary<string, (bool Available, long RetryAt)> _textureLoads = new(StringComparer.Ordinal);
 
     internal readonly record struct ChartCell(RectangleF Rect, long[] Links, bool Hidden = true, bool BehindWall = false,
-        NumVector2? Anchor = null);
+        NumVector2? Anchor = null)
+    {
+        internal bool NeedsRouteOverlay => Hidden || BehindWall;
+    }
     private readonly record struct CellLink(long Start, long End, bool Horizontal);
     internal readonly record struct ChartMarker(RectangleF Rect, NumVector2 Anchor, DelveNodeIcon Icon);
     internal readonly record struct Node(NumVector2 Center, float Radius, DelveNodeIcon Icon);
@@ -149,7 +152,7 @@ internal sealed class DelveRevealOverlay : IOverlay
         Dictionary<long, ChartCell> cells = [];
         List<ChartMarker> markers = [];
         List<DelveCell> revealedCells = [];
-        bool hasWall = false;
+        bool hasHiddenRoute = false;
         for (int i = 0; i < chunks.Count && i < MaxChunks; i++)
         {
             if (chunks[i] is not DelveBigCell chunkElement
@@ -174,7 +177,7 @@ internal sealed class DelveRevealOverlay : IOverlay
                 bool hidden = IsHidden(gameDraws, visited);
                 // The game can show a destination icon before it shows the route behind the wall.
                 bool behindWall = !visited.Value && ReadVisibility(cell, static node => node.IsBehindWall) == true;
-                hasWall |= behindWall;
+                hasHiddenRoute |= hidden || behindWall;
                 long[] links = hidden || behindWall ? ReadLinks(cell) : [];
                 bool needsMarker = hidden && coverage.Intersects(rect);
                 NumVector2? anchor = hidden || behindWall ? ReadAnchor(cell) : null;
@@ -189,14 +192,15 @@ internal sealed class DelveRevealOverlay : IOverlay
             }
         }
 
-        // A wall entrance can be listed from the revealed side of the connection.
-        if (hasWall)
+        // The chart may report a boundary link from only one side. Keep the revealed
+        // endpoint's anchor so the overlay can join the game's visible route.
+        if (hasHiddenRoute)
         {
-            var wallEntrances = new HashSet<long>();
+            var routeEntrances = new HashSet<long>();
             foreach (ChartCell cell in cells.Values)
             {
-                if (cell.BehindWall)
-                    wallEntrances.UnionWith(cell.Links);
+                if (cell.NeedsRouteOverlay)
+                    routeEntrances.UnionWith(cell.Links);
             }
 
             foreach (DelveCell cell in revealedCells)
@@ -205,14 +209,14 @@ internal sealed class DelveRevealOverlay : IOverlay
                 long[] links = ReadLinks(cell);
                 foreach (long address in links)
                 {
-                    if (cells.TryGetValue(address, out ChartCell target) && target.BehindWall)
+                    if (cells.TryGetValue(address, out ChartCell target) && target.NeedsRouteOverlay)
                     {
-                        wallEntrances.Add(cell.Address);
+                        routeEntrances.Add(cell.Address);
                         break;
                     }
                 }
 
-                if (!wallEntrances.Contains(cell.Address))
+                if (!routeEntrances.Contains(cell.Address))
                     continue;
 
                 cells[cell.Address] = captured with { Links = links, Anchor = ReadAnchor(cell) };
@@ -259,7 +263,7 @@ internal sealed class DelveRevealOverlay : IOverlay
             foreach (long neighbor in cell.Links)
             {
                 if (neighbor == address || !cells.TryGetValue(neighbor, out ChartCell target)
-                    || !(cell.BehindWall || target.BehindWall || (cell.Hidden && target.Hidden))
+                    || !(cell.NeedsRouteOverlay || target.NeedsRouteOverlay)
                     || !seen.Add((SystemMath.Min(address, neighbor), SystemMath.Max(address, neighbor))))
                     continue;
 

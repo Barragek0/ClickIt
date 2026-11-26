@@ -51,13 +51,31 @@ public sealed class DelveRevealOverlayTests
             [1] = new(new RectangleF(0, 0, 20, 20), [2, 4], Hidden: false),
             [2] = new(new RectangleF(20, 0, 20, 20), [3], Hidden: false, BehindWall: true),
             [3] = new(new RectangleF(40, 0, 20, 20), [], Hidden: false, BehindWall: true),
-            [4] = new(new RectangleF(0, 20, 20, 20), [1, 5], Hidden: false),
-            [5] = new(new RectangleF(20, 20, 20, 20), [4])
+            [4] = new(new RectangleF(0, 20, 20, 20), [1], Hidden: false)
         };
 
         DelveRevealOverlay.BuildConnections(cells).Should().Equal(
             new ScreenLine(new NumVector2(10, 10), new NumVector2(30, 10)),
             new ScreenLine(new NumVector2(30, 10), new NumVector2(50, 10)));
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    [DataRow(true)]
+    [DataRow(false)]
+    public void BuildConnections_JoinsTheFirstHiddenNodeToTheRevealedNode(bool linkFromRevealed)
+    {
+        Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
+        {
+            [1] = new(new RectangleF(0, 0, 20, 20), [2], Hidden: false),
+            [2] = new(new RectangleF(20, 0, 20, 20), linkFromRevealed ? [1, 3] : [1],
+                Hidden: false, Anchor: new NumVector2(.75f, .25f)),
+            [3] = new(new RectangleF(40, 0, 20, 20), linkFromRevealed ? [] : [2],
+                Anchor: new NumVector2(.25f, .25f))
+        };
+
+        DelveRevealOverlay.BuildConnections(cells).Should().Equal(
+            new ScreenLine(new NumVector2(35, 5), new NumVector2(45, 5)));
     }
 
     [TestMethod]
