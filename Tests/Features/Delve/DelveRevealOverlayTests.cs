@@ -366,24 +366,43 @@ public sealed class DelveRevealOverlayTests
 
     [TestMethod]
     [TestCategory("Regression")]
-    [DataRow(299L, 1000L, false)]
-    [DataRow(300L, 50L, false)]
-    [DataRow(300L, 90L, true)]
-    [DataRow(900L, 5L, true)]
-    public void IsCaptureDue_DefersRoutineTopologyRefreshWhilePanning(long ageMs, long stillMs, bool expected)
-        => DelveRevealOverlay.IsCaptureDue(ageMs, stillMs).Should().Be(expected);
+    [DataRow(true, 299L, 1000L, false)]
+    [DataRow(true, 300L, 50L, false)]
+    [DataRow(true, 300L, 90L, true)]
+    [DataRow(true, 900L, 5L, true)]
+    [DataRow(false, 2999L, 1000L, false)]
+    [DataRow(false, 3000L, 1000L, true)]
+    public void IsCaptureDue_ReusesStableTopologyAndBoundsRefreshDelay(bool chunksChanged, long ageMs, long stillMs, bool expected)
+        => DelveRevealOverlay.IsCaptureDue(chunksChanged, ageMs, stillMs).Should().Be(expected);
 
     [TestMethod]
     [TestCategory("Regression")]
-    [DataRow(true, true, 0L, 1000L, false)]
-    [DataRow(true, true, 60L, 1000L, true)]
-    [DataRow(false, false, 0L, 10L, true)]
-    [DataRow(false, true, 59L, 10L, false)]
-    [DataRow(false, true, 60L, 10L, true)]
-    [DataRow(false, true, 60L, 90L, false)]
+    [DataRow(true, true, 0L, false)]
+    [DataRow(true, true, 60L, true)]
+    [DataRow(false, false, 0L, true)]
+    [DataRow(false, true, 60L, false)]
     public void ShouldRefreshMarkers_UpdatesDuringPanWithoutWaitingForRouteCapture(
-        bool chunksChanged, bool covered, long ageMs, long stillMs, bool expected)
-        => DelveRevealOverlay.ShouldRefreshMarkers(chunksChanged, covered, ageMs, stillMs).Should().Be(expected);
+        bool chunksChanged, bool covered, long ageMs, bool expected)
+        => DelveRevealOverlay.ShouldRefreshMarkers(chunksChanged, covered, ageMs).Should().Be(expected);
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void ProjectConnections_AvoidsChartSizedAllocationWhenAlmostAllLinesAreOffscreen()
+    {
+        RectangleF clip = new(0, 0, 100, 100);
+        var projection = new DelveRevealOverlay.ChartProjection(clip, clip);
+        var lines = new ScreenLine[8192];
+        Array.Fill(lines, new ScreenLine(new NumVector2(500, 10), new NumVector2(520, 10)));
+        lines[0] = new ScreenLine(new NumVector2(10, 10), new NumVector2(30, 10));
+        _ = DelveRevealOverlay.ProjectConnections(lines, clip, projection);
+
+        long allocationStart = GC.GetAllocatedBytesForCurrentThread();
+        ScreenLine[] result = DelveRevealOverlay.ProjectConnections(lines, clip, projection);
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - allocationStart;
+
+        result.Should().Equal(lines[0]);
+        allocated.Should().BeLessThan(4096);
+    }
 
     [TestMethod]
     [TestCategory("Regression")]

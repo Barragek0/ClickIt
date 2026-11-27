@@ -7,6 +7,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
     private const int PanSettleMs = 90;
     private const int MovingMarkerRefreshMs = 60;
     private const int MaximumCellRefreshMs = 900;
+    private const int StableCellRefreshMs = 3000;
     private const int StaleViewMs = 128;
     private const int MaxChunks = 128;
     private const int ChunkSide = 8;
@@ -29,6 +30,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
     private long _lastPan;
     private long _lastMarkerScan;
     private long _markerChunkHash;
+    private long _captureChunkHash;
     private RectangleF _markerCoverage;
     private Graphics? _textureGraphics;
     private readonly Dictionary<DelveNodeIcon, Task<DelveNodeIcon.TextureResult>> _textureFiles = [];
@@ -143,7 +145,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         bool sameChart = capture != null && capture.Address == grid.Address && capture.Targets == targets
             && capture.ShowTargetCounts == showTargetCounts;
         if (!sameChart || (targets == DelveRouteTarget.None && !projection.Covers(capture!.Coverage, clip))
-            || IsCaptureDue(now - capture!.CapturedAt, now - _lastPan))
+            || IsCaptureDue(chunkHash != _captureChunkHash, now - capture!.CapturedAt, now - _lastPan))
         {
             // Keep the previous graph moving while the more expensive full capture runs.
             if (sameChart && moved)
@@ -161,13 +163,13 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
             if (_lastProjection != projection || _lastClip != clip)
                 _lastPan = now;
             _chartCapture = capture;
+            _captureChunkHash = chunkHash;
             _markerCoverage = coverage;
             _markerChunkHash = chunkHash;
             _lastMarkerScan = now;
             PublishView(capture, projection, clip, now, revealFullMap, showRouteNodes, showWalls);
         }
-        else if (ShouldRefreshMarkers(chunkHash != _markerChunkHash, projection.Covers(_markerCoverage, clip),
-            now - _lastMarkerScan, now - _lastPan))
+        else if (ShouldRefreshMarkers(chunkHash != _markerChunkHash, projection.Covers(_markerCoverage, clip), now - _lastMarkerScan))
         {
             RectangleF coverage = GetLocalCoverage(projection, clip);
             ChartMarker[] markers = CaptureChart(grid, coverage, now, targets, showTargetCounts, markersOnly: true).Markers;
@@ -194,11 +196,15 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         }
     }
 
-    internal static bool IsCaptureDue(long ageMs, long stillMs)
-        => ageMs >= MaximumCellRefreshMs || (ageMs >= CellRefreshMs && stillMs >= PanSettleMs);
+    // A stable chunk list can still contain changed cells. Reconcile periodically without
+    // rebuilding the full graph several times per second while the player studies the map.
+    internal static bool IsCaptureDue(bool chunksChanged, long ageMs, long stillMs)
+        => chunksChanged
+            ? ageMs >= MaximumCellRefreshMs || (ageMs >= CellRefreshMs && stillMs >= PanSettleMs)
+            : ageMs >= StableCellRefreshMs;
 
-    internal static bool ShouldRefreshMarkers(bool chunksChanged, bool covered, long ageMs, long stillMs)
-        => !covered || (ageMs >= MovingMarkerRefreshMs && (chunksChanged || stillMs < PanSettleMs));
+    internal static bool ShouldRefreshMarkers(bool chunksChanged, bool covered, long ageMs)
+        => !covered || (chunksChanged && ageMs >= MovingMarkerRefreshMs);
 
     private static RectangleF GetLocalCoverage(ChartProjection projection, RectangleF clip)
         => new ChartProjection(projection.CurrentGrid, projection.OriginalGrid)
@@ -725,9 +731,9 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         if (connections.Count == 0)
             return [];
 
-        // Sized to the worst case so a fully visible frame needs no intermediate list or final copy; this runs on every pan publish.
-        ScreenLine[] visible = new ScreenLine[connections.Count];
-        int count = 0;
+        // The captured graph spans the chart. Allocate for lines in the viewport
+        // so a small visible slice does not churn a chart-sized array when panning.
+        List<ScreenLine>? visible = null;
         var clipStart = new NumVector2(clip.Left, clip.Top);
         var clipEnd = new NumVector2(clip.Right, clip.Bottom);
         for (int i = 0; i < connections.Count; i++)
@@ -738,10 +744,10 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
             NumVector2 min = NumVector2.Max(NumVector2.Min(start, end), clipStart);
             NumVector2 max = NumVector2.Min(NumVector2.Max(start, end), clipEnd);
             if (min.X <= max.X && min.Y <= max.Y && min != max)
-                visible[count++] = new ScreenLine(min, max);
+                (visible ??= new List<ScreenLine>(SystemMath.Min(connections.Count, 32))).Add(new ScreenLine(min, max));
         }
 
-        return count == visible.Length ? visible : visible[..count];
+        return visible?.ToArray() ?? [];
     }
 
     private static NumVector2? ReadAnchor(DelveCell cell)
@@ -790,9 +796,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         if (markers.Length == 0)
             return [];
 
-        // Runs on every pan publish; size the result once from the marker count instead of growing a list and copying.
-        Node[] nodes = new Node[markers.Length];
-        int count = 0;
+        List<Node>? nodes = null;
         // At low chart zoom the stock encounter artwork shrinks faster than the tiles.
         float zoomCorrection = MathF.Sqrt(MathF.Sqrt(projection.Zoom));
         for (int i = 0; i < markers.Length; i++)
@@ -809,11 +813,11 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
                 rect.Y + rect.Height * (marker.Anchor.Y - 0.06f) - MarkerLiftPixels);
             float radius = MathF.Min(SystemMath.Min(rect.Width, rect.Height) * 0.42f, 32f) * zoomCorrection;
             if (clip.Contains(anchor.X - radius, anchor.Y - radius) && clip.Contains(anchor.X + radius, anchor.Y + radius))
-                nodes[count++] = new Node(anchor, radius, marker.Icon, marker.HoverText, RemainingNodeCount: remaining,
-                    DrawIcon: marker.DrawIcon);
+                (nodes ??= new List<Node>(SystemMath.Min(markers.Length, 16))).Add(
+                    new Node(anchor, radius, marker.Icon, marker.HoverText, RemainingNodeCount: remaining, DrawIcon: marker.DrawIcon));
         }
 
-        return count == nodes.Length ? nodes : nodes[..count];
+        return nodes?.ToArray() ?? [];
     }
 
     public void Draw(OverlayRenderContext ctx)
@@ -832,7 +836,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
 
         if (!ReferenceEquals(ctx.Graphics, _textureGraphics))
         {
-            Dispose();
+            DisposeTextures();
             _textureGraphics = ctx.Graphics;
         }
 
@@ -948,6 +952,13 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
     }
 
     public void Dispose()
+    {
+        ClearChart();
+        DisposeTextures();
+        _textureFiles.Clear();
+    }
+
+    private void DisposeTextures()
     {
         if (_textureGraphics is { } graphics)
         {
