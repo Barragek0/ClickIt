@@ -18,7 +18,8 @@ namespace ClickIt.Features.Click.Runtime
         IOffscreenRuntimeSeam? RuntimeSeam = null,
         Func<bool>? IsBlightActive = null,
         Func<Vector2, Element?, float, bool>? IsSafeBlightWalkHover = null,
-        Func<RectangleF, bool>? IsBlightMenuRegionClickable = null);
+        Func<RectangleF, bool>? IsBlightMenuRegionClickable = null,
+        Func<IReadOnlyList<LabelOnGround>?>? GetDelveLabels = null);
 
     internal sealed class OffscreenPathingCoordinator(OffscreenPathingCoordinatorDependencies dependencies)
     {
@@ -126,7 +127,13 @@ namespace ClickIt.Features.Click.Runtime
                 return TryWalkInBlight(target, context.TargetPath, blightRegion, route);
             }
 
-            if (!TryResolveTraversalClick(context, builtPath, out bool resolvedFromPath, out Vector2 targetScreen, out Vector2 walkClick))
+            // A movement click can activate the Crawler even when traversal has selected loot.
+            LabelOnGround? crawler = FindVisibleCrawlerLabel(_dependencies.GetDelveLabels?.Invoke());
+            RectangleF crawlerRect = default;
+            if (crawler != null && !LabelGeometry.TryGetLabelRect(crawler, out crawlerRect))
+                return false;
+
+            if (!TryResolveTraversalClick(context, builtPath, crawlerRect, out bool resolvedFromPath, out Vector2 targetScreen, out Vector2 walkClick))
                 return false;
 
             bool movementSkillUsed = _dependencies.MovementSkills.TryUseMovementSkillForOffscreenPathing(context.TargetPath, targetScreen, builtPath, out Vector2 movementSkillCastPoint, out string movementSkillDebug);
@@ -154,13 +161,49 @@ namespace ClickIt.Features.Click.Runtime
             }
 
             Vector2 clickPos = ResolveBlightIconSafeClickPosition(walkClick, targetScreen, context.TargetPath);
+            if (crawler != null && LabelClickPointSearch.IsPointInsideRect(clickPos, crawlerRect))
+                return false;
+
             RectangleF window = _runtimeSeam.GetWindowRectangle(_dependencies.GameController);
+            Func<Element?, bool>? validateSettledHover = crawler == null ? null : _ =>
+            {
+                if (!LabelGeometry.TryGetLabelRect(crawler, out RectangleF currentRect)
+                    || LabelClickPointSearch.IsPointInsideRect(clickPos, currentRect))
+                    return false;
+
+                SystemDrawingPoint cursor = Mouse.GetCursorPosition();
+                RectangleF currentWindow = _runtimeSeam.GetWindowRectangle(_dependencies.GameController);
+                if (currentWindow.Width <= 0 || currentWindow.Height <= 0)
+                    return false;
+                var clientCursor = new Vector2(cursor.X - currentWindow.X, cursor.Y - currentWindow.Y);
+                return !LabelClickPointSearch.IsPointInsideRect(clientCursor, currentRect);
+            };
             bool clicked = _dependencies.LabelInteraction.PerformMechanicClick(
-                clickPos + new Vector2(window.X, window.Y), interval: IntervalKind.Walk, clientClickPosition: clickPos);
+                clickPos + new Vector2(window.X, window.Y), interval: IntervalKind.Walk,
+                validateSettledHover: validateSettledHover, clientClickPosition: clickPos);
             AddPathfindingStage(clicked
                 ? $"Walk: click executed ({clickPos.X:F0},{clickPos.Y:F0})"
                 : $"Walk: click REJECTED ({clickPos.X:F0},{clickPos.Y:F0})");
             return HandleTraversalClickResult(context, builtPath, resolvedFromPath, targetScreen, clickPos, movementSkillDebug, clicked);
+        }
+
+        private static LabelOnGround? FindVisibleCrawlerLabel(IReadOnlyList<LabelOnGround>? labels)
+        {
+            if (labels == null)
+                return null;
+
+            foreach (LabelOnGround label in labels)
+            {
+                if (DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item)
+                    && DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string path)
+                    && MechanicIds.IsDelveCrawlerPath(path)
+                    && DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? root)
+                    && DynamicAccess.TryReadBool(root, DynamicAccessProfiles.IsVisible, out bool visible)
+                    && visible)
+                    return label;
+            }
+
+            return null;
         }
 
         // Position-only walk fallback for blight foundations whose entity has streamed out.
@@ -933,6 +976,7 @@ namespace ClickIt.Features.Click.Runtime
         private bool TryResolveTraversalClick(
             OffscreenTraversalTargetContext context,
             bool builtPath,
+            RectangleF crawlerRect,
             out bool resolvedFromPath,
             out Vector2 targetScreen,
             out Vector2 walkClick)
@@ -966,8 +1010,12 @@ namespace ClickIt.Features.Click.Runtime
             }
 
             RectangleF win = _runtimeSeam.GetWindowRectangle(_dependencies.GameController);
+            Func<Vector2, string, bool> isClickable = _dependencies.PointIsInClickableArea;
+            if (crawlerRect.Width > 0 && crawlerRect.Height > 0)
+                isClickable = (point, path) => !LabelClickPointSearch.IsPointInsideRect(point, crawlerRect)
+                    && _dependencies.PointIsInClickableArea(point, path);
             if (OffscreenPathingMath.TryResolveDirectionalWalkClickPosition(
-                    new RectangleF(0, 0, win.Width, win.Height), targetScreen, context.TargetPath, _dependencies.PointIsInClickableArea, out walkClick))
+                    new RectangleF(0, 0, win.Width, win.Height), targetScreen, context.TargetPath, isClickable, out walkClick))
                 return true;
 
             AddPathfindingStage("Walk: directional click point FAILED");

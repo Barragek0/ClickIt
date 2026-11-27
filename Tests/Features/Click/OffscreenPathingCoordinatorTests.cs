@@ -1245,7 +1245,9 @@ namespace ClickIt.Tests.Features.Click
             Func<Vector2, string, bool>? pointIsInClickableArea = null,
             IOffscreenRuntimeSeam? runtimeSeam = null,
             Action<string>? debugLog = null,
-            Action<string>? holdDebugTelemetryAfterSuccess = null)
+            Action<string>? holdDebugTelemetryAfterSuccess = null,
+            Func<IReadOnlyList<LabelOnGround>?>? getDelveLabels = null,
+            bool hasPathfindingController = true)
         {
             settings ??= new ClickItSettings();
             gameController ??= ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindow(new RectangleF(100f, 200f, 1280f, 720f));
@@ -1298,7 +1300,7 @@ namespace ClickIt.Tests.Features.Click
 
             return new OffscreenPathingCoordinator(new OffscreenPathingCoordinatorDependencies(
                 Settings: settings,
-                GameController: gameController,
+                GameController: hasPathfindingController ? gameController : null!,
                 PathfindingService: pathfindingService,
                 OnscreenMechanicPathingBlocker: new OnscreenMechanicPathingBlocker(new OnscreenMechanicPathingBlockerDependencies(
                     Settings: settings,
@@ -1314,7 +1316,59 @@ namespace ClickIt.Tests.Features.Click
                 ClickDebugPublisher: clickDebugPublisher,
                 PointIsInClickableArea: pointIsInClickableArea,
                 IsBlightBuildOrUpgradeIconAt: isBlightIconAt,
-                RuntimeSeam: runtimeSeam));
+                RuntimeSeam: runtimeSeam,
+                GetDelveLabels: getDelveLabels));
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        [DataRow(false)]
+        [DataRow(true)]
+        public void TryWalkTowardLoot_AvoidsCrawlerAndRechecksAfterCursorSettle(bool crawlerMoves)
+        {
+            var settings = new ClickItSettings();
+            settings.WalkTowardOffscreenLabels.Value = true;
+            var crawlerEntity = EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/DelveNode", address: 0x81);
+            var crawlerRect = new RectangleF(910, 870, 100, 80);
+            var crawler = new LabelProbe { ItemOnGround = crawlerEntity, Label = new CrawlerProbeElement(crawlerRect) };
+            var loot = OffscreenStickyTargetGraphShaper.CreateActiveStickyEntity(0x84, "Metadata/MiscellaneousObjects/WorldItem");
+            InteractionExecutionRequest? captured = null;
+            List<string> logs = [];
+            var coordinator = CreateCoordinator(new ClickRuntimeState(),
+                settings: settings,
+                runtimeSeam: new StubOffscreenRuntimeSeam
+                {
+                    Window = new RectangleF(100, 200, 1920, 1080),
+                    ProjectWorldToScreen = true,
+                    ProjectedPoint = new Vector2(960, 880)
+                },
+                getDelveLabels: () => [crawler],
+                hasPathfindingController: false,
+                debugLog: logs.Add,
+                executeInteraction: request =>
+                {
+                    captured = request;
+                    if (!crawlerMoves)
+                        return true;
+
+                    Vector2 point = request.ClientClickPosition!.Value;
+                    crawler.Label = new CrawlerProbeElement(new RectangleF(point.X - 10, point.Y - 10, 20, 20));
+                    return request.ValidateSettledHover?.Invoke(null) ?? true;
+                });
+
+            coordinator.TryWalkTowardOffscreenTarget(loot).Should().Be(!crawlerMoves, string.Join(" | ", logs));
+            captured.Should().NotBeNull(string.Join(" | ", logs));
+            captured!.Value.Interval.Should().Be(IntervalKind.Walk);
+            captured.Value.ValidateSettledHover.Should().NotBeNull();
+            LabelClickPointSearch.IsPointInsideRect(captured.Value.ClientClickPosition!.Value, crawlerRect).Should().BeFalse();
+        }
+
+        public sealed class CrawlerProbeElement(RectangleF clientRect) : Element
+        {
+            public new bool IsVisible => true;
+            public new bool IsValid => true;
+
+            public override RectangleF GetClientRect() => clientRect;
         }
 
         [TestMethod]
@@ -1523,14 +1577,14 @@ namespace ClickIt.Tests.Features.Click
             out Vector2 targetScreen,
             out Vector2 walkClick)
         {
-            object?[] args = [context, builtPath, null, null, null];
+            object?[] args = [context, builtPath, default(RectangleF), null, null, null];
             MethodInfo method = typeof(OffscreenPathingCoordinator).GetMethod("TryResolveTraversalClick", BindingFlags.Instance | BindingFlags.NonPublic)
                 ?? throw new InvalidOperationException("TryResolveTraversalClick method was not found.");
 
             bool result = (bool)method.Invoke(coordinator, args)!;
-            resolvedFromPath = (bool)args[2]!;
-            targetScreen = (Vector2)args[3]!;
-            walkClick = (Vector2)args[4]!;
+            resolvedFromPath = (bool)args[3]!;
+            targetScreen = (Vector2)args[4]!;
+            walkClick = (Vector2)args[5]!;
             return result;
         }
 

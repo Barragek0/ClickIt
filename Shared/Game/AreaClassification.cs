@@ -21,4 +21,16 @@ internal static class AreaClassification
             return null;
         }
     }
+
+    internal static bool IsAzuriteMine(GameController? gameController)
+    {
+        try
+        {
+            return gameController?.Area?.CurrentArea?.DisplayName?.Contains("Azurite Mine", StringComparison.OrdinalIgnoreCase) == true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

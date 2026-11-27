@@ -63,28 +63,41 @@ internal static class DelveTargetRoutes
     internal static HashSet<(long, long)> FindShortestRoutes(
         IReadOnlyDictionary<long, DelveRevealOverlay.ChartCell> cells,
         List<DelveRevealOverlay.CellLink> links,
-        DelveRouteTarget targets)
+        DelveRouteTarget targets,
+        Dictionary<long, string>? counts)
     {
         HashSet<(long, long)> routes = [];
-        long[] goals = cells.Where(cell => !cell.Value.Explored && (cell.Value.Target & targets) != 0)
-            .Select(static cell => cell.Key).ToArray();
-        if (goals.Length == 0)
+        List<long> goals = [];
+        List<(long Address, float Y, float X)> starts = [];
+        foreach ((long address, var cell) in cells)
+        {
+            if (cell.Explored)
+                starts.Add((address, cell.Rect.Y, cell.Rect.X));
+            else if ((cell.Target & targets) != 0)
+                goals.Add(address);
+        }
+        if (goals.Count == 0 || starts.Count == 0)
             return routes;
 
-        Dictionary<long, long> previous = [];
-        Queue<long> pending = new();
-        foreach (var start in cells.Where(static cell => cell.Value.Explored)
-            .OrderBy(static cell => cell.Value.Rect.Y).ThenBy(static cell => cell.Value.Rect.X).ThenBy(static cell => cell.Key))
+        starts.Sort(static (a, b) =>
         {
-            previous.Add(start.Key, start.Key);
-            pending.Enqueue(start.Key);
+            int order = a.Y.CompareTo(b.Y);
+            if (order == 0) order = a.X.CompareTo(b.X);
+            return order == 0 ? a.Address.CompareTo(b.Address) : order;
+        });
+        Dictionary<long, (long Parent, int RemainingNodes)> previous = [];
+        Queue<long> pending = new(starts.Count);
+        for (int i = 0; i < starts.Count; i++)
+        {
+            long address = starts[i].Address;
+            previous.Add(address, (address, 0));
+            pending.Enqueue(address);
         }
-        if (pending.Count == 0)
-            return routes;
 
         Dictionary<long, List<long>> neighbors = [];
-        foreach (var link in links)
+        for (int i = 0; i < links.Count; i++)
         {
+            var link = links[i];
             AddNeighbor(link.Start, link.End);
             AddNeighbor(link.End, link.Start);
         }
@@ -103,24 +116,45 @@ internal static class DelveTargetRoutes
 
         // Every confirmed shared-edge connection advances one tile. Searching from all
         // explored encounters together finds the closest one by route distance for each goal.
+        int unresolvedGoals = goals.Count;
         while (pending.TryDequeue(out long address))
         {
             if (!neighbors.TryGetValue(address, out var adjacent))
                 continue;
 
-            foreach (long next in adjacent)
+            int remainingAtParent = counts == null ? 0 : previous[address].RemainingNodes;
+            for (int i = 0; i < adjacent.Count; i++)
             {
-                if (previous.TryAdd(next, address))
-                    pending.Enqueue(next);
+                long next = adjacent[i];
+                if (previous.ContainsKey(next))
+                    continue;
+
+                var cell = cells[next];
+                int remainingNodes = remainingAtParent;
+                if (counts != null && cell is { HasEncounter: true, Visited: false, Explored: false })
+                    remainingNodes++;
+                previous.Add(next, (address, remainingNodes));
+                if ((cell.Target & targets) != 0 && --unresolvedGoals == 0)
+                    break;
+                pending.Enqueue(next);
             }
+            if (unresolvedGoals == 0)
+                break;
         }
 
-        foreach (long goal in goals)
+        for (int i = 0; i < goals.Count; i++)
         {
+            long goal = goals[i];
+            if (!previous.TryGetValue(goal, out var step))
+                continue;
+
+            counts?.Add(goal, step.RemainingNodes.ToString(System.Globalization.CultureInfo.InvariantCulture));
             long address = goal;
-            while (previous.TryGetValue(address, out long before) && before != address
-                && routes.Add(LinkKey(before, address)))
-                address = before;
+            while (step.Parent != address && routes.Add(LinkKey(step.Parent, address)))
+            {
+                address = step.Parent;
+                step = previous[address];
+            }
         }
 
         return routes;

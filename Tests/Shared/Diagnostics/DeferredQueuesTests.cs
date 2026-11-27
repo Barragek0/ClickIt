@@ -241,6 +241,22 @@
         }
 
         [TestMethod]
+        [TestCategory("Regression")]
+        public void DeferredDrawQueue_OutlinedText_UsesOneBufferedTextItemWithoutABackdrop()
+        {
+            var queue = new DeferredDrawQueue();
+
+            queue.EnqueueOutlinedText("12", new Vector2(50, 25), Color.White, 16, FontAlign.Center, outline: 2);
+            var items = (List<DeferredDrawItem>)RuntimeMemberAccessor.GetRequiredMemberValue(queue, "_items")!;
+
+            DeferredDrawItem item = items.Should().ContainSingle().Which;
+            item.Kind.Should().Be(DeferredDrawKind.Text);
+            item.Text.Should().Be("12");
+            item.Thickness.Should().Be(2);
+            item.Shadow.Should().BeFalse();
+        }
+
+        [TestMethod]
         public void DeferredDrawQueue_GetPendingTextSnapshot_StartIndexSlicesBufferedEntries()
         {
             var queue = new DeferredDrawQueue();

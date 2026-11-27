@@ -23,6 +23,8 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
     private ChartProjection _lastProjection;
     private RectangleF _lastClip;
     private bool _lastFullMap;
+    private bool _lastShowRouteNodes;
+    private bool _lastShowWalls;
     private long _lastCapture;
     private long _lastPan;
     private long _lastMarkerScan;
@@ -36,21 +38,23 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
 
     internal readonly record struct ChartCell(RectangleF Rect, long[] Links, bool Hidden = true, bool BehindWall = false,
         NumVector2? Anchor = null, bool HasEncounter = false, bool Explored = false, DelveRouteTarget Target = DelveRouteTarget.None,
-        WallApproach WallSide = WallApproach.None)
+        WallApproach WallSide = WallApproach.None, bool Visited = false)
     {
         internal bool NeedsRouteOverlay => Hidden || BehindWall;
         internal NumVector2? RouteAnchor => HasEncounter ? Anchor : null;
     }
     internal readonly record struct CellLink(long Start, long End, bool Horizontal);
-    internal readonly record struct RouteLines(ScreenLine[] Revealed, ScreenLine[] Target, ScreenLine[] FracturedWalls);
+    internal readonly record struct RouteLines(ScreenLine[] Revealed, ScreenLine[] Target, ScreenLine[] FracturedWalls,
+        IReadOnlyDictionary<long, string>? TargetCounts = null, IReadOnlySet<long>? RouteEncounterAddresses = null);
     internal readonly record struct ChartMarker(RectangleF Rect, NumVector2 Anchor, DelveNodeIcon Icon, string? HoverText = null,
-        DelveRouteTarget Target = DelveRouteTarget.None);
+        DelveRouteTarget Target = DelveRouteTarget.None, long Address = 0, bool DrawIcon = true);
     internal readonly record struct Node(NumVector2 Center, float Radius, DelveNodeIcon Icon,
-        string? HoverText = null, Task<DelveNodeIcon.TextureResult>? TextureFile = null);
+        string? HoverText = null, Task<DelveNodeIcon.TextureResult>? TextureFile = null,
+        string? RemainingNodeCount = null, bool DrawIcon = true);
     private sealed record ChartSnapshot(ScreenLine[] Connections, ScreenLine[] TargetRoutes, ScreenLine[] FracturedWalls,
         Node[] Nodes, RectangleF Clip);
     private sealed record ChartCapture(long Address, RectangleF Coverage,
-        ChartMarker[] Markers, RouteLines Lines, DelveRouteTarget Targets, long CapturedAt);
+        ChartMarker[] Markers, RouteLines Lines, DelveRouteTarget Targets, long CapturedAt, bool ShowTargetCounts);
 
     internal readonly record struct ChartProjection(RectangleF OriginalGrid, RectangleF CurrentGrid, float Zoom = 1f)
     {
@@ -109,7 +113,10 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
 
         bool revealFullMap = ctx.Settings.RevealDelveMap.Value;
         DelveRouteTarget targets = DelveTargetRoutes.GetSelectedTargets(ctx.Settings);
-        if (!revealFullMap && targets == DelveRouteTarget.None && !ctx.Settings.RevealDelveFracturedWalls.Value)
+        bool showTargetCounts = targets != DelveRouteTarget.None && ctx.Settings.ShowDelveTargetNodeCounts.Value;
+        bool showRouteNodes = targets != DelveRouteTarget.None && ctx.Settings.ShowDelveTargetRouteNodes.Value;
+        bool showWalls = ctx.Settings.RevealDelveFracturedWalls.Value;
+        if (!revealFullMap && targets == DelveRouteTarget.None && !showWalls)
         {
             ClearChart();
             return;
@@ -133,15 +140,17 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
             _lastPan = now;
 
         ChartCapture? capture = _chartCapture;
-        bool sameChart = capture != null && capture.Address == grid.Address && capture.Targets == targets;
-        if (sameChart && (moved || _lastFullMap != revealFullMap))
-            PublishView(capture!, projection, clip, now, revealFullMap);
-
+        bool sameChart = capture != null && capture.Address == grid.Address && capture.Targets == targets
+            && capture.ShowTargetCounts == showTargetCounts;
         if (!sameChart || (targets == DelveRouteTarget.None && !projection.Covers(capture!.Coverage, clip))
             || IsCaptureDue(now - capture!.CapturedAt, now - _lastPan))
         {
+            // Keep the previous graph moving while the more expensive full capture runs.
+            if (sameChart && moved)
+                PublishView(capture!, projection, clip, now, revealFullMap, showRouteNodes, showWalls);
+
             RectangleF coverage = GetLocalCoverage(projection, clip);
-            capture = CaptureChart(grid, coverage, now, targets);
+            capture = CaptureChart(grid, coverage, now, targets, showTargetCounts);
             if (!TryReadView(viewport, grid, ctx.WindowArea, out projection, out clip))
             {
                 ClearChart();
@@ -155,13 +164,13 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
             _markerCoverage = coverage;
             _markerChunkHash = chunkHash;
             _lastMarkerScan = now;
-            PublishView(capture, projection, clip, now, revealFullMap);
+            PublishView(capture, projection, clip, now, revealFullMap, showRouteNodes, showWalls);
         }
         else if (ShouldRefreshMarkers(chunkHash != _markerChunkHash, projection.Covers(_markerCoverage, clip),
             now - _lastMarkerScan, now - _lastPan))
         {
             RectangleF coverage = GetLocalCoverage(projection, clip);
-            ChartMarker[] markers = CaptureChart(grid, coverage, now, targets, markersOnly: true).Markers;
+            ChartMarker[] markers = CaptureChart(grid, coverage, now, targets, showTargetCounts, markersOnly: true).Markers;
             if (!TryReadView(viewport, grid, ctx.WindowArea, out projection, out clip))
             {
                 ClearChart();
@@ -173,9 +182,13 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
             _markerCoverage = coverage;
             _markerChunkHash = chunkHash;
             _lastMarkerScan = now;
-            PublishView(_chartCapture, projection, clip, now, revealFullMap);
+            PublishView(_chartCapture, projection, clip, now, revealFullMap, showRouteNodes, showWalls);
         }
-        else if (!moved)
+        else if (moved || _lastFullMap != revealFullMap || _lastShowRouteNodes != showRouteNodes || _lastShowWalls != showWalls)
+        {
+            PublishView(capture!, projection, clip, now, revealFullMap, showRouteNodes, showWalls);
+        }
+        else
         {
             Volatile.Write(ref _lastCapture, now);
         }
@@ -185,7 +198,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         => ageMs >= MaximumCellRefreshMs || (ageMs >= CellRefreshMs && stillMs >= PanSettleMs);
 
     internal static bool ShouldRefreshMarkers(bool chunksChanged, bool covered, long ageMs, long stillMs)
-        => chunksChanged || !covered || (stillMs < PanSettleMs && ageMs >= MovingMarkerRefreshMs);
+        => !covered || (ageMs >= MovingMarkerRefreshMs && (chunksChanged || stillMs < PanSettleMs));
 
     private static RectangleF GetLocalCoverage(ChartProjection projection, RectangleF clip)
         => new ChartProjection(projection.CurrentGrid, projection.OriginalGrid)
@@ -207,16 +220,20 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         return true;
     }
 
-    private void PublishView(ChartCapture capture, ChartProjection projection, RectangleF clip, long now, bool revealFullMap)
+    private void PublishView(ChartCapture capture, ChartProjection projection, RectangleF clip, long now,
+        bool revealFullMap, bool showRouteNodes, bool showWalls)
     {
         _lastProjection = projection;
         _lastClip = clip;
         _lastFullMap = revealFullMap;
-        Node[] nodes = BuildMarkers(capture.Markers, clip, projection, revealFullMap, capture.Targets);
+        _lastShowRouteNodes = showRouteNodes;
+        _lastShowWalls = showWalls;
+        Node[] nodes = BuildMarkers(capture.Markers, clip, projection, revealFullMap, capture.Targets, capture.Lines.TargetCounts,
+            showRouteNodes ? capture.Lines.RouteEncounterAddresses : null);
         for (int i = 0; i < nodes.Length; i++)
         {
             Node node = nodes[i];
-            if (node.Icon.AssetName == null)
+            if (!node.DrawIcon || node.Icon.AssetName == null)
                 continue;
 
             if (!_textureFiles.TryGetValue(node.Icon, out var textureFile))
@@ -231,7 +248,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         Volatile.Write(ref _snapshot, new ChartSnapshot(
             revealFullMap ? ProjectConnections(capture.Lines.Revealed, clip, projection) : [],
             ProjectConnections(capture.Lines.Target, clip, projection),
-            ProjectConnections(capture.Lines.FracturedWalls, clip, projection), nodes, clip));
+            showWalls ? ProjectConnections(capture.Lines.FracturedWalls, clip, projection) : [], nodes, clip));
         Volatile.Write(ref _lastCapture, now);
     }
 
@@ -254,11 +271,11 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
     }
 
     private static ChartCapture CaptureChart(DelveElement grid, RectangleF coverage, long now,
-        DelveRouteTarget targets, bool markersOnly = false)
+        DelveRouteTarget targets, bool showTargetCounts, bool markersOnly = false)
     {
         if (!DynamicAccess.TryGetDynamicValue(grid, static element => element.Cells, out object? rawChunks)
             || rawChunks is not IList chunks)
-            return new ChartCapture(grid.Address, coverage, [], new RouteLines([], [], []), targets, now);
+            return new ChartCapture(grid.Address, coverage, [], new RouteLines([], [], []), targets, now, showTargetCounts);
 
         // Routes can begin at explored nodes beyond the viewport.
         bool planRoutes = !markersOnly && targets != DelveRouteTarget.None;
@@ -279,45 +296,46 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
             {
                 if (chunk[j] is not DelveCell { IsValid: true } cell || cell.Address == 0
                     || !TryGetLocalRect(chunkRect.X + cell.X, chunkRect.Y + cell.Y, cell.Width, cell.Height, out RectangleF rect)
-                    || (!planRoutes && !Expand(coverage, rect.Width, rect.Height).Intersects(rect))
+                    || (!planRoutes && !(markersOnly ? coverage.Intersects(rect) : Expand(coverage, rect.Width, rect.Height).Intersects(rect)))
                     || cells.ContainsKey(cell.Address))
                     continue;
 
-                bool? gameDraws = ReadVisibility(cell, static node => node.GameDraws);
-                bool? visited = ReadVisibility(cell, static node => node.IsVisited);
-                if (!gameDraws.HasValue || !visited.HasValue)
+                if (!DynamicAccess.TryGetDynamicValue(cell, static node => ((bool)node.GameDraws, (bool)node.IsVisited), out object? visibility)
+                    || visibility is not ValueTuple<bool, bool> status)
                     continue;
 
+                (bool gameDraws, bool visited) = status;
                 bool hidden = IsHidden(gameDraws, visited);
-                if (markersOnly && !hidden)
+                bool countVisibleTarget = showTargetCounts && !hidden && !visited;
+                if (markersOnly && !hidden && !countVisibleTarget)
                     continue;
 
                 // The game can show a destination icon before it shows the route behind the wall.
-                bool behindWall = !markersOnly && !visited.Value && ReadVisibility(cell, static node => node.IsBehindWall) == true;
-                bool needsMarker = hidden && (planRoutes || coverage.Intersects(rect));
-                if (markersOnly && !needsMarker)
-                    continue;
+                bool behindWall = !markersOnly && !visited && ReadVisibility(cell, static node => node.IsBehindWall) == true;
+                bool inMarkerCoverage = planRoutes || coverage.Intersects(rect);
 
-                NumVector2? anchor = planRoutes || hidden || behindWall ? ReadAnchor(cell) : null;
+                NumVector2? anchor = planRoutes || hidden || behindWall || countVisibleTarget ? ReadAnchor(cell) : null;
+                object? feature = planRoutes || anchor.HasValue || behindWall ? ReadFeature(cell) : null;
                 string name = string.Empty;
-                object? feature = planRoutes || anchor.HasValue ? ReadNamedFeature(cell, out name) : null;
+                bool hasEncounter = feature != null && DynamicAccess.TryReadString(feature, static value => value.Name, out name);
                 string image = string.Empty;
-                if (feature != null)
+                if (hasEncounter)
                     DynamicAccess.TryReadString(feature, static value => value.Image, out image);
-                DelveNodeIcon? icon = feature == null ? null : DelveNodeIcon.Resolve(image);
-                DelveRouteTarget target = targets != DelveRouteTarget.None && !visited.Value
+                DelveNodeIcon? icon = hasEncounter ? DelveNodeIcon.Resolve(image) : null;
+                DelveRouteTarget target = targets != DelveRouteTarget.None && !visited
                     ? DelveTargetRoutes.Classify(name, icon?.AssetName)
                     : DelveRouteTarget.None;
-                if (needsMarker && anchor is { } markerAnchor && icon != null)
-                    markers.Add(new ChartMarker(rect, markerAnchor, icon, icon.GetTooltip(name), target));
+                if (inMarkerCoverage && (hidden || (countVisibleTarget && (target & targets) != 0))
+                    && anchor is { } markerAnchor && icon != null)
+                    markers.Add(new ChartMarker(rect, markerAnchor, icon, hidden ? icon.GetTooltip(name) : null, target, cell.Address, hidden));
                 if (markersOnly)
                     continue;
 
                 hasHiddenRoute |= hidden || behindWall;
                 long[] links = planRoutes || hidden || behindWall ? ReadLinks(cell) : [];
-                cells.Add(cell.Address, new ChartCell(rect, links, hidden, behindWall, anchor, feature != null,
-                    visited.Value && !string.IsNullOrWhiteSpace(image), target,
-                    behindWall ? ReadWallApproach(cell) : WallApproach.None));
+                cells.Add(cell.Address, new ChartCell(rect, links, hidden, behindWall, anchor, hasEncounter,
+                    visited && !string.IsNullOrWhiteSpace(image), target,
+                    behindWall ? ReadWallApproach(feature) : WallApproach.None, visited));
                 if (!planRoutes && !hidden && !behindWall)
                     revealedCells.Add(cell);
             }
@@ -355,13 +373,23 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
                 {
                     Links = links,
                     Anchor = anchor,
-                    HasEncounter = anchor.HasValue && ReadNamedFeature(cell, out _) != null
+                    HasEncounter = anchor.HasValue && DynamicAccess.TryReadString(ReadFeature(cell), static value => value.Name, out _)
                 };
             }
         }
 
-        RouteLines lines = markersOnly ? new RouteLines([], [], []) : BuildRouteLines(cells, targets);
-        return new ChartCapture(grid.Address, coverage, [.. markers], lines, targets, now);
+        RouteLines lines = markersOnly ? new RouteLines([], [], []) : BuildRouteLines(cells, targets, showTargetCounts);
+        if (!markersOnly)
+        {
+            lines = lines with
+            {
+                Revealed = MergeStraightRuns(lines.Revealed),
+                Target = MergeStraightRuns(lines.Target),
+                FracturedWalls = MergeStraightRuns(lines.FracturedWalls)
+            };
+        }
+
+        return new ChartCapture(grid.Address, coverage, [.. markers], lines, targets, now, showTargetCounts);
     }
 
     private static bool TryGetLocalRect(float x, float y, float width, float height, out RectangleF rect)
@@ -389,8 +417,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         for (int i = 0; i < links.Count && i < ConnectionsPerCell; i++)
         {
             object? link = links[i];
-            if (DynamicAccess.TryReadBool(link, static value => value.IsLinked, out bool linked) && linked
-                && DynamicAccess.TryGetDynamicValue(link, static value => value.DelveCell, out object? target)
+            if (DynamicAccess.TryGetDynamicValue(link, static value => (bool)value.IsLinked ? value.DelveCell : null, out object? target)
                 && target is DelveCell { Address: > 0 } neighbor)
                 targets[count++] = neighbor.Address;
         }
@@ -404,7 +431,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         return [.. lines.Revealed, .. lines.FracturedWalls];
     }
 
-    internal static RouteLines BuildRouteLines(IReadOnlyDictionary<long, ChartCell> cells, DelveRouteTarget targets)
+    internal static RouteLines BuildRouteLines(IReadOnlyDictionary<long, ChartCell> cells, DelveRouteTarget targets, bool showTargetCounts = false)
     {
         const float tolerance = 0.75f;
         List<CellLink> links = [];
@@ -432,9 +459,10 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
 
         // The red wall overlay needs a revealed approach. A green route can guide the
         // player through darkness to reach the approach, so plan it on the full graph.
+        Dictionary<long, string>? counts = showTargetCounts && targets != DelveRouteTarget.None ? [] : null;
         HashSet<(long, long)> routes = targets == DelveRouteTarget.None
             ? []
-            : DelveTargetRoutes.FindShortestRoutes(cells, links, targets);
+            : DelveTargetRoutes.FindShortestRoutes(cells, links, targets, counts);
 
         HashSet<(long, long)> accessibleWallLinks = FindAccessibleWallLinks(cells, links);
         links.RemoveAll(link =>
@@ -449,23 +477,40 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         });
 
         if (links.Count == 0)
-            return new RouteLines([], [], []);
+            return new RouteLines([], [], [], counts);
 
         // IconPos can vary even on unnamed cells along one straight run.
-        long[] anchors = cells.Where(static entry => entry.Value.RouteAnchor.HasValue)
-            .OrderBy(static entry => entry.Value.Hidden).ThenBy(static entry => entry.Value.Rect.Y)
-            .ThenBy(static entry => entry.Value.Rect.X).ThenBy(static entry => entry.Key)
-            .Select(static entry => entry.Key).ToArray();
+        List<(long Address, bool Hidden, float Y, float X)> anchors = [];
+        foreach ((long address, ChartCell cell) in cells)
+            if (cell.RouteAnchor.HasValue)
+                anchors.Add((address, cell.Hidden, cell.Rect.Y, cell.Rect.X));
+        anchors.Sort(static (a, b) =>
+        {
+            int order = a.Hidden.CompareTo(b.Hidden);
+            if (order == 0) order = a.Y.CompareTo(b.Y);
+            if (order == 0) order = a.X.CompareTo(b.X);
+            return order == 0 ? a.Address.CompareTo(b.Address) : order;
+        });
         var laneX = ResolveLanePositions(cells, links, anchors, horizontal: false);
         var laneY = ResolveLanePositions(cells, links, anchors, horizontal: true);
         List<ScreenLine> connections = new(links.Count);
         List<ScreenLine> targetLines = [];
         List<ScreenLine> wallLines = [];
+        HashSet<long>? routeEncounterAddresses = null;
         foreach (CellLink link in links)
         {
             ChartCell startCell = cells[link.Start];
             ChartCell endCell = cells[link.End];
-            List<ScreenLine> lines = routes.Contains(DelveTargetRoutes.LinkKey(link.Start, link.End))
+            bool onTargetRoute = routes.Contains(DelveTargetRoutes.LinkKey(link.Start, link.End));
+            if (onTargetRoute)
+            {
+                if (startCell.HasEncounter)
+                    (routeEncounterAddresses ??= []).Add(link.Start);
+                if (endCell.HasEncounter)
+                    (routeEncounterAddresses ??= []).Add(link.End);
+            }
+
+            List<ScreenLine> lines = onTargetRoute
                 ? targetLines
                 : startCell.BehindWall || endCell.BehindWall ? wallLines : connections;
             var start = new NumVector2(laneX.GetValueOrDefault(link.Start, startCell.Rect.Center.X),
@@ -496,7 +541,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
             }
         }
 
-        return new RouteLines([.. connections], [.. targetLines], [.. wallLines]);
+        return new RouteLines([.. connections], [.. targetLines], [.. wallLines], counts, routeEncounterAddresses);
     }
 
     private static HashSet<(long, long)> FindAccessibleWallLinks(IReadOnlyDictionary<long, ChartCell> cells,
@@ -572,7 +617,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
     }
 
     private static Dictionary<long, float> ResolveLanePositions(IReadOnlyDictionary<long, ChartCell> cells,
-        List<CellLink> links, long[] anchors, bool horizontal)
+        List<CellLink> links, List<(long Address, bool Hidden, float Y, float X)> anchors, bool horizontal)
     {
         Dictionary<long, long> previous = [];
         Dictionary<long, long> next = [];
@@ -585,10 +630,11 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         }
 
         Dictionary<long, float> positions = [];
-        Queue<long> pending = new(anchors.Length);
+        Queue<long> pending = new(anchors.Count);
         // Visit the nearest anchored cell first on each straight run. Give revealed anchors priority on ties.
-        foreach (long address in anchors)
+        for (int i = 0; i < anchors.Count; i++)
         {
+            long address = anchors[i].Address;
             ChartCell cell = cells[address];
             NumVector2 anchor = cell.RouteAnchor.GetValueOrDefault();
             positions.Add(address, horizontal
@@ -628,22 +674,74 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         }
     }
 
+    // Combine collinear segments once per capture so panning and drawing process one line per straight run.
+    internal static ScreenLine[] MergeStraightRuns(ScreenLine[] lines)
+    {
+        if (lines.Length < 2)
+            return lines;
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            ScreenLine line = lines[i];
+            lines[i] = new ScreenLine(NumVector2.Min(line.Start, line.End), NumVector2.Max(line.Start, line.End));
+        }
+
+        Array.Sort(lines, static (a, b) =>
+        {
+            bool horizontal = a.Start.Y == a.End.Y;
+            int order = horizontal.CompareTo(b.Start.Y == b.End.Y);
+            if (order != 0) return order;
+
+            return horizontal
+                ? CompareCoordinates(a.Start.Y, b.Start.Y, a.Start.X, b.Start.X)
+                : CompareCoordinates(a.Start.X, b.Start.X, a.Start.Y, b.Start.Y);
+        });
+
+        int count = 1;
+        for (int i = 1; i < lines.Length; i++)
+        {
+            ScreenLine prior = lines[count - 1];
+            ScreenLine next = lines[i];
+            bool joins = prior.Start.Y == prior.End.Y
+                ? next.Start.Y == prior.Start.Y && next.End.Y == prior.Start.Y && next.Start.X <= prior.End.X
+                : next.Start.X == prior.Start.X && next.End.X == prior.Start.X && next.Start.Y <= prior.End.Y;
+            if (joins)
+                lines[count - 1] = new ScreenLine(prior.Start, NumVector2.Max(prior.End, next.End));
+            else
+                lines[count++] = next;
+        }
+
+        return count == lines.Length ? lines : lines[..count];
+
+        static int CompareCoordinates(float aFixed, float bFixed, float aAlong, float bAlong)
+        {
+            int order = aFixed.CompareTo(bFixed);
+            return order != 0 ? order : aAlong.CompareTo(bAlong);
+        }
+    }
+
     internal static ScreenLine[] ProjectConnections(IReadOnlyList<ScreenLine> connections, RectangleF clip, ChartProjection projection)
     {
-        List<ScreenLine> visible = [];
+        if (connections.Count == 0)
+            return [];
+
+        // Sized to the worst case so a fully visible frame needs no intermediate list or final copy; this runs on every pan publish.
+        ScreenLine[] visible = new ScreenLine[connections.Count];
+        int count = 0;
         var clipStart = new NumVector2(clip.Left, clip.Top);
         var clipEnd = new NumVector2(clip.Right, clip.Bottom);
-        foreach (ScreenLine connection in connections)
+        for (int i = 0; i < connections.Count; i++)
         {
+            ScreenLine connection = connections[i];
             NumVector2 start = projection.Project(connection.Start);
             NumVector2 end = projection.Project(connection.End);
             NumVector2 min = NumVector2.Max(NumVector2.Min(start, end), clipStart);
             NumVector2 max = NumVector2.Min(NumVector2.Max(start, end), clipEnd);
             if (min.X <= max.X && min.Y <= max.Y && min != max)
-                visible.Add(new ScreenLine(min, max));
+                visible[count++] = new ScreenLine(min, max);
         }
 
-        return [.. visible];
+        return count == visible.Length ? visible : visible[..count];
     }
 
     private static NumVector2? ReadAnchor(DelveCell cell)
@@ -662,21 +760,12 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         return new NumVector2(position.X / width, position.Y / height);
     }
 
-    private static object? ReadNamedFeature(DelveCell cell, out string name)
-    {
-        name = string.Empty;
-        if (!DynamicAccess.TryGetDynamicValue(cell, static node => node.Feature, out object? feature)
-            || !DynamicAccess.TryReadString(feature, static value => value.Name, out name)
-            || string.IsNullOrWhiteSpace(name))
-            return null;
+    private static object? ReadFeature(DelveCell cell)
+        => DynamicAccess.TryGetDynamicValue(cell, static node => node.Feature, out object? feature) ? feature : null;
 
-        return feature;
-    }
-
-    private static WallApproach ReadWallApproach(DelveCell cell)
+    private static WallApproach ReadWallApproach(object? feature)
     {
-        if (!DynamicAccess.TryGetDynamicValue(cell, static node => node.Feature, out object? feature)
-            || !DynamicAccess.TryReadString(feature, static value => value.Id, out string id))
+        if (feature == null || !DynamicAccess.TryReadString(feature, static value => value.Id, out string id))
             return WallApproach.None;
 
         return id switch
@@ -695,14 +784,24 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
     internal static bool IsHidden(bool? gameDraws, bool? isVisited) => gameDraws == false && isVisited == false;
 
     internal static Node[] BuildMarkers(ChartMarker[] markers, RectangleF clip, ChartProjection projection,
-        bool revealFullMap = true, DelveRouteTarget targets = DelveRouteTarget.None)
+        bool revealFullMap = true, DelveRouteTarget targets = DelveRouteTarget.None,
+        IReadOnlyDictionary<long, string>? targetCounts = null, IReadOnlySet<long>? routeEncounterAddresses = null)
     {
-        List<Node> nodes = [];
+        if (markers.Length == 0)
+            return [];
+
+        // Runs on every pan publish; size the result once from the marker count instead of growing a list and copying.
+        Node[] nodes = new Node[markers.Length];
+        int count = 0;
         // At low chart zoom the stock encounter artwork shrinks faster than the tiles.
         float zoomCorrection = MathF.Sqrt(MathF.Sqrt(projection.Zoom));
-        foreach (ChartMarker marker in markers)
+        for (int i = 0; i < markers.Length; i++)
         {
-            if (!revealFullMap && (marker.Target & targets) == 0)
+            ChartMarker marker = markers[i];
+            bool selected = (marker.Target & targets) != 0;
+            string? remaining = selected ? targetCounts?.GetValueOrDefault(marker.Address) : null;
+            if ((!revealFullMap && !selected && routeEncounterAddresses?.Contains(marker.Address) != true)
+                || (!marker.DrawIcon && remaining == null))
                 continue;
 
             RectangleF rect = projection.Project(marker.Rect);
@@ -710,10 +809,11 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
                 rect.Y + rect.Height * (marker.Anchor.Y - 0.06f) - MarkerLiftPixels);
             float radius = MathF.Min(SystemMath.Min(rect.Width, rect.Height) * 0.42f, 32f) * zoomCorrection;
             if (clip.Contains(anchor.X - radius, anchor.Y - radius) && clip.Contains(anchor.X + radius, anchor.Y + radius))
-                nodes.Add(new Node(anchor, radius, marker.Icon, marker.HoverText));
+                nodes[count++] = new Node(anchor, radius, marker.Icon, marker.HoverText, RemainingNodeCount: remaining,
+                    DrawIcon: marker.DrawIcon);
         }
 
-        return [.. nodes];
+        return count == nodes.Length ? nodes : nodes[..count];
     }
 
     public void Draw(OverlayRenderContext ctx)
@@ -740,6 +840,9 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         string? textureError = null;
         foreach (Node node in snapshot.Nodes)
         {
+            if (!node.DrawIcon)
+                continue;
+
             DelveNodeIcon.TextureResult texture = node.TextureFile is { IsCompletedSuccessfully: true } file
                 ? file.Result
                 : default;
@@ -754,6 +857,21 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
             else
             {
                 ctx.DrawQueue.EnqueueFilledScreenDisc(node.Center, SystemMath.Min(node.Radius, 4f), UnknownNodeColor, 12);
+            }
+        }
+
+        if (ctx.Settings.ShowDelveTargetRoutes.Value && ctx.Settings.ShowDelveTargetNodeCounts.Value
+            && ctx.Graphics is { } countGraphics)
+        {
+            float? countHeight = null;
+            foreach (Node node in snapshot.Nodes)
+            {
+                if (node.RemainingNodeCount is not { } count)
+                    continue;
+
+                countHeight ??= countGraphics.MeasureText(count).Y;
+                Vector2 position = PositionRemainingNodeCount(node, countHeight.Value);
+                ctx.DrawQueue.EnqueueOutlinedText(count, position, Color.White, 16, FontAlign.Center, outline: 2);
             }
         }
 
@@ -773,6 +891,9 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
             }
         }
     }
+
+    internal static Vector2 PositionRemainingNodeCount(Node node, float textHeight)
+        => new(node.Center.X, node.Center.Y + node.Radius - textHeight - 2f);
 
     internal static (Vector2 Position, FontAlign Align) PositionHoverTooltip(NumVector2 cursor, RectangleF clip, float textHeight)
     {

@@ -312,6 +312,10 @@ namespace ClickIt
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode RevealDelveFracturedWalls { get; set; } = new ToggleNode(false);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ShowDelveTargetNodeCounts { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ShowDelveTargetRouteNodes { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode TargetDelveAul { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode TargetDelveLich { get; set; } = new ToggleNode(true);

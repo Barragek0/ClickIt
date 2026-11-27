@@ -67,6 +67,99 @@ public sealed class DelveRevealOverlayTests
 
     [TestMethod]
     [TestCategory("Regression")]
+    public void BuildRouteLines_CountsUnfinishedEncountersOnEachGreenRoute()
+    {
+        Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
+        {
+            [1] = new(new RectangleF(0, 0, 20, 20), [2], HasEncounter: true, Explored: true),
+            [2] = new(new RectangleF(20, 0, 20, 20), [3], HasEncounter: true),
+            [3] = new(new RectangleF(40, 0, 20, 20), [4, 9], BehindWall: true),
+            [4] = new(new RectangleF(60, 0, 20, 20), [5], HasEncounter: true, Visited: true),
+            [5] = new(new RectangleF(80, 0, 20, 20), [6], HasEncounter: true),
+            [6] = new(new RectangleF(100, 0, 20, 20), [7], HasEncounter: true),
+            [7] = new(new RectangleF(120, 0, 20, 20), [8], HasEncounter: true),
+            [8] = new(new RectangleF(140, 0, 20, 20), [12], HasEncounter: true),
+            [9] = new(new RectangleF(40, 20, 20, 20), [], HasEncounter: true, Target: DelveRouteTarget.Aul),
+            [10] = new(new RectangleF(40, 40, 20, 20), [], HasEncounter: true, Target: DelveRouteTarget.Aul),
+            [11] = new(new RectangleF(160, 20, 20, 20), [12], HasEncounter: true, Target: DelveRouteTarget.HumidFissure),
+            [12] = new(new RectangleF(160, 0, 20, 20), [], HasEncounter: true, Target: DelveRouteTarget.MoltenCavity)
+        };
+        const DelveRouteTarget selected = DelveRouteTarget.Aul | DelveRouteTarget.MoltenCavity;
+
+        var withCounts = DelveRevealOverlay.BuildRouteLines(cells, selected, showTargetCounts: true);
+        var withoutCounts = DelveRevealOverlay.BuildRouteLines(cells, selected);
+
+        withCounts.Target.Should().Equal(withoutCounts.Target);
+        withCounts.TargetCounts.Should().BeEquivalentTo(new Dictionary<long, string> { [9] = "2", [12] = "6" });
+        withoutCounts.TargetCounts.Should().BeNull();
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void BuildMarkers_ShowsOnlyOnScreenEncounterIconsAlongSelectedRoutesWhenEnabled()
+    {
+        Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
+        {
+            [1] = new(new RectangleF(0, 0, 20, 20), [2], Hidden: false, HasEncounter: true, Explored: true),
+            [2] = new(new RectangleF(20, 0, 20, 20), [3], HasEncounter: true),
+            [3] = new(new RectangleF(40, 0, 20, 20), [4, 5], BehindWall: true),
+            [4] = new(new RectangleF(60, 0, 20, 20), [], HasEncounter: true, Target: DelveRouteTarget.MoltenCavity),
+            [5] = new(new RectangleF(40, 20, 20, 20), [], HasEncounter: true, Target: DelveRouteTarget.HumidFissure)
+        };
+        var chart = new RectangleF(0, -5, 95, 65);
+        var projection = new DelveRevealOverlay.ChartProjection(chart, chart);
+        const DelveRouteTarget selected = DelveRouteTarget.MoltenCavity;
+        var lines = DelveRevealOverlay.BuildRouteLines(cells, selected, showTargetCounts: true);
+        var anchor = new NumVector2(.5f, .5f);
+        DelveRevealOverlay.ChartMarker[] markers =
+        [
+            new(cells[1].Rect, anchor, DelveNodeIcon.Resolve("AzuriteVein"), Address: 1, DrawIcon: false),
+            new(cells[2].Rect, anchor, DelveNodeIcon.Resolve("AzuriteVeinII"), "Intermediate", Address: 2),
+            new(cells[4].Rect, anchor, DelveNodeIcon.Resolve("Fossil"), "Target", selected, Address: 4),
+            new(cells[5].Rect, anchor, DelveNodeIcon.Resolve("Fossil"), "Side branch", DelveRouteTarget.HumidFissure, Address: 5)
+        ];
+
+        lines.RouteEncounterAddresses.Should().BeEquivalentTo(new long[] { 1, 2, 4 });
+        var enabled = DelveRevealOverlay.BuildMarkers(markers, chart, projection, false, selected, lines.TargetCounts,
+            lines.RouteEncounterAddresses);
+        enabled.Select(node => (node.HoverText, node.RemainingNodeCount)).Should().Equal(("Intermediate", null), ("Target", "2"));
+
+        var disabled = DelveRevealOverlay.BuildMarkers(markers, chart, projection, false, selected, lines.TargetCounts);
+        disabled.Should().ContainSingle().Which.HoverText.Should().Be("Target");
+
+        var panned = new RectangleF(36, -5, 60, 65);
+        DelveRevealOverlay.BuildMarkers(markers, panned, projection, false, selected, lines.TargetCounts, lines.RouteEncounterAddresses)
+            .Should().ContainSingle().Which.HoverText.Should().Be("Target");
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void BuildMarkers_AttachesCountsToVisibleTargetsWithoutRedrawingNativeIcons()
+    {
+        var chart = new RectangleF(0, 0, 120, 100);
+        var projection = new DelveRevealOverlay.ChartProjection(chart, chart);
+        DelveNodeIcon icon = DelveNodeIcon.Resolve("Fossil");
+        DelveRevealOverlay.ChartMarker[] markers =
+        [
+            new(new RectangleF(10, 10, 20, 20), new NumVector2(.5f, .5f), icon,
+                "Molten Cavity", DelveRouteTarget.MoltenCavity, Address: 1),
+            new(new RectangleF(40, 40, 20, 20), new NumVector2(.5f, .5f), icon,
+                Target: DelveRouteTarget.MoltenCavity, Address: 2, DrawIcon: false),
+            new(new RectangleF(70, 40, 20, 20), new NumVector2(.5f, .5f), icon,
+                Target: DelveRouteTarget.MoltenCavity, Address: 3, DrawIcon: false),
+            new(new RectangleF(150, 40, 20, 20), new NumVector2(.5f, .5f), icon,
+                Target: DelveRouteTarget.MoltenCavity, Address: 4, DrawIcon: false)
+        ];
+        Dictionary<long, string> counts = new() { [1] = "3", [2] = "6", [4] = "7" };
+
+        var nodes = DelveRevealOverlay.BuildMarkers(markers, chart, projection, false, DelveRouteTarget.MoltenCavity, counts);
+        nodes.Select(node => (node.DrawIcon, node.RemainingNodeCount)).Should().Equal((true, "3"), (false, "6"));
+        DelveRevealOverlay.BuildMarkers(markers, chart, projection, false, DelveRouteTarget.MoltenCavity)
+            .Should().ContainSingle().Which.RemainingNodeCount.Should().BeNull();
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
     public void BuildRouteLines_SeparatesFracturedWallLinksFromOrdinaryHiddenLinks()
     {
         Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
@@ -197,6 +290,30 @@ public sealed class DelveRevealOverlayTests
 
     [TestMethod]
     [TestCategory("Regression")]
+    public void BuildMarkers_KeepsHiddenNodesHoverableAndIconDrawnSoTheOutlinedCountAppliesInDarkness()
+    {
+        // The count outline must be drawn for nodes in darkness too, so a hidden target keeps DrawIcon = true
+        // (it still gets its own count text) instead of being reduced to a bare count-only node.
+        var chart = new RectangleF(0, 0, 120, 100);
+        var projection = new DelveRevealOverlay.ChartProjection(chart, chart);
+        DelveRevealOverlay.ChartMarker[] markers =
+        [
+            new(new RectangleF(10, 10, 20, 20), new NumVector2(.5f, .5f), DelveNodeIcon.Resolve("Fossil"),
+                "Molten Cavity", DelveRouteTarget.MoltenCavity, Address: 1, DrawIcon: true),
+            new(new RectangleF(40, 10, 20, 20), new NumVector2(.5f, .5f), DelveNodeIcon.Resolve("Fossil"),
+                Target: DelveRouteTarget.MoltenCavity, Address: 2, DrawIcon: false)
+        ];
+        Dictionary<long, string> counts = new() { [1] = "2", [2] = "1" };
+
+        var nodes = DelveRevealOverlay.BuildMarkers(markers, chart, projection, false, DelveRouteTarget.MoltenCavity, counts);
+
+        nodes.Select(node => (node.DrawIcon, node.HoverText, node.RemainingNodeCount))
+            .Should().Equal((true, "Molten Cavity", "2"), (false, null, "1"));
+        nodes.Should().HaveCount(2, "the hidden target still shows its outlined count");
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
     public void BuildMarkers_TargetOnlyModeShowsOnlyTheSelectedEncounters()
     {
         var chart = new RectangleF(0, 0, 200, 200);
@@ -247,7 +364,8 @@ public sealed class DelveRevealOverlayTests
 
     [TestMethod]
     [TestCategory("Regression")]
-    [DataRow(true, true, 0L, 1000L, true)]
+    [DataRow(true, true, 0L, 1000L, false)]
+    [DataRow(true, true, 60L, 1000L, true)]
     [DataRow(false, false, 0L, 10L, true)]
     [DataRow(false, true, 59L, 10L, false)]
     [DataRow(false, true, 60L, 10L, true)]
@@ -271,6 +389,21 @@ public sealed class DelveRevealOverlayTests
         var moved = new DelveRevealOverlay.ChartProjection(localGrid, movedGrid).Project(cell);
         moved.X.Should().BeApproximately(original.X - 80, .01f);
         moved.Y.Should().BeApproximately(original.Y + 35, .01f);
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    [DataRow(18f, 12f)]
+    [DataRow(9f, 12f)]
+    [DataRow(5f, 15f)]
+    public void PositionRemainingNodeCount_AlignsTextToTheBottomOfTheIcon(float radius, float textHeight)
+    {
+        var node = new DelveRevealOverlay.Node(new NumVector2(40, 60), radius, DelveNodeIcon.Resolve("BossAbyss"));
+
+        var position = DelveRevealOverlay.PositionRemainingNodeCount(node, textHeight);
+
+        position.X.Should().Be(node.Center.X);
+        (position.Y + textHeight).Should().BeApproximately(node.Center.Y + radius - 2f, 0.001f);
     }
 
     [TestMethod]
@@ -448,6 +581,24 @@ public sealed class DelveRevealOverlayTests
         var originalGrid = new RectangleF(0, 0, 100, 100);
         var projection = new DelveRevealOverlay.ChartProjection(originalGrid, new RectangleF(x, 0, size, size));
         projection.Covers(new RectangleF(-25, -25, 150, 150), originalGrid).Should().Be(expected);
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void MergeStraightRuns_CombinesSharedEdgesWithoutBridgingGapsOrTurns()
+    {
+        var segments = new ScreenLine[258];
+        for (int i = 0; i < 256; i++)
+            segments[255 - i] = new ScreenLine(new NumVector2(i + 1, 10), new NumVector2(i, 10));
+        segments[256] = new ScreenLine(new NumVector2(256, 10), new NumVector2(256, 25));
+        segments[257] = new ScreenLine(new NumVector2(260, 10), new NumVector2(280, 10));
+
+        DelveRevealOverlay.MergeStraightRuns(segments).Should().BeEquivalentTo(new ScreenLine[]
+        {
+            new(new NumVector2(0, 10), new NumVector2(256, 10)),
+            new(new NumVector2(256, 10), new NumVector2(256, 25)),
+            new(new NumVector2(260, 10), new NumVector2(280, 10))
+        });
     }
 
     [TestMethod]

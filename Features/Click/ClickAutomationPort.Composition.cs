@@ -134,7 +134,8 @@ namespace ClickIt.Features.Click
             IsBlightBuildOrUpgradeIconAt,
             IsBlightActive: () => IsBlightEncounterActive?.Invoke() == true,
             IsSafeBlightWalkHover: (point, hover, drift) => !IsBlightTowerUiAt(point, hover, drift),
-            IsBlightMenuRegionClickable: region => IsBlightMenuRegionClickable?.Invoke(region) == true));
+            IsBlightMenuRegionClickable: region => IsBlightMenuRegionClickable?.Invoke(region) == true,
+            GetDelveLabels: () => AreaClassification.IsAzuriteMine(_gameController) ? VisibleLabelSnapshots.GetCachedLabels() : null));
 
         private ClickRuntimeEngine RegularClick => field ??= new(new ClickRuntimeEngineDependencies(
             Telemetry: new ClickTelemetryDependencies(

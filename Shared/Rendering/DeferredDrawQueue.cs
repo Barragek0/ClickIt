@@ -44,6 +44,11 @@
     {
         private const int MaxBufferedItems = 8192;
         private const int MaxPolySegments = 64;
+        private static readonly NumVector2[] TextOutlineOffsets =
+        [
+            new(-1, 0), new(1, 0), new(0, -1), new(0, 1),
+            new(-0.707f, -0.707f), new(-0.707f, 0.707f), new(0.707f, -0.707f), new(0.707f, 0.707f)
+        ];
         private readonly Lock _queueLock = new();
         private List<DeferredDrawItem> _items = [];
         private List<DeferredDrawItem> _spare = [];
@@ -157,11 +162,17 @@
             => Add(new DeferredDrawItem(DeferredDrawKind.FilledScreenDisc, default, default, default, new System.Numerics.Vector3(center.X, center.Y, 0f), radius, 0, color, segments, false, string.Empty, FontAlign.Left, 0, false));
 
         public void EnqueueText(string text, Vector2 position, Color color, int size, FontAlign align = FontAlign.Left, bool shadow = false)
+            => EnqueueTextCore(text, position, color, size, align, shadow, outline: 0);
+
+        internal void EnqueueOutlinedText(string text, Vector2 position, Color color, int size, FontAlign align, int outline)
+            => EnqueueTextCore(text, position, color, size, align, shadow: false, outline);
+
+        private void EnqueueTextCore(string text, Vector2 position, Color color, int size, FontAlign align, bool shadow, int outline)
         {
             if (string.IsNullOrEmpty(text))
                 return;
 
-            Add(new DeferredDrawItem(DeferredDrawKind.Text, default, default, default, new System.Numerics.Vector3(position.X, position.Y, 0f), 0, 0, color, 0, false, text, align, size, shadow));
+            Add(new DeferredDrawItem(DeferredDrawKind.Text, default, default, default, new System.Numerics.Vector3(position.X, position.Y, 0f), 0, outline, color, 0, false, text, align, size, shadow));
         }
 
         public void Flush(Graphics graphics, Action<RenderSection, double>? recordSectionFlush = null)
@@ -218,9 +229,15 @@
                             DrawFilledScreenDisc(graphics, new NumVector2(item.Center.X, item.Center.Y), item.Radius, item.Color, item.Segments);
                             break;
                         case DeferredDrawKind.Text:
+                            var textPosition = new NumVector2(item.Center.X, item.Center.Y);
+                            if (item.Thickness > 0)
+                            {
+                                for (int offset = 0; offset < TextOutlineOffsets.Length; offset++)
+                                    graphics.DrawText(item.Text, textPosition + TextOutlineOffsets[offset] * item.Thickness, Color.Black, item.Align);
+                            }
                             if (item.Shadow)
-                                graphics.DrawText(item.Text, new NumVector2(item.Center.X + 1f, item.Center.Y + 1f), Color.Black, item.Align);
-                            graphics.DrawText(item.Text, new NumVector2(item.Center.X, item.Center.Y), item.Color, item.Align);
+                                graphics.DrawText(item.Text, textPosition + NumVector2.One, Color.Black, item.Align);
+                            graphics.DrawText(item.Text, textPosition, item.Color, item.Align);
                             break;
                     }
                 }

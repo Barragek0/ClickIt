@@ -12,6 +12,30 @@ namespace ClickIt.Tests.Core.Settings
             settings.RevealDelveMap.Value.Should().BeFalse();
             settings.ShowDelveTargetRoutes.Value.Should().BeTrue();
             settings.RevealDelveFracturedWalls.Value.Should().BeFalse();
+            settings.ShowDelveTargetNodeCounts.Value.Should().BeTrue();
+            settings.ShowDelveTargetRouteNodes.Value.Should().BeTrue();
+        }
+
+        [TestMethod]
+        [TestCategory("Settings")]
+        public void DelveTargetRouteNodes_RestoresSavedOptOut()
+        {
+            var settings = new ClickItSettings();
+            settings.ShowDelveTargetRouteNodes.Value = false;
+
+            string json = JsonConvert.SerializeObject(settings);
+            JsonConvert.DeserializeObject<ClickItSettings>(json)!.ShowDelveTargetRouteNodes.Value.Should().BeFalse();
+        }
+
+        [TestMethod]
+        [TestCategory("Settings")]
+        public void DelveTargetNodeCounts_RestoresSavedOptOut()
+        {
+            var settings = new ClickItSettings();
+            settings.ShowDelveTargetNodeCounts.Value = false;
+
+            string json = JsonConvert.SerializeObject(settings);
+            JsonConvert.DeserializeObject<ClickItSettings>(json)!.ShowDelveTargetNodeCounts.Value.Should().BeFalse();
         }
 
         [TestMethod]

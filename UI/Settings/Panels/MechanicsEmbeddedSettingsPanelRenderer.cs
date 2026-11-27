@@ -237,10 +237,10 @@ namespace ClickIt.UI.Settings.Panels
             ImGui.Spacing();
             SettingsUiRenderHelpers.DrawToggleNodeControl(
                 "Reveal Full Map##MechanicsDelveRevealMap", _settings.RevealDelveMap,
-                "Shows hidden encounters and draws red lines for known connections.\n\nPaths won't be entirely accurate, as they are estimated based on known node connections.");
+                "Shows hidden encounters and draws red lines for known connections.\n\nThe lines indicating paths won't be entirely accurate, as they are estimated based on known node connections, however the nodes themselves as well as the nodes they connect to should always be correct.");
             SettingsUiRenderHelpers.DrawToggleNodeControl(
                 "Reveal Shortest Route to Targets##MechanicsDelveTargetRoutes", _settings.ShowDelveTargetRoutes,
-                "Draws green lines from the closest explored encounter to each selected target along the shortest known route.\n\nPaths won't be entirely accurate, as they are estimated based on known node connections.");
+                "Draws green lines from the closest explored encounter to each selected target along the shortest known route.\n\nThe lines indicating paths won't be entirely accurate, as they are estimated based on known node connections, however the nodes themselves as well as the nodes they connect to should always be correct.");
             ImGui.Indent();
             DrawDelveTargets();
             ImGui.Unindent();
@@ -284,6 +284,11 @@ namespace ClickIt.UI.Settings.Panels
             SettingsUiRenderHelpers.DrawInlineTooltip("Choose which encounters to highlight with green routes.");
             if (!targetsOpen)
                 return;
+
+            SettingsUiRenderHelpers.DrawToggleNodeControl("Show Remaining Node Count", _settings.ShowDelveTargetNodeCounts,
+                "Shows the number of unfinished encounters along each green route at the bottom of its target icon. Includes the destination.");
+            SettingsUiRenderHelpers.DrawToggleNodeControl("Show Nodes Along Target Routes", _settings.ShowDelveTargetRouteNodes,
+                "Shows hidden encounter icons along the green routes to selected targets.");
 
             bool bossOpen = ImGui.TreeNode("Boss##MechanicsDelveBossTargets");
             SettingsUiRenderHelpers.DrawInlineTooltip("Choose which Delve boss encounters to target.");
