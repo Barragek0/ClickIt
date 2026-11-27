@@ -20,6 +20,7 @@ internal static class PerformanceTableRows
         ("Blight", p => p.GetRenderSection(RenderSection.BlightOverlay)),
         ("Click.Hotkey", p => p.GetRenderSection(RenderSection.ClickHotkeyToggle)),
         ("Debug", p => p.GetRenderSection(RenderSection.DebugOverlay)),
+        ("Delve Reveal", p => p.GetRenderSection(RenderSection.DelveRevealOverlay)),
         ("Flush.Frame", p => p.GetRenderSection(RenderSection.FrameFlush)),
         ("Flush.Text", p => p.GetRenderSection(RenderSection.TextFlush)),
         ("Inv.Full", p => p.GetRenderSection(RenderSection.InventoryFullWarning)),

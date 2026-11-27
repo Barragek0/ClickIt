@@ -28,6 +28,17 @@ public sealed class DelveRevealOverlayTests
     }
 
     [TestMethod]
+    [TestCategory("Regression")]
+    public void Overlay_ReportsDrawCostWithoutAddingClickProcessing()
+    {
+        var overlay = new DelveRevealOverlay(() => string.Empty);
+
+        overlay.Section.Should().Be(RenderSection.DelveRevealOverlay);
+        overlay.ProcessingSection.Should().Be(ProcessingSection.Unknown);
+        overlay.RefreshTimingChannel.Should().BeNull();
+    }
+
+    [TestMethod]
     [TestCategory("Settings")]
     public void TargetRoutes_DefaultToThreeBossesThreeFossilsAndMinionAuraItems()
     {

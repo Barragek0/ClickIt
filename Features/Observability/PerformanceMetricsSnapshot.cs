@@ -164,6 +164,7 @@ namespace ClickIt.Features.Observability
         TimingMetricsSnapshot InventoryFullWarning = default,
         TimingMetricsSnapshot UiRegionRectangle = default,
         TimingMetricsSnapshot PerformanceOverlay = default,
+        TimingMetricsSnapshot DelveRevealOverlay = default,
         TimingMetricsSnapshot TextFlush = default,
         TimingMetricsSnapshot FrameFlush = default,
         TimingMetricsSnapshot AltarCoroutine = default,
@@ -215,6 +216,7 @@ namespace ClickIt.Features.Observability
                 RenderSection.InventoryFullWarning => InventoryFullWarning,
                 RenderSection.UiRegionRectangle => UiRegionRectangle,
                 RenderSection.PerformanceOverlay => PerformanceOverlay,
+                RenderSection.DelveRevealOverlay => DelveRevealOverlay,
                 RenderSection.TextFlush => TextFlush,
                 RenderSection.FrameFlush => FrameFlush,
                 RenderSection.Unknown => default,
@@ -361,6 +363,7 @@ namespace ClickIt.Features.Observability
                 Add(RenderSection.BlightOverlay);
                 Add(RenderSection.ClickHotkeyToggle);
                 Add(RenderSection.DebugOverlay);
+                Add(RenderSection.DelveRevealOverlay);
                 Add(RenderSection.FrameFlush);
                 Add(RenderSection.TextFlush);
                 Add(RenderSection.InventoryFullWarning);

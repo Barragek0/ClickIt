@@ -82,7 +82,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
     }
 
     public string Name => "DelveReveal";
-    public RenderSection Section => RenderSection.Unknown;
+    public RenderSection Section => RenderSection.DelveRevealOverlay;
     public OverlayRefreshPolicy RefreshPolicy => OverlayRefreshPolicy.Throttled(RefreshMs);
     public bool UsesRefreshLabels => false;
     public TimingChannel? RefreshTimingChannel => null;

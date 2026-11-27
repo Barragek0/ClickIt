@@ -13,6 +13,7 @@ public class PerformanceTableRowsTests
             "Blight",
             "Click.Hotkey",
             "Debug",
+            "Delve Reveal",
             "Flush.Frame",
             "Flush.Text",
 

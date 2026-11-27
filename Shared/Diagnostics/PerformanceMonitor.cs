@@ -27,6 +27,7 @@ namespace ClickIt.Shared.Diagnostics
         InventoryFullWarning = 11,
         UiRegionRectangle = 12,
         PerformanceOverlay = 13,
+        DelveRevealOverlay = 14,
         TextFlush = 7,
         FrameFlush = 8
     }
@@ -247,6 +248,7 @@ namespace ClickIt.Shared.Diagnostics
                 MapRenderSection(RenderSection.InventoryFullWarning),
                 MapRenderSection(RenderSection.UiRegionRectangle),
                 MapRenderSection(RenderSection.PerformanceOverlay),
+                MapRenderSection(RenderSection.DelveRevealOverlay),
                 MapRenderSection(RenderSection.TextFlush),
                 MapRenderSection(RenderSection.FrameFlush),
                 MapTimingChannel(TimingChannel.Altar),

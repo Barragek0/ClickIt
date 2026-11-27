@@ -15,6 +15,7 @@ namespace ClickIt.Features.Observability.Performance
         private readonly RollingSampleBuffer _inventoryFullWarning = new();
         private readonly RollingSampleBuffer _uiRegionRectangle = new();
         private readonly RollingSampleBuffer _performanceOverlay = new();
+        private readonly RollingSampleBuffer _delveRevealOverlay = new();
 
         internal void Record(RenderSection section, double ms)
         {
@@ -59,6 +60,9 @@ namespace ClickIt.Features.Observability.Performance
                 case RenderSection.PerformanceOverlay:
                     _performanceOverlay.Record(ms);
                     break;
+                case RenderSection.DelveRevealOverlay:
+                    _delveRevealOverlay.Record(ms);
+                    break;
                 case RenderSection.Unknown:
                 default:
                     break;
@@ -82,6 +86,7 @@ namespace ClickIt.Features.Observability.Performance
                 RenderSection.InventoryFullWarning => _inventoryFullWarning.Stats,
                 RenderSection.UiRegionRectangle => _uiRegionRectangle.Stats,
                 RenderSection.PerformanceOverlay => _performanceOverlay.Stats,
+                RenderSection.DelveRevealOverlay => _delveRevealOverlay.Stats,
                 RenderSection.Unknown => (0, 0, 0, 0),
                 _ => (0, 0, 0, 0)
             };

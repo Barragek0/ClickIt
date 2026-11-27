@@ -189,7 +189,7 @@
                 _pendingCount = 0;
             }
 
-            // Per-section flush accumulation. RenderSection values are small (0..13); the bucket array is reused across flushes (render-thread-only) so this hot path stays allocation-free.
+            // Per-section flush accumulation reuses render-thread-only storage.
             double[] sectionMs = _flushSectionMs;
             Array.Clear(sectionMs, 0, sectionMs.Length);
 

@@ -181,6 +181,7 @@ public class PerformanceInGameOverlayTests
         monitor.RecordRenderSectionTiming(RenderSection.AltarOverlay, 4.0);  // Altar max = 4.0
         monitor.RecordRenderSectionTiming(RenderSection.BlightOverlay, 3.0); // Blight max = 3.0
         monitor.RecordRenderSectionTiming(RenderSection.DebugOverlay, 5.0);  // Debug max = 5.0
+        monitor.RecordRenderSectionTiming(RenderSection.DelveRevealOverlay, 6.0);
 
         var overlay = new PerformanceInGameOverlay(() => monitor.GetDebugSnapshot());
         var textQueue = new DeferredDrawQueue();
@@ -188,7 +189,7 @@ public class PerformanceInGameOverlayTests
         overlay.Draw(CreateContext(textQueue));
 
         string[] lines = textQueue.GetPendingTextSnapshot();
-        lines.Should().Contain("12.0");
+        lines.Should().Contain("18.0");
     }
 
     [TestMethod]
