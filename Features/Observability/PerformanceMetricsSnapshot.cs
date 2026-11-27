@@ -28,7 +28,8 @@ namespace ClickIt.Features.Observability
         double LastBytesPerRun,
         double AvgBytesPerRun,
         double MaxBytesPerRun,
-        double MaxAllocPerSecond = 0);
+        double MaxAllocPerSecond = 0,
+        double? SamplePeriodMs = null);
 
     // Rolling per-stage label-scan allocation stats so the debug tables can show last/avg/max bytes-per-run for each stage instead of the whole scan's aggregate.
     public readonly record struct LabelScanAllocationStats(

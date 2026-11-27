@@ -25,6 +25,7 @@ public class BreakdownStageStoreTests
         stats.Stages[0].Allocation.AvgBytesPerRun.Should().Be(1536);
         stats.Stages[0].Allocation.MaxBytesPerRun.Should().Be(2048);
         stats.Stages[0].Allocation.LastBytesPerRun.Should().Be(2048);
+        stats.Stages[0].Allocation.SamplePeriodMs.Should().BeGreaterThan(0);
         stats.Stages[1].Name.Should().Be("Goal");
         stats.Stages[1].Allocation.AvgBytesPerRun.Should().Be(1536);
         stats.Stages[2].Name.Should().Be("AStar");
@@ -50,6 +51,7 @@ public class BreakdownStageStoreTests
 
         stats.Stages.Should().HaveCount(2);
         stats.Stages[0].Allocation.AvgBytesPerRun.Should().Be(100);
+        stats.Stages[0].Allocation.SamplePeriodMs.Should().BeNull();
         stats.Stages[1].Allocation.AvgBytesPerRun.Should().Be(200);
     }
 

@@ -376,9 +376,10 @@ namespace ClickIt.UI.Debug
             StageRow(b, "Other", s.Other, periodMs);
         }
 
-        // One breakdown stage as byte/s Last/Avg/Max (per-run bytes normalized by the parent period, max from the live-window peak). Stages that never allocated any bytes are skipped.
+        // Use the stage cadence when measured and fall back to the parent cadence for a single sample.
         private static void StageRow(TextBlock b, string label, AllocationStageSnapshot s, double periodMs)
         {
+            periodMs = s.SamplePeriodMs ?? periodMs;
             double lastPerSecond = periodMs > 0 ? s.LastBytesPerRun * 1000.0 / periodMs : 0;
             double avgPerSecond = periodMs > 0 ? s.AvgBytesPerRun * 1000.0 / periodMs : 0;
             double maxPerSecond = s.MaxAllocPerSecond;

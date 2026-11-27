@@ -1,6 +1,6 @@
 namespace ClickIt.Features.Observability.Performance;
 
-// Records one per-run sample for every stage of a feature's processing (allocation bytes + wall time) so the debug tables can show exactly which sub-step of an area costs time/allocation. Stages are recorded together per run so each stage's window period matches the parent section.
+// Records stage allocations and timing at the stage's own cadence.
 internal sealed class BreakdownStageStore
 {
     private readonly string[] _stageNames;
@@ -62,7 +62,8 @@ internal sealed class BreakdownStageStore
                 AllocationSampleStats a = _bytes[i].Stats;
                 stages[i] = new BreakdownStageSnapshot(
                     _stageNames[i],
-                    new AllocationStageSnapshot(a.LastBytesPerRun, a.AvgBytesPerRun, a.MaxBytesPerRun, a.MaxAllocPerSecond),
+                    new AllocationStageSnapshot(a.LastBytesPerRun, a.AvgBytesPerRun, a.MaxBytesPerRun,
+                        a.MaxAllocPerSecond, a.AvgPeriodMs > 0 ? a.AvgPeriodMs : null),
                     _times != null ? _times[i].Stats : default);
             }
             return new BreakdownStats(stages, _sampleCount);

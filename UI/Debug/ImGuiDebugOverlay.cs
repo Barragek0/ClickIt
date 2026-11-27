@@ -714,6 +714,7 @@ internal sealed class ImGuiDebugOverlay(
     {
         if (s.MaxBytesPerRun <= 0)
             return;
+        periodMs = s.SamplePeriodMs ?? periodMs;
         double lastPerSecond = periodMs > 0 ? s.LastBytesPerRun * 1000.0 / periodMs : 0;
         double avgPerSecond = periodMs > 0 ? s.AvgBytesPerRun * 1000.0 / periodMs : 0;
         RenderValueRow(label, true, lastPerSecond, avgPerSecond, s.MaxAllocPerSecond, GcColor, FormatBytes);
@@ -2010,6 +2011,7 @@ internal sealed class ImGuiDebugOverlay(
     // Processing rows: per-frame cost (scaled by FPS) followed by the raw per-run cost.
     private static void AppendGcStageLine(System.Text.StringBuilder sb, string label, AllocationStageSnapshot stats, double periodMs)
     {
+        periodMs = stats.SamplePeriodMs ?? periodMs;
         double allocPerSecond = periodMs > 0 ? stats.AvgBytesPerRun * 1000.0 / periodMs : 0;
         sb.AppendLine($"{label}: {FormatAllocRate(allocPerSecond)} (avg {FormatBytes(stats.AvgBytesPerRun)}/run, last {FormatBytes(stats.LastBytesPerRun)}/run, max {FormatAllocRate(stats.MaxAllocPerSecond)}, max run {FormatBytes(stats.MaxBytesPerRun)})");
     }
