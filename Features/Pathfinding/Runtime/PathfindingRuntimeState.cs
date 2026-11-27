@@ -6,7 +6,7 @@ namespace ClickIt.Features.Pathfinding.Runtime
         private static readonly IReadOnlyList<Vector2> EmptyScreenPath = [];
 
         private readonly Lock _stateLock = new();
-        private bool[][]? _walkableGrid;
+        private bool _terrainLoaded;
         private PathfindingService.GridPoint _areaDimensions;
         private string _lastFailureReason = string.Empty;
         private int _lastExpandedNodes;
@@ -25,7 +25,7 @@ namespace ClickIt.Features.Pathfinding.Runtime
 
         internal PathfindingDebugSnapshot GetDebugSnapshot()
             => ReadState(() => new PathfindingDebugSnapshot(
-                TerrainLoaded: _walkableGrid != null,
+                TerrainLoaded: _terrainLoaded,
                 AreaWidth: _areaDimensions.X,
                 AreaHeight: _areaDimensions.Y,
                 LastExpandedNodes: _lastExpandedNodes,
@@ -119,17 +119,16 @@ namespace ClickIt.Features.Pathfinding.Runtime
             });
         }
 
-        internal void SetTerrainSnapshot(bool[][] walkable, PathfindingService.GridPoint dims)
+        internal void SetTerrainSnapshot(PathfindingService.GridPoint dims)
         {
             UpdateState(() =>
             {
-                _walkableGrid = walkable;
+                _terrainLoaded = true;
                 _areaDimensions = dims;
             });
         }
 
         internal void SetSuccessfulPathBuildSnapshot(
-            bool[][] walkable,
             PathfindingService.GridPoint dims,
             int expandedNodes,
             long computeMs,
@@ -139,7 +138,7 @@ namespace ClickIt.Features.Pathfinding.Runtime
         {
             UpdateState(() =>
             {
-                _walkableGrid = walkable;
+                _terrainLoaded = true;
                 _areaDimensions = dims;
                 _lastExpandedNodes = expandedNodes;
                 _lastComputeMs = computeMs;

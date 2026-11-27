@@ -54,14 +54,13 @@ namespace ClickIt.Features.Pathfinding
             => RuntimeState.SetFailedPathBuildSnapshot(expandedNodes, computeMs, targetPath, failureReason);
 
         private void SetSuccessfulPathBuildSnapshot(
-            bool[][] walkable,
             GridPoint dims,
             int expandedNodes,
             long computeMs,
             string targetPath,
             IReadOnlyList<GridPoint> gridPath,
             IReadOnlyList<Vector2> screenPath)
-            => RuntimeState.SetSuccessfulPathBuildSnapshot(walkable, dims, expandedNodes, computeMs, targetPath, gridPath, screenPath);
+            => RuntimeState.SetSuccessfulPathBuildSnapshot(dims, expandedNodes, computeMs, targetPath, gridPath, screenPath);
 
         private void SetGoalResolutionDebugSnapshot(
             GridPoint start,
@@ -125,7 +124,7 @@ namespace ClickIt.Features.Pathfinding
                 ? $"Pathfind: terrain cache hit grid={dims.X}x{dims.Y}"
                 : $"Pathfind: terrain REBUILT grid={dims.X}x{dims.Y} churn={_terrainCache.ChurnRebuildCount}");
 
-            RuntimeState.SetTerrainSnapshot(walkable, dims);
+            RuntimeState.SetTerrainSnapshot(dims);
             double terrainMs = (Stopwatch.GetTimestamp() - terrainStart) * 1000.0 / Stopwatch.Frequency;
             long terrainBytes = GC.GetAllocatedBytesForCurrentThread() - terrainAllocStart;
 
@@ -197,7 +196,6 @@ namespace ClickIt.Features.Pathfinding
             List<Vector2> screenPath = ScreenPathProjector.BuildScreenPathApproximation(gameController, gridPath, start, goal, target);
 
             SetSuccessfulPathBuildSnapshot(
-                walkable,
                 dims,
                 expandedNodes,
                 sw.ElapsedMilliseconds,

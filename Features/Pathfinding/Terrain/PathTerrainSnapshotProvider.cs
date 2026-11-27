@@ -8,7 +8,8 @@ namespace ClickIt.Features.Pathfinding.Terrain
         internal int GridWidth;
         internal int GridHeight;
         internal bool[][]? Walkable;
-        internal object? DataOwner;
+        // Identity is diagnostic only. A strong reference here pins the host's raw grid caches.
+        internal WeakReference<IngameData>? DataOwner;
         // IngameData.Address is the authoritative per-area cache key (the wrapper churns every ~25ms and can flap in-map).
         internal long DataOwnerAddress;
         internal TerrainOwnerChangeConfirmation OwnerChange;
@@ -45,24 +46,27 @@ namespace ClickIt.Features.Pathfinding.Terrain
     {
         internal static bool TryRefreshTerrainData(GameController gameController, PathfindingTerrainCache cache, out bool[][] walkable, out PathfindingService.GridPoint dims, out bool fromCache)
         {
+            IngameData? data = gameController.IngameState?.Data ?? gameController.Game?.IngameState?.Data;
+            object? rawPathData = data?.RawPathfindingData;
+            return TryRefreshTerrainData(cache, data, rawPathData, data?.Address ?? 0, Environment.TickCount64,
+                out walkable, out dims, out fromCache);
+        }
+
+        internal static bool TryRefreshTerrainData(PathfindingTerrainCache cache, IngameData? data, object? rawPathData,
+            long dataAddress, long now, out bool[][] walkable, out PathfindingService.GridPoint dims, out bool fromCache)
+        {
             walkable = [];
             dims = default;
             fromCache = false;
 
-            IngameData? data = gameController.IngameState?.Data ?? gameController.Game?.IngameState?.Data;
-            if (data == null)
+            if (data == null || !TryGetRawGridDims(rawPathData, out int gridWidth, out int gridHeight) || gridHeight == 0)
                 return false;
 
-            object? rawPathData = data.RawPathfindingData;
-            if (!TryGetRawGridDims(rawPathData, out int gridWidth, out int gridHeight) || gridHeight == 0)
-                return false;
-
-            long dataAddress = data.Address;
             if (cache.Walkable != null
                 && cache.GridWidth == gridWidth
                 && cache.GridHeight == gridHeight)
             {
-                bool waitForOwner = cache.OwnerChange.ShouldWait(cache.DataOwnerAddress, dataAddress, Environment.TickCount64);
+                bool waitForOwner = cache.OwnerChange.ShouldWait(cache.DataOwnerAddress, dataAddress, now);
                 if (dataAddress == cache.DataOwnerAddress || waitForOwner)
                 {
                     dims = new PathfindingService.GridPoint(gridWidth, gridHeight);
@@ -72,12 +76,14 @@ namespace ClickIt.Features.Pathfinding.Terrain
                 }
             }
 
+            // Keep the last known grid while the replacement is unconfirmed or invalid.
+            // A valid replacement overwrites matching rows or replaces a differently sized grid.
             if (!TryBuildWalkableGrid(rawPathData, cache.Walkable, out bool[][] converted, out _, out _) || converted.Length == 0)
                 return false;
 
             if (cache.DataOwner != null
                 && cache.DataOwnerAddress == dataAddress
-                && !ReferenceEquals(data, cache.DataOwner))
+                && (!cache.DataOwner.TryGetTarget(out IngameData? previous) || !ReferenceEquals(data, previous)))
             {
                 cache.ChurnRebuildCount++;
             }
@@ -85,7 +91,10 @@ namespace ClickIt.Features.Pathfinding.Terrain
             dims = new PathfindingService.GridPoint(gridWidth, gridHeight);
             cache.GridWidth = gridWidth;
             cache.GridHeight = gridHeight;
-            cache.DataOwner = data;
+            if (cache.DataOwner == null)
+                cache.DataOwner = new WeakReference<IngameData>(data);
+            else
+                cache.DataOwner.SetTarget(data);
             cache.DataOwnerAddress = dataAddress;
             cache.OwnerChange = default;
             cache.Walkable = converted;

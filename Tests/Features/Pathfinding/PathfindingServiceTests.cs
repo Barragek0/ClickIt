@@ -6,6 +6,94 @@ namespace ClickIt.Tests.Features.Pathfinding
         private readonly PathGridSearch _gridSearch = new();
 
         [TestMethod]
+        [TestCategory("Regression")]
+        [DataRow(100)]
+        [DataRow(1_000)]
+        [DataRow(6_000)]
+        [DataRow(50_000)]
+        [DataRow(60_000)]
+        public void FindPathAStar_MatchesDenseOracleAcrossShapesAndSearchBudgets(int budget)
+        {
+            DensePathGridOracle oracle = new();
+            Random random = new(5021);
+            for (int i = 0; i < 20; i++)
+            {
+                bool[][] grid = CreateGrid(11 + i * 2, 19 + i, defaultValue: true);
+                for (int y = 0; y < grid.Length; y++)
+                    for (int x = 0; x < grid[y].Length; x++)
+                        grid[y][x] = random.Next(5) != 0;
+
+                PathfindingService.GridPoint start = new(0, 0);
+                PathfindingService.GridPoint goal = new(grid[0].Length - 1, grid.Length - 1);
+                grid[0][0] = i % 4 != 0;
+                grid[goal.Y][goal.X] = true;
+                if (i % 4 == 1)
+                {
+                    grid[goal.Y - 1][goal.X - 1] = false;
+                    grid[goal.Y - 1][goal.X] = false;
+                    grid[goal.Y][goal.X - 1] = false;
+                }
+
+                var expected = oracle.FindPathAStar(grid, start, goal, budget, out int expectedExpanded);
+                var actual = _gridSearch.FindPathAStar(grid, start, goal, budget, out int actualExpanded);
+                actualExpanded.Should().Be(expectedExpanded);
+                if (expected == null)
+                    actual.Should().BeNull();
+                else
+                    actual.Should().Equal(expected);
+            }
+        }
+
+        [TestMethod]
+        [TestCategory("Boundary")]
+        [DataRow(30_001, 50_000, true)]
+        [DataRow(50_001, 50_000, false)]
+        [DataRow(50_001, 60_000, true)]
+        public void FindPathAStar_MatchesDenseOracleOnLongRoutes(int width, int budget, bool shouldReachGoal)
+        {
+            // The search expands the centre row and discovers both adjacent rows.
+            bool[][] grid = CreateGrid(width, 3, defaultValue: true);
+            PathfindingService.GridPoint start = new(0, 1);
+            PathfindingService.GridPoint goal = new(width - 1, 1);
+            DensePathGridOracle oracle = new();
+
+            var expected = oracle.FindPathAStar(grid, start, goal, budget, out int expectedExpanded);
+            var actual = _gridSearch.FindPathAStar(grid, start, goal, budget, out int actualExpanded);
+
+            actualExpanded.Should().Be(expectedExpanded).And.Be(SystemMath.Min(width, budget));
+            if (shouldReachGoal)
+            {
+                expected.Should().HaveCount(width);
+                actual.Should().Equal(expected!);
+            }
+            else
+            {
+                expected.Should().BeNull();
+                actual.Should().BeNull();
+            }
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void FindPathAStar_ShortSearchDoesNotAllocateAreaSizedBuffers()
+        {
+            bool[] row = new bool[3842];
+            Array.Fill(row, true);
+            bool[][] grid = new bool[3059][];
+            Array.Fill(grid, row);
+            PathfindingService.GridPoint start = new(0, 0);
+            PathfindingService.GridPoint goal = new(4, 0);
+            _ = _gridSearch.FindPathAStar([[true, true]], start, new(1, 0), 100, out _);
+
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            var path = _gridSearch.FindPathAStar(grid, start, goal, 6_000, out _);
+            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+            path.Should().HaveCount(5);
+            allocated.Should().BeLessThan(64 * 1024);
+        }
+
+        [TestMethod]
         public void TryBuildPathToTarget_ReturnsFalse_WhenGameControllerIsNull()
         {
             var service = new PathfindingService();

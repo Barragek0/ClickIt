@@ -5,6 +5,66 @@
     {
         [TestMethod]
         [TestCategory("Regression")]
+        public void TerrainRefresh_SameShapeKeepsTheLastGoodGridUntilTheNewOwnerIsConfirmed()
+        {
+            PathfindingTerrainCache cache = new();
+            IngameData first = ExileCoreOpaqueFactory.CreateOpaque<IngameData>();
+            IngameData next = ExileCoreOpaqueFactory.CreateOpaque<IngameData>();
+            int[][] firstTerrain = [[1, 0]];
+            int[][] nextTerrain = [[0, 1]];
+
+            PathTerrainSnapshotProvider.TryRefreshTerrainData(cache, first, firstTerrain, 10, 1_000,
+                out bool[][] original, out _, out bool fromCache).Should().BeTrue();
+            fromCache.Should().BeFalse();
+            WeakReference<IngameData> owner = cache.DataOwner!;
+
+            PathTerrainSnapshotProvider.TryRefreshTerrainData(cache, next, nextTerrain, 20, 2_000,
+                out bool[][] pending, out _, out fromCache).Should().BeTrue();
+            fromCache.Should().BeTrue();
+            pending.Should().BeSameAs(original);
+            pending[0].Should().Equal(true, false);
+
+            PathTerrainSnapshotProvider.TryRefreshTerrainData(cache, next, nextTerrain, 20, 2_150,
+                out bool[][] refreshed, out var dims, out fromCache).Should().BeTrue();
+            fromCache.Should().BeFalse();
+            dims.Should().Be(new PathfindingService.GridPoint(2, 1));
+            refreshed.Should().BeSameAs(original);
+            refreshed[0].Should().Equal(false, true);
+            cache.DataOwner.Should().BeSameAs(owner);
+            owner.TryGetTarget(out IngameData? tracked).Should().BeTrue();
+            tracked.Should().BeSameAs(next);
+            cache.DataOwnerAddress.Should().Be(20);
+            GC.KeepAlive(next);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void TerrainRefresh_DifferentShapeReleasesThePreviousGridOnSuccessfulReplacement()
+        {
+            PathfindingTerrainCache cache = new();
+            IngameData first = ExileCoreOpaqueFactory.CreateOpaque<IngameData>();
+            IngameData next = ExileCoreOpaqueFactory.CreateOpaque<IngameData>();
+            int[][] firstTerrain = [[1, 0]];
+            object[] invalidTerrain = [new[] { 0, 0, 0 }, new[] { 0, 0 }];
+            int[][] nextTerrain = [[0, 1, 1]];
+
+            PathTerrainSnapshotProvider.TryRefreshTerrainData(cache, first, firstTerrain, 10, 1_000,
+                out bool[][] original, out _, out _).Should().BeTrue();
+            PathTerrainSnapshotProvider.TryRefreshTerrainData(cache, next, invalidTerrain, 20, 2_000,
+                out _, out _, out _).Should().BeFalse();
+            cache.Walkable.Should().BeSameAs(original);
+            cache.DataOwnerAddress.Should().Be(10);
+
+            PathTerrainSnapshotProvider.TryRefreshTerrainData(cache, next, nextTerrain, 20, 2_001,
+                out bool[][] replacement, out var dims, out bool fromCache).Should().BeTrue();
+            fromCache.Should().BeFalse();
+            dims.Should().Be(new PathfindingService.GridPoint(3, 1));
+            cache.Walkable.Should().BeSameAs(replacement).And.NotBeSameAs(original);
+            replacement[0].Should().Equal(false, true, true);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
         public void TerrainOwnerChange_RequiresContinuousConfirmationAfterAnAddressFlap()
         {
             TerrainOwnerChangeConfirmation confirmation = default;

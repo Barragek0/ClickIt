@@ -20,29 +20,17 @@ namespace ClickIt.Features.Pathfinding.Grid
             new(-1, -1)
         ];
 
-        private bool[]? _closed;
-        private float[]? _gScore;
-        private int[]? _parent;
-        private int[]? _version;
-        private int _bufferWidth;
-        private int _bufferHeight;
-        private int _generation;
-        private PriorityQueue<int, float>? _open;
-
-        // Reuse per-service buffers sized to the area grid, lazily reset via a generation stamp.
-        private void EnsureSearchBuffers(int width, int height, int nodeCount)
+        private struct SearchNode
         {
-            if (_closed != null && _gScore != null && _parent != null && _version != null
-                && _bufferWidth == width && _bufferHeight == height)
-                return;
-
-            _bufferWidth = width;
-            _bufferHeight = height;
-            _closed = new bool[nodeCount];
-            _gScore = new float[nodeCount];
-            _parent = new int[nodeCount];
-            _version = new int[nodeCount];
+            public float Cost;
+            public int Parent;
+            public bool Closed;
         }
+
+        // A search can discover more nodes than it expands. Reuse storage sized by the
+        // discovered frontier so neither terrain size nor an assumed budget caps the search.
+        private readonly Dictionary<int, SearchNode> _nodes = [];
+        private readonly PriorityQueue<int, float> _open = new();
 
         internal List<PathfindingService.GridPoint>? FindPathAStar(bool[][] walkable, PathfindingService.GridPoint start, PathfindingService.GridPoint goal, int maxExpandedNodes, out int expandedNodes)
         {
@@ -57,41 +45,30 @@ namespace ClickIt.Features.Pathfinding.Grid
             if (!walkable[start.Y][start.X] || !walkable[goal.Y][goal.X])
                 return null;
 
-            int nodeCount = width * height;
             int budget = SystemMath.Max(1, maxExpandedNodes);
-
-            EnsureSearchBuffers(width, height, nodeCount);
-            int generation = _generation = _generation == int.MaxValue ? 1 : _generation + 1;
-            bool[] closed = _closed!;
-            float[] gScore = _gScore!;
-            int[] parent = _parent!;
-            int[] version = _version!;
-
-            PriorityQueue<int, float> open = _open ??= new PriorityQueue<int, float>();
-            open.Clear();
+            _nodes.Clear();
+            _open.Clear();
 
             int startKey = ToKey(start.X, start.Y, width);
             int goalKey = ToKey(goal.X, goal.Y, width);
 
-            version[startKey] = generation;
-            closed[startKey] = false;
-            gScore[startKey] = 0f;
-            parent[startKey] = -1;
-            open.Enqueue(startKey, EstimateCost(start, goal));
+            _nodes.Add(startKey, new SearchNode { Parent = -1 });
+            _open.Enqueue(startKey, EstimateCost(start, goal));
 
-            while (open.Count > 0 && expandedNodes < budget)
+            while (_open.Count > 0 && expandedNodes < budget)
             {
-                int currentKey = open.Dequeue();
-                if (closed[currentKey])
+                int currentKey = _open.Dequeue();
+                ref SearchNode currentNode = ref CollectionsMarshal.GetValueRefOrNullRef(_nodes, currentKey);
+                if (currentNode.Closed)
                     continue;
 
-                closed[currentKey] = true;
+                currentNode.Closed = true;
+                float currentCost = currentNode.Cost;
                 expandedNodes++;
                 if (currentKey == goalKey)
-                    return BuildPathFromParents(parent, currentKey, width);
+                    return BuildPathFromParents(currentKey, width);
 
                 PathfindingService.GridPoint current = FromKey(currentKey, width);
-                float currentCost = gScore[currentKey];
 
                 for (int i = 0; i < NeighborOffsets.Length; i++)
                 {
@@ -103,25 +80,19 @@ namespace ClickIt.Features.Pathfinding.Grid
                         continue;
 
                     int neighborKey = ToKey(nx, ny, width);
-                    if (version[neighborKey] != generation)
-                    {
-                        version[neighborKey] = generation;
-                        closed[neighborKey] = false;
-                        gScore[neighborKey] = float.PositiveInfinity;
-                        parent[neighborKey] = -1;
-                    }
-                    if (closed[neighborKey])
+                    ref SearchNode node = ref CollectionsMarshal.GetValueRefOrAddDefault(_nodes, neighborKey, out bool seen);
+                    if (seen && node.Closed)
                         continue;
 
                     float moveCost = offset.X != 0 && offset.Y != 0 ? DiagonalCost : StraightCost;
                     float tentative = currentCost + moveCost;
-                    if (tentative >= gScore[neighborKey])
+                    if (seen && tentative >= node.Cost)
                         continue;
 
-                    parent[neighborKey] = currentKey;
-                    gScore[neighborKey] = tentative;
+                    node.Parent = currentKey;
+                    node.Cost = tentative;
                     PathfindingService.GridPoint neighbor = new(nx, ny);
-                    open.Enqueue(neighborKey, tentative + EstimateCost(neighbor, goal));
+                    _open.Enqueue(neighborKey, tentative + EstimateCost(neighbor, goal));
                 }
             }
 
@@ -334,10 +305,10 @@ namespace ClickIt.Features.Pathfinding.Grid
             return (diagonal * (StraightCost + DiagonalHeuristicWeight)) + (straight * StraightCost);
         }
 
-        private static List<PathfindingService.GridPoint> BuildPathFromParents(int[] parent, int goalKey, int width)
+        private List<PathfindingService.GridPoint> BuildPathFromParents(int goalKey, int width)
         {
             List<PathfindingService.GridPoint> result = new(128);
-            for (int trace = goalKey; trace >= 0; trace = parent[trace])
+            for (int trace = goalKey; trace >= 0; trace = _nodes[trace].Parent)
                 result.Add(FromKey(trace, width));
 
             result.Reverse();
