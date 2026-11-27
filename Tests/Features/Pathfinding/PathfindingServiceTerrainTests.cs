@@ -4,6 +4,19 @@
     public class PathfindingServiceTerrainTests
     {
         [TestMethod]
+        [TestCategory("Regression")]
+        public void TerrainOwnerChange_RequiresContinuousConfirmationAfterAnAddressFlap()
+        {
+            TerrainOwnerChangeConfirmation confirmation = default;
+
+            confirmation.ShouldWait(currentAddress: 10, observedAddress: 20, now: 1_000).Should().BeTrue();
+            confirmation.ShouldWait(currentAddress: 10, observedAddress: 10, now: 1_010).Should().BeFalse();
+            confirmation.ShouldWait(currentAddress: 10, observedAddress: 20, now: 1_300).Should().BeTrue();
+            confirmation.ShouldWait(currentAddress: 10, observedAddress: 20, now: 1_449).Should().BeTrue();
+            confirmation.ShouldWait(currentAddress: 10, observedAddress: 20, now: 1_450).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void TryConvertPathfindingData_ConvertsArrayRows_AndRejectsRaggedRows()
         {
             object good = new object[]

@@ -50,18 +50,25 @@ namespace ClickIt.Features.Altars
                     ? rawLabel as Element
                     : null;
                 List<Element> elements = LabelElementSearch.GetElementsByStringContains(labelElement, "valuedefault");
-                if (elements == null || elements.Count == 0) continue;
-                string path = DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item)
-                    && DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
-                        ? resolvedPath
-                        : string.Empty;
+                try
+                {
+                    if (elements.Count == 0) continue;
+                    string path = DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item)
+                        && DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
+                            ? resolvedPath
+                            : string.Empty;
 
-                foreach (Element el in elements)
-                    if (el != null
-                        && (DynamicAccess.TryReadBool(el, DynamicAccessProfiles.IsVisible, out bool isVisible)
-                            ? isVisible
-                            : el.IsVisible))
-                        elementsToProcess.Add((el, path, item, label));
+                    foreach (Element el in elements)
+                        if (el != null
+                            && (DynamicAccess.TryReadBool(el, DynamicAccessProfiles.IsVisible, out bool isVisible)
+                                ? isVisible
+                                : el.IsVisible))
+                            elementsToProcess.Add((el, path, item, label));
+                }
+                finally
+                {
+                    elements.Clear();
+                }
 
             }
 

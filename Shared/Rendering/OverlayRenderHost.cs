@@ -53,6 +53,17 @@ namespace ClickIt.Shared.Rendering
             _coroutines.Clear();
         }
 
+        internal void DisposeOverlays()
+        {
+            foreach (IOverlay overlay in _overlays)
+            {
+                if (overlay is IDisposable disposable)
+                    disposable.Dispose();
+            }
+
+            _overlays.Clear();
+        }
+
         private static double GetElapsedMs(long startTimestamp)
             => StopwatchMath.ElapsedMs(startTimestamp);
     }

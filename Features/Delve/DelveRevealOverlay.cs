@@ -1,6 +1,6 @@
 namespace ClickIt.Features.Delve;
 
-internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOverlay
+internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOverlay, IDisposable
 {
     private const int RefreshMs = 8;
     private const int CellRefreshMs = 300;
@@ -30,7 +30,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
     private RectangleF _markerCoverage;
     private Graphics? _textureGraphics;
     private readonly Dictionary<DelveNodeIcon, Task<DelveNodeIcon.TextureResult>> _textureFiles = [];
-    private readonly Dictionary<string, (bool Available, long RetryAt)> _textureLoads = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, (bool Available, bool Owned, long RetryAt)> _textureLoads = new(StringComparer.Ordinal);
 
     internal enum WallApproach { None, North, East, South, West }
 
@@ -732,8 +732,8 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
 
         if (!ReferenceEquals(ctx.Graphics, _textureGraphics))
         {
+            Dispose();
             _textureGraphics = ctx.Graphics;
-            _textureLoads.Clear();
         }
 
         int loadsRemaining = TextureLoadsPerFrame;
@@ -761,19 +761,25 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
             ctx.DrawQueue.EnqueueText(textureError, new Vector2(snapshot.Clip.Center.X, snapshot.Clip.Top + 30f),
                 Color.OrangeRed, 16, FontAlign.Center, shadow: true);
 
-        if (snapshot.Nodes.Length > 0)
+        if (snapshot.Nodes.Length > 0 && ctx.Graphics is { } tooltipGraphics)
         {
             SystemDrawingPoint cursor = Mouse.GetCursorPosition();
             var mouse = new NumVector2(cursor.X - ctx.WindowArea.X, cursor.Y - ctx.WindowArea.Y);
             if (snapshot.Clip.Contains(mouse.X, mouse.Y) && FindHoverText(snapshot.Nodes, mouse) is { } hoverText)
             {
-                bool nearRight = mouse.X > snapshot.Clip.Center.X;
-                var tooltip = new Vector2(mouse.X + (nearRight ? -12f : 12f),
-                    SystemMath.Min(mouse.Y + 16f, snapshot.Clip.Bottom - 24f));
-                ctx.DrawQueue.EnqueueText(hoverText, tooltip, Color.White, 16,
-                    nearRight ? FontAlign.Right : FontAlign.Left, shadow: true);
+                float textHeight = tooltipGraphics.MeasureText(hoverText).Y;
+                (Vector2 position, FontAlign align) = PositionHoverTooltip(mouse, snapshot.Clip, textHeight);
+                ctx.DrawQueue.EnqueueText(hoverText, position, Color.White, 16, align, shadow: true);
             }
         }
+    }
+
+    internal static (Vector2 Position, FontAlign Align) PositionHoverTooltip(NumVector2 cursor, RectangleF clip, float textHeight)
+    {
+        bool nearRight = cursor.X > clip.Center.X;
+        // Leave room for the text and its shadow, even at the top edge of the chart.
+        return (new Vector2(cursor.X + (nearRight ? -12f : 12f), cursor.Y - textHeight - 6f),
+            nearRight ? FontAlign.Right : FontAlign.Left);
     }
 
     internal static string? FindHoverText(Node[] nodes, NumVector2 cursor)
@@ -804,10 +810,37 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
             return false;
 
         loadsRemaining--;
-        bool available;
-        try { available = graphics.HasImage(name) || graphics.InitImage(name, path); }
-        catch { available = false; }
-        _textureLoads[name] = (available, now + TextureRetryMs);
+        bool available = false;
+        bool owned = false;
+        try
+        {
+            available = graphics.HasImage(name);
+            if (!available)
+                available = owned = graphics.InitImage(name, path);
+        }
+        catch
+        {
+            // Retry when the graphics backend is ready.
+        }
+        _textureLoads[name] = (available, owned, now + TextureRetryMs);
         return available;
+    }
+
+    public void Dispose()
+    {
+        if (_textureGraphics is { } graphics)
+        {
+            foreach (var entry in _textureLoads)
+            {
+                if (!entry.Value.Owned)
+                    continue;
+
+                try { graphics.DisposeTexture(entry.Key); }
+                catch { /* The host may have already torn down the graphics backend. */ }
+            }
+        }
+
+        _textureLoads.Clear();
+        _textureGraphics = null;
     }
 }

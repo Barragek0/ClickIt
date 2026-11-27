@@ -79,6 +79,7 @@ namespace ClickIt.Core.Bootstrap
 
         private static void RegisterCompositionShutdownActions(PluginContext context)
         {
+            context.ServiceRegistry.Register(() => context.Rendering.OverlayRenderHost?.DisposeOverlays());
             context.ServiceRegistry.Register(() => context.Services.ErrorHandler?.UnregisterGlobalExceptionHandlers());
             context.ServiceRegistry.Register(() => context.Services.PerformanceMonitor?.ShutdownForHotReload());
             context.ServiceRegistry.Register(() => PluginRuntimeTimerCoordinator.StopAll(

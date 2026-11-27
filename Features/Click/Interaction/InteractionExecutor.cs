@@ -126,19 +126,23 @@ namespace ClickIt.Features.Click.Interaction
                 if (GameInputSafety.IsPaused(gameController))
                     return false;
 
-                if (_settings?.LeftHanded?.Value == true)
-                {
+                bool rightButton = _settings?.LeftHanded?.Value == true;
+                if (rightButton)
                     Mouse.RightMouseDown();
-                    while (Keyboard.IsKeyDown(clickKey) && !GameInputSafety.IsPaused(gameController))
-                        ClickPipelineTiming.Sleep(10);
-                    Mouse.RightMouseUp();
-                }
                 else
-                {
                     Mouse.LeftMouseDown();
+
+                try
+                {
                     while (Keyboard.IsKeyDown(clickKey) && !GameInputSafety.IsPaused(gameController))
                         ClickPipelineTiming.Sleep(10);
-                    Mouse.LeftMouseUp();
+                }
+                finally
+                {
+                    if (rightButton)
+                        Mouse.RightMouseUp();
+                    else
+                        Mouse.LeftMouseUp();
                 }
             }
             finally

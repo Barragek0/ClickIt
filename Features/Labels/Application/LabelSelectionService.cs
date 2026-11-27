@@ -36,6 +36,7 @@ namespace ClickIt.Features.Labels.Application
             bool HasRect);
         private readonly Dictionary<long, (LabelCandidateBuildResult Result, long AtMs)> _buildCache = [];
         private const long BuildCacheWindowMs = 1000;
+        private long _lastBuildCachePruneMs = -BuildCacheWindowMs;
 
         // Per-label rect cache: the on-screen rect element-tree walk is the dominant per-label DLR cost of the scan, but a label's rect only changes as the player moves, so a short window cuts the walk to ~once per window. The interaction path re-reads the chosen label's rect fresh before clicking, so a briefly stale ranking rect is safe.
         private readonly record struct CachedLabelRectEntry(RectangleF Rect, bool HasRect);
@@ -51,6 +52,7 @@ namespace ClickIt.Features.Labels.Application
             Func<LabelOnGround, LabelCandidateBuildResult, bool>? isAcceptable)
         {
             long now = Environment.TickCount64;
+            PruneExpiredBuildCacheEntries(now);
 
             if (ReferenceEquals(allLabels, _selectionCacheLabelsRef))
             {
@@ -242,6 +244,20 @@ namespace ClickIt.Features.Labels.Application
 
             Entity? buildItem2 = freshCandidate.Item;
             return new CachedLabelScanEntry(freshCandidate, ReadDistance(buildItem2), rect, hasRect);
+        }
+
+        // Expired candidates can retain remote entity wrappers even when a scan finds no targets.
+        private void PruneExpiredBuildCacheEntries(long now)
+        {
+            if (_buildCache.Count == 0 || now - _lastBuildCachePruneMs < BuildCacheWindowMs)
+                return;
+
+            _lastBuildCachePruneMs = now;
+            foreach (var entry in _buildCache)
+            {
+                if (now - entry.Value.AtMs >= BuildCacheWindowMs)
+                    _buildCache.Remove(entry.Key);
+            }
         }
 
         private RectangleF GetWindowArea()

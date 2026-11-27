@@ -33,7 +33,7 @@ namespace ClickIt.Features.Labels.Inventory
         public void ClearForShutdown()
         {
             _probeService.ClearForShutdown();
-            _itemEntityService.ClearForShutdown();
+            _itemEntityService.Dispose();
         }
 
         private bool HasMetadataPathInInventory(GameController? gameController)

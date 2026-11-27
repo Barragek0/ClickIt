@@ -74,10 +74,24 @@ internal sealed class DelveNodeIcon
     }
 
     internal Task<TextureResult> LoadAsync(Func<string> getConfigDirectory)
-        => AssetName is { } assetName
-            ? Task.Run(() => LoadTextureAsync(assetName, getConfigDirectory,
-                typeof(DelveNodeIcon).Assembly.GetManifestResourceStream, TextureClient, () => RemoteHashes.Value))
-            : Task.FromResult(default(TextureResult));
+    {
+        if (AssetName is not { } assetName)
+            return Task.FromResult(default(TextureResult));
+
+        string configDirectory;
+        try
+        {
+            // A queued download needs the path, not the plugin that supplied it.
+            configDirectory = getConfigDirectory();
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(new TextureResult(null, $"Could not cache {assetName}{Extension} ({ex.GetType().Name})."));
+        }
+
+        return Task.Run(() => LoadTextureAsync(assetName, () => configDirectory,
+            typeof(DelveNodeIcon).Assembly.GetManifestResourceStream, TextureClient, () => RemoteHashes.Value));
+    }
 
     internal static async Task<TextureResult> LoadTextureAsync(string assetName, Func<string> getConfigDirectory,
         Func<string, Stream?> openResource, HttpClient http, Func<Task<Dictionary<string, string>>>? getHashes = null)

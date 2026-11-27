@@ -16,7 +16,10 @@ namespace ClickIt.Features.Altars
         private readonly Func<GameController?> _gameControllerProvider = gameControllerProvider ?? throw new ArgumentNullException(nameof(gameControllerProvider));
         private readonly Action<string, int> _logMessage = logMessage ?? throw new ArgumentNullException(nameof(logMessage));
         private readonly Action<string, int> _logError = logError ?? throw new ArgumentNullException(nameof(logError));
-        private readonly Action<string> _openDirectory = openDirectory ?? (path => Process.Start("explorer.exe", path));
+        private readonly Action<string> _openDirectory = openDirectory ?? (static path =>
+        {
+            using Process? process = Process.Start("explorer.exe", path);
+        });
         private readonly Action<string, int>? _playSound = playSound;
 
         internal Dictionary<string, DateTime> LastAlertTimes { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -262,7 +265,7 @@ namespace ClickIt.Features.Altars
                 _logMessage("Attempting to download default alert sound from GitHub...", 10);
                 using HttpClient http = new();
                 http.Timeout = TimeSpan.FromSeconds(5);
-                HttpResponseMessage resp = http.GetAsync(AlertDownloadUrl).GetAwaiter().GetResult();
+                using HttpResponseMessage resp = http.GetAsync(AlertDownloadUrl).GetAwaiter().GetResult();
                 if (resp.IsSuccessStatusCode)
                 {
                     byte[] bytes = resp.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();

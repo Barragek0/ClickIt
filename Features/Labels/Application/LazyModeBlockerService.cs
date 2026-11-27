@@ -57,19 +57,15 @@ namespace ClickIt.Features.Labels.Application
                 : Reason;
     }
 
-    public sealed class LazyModeBlockerService(
-        ClickItSettings settings,
-        GameController? gameController,
-        Action<string> logRestriction,
-        Func<long>? nowProvider = null)
+    public sealed class LazyModeBlockerService
     {
         internal const int NearbyMonsterRestrictionCacheDurationMs = 50;
         private const int LazyModeRestrictionLogThrottleMs = 500;
 
-        private readonly ClickItSettings _settings = settings;
-        private readonly GameController? _gameController = gameController;
-        private readonly Action<string> _logRestriction = logRestriction;
-        private readonly Func<long> _nowProvider = nowProvider ?? (() => Environment.TickCount64);
+        private readonly ClickItSettings _settings;
+        private readonly GameController? _gameController;
+        private readonly Action<string> _logRestriction;
+        private readonly Func<long> _nowProvider;
         private readonly TimedValueCache<int, LazyModeRestrictionResult> _cachedNearbyMonsterRestrictionCacheState
             = new(
                 NearbyMonsterRestrictionCacheDurationMs,
@@ -81,6 +77,21 @@ namespace ClickIt.Features.Labels.Application
         private readonly TimedValueCache<IReadOnlyList<LabelOnGround>, LazyModeRestrictionResult> _lockedChestRestrictionCache
             = new(LockedChestScanCacheWindowMs);
         private volatile string? _lastRestrictionReason;
+
+        public LazyModeBlockerService(
+            ClickItSettings settings,
+            GameController? gameController,
+            Action<string> logRestriction,
+            Func<long>? nowProvider = null)
+        {
+            _settings = settings;
+            _gameController = gameController;
+            _logRestriction = logRestriction;
+            _nowProvider = nowProvider ?? (static () => Environment.TickCount64);
+            RestrictedItemsLookup = HasRestrictedItemsOnScreen;
+        }
+
+        internal Func<IReadOnlyList<LabelOnGround>?, bool> RestrictedItemsLookup { get; }
 
         public string? LastRestrictionReason
             => _lastRestrictionReason;

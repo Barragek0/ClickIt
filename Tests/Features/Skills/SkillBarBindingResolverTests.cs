@@ -40,6 +40,7 @@ namespace ClickIt.Tests.Features.Skills
             binding.InternalName.Should().Be("shield_charge");
             binding.Entry.Should().NotBeNull();
             diagnostic.Should().Contain("shield_charge").And.Contain("Q");
+            SkillBarBindingResolver.GetThreadSkillBarEntriesBuffer(16).Should().BeEmpty();
         }
 
         [TestMethod]
@@ -96,6 +97,7 @@ namespace ClickIt.Tests.Features.Skills
             diagnostic.Should().Contain("onCooldown=1");
             diagnostic.Should().Contain("missingKeyText=1");
             diagnostic.Should().Contain("unsupportedOrMouseKey=1");
+            SkillBarBindingResolver.GetThreadSkillBarEntriesBuffer(16).Should().BeEmpty();
         }
 
         [TestMethod]

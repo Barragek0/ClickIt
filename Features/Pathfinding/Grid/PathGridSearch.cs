@@ -2,7 +2,7 @@
 
 namespace ClickIt.Features.Pathfinding.Grid
 {
-    internal static class PathGridSearch
+    internal sealed class PathGridSearch
     {
         private const float StraightCost = 1f;
         private const float DiagonalCost = 1.4142135f;
@@ -20,31 +20,31 @@ namespace ClickIt.Features.Pathfinding.Grid
             new(-1, -1)
         ];
 
-        [ThreadStatic] private static bool[]? s_closed;
-        [ThreadStatic] private static float[]? s_gScore;
-        [ThreadStatic] private static int[]? s_parent;
-        [ThreadStatic] private static int[]? s_version;
-        [ThreadStatic] private static int s_bufferWidth;
-        [ThreadStatic] private static int s_bufferHeight;
-        [ThreadStatic] private static int s_generation;
-        [ThreadStatic] private static PriorityQueue<int, float>? s_open;
+        private bool[]? _closed;
+        private float[]? _gScore;
+        private int[]? _parent;
+        private int[]? _version;
+        private int _bufferWidth;
+        private int _bufferHeight;
+        private int _generation;
+        private PriorityQueue<int, float>? _open;
 
-        // Reuse per-thread buffers sized to the area grid, lazily reset via a generation stamp.
-        private static void EnsureSearchBuffers(int width, int height, int nodeCount)
+        // Reuse per-service buffers sized to the area grid, lazily reset via a generation stamp.
+        private void EnsureSearchBuffers(int width, int height, int nodeCount)
         {
-            if (s_closed != null && s_gScore != null && s_parent != null && s_version != null
-                && s_bufferWidth == width && s_bufferHeight == height)
+            if (_closed != null && _gScore != null && _parent != null && _version != null
+                && _bufferWidth == width && _bufferHeight == height)
                 return;
 
-            s_bufferWidth = width;
-            s_bufferHeight = height;
-            s_closed = new bool[nodeCount];
-            s_gScore = new float[nodeCount];
-            s_parent = new int[nodeCount];
-            s_version = new int[nodeCount];
+            _bufferWidth = width;
+            _bufferHeight = height;
+            _closed = new bool[nodeCount];
+            _gScore = new float[nodeCount];
+            _parent = new int[nodeCount];
+            _version = new int[nodeCount];
         }
 
-        internal static List<PathfindingService.GridPoint>? FindPathAStar(bool[][] walkable, PathfindingService.GridPoint start, PathfindingService.GridPoint goal, int maxExpandedNodes, out int expandedNodes)
+        internal List<PathfindingService.GridPoint>? FindPathAStar(bool[][] walkable, PathfindingService.GridPoint start, PathfindingService.GridPoint goal, int maxExpandedNodes, out int expandedNodes)
         {
             expandedNodes = 0;
 
@@ -61,13 +61,13 @@ namespace ClickIt.Features.Pathfinding.Grid
             int budget = SystemMath.Max(1, maxExpandedNodes);
 
             EnsureSearchBuffers(width, height, nodeCount);
-            int generation = s_generation = s_generation == int.MaxValue ? 1 : s_generation + 1;
-            bool[] closed = s_closed!;
-            float[] gScore = s_gScore!;
-            int[] parent = s_parent!;
-            int[] version = s_version!;
+            int generation = _generation = _generation == int.MaxValue ? 1 : _generation + 1;
+            bool[] closed = _closed!;
+            float[] gScore = _gScore!;
+            int[] parent = _parent!;
+            int[] version = _version!;
 
-            PriorityQueue<int, float> open = s_open ??= new PriorityQueue<int, float>();
+            PriorityQueue<int, float> open = _open ??= new PriorityQueue<int, float>();
             open.Clear();
 
             int startKey = ToKey(start.X, start.Y, width);

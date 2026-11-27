@@ -38,10 +38,6 @@ namespace ClickIt.Core.Runtime
 
     internal static class PluginClickRuntimeStateEvaluator
     {
-        // Cached per-service restricted-items delegate so the per-frame hotkey check does not allocate a closure on every call. The service reference is stable for a plugin lifetime; the cache re-keys when it changes (tests).
-        private static LazyModeBlockerService? _hotkeyRestrictedService;
-        private static Func<IReadOnlyList<LabelOnGround>?, bool>? _hotkeyRestrictedLookup;
-
         internal static bool ResolveHotkeyActive(PluginServices services)
             => ResolveHotkeyActive(services.InputHandler, services.CachedLabels, services.LazyModeBlockerService);
 
@@ -49,18 +45,7 @@ namespace ClickIt.Core.Runtime
             InputHandler? inputHandler,
             TimeCache<List<LabelOnGround>>? cachedLabels,
             LazyModeBlockerService? lazyModeBlockerService)
-            => inputHandler?.IsClickHotkeyPressed(cachedLabels, ResolveRestrictedLookup(lazyModeBlockerService)) ?? false;
-
-        private static Func<IReadOnlyList<LabelOnGround>?, bool> ResolveRestrictedLookup(LazyModeBlockerService? lazyModeBlockerService)
-        {
-            if (ReferenceEquals(lazyModeBlockerService, _hotkeyRestrictedService) && _hotkeyRestrictedLookup != null)
-                return _hotkeyRestrictedLookup;
-
-            Func<IReadOnlyList<LabelOnGround>?, bool> lookup = labels => ResolveHasLazyModeRestrictedItems(lazyModeBlockerService, labels);
-            _hotkeyRestrictedService = lazyModeBlockerService;
-            _hotkeyRestrictedLookup = lookup;
-            return lookup;
-        }
+            => inputHandler?.IsClickHotkeyPressed(cachedLabels, lazyModeBlockerService?.RestrictedItemsLookup) ?? false;
 
         internal static bool ResolveHasLazyModeRestrictedItems(
             LazyModeBlockerService? lazyModeBlockerService,

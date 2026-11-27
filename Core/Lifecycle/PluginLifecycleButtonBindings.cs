@@ -23,7 +23,7 @@ namespace ClickIt.Core.Lifecycle
 
         private void ReportBugButtonPressed()
         {
-            _ = Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues");
+            using Process? process = Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues");
         }
 
         private void CopyAdditionalDebugInfoButtonPressed()

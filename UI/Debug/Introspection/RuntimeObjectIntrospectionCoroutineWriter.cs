@@ -44,6 +44,7 @@ namespace ClickIt.UI.Debug.Introspection
                     onProgress,
                     error => { failed = true; SafeInvokeCompleted(onCompleted, null, error); },
                     nodeBudgetPerYield);
+                using var routineLifetime = routine as IDisposable;
                 while (routine.MoveNext())
                     yield return null;
                 if (!failed)
@@ -86,7 +87,7 @@ namespace ClickIt.UI.Debug.Introspection
             int progressTotal = normalized.ProgressNodeTotal;
             if (measureProgressTotal)
             {
-                RuntimeObjectTraversalEngine counter = new(root, normalized, enforceElapsedBudget: true);
+                using RuntimeObjectTraversalEngine counter = new(root, normalized, enforceElapsedBudget: true);
                 int countedSinceYield = 0;
                 int previousCounted = 0;
                 int countSliceMs = SystemMath.Max(1, maxSliceMsPerYield);
@@ -110,7 +111,7 @@ namespace ClickIt.UI.Debug.Introspection
                 SafeInvokeProgress(onProgress, 50);
             }
 
-            RuntimeObjectTraversalEngine engine = new(root, normalized, enforceElapsedBudget: true);
+            using RuntimeObjectTraversalEngine engine = new(root, normalized, enforceElapsedBudget: true);
             int maxSliceMs = SystemMath.Max(1, maxSliceMsPerYield);
             Stopwatch sliceStopwatch = Stopwatch.StartNew();
 

@@ -77,7 +77,7 @@ namespace ClickIt.Tests.Core.Lifecycle
         }
 
         [TestMethod]
-        public void Shutdown_ClearsInventoryInteractionPolicyCaches()
+        public void Shutdown_ClearsInventoryCachesAndDisposesInventoryWorkerStorage()
         {
             var plugin = new ClickIt();
             var settings = new ClickItSettings();
@@ -117,8 +117,13 @@ namespace ClickIt.Tests.Core.Lifecycle
             firstProbe.IsFull.Should().BeFalse();
             snapshotBuildCount.Should().Be(1);
 
+            var workerStorage = (ThreadLocal<HashSet<long>>)RuntimeMemberAccessor.GetRequiredMemberValue(
+                itemEntityService, "_uniqueEntityAddresses")!;
+            workerStorage.Value!.Add(123);
+
             PluginLifecycleCoordinator.Shutdown(plugin, settings);
 
+            FluentActions.Invoking(() => _ = workerStorage.Value).Should().Throw<ObjectDisposedException>();
             probeService.IsInventoryFull(gameController, out InventoryFullProbe secondProbe).Should().BeTrue();
             secondProbe.IsFull.Should().BeTrue();
             snapshotBuildCount.Should().Be(2);

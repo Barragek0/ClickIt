@@ -34,13 +34,20 @@ namespace ClickIt.Shared.Game
                 return elementsList;
 
 
-            AddIfTextContains(label, str, elementsList);
+            try
+            {
+                AddIfTextContains(label, str, elementsList);
 
-            for (int containerIndex = 0; containerIndex <= 1; containerIndex++)
-                AddMatchingChildrenFromContainer(label.GetChildAtIndex(containerIndex), str, elementsList);
+                for (int containerIndex = 0; containerIndex <= 1; containerIndex++)
+                    AddMatchingChildrenFromContainer(label.GetChildAtIndex(containerIndex), str, elementsList);
 
-
-            return elementsList;
+                return elementsList;
+            }
+            catch
+            {
+                elementsList.Clear();
+                throw;
+            }
         }
 
         public static Element? GetElementByString(Element? root, string str)

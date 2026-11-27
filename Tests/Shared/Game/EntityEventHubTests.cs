@@ -162,6 +162,63 @@ namespace ClickIt.Tests.Shared.Game
         }
 
         [TestMethod]
+        [TestCategory("Regression")]
+        public void EntityRemoved_DropsSpectres_SoRemovedSummonsAreNotRetained()
+        {
+            // Before the fix OnEntityRemoved never touched _spectres, so a removed summon stayed retained for the whole map. Probes share the unreadable-id fallback (0), so this isolates the spectre category.
+            Entity spectre = EntityProbeFactory.Create(path: "Metadata/LeagueAzmeri/SpecialCorpses/CorpseWraith");
+            GameController gc = ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(spectre);
+
+            EntityEventHub.Instance.EnsureSubscribed(gc);
+            EntityEventHub.Instance.Spectres.Count.Should().Be(1);
+
+            InvokeEntityCallback("OnEntityRemoved", spectre);
+
+            EntityEventHub.Instance.Spectres.Count.Should().Be(0, "a removed spectre must not stay retained");
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void Dispose_IgnoresAnEntityAddedCallbackAlreadyQueuedByHost()
+        {
+            Entity shrine = EntityProbeFactory.Create(path: "Metadata/MiscellaneousObjects/DarkShrine");
+            GameController controller = ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(shrine);
+            EntityEventHub.Instance.EnsureSubscribed(controller);
+            EntityEventHub.Instance.Shrines.Count.Should().Be(1);
+
+            EntityEventHub.Instance.Dispose();
+            InvokeEntityCallback("OnEntityAdded", shrine);
+
+            EntityEventHub.Instance.Shrines.Count.Should().Be(0);
+            EntityEventHub.Instance.OffscreenStructures.Count.Should().Be(0);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void AreaChange_DiscardsClassificationFromAnEarlierReseed()
+        {
+            var hub = EntityEventHub.Instance;
+            Entity shrine = EntityProbeFactory.Create(path: "Metadata/MiscellaneousObjects/DarkShrine");
+            hub.EnsureSubscribed(ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(shrine));
+            int previousRevision = (int)RuntimeMemberAccessor.GetRequiredMemberValue(hub, "_areaRevision")!;
+            hub.Shrines.Count.Should().Be(1);
+
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            typeof(EntityEventHub).GetMethod("OnAreaChanged", flags)!.Invoke(hub, [null]);
+            typeof(EntityEventHub).GetMethod("Classify", flags)!.Invoke(hub, [shrine, previousRevision]);
+
+            hub.Shrines.Count.Should().Be(0);
+            InvokeEntityCallback("OnEntityAdded", shrine);
+            hub.Shrines.Count.Should().Be(1);
+        }
+
+        private static void InvokeEntityCallback(string methodName, Entity entity)
+        {
+            MethodInfo callback = typeof(EntityEventHub).GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)!;
+            callback.Invoke(EntityEventHub.Instance, [entity]);
+        }
+
+        [TestMethod]
         public void Reseed_IgnoresUnrelatedEntities()
         {
             Entity monster = EntityProbeFactory.Create(path: "Metadata/Monsters/Test");

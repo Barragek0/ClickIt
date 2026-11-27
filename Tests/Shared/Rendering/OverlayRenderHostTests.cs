@@ -3,7 +3,7 @@ namespace ClickIt.Tests.Shared.Rendering
     [TestClass]
     public class OverlayRenderHostTests
     {
-        private sealed class FakeOverlay : IOverlay
+        private sealed class FakeOverlay : IOverlay, IDisposable
         {
             public FakeOverlay(RenderSection section, bool enabled = true)
             {
@@ -18,6 +18,8 @@ namespace ClickIt.Tests.Shared.Rendering
             public ProcessingSection ProcessingSection => ProcessingSection.Unknown;
             public bool Enabled { get; }
             public int DrawCount { get; private set; }
+            public int DisposeCount { get; private set; }
+            public void Dispose() => DisposeCount++;
 
             public bool IsEnabled(ClickItSettings settings) => Enabled;
 
@@ -36,6 +38,22 @@ namespace ClickIt.Tests.Shared.Rendering
                 WindowArea: default,
                 Labels: null,
                 new DeferredDrawQueue());
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void DisposeOverlays_ReleasesRegisteredResourcesOnce()
+        {
+            var host = new OverlayRenderHost();
+            var overlay = new FakeOverlay(RenderSection.AltarOverlay);
+            host.Register(overlay);
+
+            host.DisposeOverlays();
+            host.DisposeOverlays();
+            host.Render(CreateContext(), performanceMonitor: null);
+
+            overlay.DisposeCount.Should().Be(1);
+            overlay.DrawCount.Should().Be(0);
+        }
 
         [TestMethod]
         public void Render_DisabledOverlay_SkipsDrawAndRecordsNearZeroTiming()

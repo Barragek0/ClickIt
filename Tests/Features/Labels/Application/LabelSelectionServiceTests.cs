@@ -488,6 +488,74 @@ namespace ClickIt.Tests.Features.Labels.Application
         }
 
         [TestMethod]
+        [TestCategory("Regression")]
+        [DataRow(400, true)]
+        [DataRow(1, false)]
+        public void GetNextLabelToClick_PrunesExpiredBuildCacheEntries_WithoutChangingSelection(int expiredCount, bool hasLiveLabel)
+        {
+            // The per-label build cache is keyed by label address and must not grow for the whole session. Expired entries are dropped, but a live label must still be selected exactly as before.
+            var service = new LabelSelectionService(new LabelSelectionServiceDependencies(
+                GameController: null,
+                CreateClickSettings: static _ => TestClickSettings(),
+                ShouldCaptureLabelDebug: static () => false,
+                PublishLabelDebugStage: static _ => { },
+                TryBuildLabelCandidate: static (LabelOnGround candidate, ClickSettings _, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
+                {
+                    item = EntityProbeFactory.Create();
+                    mechanicId = MechanicIds.Items;
+                    rejectReason = LabelCandidateRejectReason.None;
+                    return true;
+                },
+                GetMechanicIdForLabelCore: static _ => null));
+
+            // Seed the cache the way a long session would leave it: many addresses, all past the 1s build window.
+            var buildCache = (Dictionary<long, (LabelCandidateBuildResult Result, long AtMs)>)RuntimeMemberAccessor
+                .GetRequiredMemberValue(service, "_buildCache")!;
+            long staleAt = Environment.TickCount64 - 60_000;
+            LabelCandidateBuildResult stale = new(false, null, null, null, LabelCandidateRejectReason.NoMechanic);
+            for (int i = 0; i < expiredCount; i++)
+                buildCache[0x10000 + i] = (stale, staleAt);
+
+            LabelOnGround? live = hasLiveLabel ? CreateOpaqueLabel(address: 0x9000) : null;
+            service.GetNextLabelToClick(live == null ? [] : [live], 0, 10, isAcceptable: null).Should().BeSameAs(live,
+                "pruning expired entries must not change which label is selected");
+
+            buildCache.Keys.Should().Equal(hasLiveLabel ? [0x9000L] : []);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression")]
+        public void GetNextLabelToClick_DoesNotPruneEntriesInsideTheBuildWindow()
+        {
+            // Pruning must never drop a live entry: within the 1s window the cached build is authoritative.
+            var service = new LabelSelectionService(new LabelSelectionServiceDependencies(
+                GameController: null,
+                CreateClickSettings: static _ => TestClickSettings(),
+                ShouldCaptureLabelDebug: static () => false,
+                PublishLabelDebugStage: static _ => { },
+                TryBuildLabelCandidate: static (LabelOnGround candidate, ClickSettings _, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
+                {
+                    item = EntityProbeFactory.Create();
+                    mechanicId = MechanicIds.Items;
+                    rejectReason = LabelCandidateRejectReason.None;
+                    return true;
+                },
+                GetMechanicIdForLabelCore: static _ => null));
+
+            var buildCache = (Dictionary<long, (LabelCandidateBuildResult Result, long AtMs)>)RuntimeMemberAccessor
+                .GetRequiredMemberValue(service, "_buildCache")!;
+            long freshAt = Environment.TickCount64;
+            LabelCandidateBuildResult cachedResult = new(true, EntityProbeFactory.Create(), MechanicIds.Items, null, LabelCandidateRejectReason.None);
+            for (int i = 0; i < 400; i++)
+                buildCache[0x20000 + i] = (cachedResult, freshAt);
+
+            LabelOnGround live = CreateOpaqueLabel(address: 0x9100);
+            service.GetNextLabelToClick([live], 0, 10, isAcceptable: null).Should().BeSameAs(live);
+
+            buildCache.Count.Should().Be(401, "entries still inside the build window must be kept");
+        }
+
+        [TestMethod]
         public void GetNextLabelToClick_CacheDisabled_DoesNotRetargetAcrossTicks()
         {
             // With the setting disabled, the scan-once-click-many cache is bypassed. Swapping the label between ticks must surface the new label, not a stale cached one.

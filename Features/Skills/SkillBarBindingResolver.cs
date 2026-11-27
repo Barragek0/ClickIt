@@ -40,64 +40,71 @@ namespace ClickIt.Features.Skills
         {
             binding = default;
 
-            if (!TryGetSkillBarEntries(skillBar, out IReadOnlyList<object?> skillEntries))
+            try
             {
-                diagnostic = "SkillBar/Skills collection unavailable.";
+                if (!TryGetSkillBarEntries(skillBar, out IReadOnlyList<object?> skillEntries))
+                {
+                    diagnostic = "SkillBar/Skills collection unavailable.";
+                    return false;
+                }
+
+                if (skillEntries.Count == 0)
+                {
+                    diagnostic = "SkillBar contains zero entries.";
+                    return false;
+                }
+
+                int nullEntries = 0;
+                int nonMatchingEntries = 0;
+                int cooldownEntries = 0;
+                int missingKeyEntries = 0;
+                int unsupportedKeyEntries = 0;
+
+                for (int i = 0; i < skillEntries.Count; i++)
+                {
+                    object? entry = skillEntries[i];
+                    if (entry == null)
+                    {
+                        nullEntries++;
+                        continue;
+                    }
+
+                    if (!TryResolveSkillInternalName(entry, expectedSkillName, isWantedSkill, out string internalName))
+                    {
+                        nonMatchingEntries++;
+                        continue;
+                    }
+
+                    if (IsSkillEntryOnCooldown(entry))
+                    {
+                        cooldownEntries++;
+                        continue;
+                    }
+
+                    if (!TryResolveSkillKeyText(entry, out string keyText))
+                    {
+                        missingKeyEntries++;
+                        continue;
+                    }
+
+                    if (!TryMapKeyTextToKeys(keyText, out Keys parsedKey))
+                    {
+                        unsupportedKeyEntries++;
+                        continue;
+                    }
+
+                    binding = new SkillBinding(parsedKey, internalName, entry);
+                    diagnostic = $"Matched {skillDescription} '{internalName}' on key text '{keyText}'.";
+                    return true;
+                }
+
+                diagnostic = $"entries={skillEntries.Count}, null={nullEntries}, nonMatching={nonMatchingEntries}, onCooldown={cooldownEntries}, missingKeyText={missingKeyEntries}, unsupportedOrMouseKey={unsupportedKeyEntries}";
                 return false;
             }
-
-            if (skillEntries.Count == 0)
+            finally
             {
-                diagnostic = "SkillBar contains zero entries.";
-                return false;
+                _threadSkillBarEntriesBuffer?.Clear();
             }
-
-            int nullEntries = 0;
-            int nonMatchingEntries = 0;
-            int cooldownEntries = 0;
-            int missingKeyEntries = 0;
-            int unsupportedKeyEntries = 0;
-
-            for (int i = 0; i < skillEntries.Count; i++)
-            {
-                object? entry = skillEntries[i];
-                if (entry == null)
-                {
-                    nullEntries++;
-                    continue;
-                }
-
-                if (!TryResolveSkillInternalName(entry, expectedSkillName, isWantedSkill, out string internalName))
-                {
-                    nonMatchingEntries++;
-                    continue;
-                }
-
-                if (IsSkillEntryOnCooldown(entry))
-                {
-                    cooldownEntries++;
-                    continue;
-                }
-
-                if (!TryResolveSkillKeyText(entry, out string keyText))
-                {
-                    missingKeyEntries++;
-                    continue;
-                }
-
-                if (!TryMapKeyTextToKeys(keyText, out Keys parsedKey))
-                {
-                    unsupportedKeyEntries++;
-                    continue;
-                }
-
-                binding = new SkillBinding(parsedKey, internalName, entry);
-                diagnostic = $"Matched {skillDescription} '{internalName}' on key text '{keyText}'.";
-                return true;
-            }
-
-            diagnostic = $"entries={skillEntries.Count}, null={nullEntries}, nonMatching={nonMatchingEntries}, onCooldown={cooldownEntries}, missingKeyText={missingKeyEntries}, unsupportedOrMouseKey={unsupportedKeyEntries}";
-            return false;
         }
 
         internal static bool TryResolveSkillRuntimeState(object? entry, out bool isUsing, out bool? allowedToCast, out bool? canBeUsed)

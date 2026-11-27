@@ -25,6 +25,7 @@ namespace ClickIt.Tests.Core.Lifecycle
             plugin.State.Services.AreaService.Should().BeNull();
             plugin.State.Rendering.OverlayRenderHost.Should().BeNull();
             plugin.State.Runtime.IsShuttingDown.Should().BeTrue();
+            GameStateDumpCoordinator.Current.Should().BeNull();
 
             LockManager.Instance.Should().BeNull();
         }

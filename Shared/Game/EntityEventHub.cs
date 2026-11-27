@@ -6,6 +6,7 @@ internal sealed class EntityEventHub
     internal static EntityEventHub Instance { get; } = new();
 
     private readonly Lock _lock = new();
+    private readonly Lock _subscriptionLock = new();
     private readonly Dictionary<long, Entity> _blight = [];
     private readonly Dictionary<long, Entity> _offscreenStructures = [];
     private readonly Dictionary<long, Entity> _settlersOre = [];
@@ -16,9 +17,11 @@ internal sealed class EntityEventHub
     private readonly Dictionary<long, Entity> _animateGuardians = [];
     private readonly Dictionary<long, Entity> _spectres = [];
     private readonly Dictionary<long, Entity> _iceCaveFossils = [];
-    private GameController? _subscribedController;
-    private bool _subscribed;
+    private volatile GameController? _subscribedController;
+    private EntityListWrapper? _subscribedWrapper;
+    private Action? _unsubscribeArea;
     private long _lastReseedMs;
+    private volatile int _areaRevision;
 
     // Accumulated entity-event cost (bytes, ms), polled via TakePendingCost so a walking burst shows as one large sample (the Blight "Events" stage) instead of per-event averages.
     private long _pendingCostBytes;
@@ -64,71 +67,69 @@ internal sealed class EntityEventHub
     // Subscribe once per controller, then seed from the retained cache (entities already present when we subscribe never fire EntityAdded). Fail-closed for controllers without a readable wrapper. A different controller (plugin reload, test isolation) rebinds instead of reusing stale subscriptions.
     internal void EnsureSubscribed(GameController? controller = null)
     {
-        if (controller == null)
-            return;
-        if (_subscribed && ReferenceEquals(_subscribedController, controller))
+        if (controller == null || ReferenceEquals(_subscribedController, controller))
             return;
 
-        Unsubscribe(_subscribedController);
-        ClearAll();
-
-        EntityListWrapper? wrapper;
-        try { wrapper = controller.EntityListWrapper; }
-        catch { return; }
-        if (wrapper == null)
-            return;
-
-        wrapper.EntityAdded += OnEntityAdded;
-        wrapper.EntityRemoved += OnEntityRemoved;
-        try { controller.Area.OnAreaChange += OnAreaChanged; }
-        catch
+        // Multiple coroutines can be the first consumer. Attach each host event only once.
+        lock (_subscriptionLock)
         {
-            // Area unreadable (test fakes, defensive): keep the wrapper events and seed anyway — the sets simply won't clear on area change. Downstream consumers re-validate liveness.
+            if (ReferenceEquals(_subscribedController, controller))
+                return;
+
+            Unsubscribe();
+            ClearAll();
+
+            EntityListWrapper? wrapper;
+            try { wrapper = controller.EntityListWrapper; }
+            catch { return; }
+            if (wrapper == null)
+                return;
+
+            _subscribedWrapper = wrapper;
+            wrapper.EntityAdded += OnEntityAdded;
+            wrapper.EntityRemoved += OnEntityRemoved;
+            try
+            {
+                var area = controller.Area;
+                area.OnAreaChange += OnAreaChanged;
+                _unsubscribeArea = () => area.OnAreaChange -= OnAreaChanged;
+            }
+            catch
+            {
+                // Continue tracking entities if the host's area controller is unavailable.
+            }
+
+            _subscribedController = controller;
+            ReseedCore();
         }
-        _subscribedController = controller;
-        _subscribed = true;
-        ReseedCore();
     }
 
     // Explicit teardown for plugin disable/reload: unhooks the live GameController events so a disposed composition's handler stops running on every EntityAdded.
     internal void Dispose()
     {
-        GameController? gc;
-        lock (_lock)
+        lock (_subscriptionLock)
         {
-            gc = _subscribedController;
-            _subscribedController = null;
-            _subscribed = false;
-            _blight.Clear();
-            _offscreenStructures.Clear();
-            _settlersOre.Clear();
-            _shrines.Clear();
-            _ritualBlockers.Clear();
-            _lostShipment.Clear();
-            _mercenaries.Clear();
-            _animateGuardians.Clear();
-            _spectres.Clear();
-            _iceCaveFossils.Clear();
+            Unsubscribe();
+            ClearAll();
         }
-        Unsubscribe(gc);
     }
 
-    private void Unsubscribe(GameController? gc)
+    private void Unsubscribe()
     {
-        if (gc == null)
-            return;
-        try
+        _subscribedController = null;
+        if (_subscribedWrapper is { } wrapper)
         {
-            if (gc.EntityListWrapper is { } wrapper)
-            {
-                wrapper.EntityAdded -= OnEntityAdded;
-                wrapper.EntityRemoved -= OnEntityRemoved;
-            }
-            gc.Area.OnAreaChange -= OnAreaChanged;
+            _subscribedWrapper = null;
+            try { wrapper.EntityAdded -= OnEntityAdded; }
+            catch { }
+            try { wrapper.EntityRemoved -= OnEntityRemoved; }
+            catch { }
         }
-        catch
-        {
-        }
+
+        Action? unsubscribeArea = _unsubscribeArea;
+        _unsubscribeArea = null;
+        try { unsubscribeArea?.Invoke(); }
+        catch { }
     }
 
     // A rebind to a different controller must never keep the previous controller's retained entities: consumers that fail to subscribe (no readable wrapper, e.g. test fakes) would otherwise keep serving stale structures from the old controller.
@@ -136,17 +137,23 @@ internal sealed class EntityEventHub
     {
         lock (_lock)
         {
-            _blight.Clear();
-            _offscreenStructures.Clear();
-            _settlersOre.Clear();
-            _shrines.Clear();
-            _ritualBlockers.Clear();
-            _lostShipment.Clear();
-            _mercenaries.Clear();
-            _animateGuardians.Clear();
-            _spectres.Clear();
-            _iceCaveFossils.Clear();
+            _areaRevision++;
+            ClearTrackedEntities();
         }
+    }
+
+    private void ClearTrackedEntities()
+    {
+        _blight.Clear();
+        _offscreenStructures.Clear();
+        _settlersOre.Clear();
+        _shrines.Clear();
+        _ritualBlockers.Clear();
+        _lostShipment.Clear();
+        _mercenaries.Clear();
+        _animateGuardians.Clear();
+        _spectres.Clear();
+        _iceCaveFossils.Clear();
     }
 
     // Shared reseed (one full retained-cache walk refills every category), gated at the hub level so concurrent consumer-driven reseeds (blight + offscreen both use a 2s cadence) run at most one walk per window.
@@ -154,28 +161,24 @@ internal sealed class EntityEventHub
 
     internal void Reseed()
     {
-        long now = Environment.TickCount64;
-        if (now - _lastReseedMs < ReseedIntervalMs)
-            return;
-        _lastReseedMs = now;
-        ReseedCore();
+        lock (_subscriptionLock)
+        {
+            long now = Environment.TickCount64;
+            if (_subscribedController == null || now - _lastReseedMs < ReseedIntervalMs)
+                return;
+            _lastReseedMs = now;
+            ReseedCore();
+        }
     }
 
     // Clears and re-seeds from the retained cache of the currently subscribed controller, classifying every entity into every category. Seed from the retained cache; fall back to the valid-only view when the retained cache is unreadable (test fakes, defensive).
     private void ReseedCore()
     {
+        int areaRevision;
         lock (_lock)
         {
-            _blight.Clear();
-            _offscreenStructures.Clear();
-            _settlersOre.Clear();
-            _shrines.Clear();
-            _ritualBlockers.Clear();
-            _lostShipment.Clear();
-            _mercenaries.Clear();
-            _animateGuardians.Clear();
-            _spectres.Clear();
-            _iceCaveFossils.Clear();
+            ClearTrackedEntities();
+            areaRevision = _areaRevision;
         }
         GameController? gc = _subscribedController;
         if (gc == null)
@@ -184,8 +187,8 @@ internal sealed class EntityEventHub
         long allocStart = GC.GetAllocatedBytesForCurrentThread();
         try
         {
-            if (!EntityQueryService.VisitAllEntities(gc, entity => { Classify(entity); return false; }))
-                EntityQueryService.VisitValidEntities(gc, entity => { Classify(entity); return false; });
+            if (!EntityQueryService.TryVisitRetainedEntities(gc, entity => Classify(entity, areaRevision)))
+                EntityQueryService.VisitValidEntities(gc, entity => { Classify(entity, areaRevision); return false; });
         }
         finally
         {
@@ -203,7 +206,7 @@ internal sealed class EntityEventHub
         long allocStart = GC.GetAllocatedBytesForCurrentThread();
         try
         {
-            Classify(entity);
+            Classify(entity, _areaRevision);
         }
         finally
         {
@@ -232,6 +235,7 @@ internal sealed class EntityEventHub
                 _lostShipment.Remove(id);
                 _mercenaries.Remove(id);
                 _animateGuardians.Remove(id);
+                _spectres.Remove(id);
                 _iceCaveFossils.Remove(id);
             }
         }
@@ -244,25 +248,15 @@ internal sealed class EntityEventHub
     }
 
     private void OnAreaChanged(AreaInstance area)
-    {
-        lock (_lock)
-        {
-            _blight.Clear();
-            _offscreenStructures.Clear();
-            _settlersOre.Clear();
-            _shrines.Clear();
-            _ritualBlockers.Clear();
-            _lostShipment.Clear();
-            _mercenaries.Clear();
-            _animateGuardians.Clear();
-            _spectres.Clear();
-            _iceCaveFossils.Clear();
-        }
-    }
+        => ClearAll();
 
     // ONE path read shared by every category, plus a direct type read only for the offscreen AreaTransition fallback. This is the only read on the walking-triggered entity-event burst regardless of how many categories are registered.
-    private void Classify(Entity entity)
+    private void Classify(Entity entity, int areaRevision)
     {
+        GameController? controller = _subscribedController;
+        if (controller == null)
+            return;
+
         string path = ReadPath(entity);
         long id = TryGetEntityId(entity);
 
@@ -284,6 +278,9 @@ internal sealed class EntityEventHub
 
         lock (_lock)
         {
+            if (areaRevision != _areaRevision || !ReferenceEquals(controller, _subscribedController))
+                return;
+
             if (isBlight) _blight[id] = entity;
             if (isOffscreen) _offscreenStructures[id] = entity;
             if (isSettlers) _settlersOre[id] = entity;

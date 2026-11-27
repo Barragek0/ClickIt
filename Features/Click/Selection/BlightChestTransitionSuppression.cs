@@ -1,6 +1,6 @@
 namespace ClickIt.Features.Click.Selection;
 
-internal sealed class BlightChestTransitionSuppression
+internal sealed class BlightChestTransitionSuppression(Func<long?>? getAreaHash = null)
 {
     private const long SuppressionDurationMs = 2000;
     private const int MaxTrackedEntities = 256;
@@ -8,8 +8,9 @@ internal sealed class BlightChestTransitionSuppression
     // Entity address -> earliest time the chest may be clicked again (TickCount64).
     private readonly Dictionary<long, long> _noClickUntilMs = [];
 
-    // Entity addresses that already had their false -> true transition. The blacklist is armed once on that edge and never again, so these never re-arm.
+    // Keep the first-transition history for the current Blight area even after its timers expire.
     private readonly HashSet<long> _everTransitioned = [];
+    private long? _areaHash;
 
     internal bool ShouldSuppressBlightChestClick(LabelOnGround? label, string? entityPath = null)
         => ShouldSuppressBlightChestClick(label, Environment.TickCount64, entityPath);
@@ -32,6 +33,13 @@ internal sealed class BlightChestTransitionSuppression
             if (!DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string path)
                 || !BlightChestDebug.IsBlightChestPath(path))
                 return false;
+        }
+
+        if (getAreaHash?.Invoke() is { } areaHash && areaHash != _areaHash)
+        {
+            _areaHash = areaHash;
+            _everTransitioned.Clear();
+            _noClickUntilMs.Clear();
         }
 
         bool isTransitioned = DynamicAccess.TryReadBool(item, static current => current.IsTransitioned, out bool value) && value;

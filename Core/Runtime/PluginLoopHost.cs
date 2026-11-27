@@ -124,23 +124,31 @@ namespace ClickIt.Core.Runtime
         {
             bool failed = false;
             IEnumerator inner = step();
-            while (!failed)
+            try
             {
-                bool hasNext;
-                try
+                while (!failed)
                 {
-                    hasNext = inner.MoveNext();
+                    bool hasNext;
+                    try
+                    {
+                        hasNext = inner.MoveNext();
+                    }
+                    catch (Exception ex)
+                    {
+                        _errorHandler.LogError($"[{name}] {ex}");
+                        failed = true;
+                        break;
+                    }
+                    if (!hasNext)
+                        break;
+                    yield return inner.Current;
                 }
-                catch (Exception ex)
-                {
-                    _errorHandler.LogError($"[{name}] {ex}");
-                    failed = true;
-                    break;
-                }
-                if (!hasNext)
-                    break;
-                yield return inner.Current;
             }
+            finally
+            {
+                (inner as IDisposable)?.Dispose();
+            }
+
             if (failed)
                 yield return new WaitTime(500);
         }

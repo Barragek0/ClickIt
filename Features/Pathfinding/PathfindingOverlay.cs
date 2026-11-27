@@ -14,15 +14,12 @@ namespace ClickIt.Features.Pathfinding
         private static readonly float CameraAngleSin = (float)SystemMath.Sin(CameraAngle);
 
         private readonly PathfindingService _pathfindingService;
-        private object? _heightDataOwner;
         private long _heightDataOwnerAddress;
-        private long _heightPendingOwnerAddress;
-        private long _heightPendingAtMs;
+        private TerrainOwnerChangeConfirmation _heightOwnerChange;
         private float[][]? _cachedHeightData;
         private object? _playerHeightOwner;
         private long _playerHeightOwnerAddress;
         private float _cachedPlayerHeight;
-        private const long HeightRebuildConfirmMs = 150;
 
         public PathfindingOverlay(PathfindingService pathfindingService)
         {
@@ -188,29 +185,17 @@ namespace ClickIt.Features.Pathfinding
         // Cache height data per IngameData ADDRESS so the multi-million-cell read only happens on a confirmed area change.
         private float[][]? ResolveHeightData(GameController gameController)
         {
-            object? data = gameController.IngameState?.Data;
+            IngameData? data = gameController.IngameState?.Data;
             if (data == null)
                 return null;
 
-            long address = data is RemoteMemoryObject rmo ? rmo.Address : 0;
-            if (!ReferenceEquals(data, _heightDataOwner) && address != _heightDataOwnerAddress)
+            long address = data.Address;
+            bool waitForOwner = _heightOwnerChange.ShouldWait(_heightDataOwnerAddress, address, Environment.TickCount64);
+            if (address != _heightDataOwnerAddress && !waitForOwner)
             {
-                long now = Environment.TickCount64;
-                if (address != _heightPendingOwnerAddress)
-                {
-                    _heightPendingOwnerAddress = address;
-                    _heightPendingAtMs = now;
-                    return _cachedHeightData;
-                }
-
-                if (now - _heightPendingAtMs < HeightRebuildConfirmMs)
-                    return _cachedHeightData;
-
-                _heightPendingOwnerAddress = 0;
-                _heightPendingAtMs = 0;
-                _heightDataOwner = data;
+                _cachedHeightData = data.RawTerrainHeightData;
                 _heightDataOwnerAddress = address;
-                _cachedHeightData = gameController.IngameState!.Data!.RawTerrainHeightData;
+                _heightOwnerChange = default;
             }
             return _cachedHeightData;
         }

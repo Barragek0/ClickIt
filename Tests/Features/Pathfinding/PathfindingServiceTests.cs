@@ -3,6 +3,8 @@ namespace ClickIt.Tests.Features.Pathfinding
     [TestClass]
     public class PathfindingServiceTests
     {
+        private readonly PathGridSearch _gridSearch = new();
+
         [TestMethod]
         public void TryBuildPathToTarget_ReturnsFalse_WhenGameControllerIsNull()
         {
@@ -54,7 +56,7 @@ namespace ClickIt.Tests.Features.Pathfinding
                 [true, true, true]
             ];
 
-            var path = PathGridSearch.FindPathAStar(
+            var path = _gridSearch.FindPathAStar(
                 grid,
                 new PathfindingService.GridPoint(0, 0),
                 new PathfindingService.GridPoint(2, 2),
@@ -80,7 +82,7 @@ namespace ClickIt.Tests.Features.Pathfinding
                 [true, true, true, true, true]
             ];
 
-            var path = PathGridSearch.FindPathAStar(
+            var path = _gridSearch.FindPathAStar(
                 grid,
                 new PathfindingService.GridPoint(0, 0),
                 new PathfindingService.GridPoint(4, 4),
@@ -120,7 +122,7 @@ namespace ClickIt.Tests.Features.Pathfinding
             for (int i = 0; i < cases.Length; i++)
             {
                 (bool[][] grid, PathfindingService.GridPoint start, PathfindingService.GridPoint goal) = cases[i];
-                var path = PathGridSearch.FindPathAStar(grid, start, goal, 5000, out int expanded);
+                var path = _gridSearch.FindPathAStar(grid, start, goal, 5000, out int expanded);
                 path.Should().NotBeNull($"search {i} should find a path");
                 path![0].Should().Be(start);
                 path[^1].Should().Be(goal);
@@ -134,7 +136,7 @@ namespace ClickIt.Tests.Features.Pathfinding
             bool[][] grid = CreateGrid(width: 20, height: 20, defaultValue: true);
 
             // First search is starved by a tiny budget and aborts partway through.
-            var failed = PathGridSearch.FindPathAStar(
+            var failed = _gridSearch.FindPathAStar(
                 grid,
                 new PathfindingService.GridPoint(0, 0),
                 new PathfindingService.GridPoint(19, 19),
@@ -144,7 +146,7 @@ namespace ClickIt.Tests.Features.Pathfinding
             failedExpanded.Should().Be(2);
 
             // A subsequent search must not be corrupted by the aborted one.
-            var path = PathGridSearch.FindPathAStar(
+            var path = _gridSearch.FindPathAStar(
                 grid,
                 new PathfindingService.GridPoint(0, 0),
                 new PathfindingService.GridPoint(19, 19),
@@ -246,7 +248,7 @@ namespace ClickIt.Tests.Features.Pathfinding
             failureReason.Should().BeEmpty();
             resolved.Should().NotBe(start);
 
-            var path = PathGridSearch.FindPathAStar(grid, start, resolved, 500, out int expandedNodes);
+            var path = _gridSearch.FindPathAStar(grid, start, resolved, 500, out int expandedNodes);
             path.Should().NotBeNull();
             path!.Count.Should().BeGreaterThan(1);
             expandedNodes.Should().BeGreaterThan(0);

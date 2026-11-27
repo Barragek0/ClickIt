@@ -236,6 +236,7 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
                         areaNodes = nodes;
                     },
                     maxSliceMsPerYield: 5);
+                using var routineLifetime = routine as IDisposable;
 
                 bool cancelled = false;
                 long sliceStart = Stopwatch.GetTimestamp();
@@ -249,7 +250,6 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
                     }
                     if (overallTime.ElapsedMilliseconds >= timeLimitMs)
                     {
-                        (routine as IDisposable)?.Dispose();
                         FinishTimedOut(writer, dumpPath);
                         yield break;
                     }
@@ -261,7 +261,6 @@ internal sealed class GameStateDumpCoordinator(DebugClipboardServiceDependencies
                     yield return null;
                 }
                 RecordDumpSlice(sliceStart, sliceAllocStart);
-                (routine as IDisposable)?.Dispose();
                 if (cancelled)
                 {
                     AddStep("Cancelled by user");

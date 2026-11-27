@@ -4,6 +4,38 @@ namespace ClickIt.Tests.UI
     public class RuntimeObjectIntrospectionTests
     {
         [TestMethod]
+        [TestCategory("Regression")]
+        public void BuildReport_DoesNotKeepCollectibleTypesAlive()
+        {
+            WeakReference inspectedType = InspectCollectibleType();
+
+            for (int i = 0; i < 3 && inspectedType.IsAlive; i++)
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+            }
+
+            inspectedType.IsAlive.Should().BeFalse();
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static WeakReference InspectCollectibleType()
+        {
+            var assembly = System.Reflection.Emit.AssemblyBuilder.DefineDynamicAssembly(
+                new AssemblyName("ClickItCollectibleDebugProbe"), System.Reflection.Emit.AssemblyBuilderAccess.RunAndCollect);
+            var builder = assembly.DefineDynamicModule("DebugProbe").DefineType("DebugProbe", TypeAttributes.Public);
+            builder.DefineField("Value", typeof(int), FieldAttributes.Public);
+            Type type = builder.CreateType()!;
+            object instance = Activator.CreateInstance(type)!;
+            type.GetField("Value")!.SetValue(instance, 42);
+
+            RuntimeObjectIntrospection.BuildReport(instance, RuntimeObjectIntrospectionOptions.Default)
+                .Should().Contain("Root.Value: 42");
+            return new WeakReference(type);
+        }
+
+        [TestMethod]
         public void BuildReport_ReturnsUnavailable_WhenRootIsNull()
         {
             string report = RuntimeObjectIntrospection.BuildReport(null, RuntimeObjectIntrospectionOptions.Default);

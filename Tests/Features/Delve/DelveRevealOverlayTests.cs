@@ -275,6 +275,23 @@ public sealed class DelveRevealOverlayTests
 
     [TestMethod]
     [TestCategory("Regression")]
+    [DataRow(40f, 25f, 16f, false)]
+    [DataRow(190f, 26f, 30f, true)]
+    [DataRow(190f, 150f, 24f, true)]
+    public void PositionHoverTooltip_KeepsTheTextAndShadowAboveTheCursor(float x, float y, float textHeight, bool nearRight)
+    {
+        var cursor = new NumVector2(x, y);
+        var chart = new RectangleF(20, 25, 180, 140);
+
+        var (position, align) = DelveRevealOverlay.PositionHoverTooltip(cursor, chart, textHeight);
+
+        (position.Y + textHeight + 1f).Should().BeLessThan(cursor.Y);
+        position.X.Should().Be(x + (nearRight ? -12f : 12f));
+        align.Should().Be(nearRight ? FontAlign.Right : FontAlign.Left);
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
     public void FindHoverText_UsesTheClosestIconAcrossEncounterTypes()
     {
         var fossil = DelveNodeIcon.Resolve("Fossil");

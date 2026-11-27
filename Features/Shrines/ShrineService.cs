@@ -18,12 +18,6 @@ namespace ClickIt.Features.Shrines
         private readonly Stopwatch _shrineCacheTimer = new();
         private readonly TimedValueCache<int, List<Entity>> _shrineCache = new(SHRINE_CACHE_DURATION_MS);
 
-        [ThreadStatic]
-        private static List<Entity>? _threadLocalShrineList;
-
-        private static List<Entity> GetThreadLocalShrineList()
-            => _threadLocalShrineList ??= [];
-
         public static bool IsShrine(Entity item)
         {
             if (item == null)
@@ -86,20 +80,10 @@ namespace ClickIt.Features.Shrines
         /// </summary>
         private List<Entity> GetShrineEntitiesUncached()
         {
-            List<Entity> shrines = GetThreadLocalShrineList();
-            shrines.Clear();
-
             EntityEventHub.Instance.EnsureSubscribed(_gameController);
-            List<Entity> trackedShrines = EntityEventHub.Instance.Shrines.Snapshot();
-            for (int i = 0; i < trackedShrines.Count; i++)
-            {
-                Entity? entity = trackedShrines[i];
-                if (IsClickableShrineCandidate(entity))
-                    shrines.Add(entity);
-            }
-
-            // Snapshot-copy: the shared cache must never hold the thread-local scratch list - another thread can read it while the owner thread's next refresh clears it.
-            return [.. shrines];
+            List<Entity> shrines = EntityEventHub.Instance.Shrines.Snapshot();
+            shrines.RemoveAll(static entity => !IsClickableShrineCandidate(entity));
+            return shrines;
         }
 
         public Entity? GetNearestClickableShrine(
@@ -156,10 +140,6 @@ namespace ClickIt.Features.Shrines
             _shrineCache.Invalidate();
         }
 
-        internal static void ClearThreadLocalStorageForCurrentThread()
-        {
-            _threadLocalShrineList = null;
-        }
 
         private bool TryProjectShrineScreenPosition(Entity shrine, out Vector2 screenPos)
         {

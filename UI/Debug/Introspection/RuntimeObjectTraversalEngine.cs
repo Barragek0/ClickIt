@@ -2,7 +2,7 @@ using System.Linq.Expressions;
 
 namespace ClickIt.UI.Debug.Introspection
 {
-    internal sealed class RuntimeObjectTraversalEngine
+    internal sealed class RuntimeObjectTraversalEngine : IDisposable
     {
         private readonly Stack<RuntimeObjectTraversalPendingNode> _stack = new();
         private readonly HashSet<object> _visited = new(VisitKeyComparer.Instance);
@@ -33,19 +33,19 @@ namespace ClickIt.UI.Debug.Introspection
 
             if (EnforceElapsedBudget && _elapsedStopwatch.ElapsedMilliseconds >= Options.MaxElapsedMs)
             {
-                IsFinished = true;
+                Dispose();
                 return [new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.TraversalStoppedTimeBudget, string.Empty, Count: Options.MaxElapsedMs)];
             }
 
             if (TotalProcessedNodes >= Options.MaxTotalNodes)
             {
-                IsFinished = true;
+                Dispose();
                 return [new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.TraversalStoppedNodeBudget, string.Empty, Count: Options.MaxTotalNodes)];
             }
 
             if (_stack.Count == 0)
             {
-                IsFinished = true;
+                Dispose();
                 return [new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.TraversalCompleted, string.Empty, Count: TotalProcessedNodes)];
             }
 
@@ -194,6 +194,17 @@ namespace ClickIt.UI.Debug.Introspection
             return events;
         }
 
+        public void Dispose()
+        {
+            if (IsFinished)
+                return;
+
+            IsFinished = true;
+            _elapsedStopwatch.Stop();
+            _stack.Clear();
+            _visited.Clear();
+        }
+
         // RemoteMemoryObject wrappers are re-created per memory read, so key cycles by the underlying memory address (value equality on the boxed long) instead of reference identity.
         private static object GetVisitKey(object value)
         {
@@ -242,23 +253,22 @@ namespace ClickIt.UI.Debug.Introspection
 
     internal static class RuntimeObjectTraversalSupport
     {
-        private readonly record struct MemberCacheKey(Type Type, bool IncludeNonPublicMembers, string PriorityKey);
-        private static readonly Dictionary<MemberCacheKey, MemberInfo[]> ReadableMembersCache = [];
-        private static readonly Lock CacheLock = new();
+        private readonly record struct MemberCacheKey(bool IncludeNonPublicMembers, string PriorityKey);
+        private static readonly ConditionalWeakTable<Type, ConcurrentDictionary<MemberCacheKey, MemberInfo[]>> ReadableMembersCache = new();
 
         public static IReadOnlyList<MemberInfo> GetReadableMembers(Type type, IReadOnlyList<string> priorityMembers, bool includeNonPublicMembers)
         {
             string priorityKey = priorityMembers.Count == 0
                 ? string.Empty
                 : string.Join("|", priorityMembers);
-            MemberCacheKey cacheKey = new(type, includeNonPublicMembers, priorityKey);
+            MemberCacheKey cacheKey = new(includeNonPublicMembers, priorityKey);
+            var typeCache = ReadableMembersCache.GetValue(type, static _ => new());
+            return typeCache.GetOrAdd(cacheKey, static (key, state) => BuildReadableMembers(state.Type, state.Priority, key.IncludeNonPublicMembers),
+                (Type: type, Priority: priorityMembers));
+        }
 
-            lock (CacheLock)
-            {
-                if (ReadableMembersCache.TryGetValue(cacheKey, out MemberInfo[]? cachedMembers))
-                    return cachedMembers;
-            }
-
+        private static MemberInfo[] BuildReadableMembers(Type type, IReadOnlyList<string> priorityMembers, bool includeNonPublicMembers)
+        {
             List<MemberInfo> members = [];
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public;
             if (includeNonPublicMembers)
@@ -304,17 +314,10 @@ namespace ClickIt.UI.Debug.Introspection
                 });
             }
 
-            MemberInfo[] sortedMembers = [.. members];
-            lock (CacheLock)
-            {
-                ReadableMembersCache[cacheKey] = sortedMembers;
-            }
-
-            return sortedMembers;
+            return [.. members];
         }
 
-        private static readonly Dictionary<(MemberInfo Member, Type SourceType), Func<object, object?>> AccessorCache = [];
-        private static readonly Lock AccessorCacheLock = new();
+        private static readonly ConditionalWeakTable<Type, ConcurrentDictionary<MemberInfo, Func<object, object?>>> AccessorCache = new();
 
         public static bool TryGetMemberValue(object source, MemberInfo member, out object? value)
         {
@@ -336,19 +339,8 @@ namespace ClickIt.UI.Debug.Introspection
 
         private static Func<object, object?> GetAccessor(MemberInfo member, Type sourceType)
         {
-            (MemberInfo Member, Type SourceType) key = (member, sourceType);
-            lock (AccessorCacheLock)
-            {
-                if (AccessorCache.TryGetValue(key, out Func<object, object?>? cached))
-                    return cached;
-            }
-
-            Func<object, object?> accessor = TryCompileAccessor(member, sourceType);
-            lock (AccessorCacheLock)
-            {
-                AccessorCache[key] = accessor;
-            }
-            return accessor;
+            var typeCache = AccessorCache.GetValue(sourceType, static _ => new());
+            return typeCache.GetOrAdd(member, static (key, type) => TryCompileAccessor(key, type), sourceType);
         }
 
         // Compiled getter delegates are far faster than reflection GetValue per member; any member that cannot be compiled (non-public, indexer, exotic shape) falls back to reflection.
@@ -370,8 +362,8 @@ namespace ClickIt.UI.Debug.Introspection
                 Expression cast = Expression.Convert(instance, sourceType);
                 Expression body = member switch
                 {
-                    PropertyInfo p => Expression.Convert(Expression.Property(cast, p.Name), typeof(object)),
-                    FieldInfo field => Expression.Convert(Expression.Field(cast, field.Name), typeof(object)),
+                    PropertyInfo p => Expression.Convert(Expression.Property(cast, p), typeof(object)),
+                    FieldInfo field => Expression.Convert(Expression.Field(cast, field), typeof(object)),
                     _ => Expression.Constant(null, typeof(object)),
                 };
                 return Expression.Lambda<Func<object, object?>>(body, instance).Compile();

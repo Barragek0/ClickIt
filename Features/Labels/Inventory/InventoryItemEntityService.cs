@@ -86,17 +86,9 @@ namespace ClickIt.Features.Labels.Inventory
             return true;
         }
 
-        public void ClearForShutdown()
-        {
-            _inventoryItemsCache.Invalidate();
-
-            if (_uniqueEntityAddresses.IsValueCreated)
-                _uniqueEntityAddresses.Value?.Clear();
-        }
-
         public void Dispose()
         {
-            ClearForShutdown();
+            _inventoryItemsCache.Invalidate();
             _uniqueEntityAddresses.Dispose();
         }
 

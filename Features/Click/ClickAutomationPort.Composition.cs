@@ -210,7 +210,8 @@ namespace ClickIt.Features.Click
             IsClientPointClickable = PointIsInClickableArea
         });
 
-        private BlightChestTransitionSuppression BlightChestTransitionSuppression => field ??= new();
+        private BlightChestTransitionSuppression BlightChestTransitionSuppression => field ??= new(
+            () => AreaUiSnapshotReader.TryReadCurrentAreaHash(_gameController, out long areaHash) ? areaHash : null);
 
         private ManualCursorLabelSelector ManualCursorLabels => field ??= new(new ManualCursorLabelSelectorDependencies(
             _gameController,

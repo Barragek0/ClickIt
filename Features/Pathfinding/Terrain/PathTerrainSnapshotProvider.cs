@@ -11,18 +11,38 @@ namespace ClickIt.Features.Pathfinding.Terrain
         internal object? DataOwner;
         // IngameData.Address is the authoritative per-area cache key (the wrapper churns every ~25ms and can flap in-map).
         internal long DataOwnerAddress;
-        // Candidate owner observed after a key change; the rebuild waits TerrainRebuildConfirmMs to confirm the address really moved (real area change) rather than flapped back.
-        internal long PendingOwnerAddress;
-        internal long PendingAtMs;
+        internal TerrainOwnerChangeConfirmation OwnerChange;
         // Rebuilds caused purely by wrapper recreation (same address, different reference).
         internal long ChurnRebuildCount;
     }
 
+    internal struct TerrainOwnerChangeConfirmation
+    {
+        private const long ConfirmMs = 150;
+        private long? _pendingAddress;
+        private long _pendingSinceMs;
+
+        internal bool ShouldWait(long currentAddress, long observedAddress, long now)
+        {
+            if (observedAddress == currentAddress)
+            {
+                // The candidate reverted. A later appearance must complete a new window.
+                _pendingAddress = null;
+                return false;
+            }
+
+            if (_pendingAddress != observedAddress)
+            {
+                _pendingAddress = observedAddress;
+                _pendingSinceMs = now;
+            }
+
+            return now - _pendingSinceMs < ConfirmMs;
+        }
+    }
+
     internal static class PathTerrainSnapshotProvider
     {
-        // A raw terrain rebuild is ~30MB (RawPathfindingData + walkable grid). The IngameData address can flap for a few frames in-map without a real area change; hold the existing grid this long before committing a rebuild so transient churn never pays that cost.
-        private const long TerrainRebuildConfirmMs = 150;
-
         internal static bool TryRefreshTerrainData(GameController gameController, PathfindingTerrainCache cache, out bool[][] walkable, out PathfindingService.GridPoint dims, out bool fromCache)
         {
             walkable = [];
@@ -37,34 +57,14 @@ namespace ClickIt.Features.Pathfinding.Terrain
             if (!TryGetRawGridDims(rawPathData, out int gridWidth, out int gridHeight) || gridHeight == 0)
                 return false;
 
+            long dataAddress = data.Address;
             if (cache.Walkable != null
                 && cache.GridWidth == gridWidth
                 && cache.GridHeight == gridHeight)
             {
-                if (ReferenceEquals(data, cache.DataOwner) || data.Address == cache.DataOwnerAddress)
+                bool waitForOwner = cache.OwnerChange.ShouldWait(cache.DataOwnerAddress, dataAddress, Environment.TickCount64);
+                if (dataAddress == cache.DataOwnerAddress || waitForOwner)
                 {
-                    dims = new PathfindingService.GridPoint(gridWidth, gridHeight);
-                    walkable = cache.Walkable;
-                    fromCache = true;
-                    return true;
-                }
-
-                // Owner changed while dims match — could be transient in-map churn. Defer the rebuild until the new address persists for the confirmation window.
-                long now = Environment.TickCount64;
-                if (data.Address == cache.PendingOwnerAddress)
-                {
-                    if (now - cache.PendingAtMs < TerrainRebuildConfirmMs)
-                    {
-                        dims = new PathfindingService.GridPoint(gridWidth, gridHeight);
-                        walkable = cache.Walkable;
-                        fromCache = true;
-                        return true;
-                    }
-                }
-                else
-                {
-                    cache.PendingOwnerAddress = data.Address;
-                    cache.PendingAtMs = now;
                     dims = new PathfindingService.GridPoint(gridWidth, gridHeight);
                     walkable = cache.Walkable;
                     fromCache = true;
@@ -76,7 +76,7 @@ namespace ClickIt.Features.Pathfinding.Terrain
                 return false;
 
             if (cache.DataOwner != null
-                && cache.DataOwnerAddress == data.Address
+                && cache.DataOwnerAddress == dataAddress
                 && !ReferenceEquals(data, cache.DataOwner))
             {
                 cache.ChurnRebuildCount++;
@@ -86,9 +86,8 @@ namespace ClickIt.Features.Pathfinding.Terrain
             cache.GridWidth = gridWidth;
             cache.GridHeight = gridHeight;
             cache.DataOwner = data;
-            cache.DataOwnerAddress = data.Address;
-            cache.PendingOwnerAddress = 0;
-            cache.PendingAtMs = 0;
+            cache.DataOwnerAddress = dataAddress;
+            cache.OwnerChange = default;
             cache.Walkable = converted;
             walkable = converted;
             return true;

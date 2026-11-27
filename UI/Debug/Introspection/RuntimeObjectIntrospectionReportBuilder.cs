@@ -15,7 +15,7 @@ namespace ClickIt.UI.Debug.Introspection
                 return sb.ToString().TrimEnd();
             }
 
-            RuntimeObjectTraversalEngine engine = new(root, normalized, enforceElapsedBudget: false);
+            using RuntimeObjectTraversalEngine engine = new(root, normalized, enforceElapsedBudget: false);
             while (!engine.IsFinished)
             {
                 IReadOnlyList<RuntimeObjectTraversalEvent> events = engine.ProcessNext();

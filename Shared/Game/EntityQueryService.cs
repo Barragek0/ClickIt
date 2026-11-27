@@ -30,8 +30,9 @@ namespace ClickIt.Shared.Game
             return false;
         }
 
-        // Iterates EVERY entity ExileCore has ever seen in the area (EntityListWrapper.Entities = the retained entity cache). Streamed-out entities stay in the cache marked IsValid=false, so this is the complete source for long-lived objects like BlightPathway icons that the active-only ValidEntitiesByType view drops once the player moves away. Fail-closed: a controller whose wrapper/cache is not readable (tests, uninitialized graphs) yields no entities.
-        internal static bool VisitAllEntities(GameController? gameController, Func<Entity, bool> visitor)
+        // The retained cache includes streamed-out structures. Report an unavailable or empty
+        // cache separately so callers can fall back to the active entity lists.
+        internal static bool TryVisitRetainedEntities(GameController? gameController, Action<Entity> visitor)
         {
             ArgumentNullException.ThrowIfNull(visitor);
 
@@ -43,21 +44,21 @@ namespace ClickIt.Shared.Game
 
             try
             {
+                bool visited = false;
                 foreach (Entity entity in all)
                 {
                     if (entity == null)
                         continue;
 
-                    if (visitor(entity))
-                        return true;
+                    visitor(entity);
+                    visited = true;
                 }
+                return visited;
             }
             catch
             {
                 return false;
             }
-
-            return false;
         }
 
         internal static Entity? FindEntityByAddress(GameController? gameController, long address)

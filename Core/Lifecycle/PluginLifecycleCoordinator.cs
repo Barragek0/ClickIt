@@ -47,8 +47,8 @@ namespace ClickIt.Core.Lifecycle
 
             LabelElementSearch.ClearThreadLocalStorage();
             SkillBarBindingResolver.ClearThreadSkillBarEntriesBuffer();
-            ShrineService.ClearThreadLocalStorageForCurrentThread();
             ClickAutomationPort.ClearThreadLocalStorageForCurrentThread();
+            EntityEventHub.Instance.Dispose();
             owner.State.Services.InventoryInteractionPolicy?.ClearForShutdown();
             owner.State.Services.AltarService?.ClearRuntimeCaches();
 

@@ -166,6 +166,25 @@ public class BlightChestTransitionSuppressionTests
     }
 
 
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void ShouldSuppressBlightChestClick_TracksReusedAddressesSeparatelyInNewAreas()
+    {
+        long? areaHash = 1;
+        var suppression = new BlightChestTransitionSuppression(() => areaHash);
+        var label = OffscreenStickyTargetGraphShaper.CreateVisibleLabel(CreateItem(BlightChestPath, 0x100, isTransitioned: true));
+
+        suppression.ShouldSuppressBlightChestClick(label, now: 1_000).Should().BeTrue();
+        suppression.ShouldSuppressBlightChestClick(label, now: 3_000).Should().BeFalse();
+
+        areaHash = null;
+        suppression.ShouldSuppressBlightChestClick(label, now: 4_000).Should().BeFalse();
+
+        areaHash = 2;
+        suppression.ShouldSuppressBlightChestClick(label, now: 5_000).Should().BeTrue();
+        suppression.ShouldSuppressBlightChestClick(label, now: 7_000).Should().BeFalse();
+    }
+
     private static EntityProbe CreateItem(string path, long address, bool isTransitioned)
     {
         EntityProbe item = (EntityProbe)EntityProbeFactory.Create(path: path, address: address);

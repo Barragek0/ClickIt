@@ -3,12 +3,6 @@ namespace ClickIt.Tests.Features.Shrines
     [TestClass]
     public class ShrineServiceTests
     {
-        [TestCleanup]
-        public void Cleanup()
-        {
-            ShrineService.ClearThreadLocalStorageForCurrentThread();
-        }
-
         [TestMethod]
         public void InvalidateCache_ClearsCachedShrines()
         {

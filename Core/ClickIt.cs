@@ -2,6 +2,8 @@ namespace ClickIt
 {
     public partial class ClickIt : BaseSettingsPlugin<ClickItSettings>
     {
+        private readonly Lock _renderLifecycleLock = new();
+
         public PluginContext State { get; } = new PluginContext();
 
         private ClickItSettings EffectiveSettings => Settings ?? new ClickItSettings();
@@ -31,13 +33,21 @@ namespace ClickIt
 
         public override void OnClose()
         {
-            PerformanceSettingsPanelRenderer.SetCurrent(static () => null);
-            ExileCorePerformanceApplier.SetGameControllerProvider(static () => null);
-            GameStateDumpCoordinator.SetSource(static () => null);
-            EntityEventHub.Instance.Dispose();
-
-            ClickItSettings runtimeSettings = EffectiveSettings;
-            PluginLifecycleCoordinator.Shutdown(this, runtimeSettings);
+            State.Runtime.IsShuttingDown = true;
+            // Finish the active render (including its draw queue flush) before releasing textures.
+            lock (_renderLifecycleLock)
+            {
+                try
+                {
+                    PluginLifecycleCoordinator.Shutdown(this, EffectiveSettings);
+                }
+                finally
+                {
+                    PerformanceSettingsPanelRenderer.SetCurrent(static () => null);
+                    ExileCorePerformanceApplier.SetGameControllerProvider(static () => null);
+                    GameStateDumpCoordinator.SetSource(static () => null);
+                }
+            }
 
             if (Settings != null)
                 base.OnClose();
@@ -54,16 +64,19 @@ namespace ClickIt
 
         public override void Render()
         {
-            if (State.Runtime.IsShuttingDown || State.Services.PerformanceMonitor == null) return;
+            lock (_renderLifecycleLock)
+            {
+                if (State.Runtime.IsShuttingDown || State.Services.PerformanceMonitor == null) return;
 
-            State.Rendering.IsRendering = true;
-            try
-            {
-                RenderInternal();
-            }
-            finally
-            {
-                State.Rendering.IsRendering = false;
+                State.Rendering.IsRendering = true;
+                try
+                {
+                    RenderInternal();
+                }
+                finally
+                {
+                    State.Rendering.IsRendering = false;
+                }
             }
         }
 

@@ -14,6 +14,8 @@ namespace ClickIt.Features.Pathfinding
         private readonly BreakdownRecorder? _recordBreakdown = recordBreakdown;
         private readonly OffscreenMovementDiagnosticsChannel _offscreenMovementDiagnostics = new();
         private readonly PathfindingTerrainCache _terrainCache = new();
+        private readonly PathGridSearch _gridSearch = new();
+        private readonly Lock _gridSearchLock = new();
         private readonly DedupEventBuffer _debugEvents = new();
 
         internal PathfindingRuntimeState RuntimeState { get; } = new();
@@ -172,7 +174,10 @@ namespace ClickIt.Features.Pathfinding
             long astarStart = Stopwatch.GetTimestamp();
             long astarAllocStart = GC.GetAllocatedBytesForCurrentThread();
             Stopwatch sw = Stopwatch.StartNew();
-            List<GridPoint>? gridPath = PathGridSearch.FindPathAStar(walkable, start, walkableGoal, SystemMath.Max(100, maxExpandedNodes), out int expandedNodes);
+            List<GridPoint>? gridPath;
+            int expandedNodes;
+            lock (_gridSearchLock)
+                gridPath = _gridSearch.FindPathAStar(walkable, start, walkableGoal, SystemMath.Max(100, maxExpandedNodes), out expandedNodes);
             sw.Stop();
             double astarMs = (Stopwatch.GetTimestamp() - astarStart) * 1000.0 / Stopwatch.Frequency;
             long astarBytes = GC.GetAllocatedBytesForCurrentThread() - astarAllocStart;
