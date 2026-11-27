@@ -62,7 +62,8 @@ namespace ClickIt.Shared.Rendering
                     if (channel is { } activeChannel)
                         _performanceMonitor?.StartCoroutineTiming(activeChannel);
 
-                    switch (_overlay.ProcessingSection)
+                    ProcessingSection section = _overlay.ProcessingSection;
+                    switch (section)
                     {
                         case ProcessingSection.Blight:
                             _performanceMonitor?.MarkInterval(IntervalKind.Blight);
@@ -72,19 +73,20 @@ namespace ClickIt.Shared.Rendering
                             break;
                     }
 
-                    long start = Stopwatch.GetTimestamp();
-                    long allocStart = GC.GetAllocatedBytesForCurrentThread();
+                    PerformanceMonitor? monitor = section != ProcessingSection.Unknown ? _performanceMonitor : null;
+                    long start = monitor != null ? Stopwatch.GetTimestamp() : 0;
+                    long allocStart = monitor != null ? GC.GetAllocatedBytesForCurrentThread() : 0;
                     try
                     {
-                        using (new DlrReadScope(_overlay.ProcessingSection))
+                        using (new DlrReadScope(section))
                             _overlay.Refresh(context);
                     }
                     finally
                     {
-                        if (_overlay.ProcessingSection != ProcessingSection.Unknown)
+                        if (monitor != null)
                         {
-                            _performanceMonitor?.RecordProcessingTiming(_overlay.ProcessingSection, GetElapsedMs(start));
-                            _performanceMonitor?.RecordAllocation(_overlay.ProcessingSection, GC.GetAllocatedBytesForCurrentThread() - allocStart);
+                            monitor.RecordProcessingTiming(section, GetElapsedMs(start));
+                            monitor.RecordAllocation(section, GC.GetAllocatedBytesForCurrentThread() - allocStart);
                         }
                         if (channel is { } stoppedChannel)
                             _performanceMonitor?.StopCoroutineTiming(stoppedChannel);
