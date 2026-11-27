@@ -345,7 +345,10 @@ namespace ClickIt.Shared.Diagnostics
             => _labelScanAllocation.GetStats();
 
         internal void RecordClickAllocation(ClickAllocationBreakdown breakdown)
-            => _clickAllocation.Record(breakdown);
+        {
+            _clickAllocation.Record(breakdown);
+            RecordAllocation(ProcessingSection.Click, breakdown.TotalBytes);
+        }
 
         internal ClickAllocationStats GetClickAllocationStats()
             => _clickAllocation.GetStats();

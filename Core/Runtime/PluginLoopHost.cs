@@ -274,14 +274,14 @@ namespace ClickIt.Core.Runtime
 
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
             long clickStart = Stopwatch.GetTimestamp();
-            long clickAllocStart = GC.GetAllocatedBytesForCurrentThread();
             _state.Services.PerformanceMonitor.MarkClickRunStart();
             ClickPipelineTiming.ResetSleepTime();
             using (new DlrReadScope(ProcessingSection.Click))
                 yield return clickPort.ProcessRegularClick();
             double clickSleepMs = ClickPipelineTiming.ConsumeSleepTimeMs();
             _state.Services.PerformanceMonitor.RecordClickSleepTiming(clickSleepMs);
-            RecordProcessing(ProcessingSection.Click, clickStart, clickAllocStart, clickSleepMs);
+            // ClickRuntimeEngine records allocation around active steps, excluding suspended time.
+            _state.Services.PerformanceMonitor.RecordProcessingTiming(ProcessingSection.Click, SystemMath.Max(0, GetElapsedMs(clickStart) - clickSleepMs));
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
             _state.Runtime.WorkFinished = true;

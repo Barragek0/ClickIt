@@ -347,6 +347,9 @@
             snapshot.ClickAllocation.Execute.AvgBytesPerRun.Should().Be((65536 + 131072) / 2.0);
             snapshot.ClickAllocation.Rank.MaxBytesPerRun.Should().Be(32768);
             snapshot.ClickAllocation.Other.LastBytesPerRun.Should().Be(16384);
+            GcAllocationSnapshot gc = snapshot.GetAllocationSection(ProcessingSection.Click);
+            gc.SampleCount.Should().Be(2);
+            gc.LastBytesPerRun.Should().Be(4096 + 2 * 1024 * 1024 + 16384 + 131072 + 16384);
         }
 
         [TestMethod]
