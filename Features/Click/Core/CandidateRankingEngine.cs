@@ -29,116 +29,45 @@ namespace ClickIt.Features.Click.Core
         internal static int CompareRanks(MechanicRank left, MechanicRank right)
             => MechanicCandidateRanker.Compare(left, right);
 
-        internal static RankingResult Rank(
+        internal static DecisionResult Rank(
             LabelSelectionScanEngine labelSelectionScan,
             ClickLabelInteractionService labelInteraction,
             ClickTickContext context,
             ClickCandidates candidates)
-        {
-            if (!context.GroundItemsVisible)
-            {
-                return new RankingResult(
-                    PreferSettlers: ShouldTryHiddenSettlers(labelInteraction, context, candidates),
-                    PreferLostShipment: ShouldTryHiddenLostShipment(labelInteraction, context, candidates),
-                    PreferShrine: ShouldTryHiddenShrine(context),
-                    GroundItemsVisible: false);
-            }
+            => new(
+                TrySettlers: candidates.SettlersOre is { } settlers && ShouldPreferSettlersOreOverCandidates(
+                    new MechanicCandidateSignal(settlers.MechanicId, settlers.Distance,
+                        ManualCursorSelectionMath.GetCursorDistanceSquaredToPoint(settlers.ClickPosition, context.CursorAbsolute, context.WindowTopLeft)),
+                    ReadLabelRankSignal(context, candidates),
+                    ReadShrineRankSignal(labelInteraction, context),
+                    ReadShipmentRankSignal(context, candidates.LostShipment),
+                    context.MechanicPriorityContext),
+                TryLostShipment: candidates.LostShipment.HasValue && ShouldPreferLostShipmentOverCandidates(
+                    ReadShipmentRankSignal(context, candidates.LostShipment),
+                    ReadLabelRankSignal(context, candidates),
+                    ReadShrineRankSignal(labelInteraction, context),
+                    context.MechanicPriorityContext),
+                TryShrine: context.GroundItemsVisible
+                    ? labelSelectionScan.ShouldPreferShrineOverLabel(candidates.NextLabel, context.NextShrine)
+                    : context.NextShrine != null,
+                GroundItemsVisible: context.GroundItemsVisible);
 
-            return new RankingResult(
-                PreferSettlers: ShouldTryVisibleSettlers(labelInteraction, context, candidates),
-                PreferLostShipment: ShouldTryVisibleLostShipment(labelInteraction, context, candidates),
-                PreferShrine: labelSelectionScan.ShouldPreferShrineOverLabel(candidates.NextLabel, context.NextShrine),
-                GroundItemsVisible: true);
-        }
-
-        private static bool ShouldTryHiddenSettlers(ClickLabelInteractionService labelInteraction, ClickTickContext context, ClickCandidates candidates)
-        {
-            if (!candidates.SettlersOre.HasValue)
-                return false;
-
-            return ShouldPreferSettlersOreOverCandidates(
-                new MechanicCandidateSignal(
-                    candidates.SettlersOre.Value.MechanicId,
-                    candidates.SettlersOre.Value.Distance,
-                    ManualCursorSelectionMath.GetCursorDistanceSquaredToPoint(candidates.SettlersOre.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft)),
-                MechanicCandidateSignal.None,
-                new MechanicCandidateSignal(
-                    MechanicIds.Shrines,
-                    context.NextShrine?.DistancePlayer,
-                    labelInteraction.TryGetCursorDistanceSquaredToEntity(context.NextShrine, context.CursorAbsolute, context.WindowTopLeft)),
-                new MechanicCandidateSignal(
-                    MechanicIds.LostShipment,
-                    candidates.LostShipment.HasValue ? candidates.LostShipment.Value.Distance : null,
-                    candidates.LostShipment.HasValue ? ManualCursorSelectionMath.GetCursorDistanceSquaredToPoint(candidates.LostShipment.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft) : null),
-                context.MechanicPriorityContext);
-        }
-
-        private static bool ShouldTryHiddenLostShipment(ClickLabelInteractionService labelInteraction, ClickTickContext context, ClickCandidates candidates)
-        {
-            if (!candidates.LostShipment.HasValue)
-                return false;
-
-            return ShouldPreferLostShipmentOverCandidates(
-                new MechanicCandidateSignal(
-                    MechanicIds.LostShipment,
-                    candidates.LostShipment.Value.Distance,
-                    ManualCursorSelectionMath.GetCursorDistanceSquaredToPoint(candidates.LostShipment.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft)),
-                MechanicCandidateSignal.None,
-                new MechanicCandidateSignal(
-                    MechanicIds.Shrines,
-                    context.NextShrine?.DistancePlayer,
-                    labelInteraction.TryGetCursorDistanceSquaredToEntity(context.NextShrine, context.CursorAbsolute, context.WindowTopLeft)),
-                context.MechanicPriorityContext);
-        }
-
-        private static bool ShouldTryHiddenShrine(ClickTickContext context)
-            => context.NextShrine != null;
-
-        private static bool ShouldTryVisibleSettlers(ClickLabelInteractionService labelInteraction, ClickTickContext context, ClickCandidates candidates)
-        {
-            if (!candidates.SettlersOre.HasValue)
-                return false;
-
-            return ShouldPreferSettlersOreOverCandidates(
-                new MechanicCandidateSignal(
-                    candidates.SettlersOre.Value.MechanicId,
-                    candidates.SettlersOre.Value.Distance,
-                    ManualCursorSelectionMath.GetCursorDistanceSquaredToPoint(candidates.SettlersOre.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft)),
-                new MechanicCandidateSignal(
+        private static MechanicCandidateSignal ReadLabelRankSignal(in ClickTickContext context, in ClickCandidates candidates)
+            => context.GroundItemsVisible
+                ? new MechanicCandidateSignal(
                     candidates.NextLabelMechanicId,
                     candidates.NextLabel?.ItemOnGround?.DistancePlayer,
-                    ManualCursorSelectionMath.TryGetCursorDistanceSquaredToLabel(candidates.NextLabel, context.CursorAbsolute, context.WindowTopLeft)),
-                new MechanicCandidateSignal(
-                    MechanicIds.Shrines,
-                    context.NextShrine?.DistancePlayer,
-                    labelInteraction.TryGetCursorDistanceSquaredToEntity(context.NextShrine, context.CursorAbsolute, context.WindowTopLeft)),
-                new MechanicCandidateSignal(
-                    MechanicIds.LostShipment,
-                    candidates.LostShipment.HasValue ? candidates.LostShipment.Value.Distance : null,
-                    candidates.LostShipment.HasValue ? ManualCursorSelectionMath.GetCursorDistanceSquaredToPoint(candidates.LostShipment.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft) : null),
-                context.MechanicPriorityContext);
-        }
+                    ManualCursorSelectionMath.TryGetCursorDistanceSquaredToLabel(candidates.NextLabel, context.CursorAbsolute, context.WindowTopLeft))
+                : MechanicCandidateSignal.None;
 
-        private static bool ShouldTryVisibleLostShipment(ClickLabelInteractionService labelInteraction, ClickTickContext context, ClickCandidates candidates)
-        {
-            if (!candidates.LostShipment.HasValue)
-                return false;
+        private static MechanicCandidateSignal ReadShrineRankSignal(ClickLabelInteractionService labelInteraction, in ClickTickContext context)
+            => new(MechanicIds.Shrines, context.NextShrine?.DistancePlayer,
+                labelInteraction.TryGetCursorDistanceSquaredToEntity(context.NextShrine, context.CursorAbsolute, context.WindowTopLeft));
 
-            return ShouldPreferLostShipmentOverCandidates(
-                new MechanicCandidateSignal(
-                    MechanicIds.LostShipment,
-                    candidates.LostShipment.Value.Distance,
-                    ManualCursorSelectionMath.GetCursorDistanceSquaredToPoint(candidates.LostShipment.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft)),
-                new MechanicCandidateSignal(
-                    candidates.NextLabelMechanicId,
-                    candidates.NextLabel?.ItemOnGround?.DistancePlayer,
-                    ManualCursorSelectionMath.TryGetCursorDistanceSquaredToLabel(candidates.NextLabel, context.CursorAbsolute, context.WindowTopLeft)),
-                new MechanicCandidateSignal(
-                    MechanicIds.Shrines,
-                    context.NextShrine?.DistancePlayer,
-                    labelInteraction.TryGetCursorDistanceSquaredToEntity(context.NextShrine, context.CursorAbsolute, context.WindowTopLeft)),
-                context.MechanicPriorityContext);
-        }
+        private static MechanicCandidateSignal ReadShipmentRankSignal(in ClickTickContext context, LostShipmentCandidate? shipment)
+            => new(MechanicIds.LostShipment, shipment?.Distance, shipment is { } candidate
+                ? ManualCursorSelectionMath.GetCursorDistanceSquaredToPoint(candidate.ClickPosition, context.CursorAbsolute, context.WindowTopLeft)
+                : null);
 
         private static bool ShouldPreferCandidate(
             in MechanicCandidateSignal candidate,

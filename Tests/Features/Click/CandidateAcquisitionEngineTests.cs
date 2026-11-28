@@ -3,6 +3,42 @@ namespace ClickIt.Tests.Features.Click
     [TestClass]
     public class CandidateAcquisitionEngineTests
     {
+        [DataTestMethod]
+        [TestCategory("Parity")]
+        [DataRow(MechanicIds.Items)]
+        [DataRow(MechanicIds.BasicChests)]
+        [DataRow(MechanicIds.LeagueChests)]
+        [DataRow(MechanicIds.Strongboxes)]
+        [DataRow(MechanicIds.Essences)]
+        [DataRow(MechanicIds.Harvest)]
+        [DataRow(MechanicIds.DelveCrawler)]
+        [DataRow(MechanicIds.IceCavesFossil)]
+        [DataRow(MechanicIds.Fates)]
+        [DataRow(MechanicIds.FatesBoss)]
+        [DataRow(MechanicIds.DelveAzuriteOnGround)]
+        [DataRow(null)]
+        public void Collect_HiddenSelectionPairsLabelWithItsLiveMechanic(string? liveMechanicId)
+        {
+            ClickItSettings settings = new();
+            settings.ClickItems.Value = false;
+            LabelOnGround label = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
+            var calls = new List<LabelOnGround?>();
+            ILabelInteractionPort port = new FakeLabelInteractionPort(candidate =>
+            {
+                calls.Add(candidate);
+                return liveMechanicId;
+            });
+            var scan = CreateLabelSelectionScanEngine(settings, port, new SingleLabelSelectionService(label));
+            var engine = CreateEngine(settings, port, labelSelectionScan: scan);
+            var context = new ClickTickContext(default, default, false, string.Empty, [label], null, default, GroundItemsVisible: false);
+
+            ClickCandidates result = engine.Collect(context);
+
+            result.NextLabel.Should().BeSameAs(label);
+            result.NextLabelMechanicId.Should().Be(liveMechanicId);
+            calls.Should().ContainSingle().Which.Should().BeSameAs(label);
+        }
+
         [TestMethod]
         public void Collect_UsesHiddenFallbackSelection_WhenGroundItemsAreHidden()
         {
@@ -114,13 +150,14 @@ namespace ClickIt.Tests.Features.Click
                     IsBlightEncounterActive: null)));
         }
 
-        private static LabelSelectionScanEngine CreateLabelSelectionScanEngine(ClickItSettings settings, ILabelInteractionPort labelInteractionPort)
+        private static LabelSelectionScanEngine CreateLabelSelectionScanEngine(ClickItSettings settings,
+            ILabelInteractionPort labelInteractionPort, ILabelSelectionService? selectionService = null)
         {
             GameController gameController = ExileCoreOpaqueFactory.CreateOpaqueGameController();
             return new LabelSelectionScanEngine(new LabelSelectionScanEngineDependencies(
                 gameController,
                 labelInteractionPort,
-                ClickTestServiceFactory.CreateNoOpLabelSelectionService(),
+                selectionService ?? ClickTestServiceFactory.CreateNoOpLabelSelectionService(),
                 new LabelClickPointResolver(settings),
                 ShouldSuppressLeverClick: static (_, _) => false,
                 ShouldSuppressInactiveUltimatumLabel: static (_, _) => false,
@@ -129,6 +166,14 @@ namespace ClickIt.Tests.Features.Click
                 new MechanicPriorityContextProvider(settings, new MechanicPrioritySnapshotService()),
                 ClickDebugPublisher: ClickTestDebugPublisherFactory.Create(),
                 DebugLog: static _ => { }));
+        }
+
+        private sealed class SingleLabelSelectionService(LabelOnGround label) : ILabelSelectionService
+        {
+            public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? labels, int startIndex, int maxCount,
+                Func<LabelOnGround, LabelCandidateBuildResult, bool>? isAcceptable)
+                => label;
+
         }
 
         private static LostShipmentCandidate CreateLostShipmentCandidate(Vector2 clickPosition)

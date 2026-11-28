@@ -26,7 +26,7 @@ namespace ClickIt.Features.Labels
             => LabelDebugService.LogSelectionDiagnostics(allLabels, startIndex, maxCount);
 
         public string? GetMechanicIdForLabel(LabelOnGround? label)
-            => LabelSelectionService.GetMechanicIdForLabel(label);
+            => LabelMechanicResolutionService.GetMechanicIdForLabel(label);
 
         public bool ShouldCorruptEssence(LabelOnGround label)
             => _essenceService.ShouldCorruptEssence(label.Label);

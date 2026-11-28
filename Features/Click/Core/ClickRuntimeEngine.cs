@@ -13,12 +13,6 @@ namespace ClickIt.Features.Click.Core
         LabelOnGround? NextLabel,
         string? NextLabelMechanicId);
 
-    internal readonly record struct RankingResult(
-        bool PreferSettlers,
-        bool PreferLostShipment,
-        bool PreferShrine,
-        bool GroundItemsVisible);
-
     internal readonly record struct DecisionResult(
         bool TrySettlers,
         bool TryLostShipment,
@@ -121,12 +115,10 @@ namespace ClickIt.Features.Click.Core
             long rankStart = GC.GetAllocatedBytesForCurrentThread();
             long rankTimestamp = Stopwatch.GetTimestamp();
             double rankSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
-            RankingResult ranking = CandidateRankingEngine.Rank(_dependencies.Selection.LabelSelectionScan, _dependencies.Selection.LabelInteraction, context, candidates);
+            DecisionResult decision = CandidateRankingEngine.Rank(_dependencies.Selection.LabelSelectionScan, _dependencies.Selection.LabelInteraction, context, candidates);
             long rankBytes = GC.GetAllocatedBytesForCurrentThread() - rankStart;
             double rankMs = GetElapsedMs(rankTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - rankSleepBefore);
             RecordStage(PerformanceMonitor.ClickRankStageIndex, rankBytes, rankMs);
-
-            DecisionResult decision = Gate(candidates, ranking);
 
             long executeStart = GC.GetAllocatedBytesForCurrentThread();
             long executeTimestamp = Stopwatch.GetTimestamp();
@@ -173,11 +165,5 @@ namespace ClickIt.Features.Click.Core
         private static double GetElapsedMs(long startTimestamp)
             => StopwatchMath.ElapsedMs(startTimestamp);
 
-        private static DecisionResult Gate(ClickCandidates candidates, RankingResult ranking)
-            => new(
-                TrySettlers: ranking.PreferSettlers && candidates.SettlersOre.HasValue,
-                TryLostShipment: ranking.PreferLostShipment && candidates.LostShipment.HasValue,
-                TryShrine: ranking.PreferShrine,
-                GroundItemsVisible: ranking.GroundItemsVisible);
     }
 }

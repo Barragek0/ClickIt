@@ -1,6 +1,7 @@
 namespace ClickIt.Tests.Features.Click
 {
     [TestClass]
+    [TestCategory("Parity")]
     public class LabelSelectionScanEngineTests
     {
         [TestMethod]
@@ -16,7 +17,7 @@ namespace ClickIt.Tests.Features.Click
                     getNextLabelToClick: (allLabels, startIndex, maxCount) => allLabels?[startIndex]),
                 shouldSuppressLockedStrongboxClick: (label, _) => ReferenceEquals(label, locked));
 
-            engine.ResolveNextLabelCandidate(labels).Should().BeSameAs(selected);
+            engine.ResolveNextLabelCandidate(labels).Label.Should().BeSameAs(selected);
         }
 
         [TestMethod]
@@ -24,7 +25,7 @@ namespace ClickIt.Tests.Features.Click
         {
             var engine = CreateEngine();
 
-            engine.ResolveNextLabelCandidate(null).Should().BeNull();
+            engine.ResolveNextLabelCandidate(null).Label.Should().BeNull();
         }
 
         [TestMethod]
@@ -40,7 +41,7 @@ namespace ClickIt.Tests.Features.Click
                     getNextLabelToClick: (allLabels, startIndex, maxCount) => allLabels?[startIndex]),
                 shouldSuppressLeverClick: (label, _) => ReferenceEquals(label, suppressed));
 
-            engine.ResolveNextLabelCandidate(labels).Should().BeSameAs(selected);
+            engine.ResolveNextLabelCandidate(labels).Label.Should().BeSameAs(selected);
         }
 
         [TestMethod]
@@ -56,7 +57,7 @@ namespace ClickIt.Tests.Features.Click
                     getNextLabelToClick: (allLabels, startIndex, maxCount) => allLabels?[startIndex]),
                 shouldSuppressBlightChestClick: (label, _) => ReferenceEquals(label, suppressed));
 
-            engine.ResolveNextLabelCandidate(labels).Should().BeSameAs(selected);
+            engine.ResolveNextLabelCandidate(labels).Label.Should().BeSameAs(selected);
         }
 
         [TestMethod]
@@ -74,7 +75,7 @@ namespace ClickIt.Tests.Features.Click
                     shouldCaptureClickDebug: static () => true,
                     setLatestClickDebug: snapshot => latestSnapshot = snapshot));
 
-            LabelOnGround? result = engine.ResolveNextLabelCandidate(labels);
+            LabelOnGround? result = engine.ResolveNextLabelCandidate(labels).Label;
 
             Assert.IsNull(result);
 
@@ -99,7 +100,7 @@ namespace ClickIt.Tests.Features.Click
                     shouldCaptureClickDebug: static () => true,
                     setLatestClickDebug: snapshot => latestSnapshot = snapshot));
 
-            LabelOnGround? result = engine.ResolveNextLabelCandidate(labels);
+            LabelOnGround? result = engine.ResolveNextLabelCandidate(labels).Label;
 
             Assert.IsNull(result);
 
@@ -123,7 +124,7 @@ namespace ClickIt.Tests.Features.Click
                     shouldCaptureClickDebug: static () => true,
                     setLatestClickDebug: snapshot => latestSnapshot = snapshot));
 
-            LabelOnGround? result = engine.ResolveNextLabelCandidate(labels);
+            LabelOnGround? result = engine.ResolveNextLabelCandidate(labels).Label;
 
             Assert.IsNull(result);
 
@@ -188,8 +189,7 @@ namespace ClickIt.Tests.Features.Click
         }
 
         private sealed class FakeLabelSelectionService(
-            Func<IReadOnlyList<LabelOnGround>?, int, int, LabelOnGround?>? getNextLabelToClick = null,
-            Func<LabelOnGround?, string?>? getMechanicIdForLabel = null) : ILabelSelectionService
+            Func<IReadOnlyList<LabelOnGround>?, int, int, LabelOnGround?>? getNextLabelToClick = null) : ILabelSelectionService
         {
             public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
                 => getNextLabelToClick?.Invoke(allLabels, startIndex, maxCount);
@@ -212,8 +212,6 @@ namespace ClickIt.Tests.Features.Click
                 return null;
             }
 
-            public string? GetMechanicIdForLabel(LabelOnGround? label)
-                => getMechanicIdForLabel?.Invoke(label);
         }
     }
 }

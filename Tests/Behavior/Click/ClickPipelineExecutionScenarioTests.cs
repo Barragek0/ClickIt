@@ -2,6 +2,7 @@ namespace ClickIt.Tests.Behavior.Click
 {
     // End-to-end execution scenarios: the REAL InteractionExecutionEngine with the REAL LabelClickPointResolver and clickable-area predicate. Verifies the click-vs-walk decision for on-screen strongboxes and items, including partially/fully obscured labels and locked boxes.
     [TestClass]
+    [TestCategory("Parity")]
     public class ClickPipelineExecutionScenarioTests
     {
         private const string StrongboxPath = "Metadata/Chests/StrongBoxes/Arcanist";
@@ -51,7 +52,7 @@ namespace ClickIt.Tests.Behavior.Click
             var card = ClickPipelineScenarioFactory.CreateLabel(cardRect, cardEntity, 0x1002);
             harness.CurrentLabels = [boss, card];
             if (!offscreen)
-                harness.ScanEngine.ResolveNextLabelCandidate(harness.CurrentLabels).Should().BeSameAs(targetable ? card : boss);
+                harness.ScanEngine.ResolveNextLabelCandidate(harness.CurrentLabels).Label.Should().BeSameAs(targetable ? card : boss);
             else
                 harness.TraversalResolver.ResolveHigherPriorityWalkTarget(
                     new HashSet<long>(), MechanicIds.GetFallbackTier(MechanicIds.FatesBoss), MechanicIds.Fates)
@@ -369,7 +370,7 @@ namespace ClickIt.Tests.Behavior.Click
             var labels = new List<LabelOnGround> { box };
             harness.CurrentLabels = labels;
 
-            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels);
+            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels).Label;
             next.Should().BeSameAs(box);
             string? mechanic = harness.LabelInteractionPort.GetMechanicIdForLabel(next);
 
@@ -392,7 +393,7 @@ namespace ClickIt.Tests.Behavior.Click
             var labels = new List<LabelOnGround> { locked, item };
             harness.CurrentLabels = labels;
 
-            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels);
+            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels).Label;
             next.Should().BeSameAs(item, "the scan must skip the locked strongbox and return the open item");
             string? mechanic = harness.LabelInteractionPort.GetMechanicIdForLabel(next);
 
@@ -417,7 +418,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround far = WorldItem(90f, 0x03, farRect);
             var labels = new List<LabelOnGround> { far, mid, near };
 
-            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels);
+            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels).Label;
             next.Should().BeSameAs(near, "the closest item must be selected first");
             string? mechanic = harness.LabelInteractionPort.GetMechanicIdForLabel(next);
 
@@ -441,7 +442,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround far = Strongbox(70f, 0x02, locked: false, farRect);
             var labels = new List<LabelOnGround> { far, near };
 
-            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels);
+            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels).Label;
             next.Should().BeSameAs(near, "with penalty 0 the closer strongbox must be selected first");
             string? mechanic = harness.LabelInteractionPort.GetMechanicIdForLabel(next);
 
@@ -463,7 +464,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround item = WorldItem(50f, 0x02, new RectangleF(900f, 600f, 60f, 20f));
             var labels = new List<LabelOnGround> { locked, item };
 
-            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels);
+            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels).Label;
             next.Should().BeSameAs(item, "the closest locked strongbox is skipped and the open item selected");
             string? mechanic = harness.LabelInteractionPort.GetMechanicIdForLabel(next);
 
@@ -626,7 +627,7 @@ namespace ClickIt.Tests.Behavior.Click
             var labels = new List<LabelOnGround> { locked, open, itemA, itemB };
             harness.CurrentLabels = labels;
 
-            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels);
+            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels).Label;
             next.Should().BeSameAs(open, "the scan must skip the locked strongbox and pick the closest clickable label (the open strongbox)");
             string? mechanic = harness.LabelInteractionPort.GetMechanicIdForLabel(next);
 
@@ -656,7 +657,7 @@ namespace ClickIt.Tests.Behavior.Click
             ClickPipelineScenarioFactory.SetElementAddress(lockedElement, 0xB000);
             harness.HoveredElement = lockedElement;
 
-            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels);
+            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels).Label;
             next.Should().BeSameAs(open, "the hover preference must not switch to the locked strongbox");
             string? mechanic = harness.LabelInteractionPort.GetMechanicIdForLabel(next);
 
@@ -686,7 +687,7 @@ namespace ClickIt.Tests.Behavior.Click
             ClickPipelineScenarioFactory.SetElementAddress(bElement, 0xB001);
             harness.HoveredElement = bElement;
 
-            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels);
+            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels).Label;
             next.Should().BeSameAs(b, "hovering an open overlapping strongbox prefers it");
             string? mechanic = harness.LabelInteractionPort.GetMechanicIdForLabel(next);
 
@@ -710,7 +711,7 @@ namespace ClickIt.Tests.Behavior.Click
             var labels = new List<LabelOnGround> { locked, open, nearItem };
             harness.CurrentLabels = labels;
 
-            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels);
+            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels).Label;
             next.Should().BeSameAs(nearItem, "with penalty 0 the closest clickable label (the item) wins over the farther open strongbox");
             string? mechanic = harness.LabelInteractionPort.GetMechanicIdForLabel(next);
 
@@ -740,13 +741,13 @@ namespace ClickIt.Tests.Behavior.Click
             harness.CurrentLabels = labels;
 
             // First run: A is open and closest -> selected and clicked.
-            harness.ScanEngine.ResolveNextLabelCandidate(labels).Should().BeSameAs(a);
+            harness.ScanEngine.ResolveNextLabelCandidate(labels).Label.Should().BeSameAs(a);
 
             // A opens and becomes locked; the label set (and its reference) is unchanged.
             EntityProbeFactory.WithComponent<Chest>(boxA, new LockedChestProbe { IsLocked = true });
 
             // Next run: the scan must NOT return A, and must pick the next closest clickable (B), never leaving B behind to walk to the far box C.
-            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels);
+            LabelOnGround? next = harness.ScanEngine.ResolveNextLabelCandidate(labels).Label;
             next.Should().BeSameAs(b, "after the closest strongbox locks, the next closest clickable must be selected");
             string? mechanic = harness.LabelInteractionPort.GetMechanicIdForLabel(next);
 

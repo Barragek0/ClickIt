@@ -75,14 +75,16 @@ namespace ClickIt.Features.Click.Selection
             Strongbox,
         }
 
-        internal LabelOnGround? ResolveNextLabelCandidate(
+        internal (LabelOnGround? Label, string? MechanicId) ResolveNextLabelCandidate(
             IReadOnlyList<LabelOnGround>? allLabels,
             Func<Entity?, string?, bool>? additionalEligibility = null)
         {
             LabelOnGround? nextLabel = FindNextLabelToClick(allLabels, additionalEligibility);
             Element? uiHover = ResolveUiHoverElement();
             nextLabel = PreferUiHoverLabel(nextLabel, allLabels, UiHoverTargetKind.Essence, ClickLabelSelectionMath.IsEssenceLabel, uiHover, additionalEligibility);
-            return PreferUiHoverLabel(nextLabel, allLabels, UiHoverTargetKind.Strongbox, ClickLabelSelectionMath.IsStrongboxLabel, uiHover, additionalEligibility);
+            nextLabel = PreferUiHoverLabel(nextLabel, allLabels, UiHoverTargetKind.Strongbox, ClickLabelSelectionMath.IsStrongboxLabel, uiHover, additionalEligibility);
+            // The cached scan's mechanic is not a live resolution of the final hover-adjusted label.
+            return (nextLabel, nextLabel != null ? _dependencies.LabelInteractionPort.GetMechanicIdForLabel(nextLabel) : null);
         }
 
         private LabelOnGround? PreferUiHoverLabel(

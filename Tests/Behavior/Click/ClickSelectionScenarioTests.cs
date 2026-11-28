@@ -2,6 +2,7 @@ namespace ClickIt.Tests.Behavior.Click
 {
     // Scenario tests for the REAL label selection pipeline (LabelSelectionService + LabelEligibilityEngine + LabelSelectionScanEngine): multiple strongboxes and items at different positions/distances, locked boxes, priority ranking, and scan-level suppression.
     [TestClass]
+    [TestCategory("Parity")]
     public class ClickSelectionScenarioTests
     {
         private const string StrongboxPath = "Metadata/Chests/StrongBoxes/Arcanist";
@@ -36,7 +37,7 @@ namespace ClickIt.Tests.Behavior.Click
             var crawler = ClickPipelineScenarioFactory.CreateLabel(new RectangleF(100, 100, 100, 30),
                 EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/DelveNodeNoEncounter", distancePlayer: 1, address: 1), 0x1001);
             var chest = Strongbox(80, 2, false, new RectangleF(800, 600, 160, 40));
-            harness.ScanEngine.ResolveNextLabelCandidate([crawler, chest]).Should().BeSameAs(chest);
+            harness.ScanEngine.ResolveNextLabelCandidate([crawler, chest]).Label.Should().BeSameAs(chest);
         }
 
         [TestMethod]
@@ -50,7 +51,7 @@ namespace ClickIt.Tests.Behavior.Click
             var crawler = ClickPipelineScenarioFactory.CreateLabel(new RectangleF(100, 100, 100, 30),
                 EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/DelveNodeNoEncounter", distancePlayer: 1, address: 1), 0x1001);
             var chest = Strongbox(80, 2, false, new RectangleF(800, 600, 160, 40));
-            harness.ScanEngine.ResolveNextLabelCandidate([crawler, chest]).Should().BeSameAs(crawler);
+            harness.ScanEngine.ResolveNextLabelCandidate([crawler, chest]).Label.Should().BeSameAs(crawler);
         }
 
         [TestMethod]
@@ -64,7 +65,7 @@ namespace ClickIt.Tests.Behavior.Click
                 EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/DelveNodeNoEncounter", distancePlayer: 1, address: 1), 0x1001);
             var chest = Strongbox(80, 2, false, new RectangleF(2200, 600, 160, 40));
             harness.CurrentLabels = [crawler, chest];
-            harness.ScanEngine.ResolveNextLabelCandidate(harness.CurrentLabels).Should().BeSameAs(crawler);
+            harness.ScanEngine.ResolveNextLabelCandidate(harness.CurrentLabels).Label.Should().BeSameAs(crawler);
             DynamicAccess.TryGetLabelItemOnGround(chest, out Entity? chestEntity).Should().BeTrue();
             harness.TraversalResolver.ResolveHigherPriorityWalkTarget(
                 new HashSet<long>(), MechanicIds.GetFallbackTier(MechanicIds.DelveCrawler)).Should().BeSameAs(chestEntity);
@@ -165,7 +166,7 @@ namespace ClickIt.Tests.Behavior.Click
             var harness = new ClickPipelineScenarioFactory.ScenarioHarness(config);
             LabelOnGround upperRightLabel = Strongbox(5000f, 0x01, locked: false, new RectangleF(3740f, 8f, 90f, 36f));
 
-            LabelOnGround? selected = harness.ScanEngine.ResolveNextLabelCandidate([upperRightLabel]);
+            LabelOnGround? selected = harness.ScanEngine.ResolveNextLabelCandidate([upperRightLabel]).Label;
 
             selected.Should().BeSameAs(upperRightLabel,
                 "a clickable label anywhere in the game viewport, including the far corner at high resolution, is eligible regardless of world distance");
@@ -179,7 +180,7 @@ namespace ClickIt.Tests.Behavior.Click
             var harness = new ClickPipelineScenarioFactory.ScenarioHarness(config);
             LabelOnGround label = Strongbox(10f, 0x01, locked: false, new RectangleF(100f, 100f, 90f, 36f));
 
-            harness.ScanEngine.ResolveNextLabelCandidate([label]).Should().BeNull(
+            harness.ScanEngine.ResolveNextLabelCandidate([label]).Label.Should().BeNull(
                 "an unreadable or empty viewport cannot establish a safe on-screen click point");
         }
 
@@ -231,7 +232,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround inner = WorldItem(10f, 0x01, innerRect);
             LabelOnGround outer = WorldItem(20f, 0x02, outerRect);
 
-            LabelOnGround? selected = harness.ScanEngine.ResolveNextLabelCandidate([inner, outer]);
+            LabelOnGround? selected = harness.ScanEngine.ResolveNextLabelCandidate([inner, outer]).Label;
 
             selected.Should().BeSameAs(outer, "a fully overlapped label must be skipped by the scan");
         }
@@ -249,7 +250,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround blocked = WorldItem(10f, 0x01, new RectangleF(100f, 100f, 160f, 40f));
             LabelOnGround clickable = WorldItem(20f, 0x02, new RectangleF(500f, 300f, 60f, 20f));
 
-            LabelOnGround? selected = harness.ScanEngine.ResolveNextLabelCandidate([blocked, clickable]);
+            LabelOnGround? selected = harness.ScanEngine.ResolveNextLabelCandidate([blocked, clickable]).Label;
 
             selected.Should().BeSameAs(clickable, "selection must use a point outside blocked UI regions before any click or walk decision");
         }
@@ -261,7 +262,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround locked = Strongbox(10f, 0x01, locked: true, new RectangleF(100f, 100f, 160f, 40f));
             LabelOnGround open = WorldItem(30f, 0x02, new RectangleF(800f, 600f, 60f, 20f));
 
-            LabelOnGround? selected = harness.ScanEngine.ResolveNextLabelCandidate([locked, open]);
+            LabelOnGround? selected = harness.ScanEngine.ResolveNextLabelCandidate([locked, open]).Label;
 
             selected.Should().BeSameAs(open, "the scan must advance past a locked strongbox to the next label");
         }
@@ -273,7 +274,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround lockedA = Strongbox(10f, 0x01, locked: true, new RectangleF(100f, 100f, 160f, 40f));
             LabelOnGround lockedB = Strongbox(20f, 0x02, locked: true, new RectangleF(400f, 200f, 160f, 40f));
 
-            harness.ScanEngine.ResolveNextLabelCandidate([lockedA, lockedB]).Should().BeNull();
+            harness.ScanEngine.ResolveNextLabelCandidate([lockedA, lockedB]).Label.Should().BeNull();
         }
 
         [TestMethod]
@@ -287,7 +288,7 @@ namespace ClickIt.Tests.Behavior.Click
             LabelOnGround openBox = Strongbox(40f, 0x03, locked: false, new RectangleF(900f, 600f, 160f, 40f));
             LabelOnGround bigItem = WorldItem(25f, 0x04, bigRect);
 
-            LabelOnGround? selected = harness.ScanEngine.ResolveNextLabelCandidate([overlapped, locked, bigItem, openBox]);
+            LabelOnGround? selected = harness.ScanEngine.ResolveNextLabelCandidate([overlapped, locked, bigItem, openBox]).Label;
 
             selected.Should().BeSameAs(bigItem,
                 "overlapped and locked labels are skipped; among the remaining the closest (bigItem at 25) wins over openBox at 40");
@@ -308,7 +309,7 @@ namespace ClickIt.Tests.Behavior.Click
             ClickPipelineScenarioFactory.SetElementAddress(lockedElement, 0xA000);
             harness.HoveredElement = lockedElement;
 
-            LabelOnGround? selected = harness.ScanEngine.ResolveNextLabelCandidate(labels);
+            LabelOnGround? selected = harness.ScanEngine.ResolveNextLabelCandidate(labels).Label;
 
             selected.Should().BeSameAs(open,
                 "the hover preference must not re-target a locked strongbox; the ranked open strongbox is selected");
@@ -329,7 +330,7 @@ namespace ClickIt.Tests.Behavior.Click
             ClickPipelineScenarioFactory.SetElementAddress(bElement, 0xA002);
             harness.HoveredElement = bElement;
 
-            LabelOnGround? selected = harness.ScanEngine.ResolveNextLabelCandidate(labels);
+            LabelOnGround? selected = harness.ScanEngine.ResolveNextLabelCandidate(labels).Label;
 
             selected.Should().BeSameAs(b,
                 "hovering an open overlapping strongbox still prefers it over the ranked next label");

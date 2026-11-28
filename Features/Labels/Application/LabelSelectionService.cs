@@ -155,9 +155,6 @@ namespace ClickIt.Features.Labels.Application
             return selected;
         }
 
-        public string? GetMechanicIdForLabel(LabelOnGround? label)
-            => _dependencies.GetMechanicIdForLabelCore(label);
-
         private void PublishSelectionLifecycleDebug(string stage, IReadOnlyList<LabelOnGround>? allLabels, int start, int end, string notes)
         {
             _dependencies.PublishLabelDebugStage(new LabelDebugEvent(stage, start, end, allLabels?.Count ?? 0)

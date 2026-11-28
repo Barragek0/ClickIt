@@ -23,90 +23,55 @@ namespace ClickIt.Features.Click.Core
                 ? _dependencies.Selection.LabelInteraction.BuildLabelSourceDebugSummary(context.AllLabels)
                 : string.Empty;
 
-            if (!context.GroundItemsVisible)
-            {
-                long mechanicStart = GC.GetAllocatedBytesForCurrentThread();
-                long mechanicTimestamp = Stopwatch.GetTimestamp();
-                double mechanicSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
-                VisibleMechanicSelectionSnapshot hiddenFallbackSelection = _dependencies.Selection.VisibleMechanics.GetHiddenFallbackSelectionSnapshot();
-                long mechanicBytes = GC.GetAllocatedBytesForCurrentThread() - mechanicStart;
-                double mechanicMs = GetElapsedMs(mechanicTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - mechanicSleepBefore);
-                _dependencies.Telemetry.RecordBreakdownStage?.Invoke(PerformanceMonitor.ClickMechanicScanStageIndex, mechanicBytes, mechanicMs);
-                if (captureClickDebug)
-                    _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage("GroundItemsHidden",
-                        $"{labelSourceSummary} | hiddenFallback settlers={hiddenFallbackSelection.HasSettlers} lostShipment={hiddenFallbackSelection.HasLostShipment}", null);
+            bool visible = context.GroundItemsVisible;
+            long mechanicStart = GC.GetAllocatedBytesForCurrentThread();
+            long mechanicTimestamp = Stopwatch.GetTimestamp();
+            double mechanicSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
+            VisibleMechanicSelectionSnapshot mechanics = visible
+                ? _dependencies.Selection.VisibleMechanics.GetVisibleMechanicSelectionSnapshotForLabels(context.AllLabels)
+                : _dependencies.Selection.VisibleMechanics.GetHiddenFallbackSelectionSnapshot();
+            long mechanicBytes = GC.GetAllocatedBytesForCurrentThread() - mechanicStart;
+            double mechanicMs = GetElapsedMs(mechanicTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - mechanicSleepBefore);
+            _dependencies.Telemetry.RecordBreakdownStage?.Invoke(PerformanceMonitor.ClickMechanicScanStageIndex, mechanicBytes, mechanicMs);
 
-                long labelScanStart = GC.GetAllocatedBytesForCurrentThread();
-                long labelScanTimestamp = Stopwatch.GetTimestamp();
-                double labelScanSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
-                LabelOnGround? hiddenLabel = _dependencies.Selection.LabelSelectionScan.ResolveNextLabelCandidate(context.AllLabels, settlementEligibility);
-                if (hiddenLabel == null && firstSettlementRejection != null)
-                    PublishChestSettleRejection(firstSettlementRejection);
-                string? hiddenLabelMechanicId = hiddenLabel != null
-                    ? _dependencies.Selection.LabelInteractionPort.GetMechanicIdForLabel(hiddenLabel)
-                    : null;
-                long labelScanBytes = GC.GetAllocatedBytesForCurrentThread() - labelScanStart;
-                double labelScanMs = GetElapsedMs(labelScanTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - labelScanSleepBefore);
-                _dependencies.Telemetry.RecordBreakdownStage?.Invoke(PerformanceMonitor.ClickLabelScanStageIndex, labelScanBytes, labelScanMs);
-
-                if (hiddenLabel != null)
-                {
-                    if (captureClickDebug)
-                        _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenLabelFound",
-                            $"{labelSourceSummary} | mechanic={hiddenLabelMechanicId} {ClickLabelSelectionMath.DescribeLabel(hiddenLabel)} {ClickLabelSelectionMath.DescribeCursorPosition()}", hiddenLabelMechanicId);
-                }
-                else if (captureClickDebug)
-                {
-                    _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenLabelNull",
-                        $"{labelSourceSummary} | ResolveNextLabelCandidate returned null despite {allLabelsCount} labels in context", null);
-                }
-
-                return new ClickCandidates(hiddenFallbackSelection.LostShipment, hiddenFallbackSelection.Settlers, hiddenLabel, hiddenLabelMechanicId);
-            }
-
-            long visMechanicStart = GC.GetAllocatedBytesForCurrentThread();
-            long visMechanicTimestamp = Stopwatch.GetTimestamp();
-            double visMechanicSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
-            VisibleMechanicSelectionSnapshot visibleMechanicSelection = _dependencies.Selection.VisibleMechanics.GetVisibleMechanicSelectionSnapshotForLabels(context.AllLabels);
-            long visMechanicBytes = GC.GetAllocatedBytesForCurrentThread() - visMechanicStart;
-            double visMechanicMs = GetElapsedMs(visMechanicTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - visMechanicSleepBefore);
-            _dependencies.Telemetry.RecordBreakdownStage?.Invoke(PerformanceMonitor.ClickMechanicScanStageIndex, visMechanicBytes, visMechanicMs);
             if (captureClickDebug)
-                _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage("LabelSource", labelSourceSummary, null);
+            {
+                if (visible)
+                    _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage("LabelSource", labelSourceSummary, null);
+                else
+                    _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage("GroundItemsHidden",
+                        $"{labelSourceSummary} | hiddenFallback settlers={mechanics.HasSettlers} lostShipment={mechanics.HasLostShipment}", null);
+            }
 
-
-            long visLabelScanStart = GC.GetAllocatedBytesForCurrentThread();
-            long visLabelScanTimestamp = Stopwatch.GetTimestamp();
-            double visLabelScanSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
-            LabelOnGround? nextLabel = _dependencies.Selection.LabelSelectionScan.ResolveNextLabelCandidate(context.AllLabels, settlementEligibility);
-            if (nextLabel == null && firstSettlementRejection != null)
+            long labelScanStart = GC.GetAllocatedBytesForCurrentThread();
+            long labelScanTimestamp = Stopwatch.GetTimestamp();
+            double labelScanSleepBefore = ClickPipelineTiming.ReadSleepTimeMs();
+            (LabelOnGround? label, string? mechanicId) = _dependencies.Selection.LabelSelectionScan
+                .ResolveNextLabelCandidate(context.AllLabels, settlementEligibility);
+            if (label == null && firstSettlementRejection != null)
                 PublishChestSettleRejection(firstSettlementRejection);
-            string? nextLabelMechanicId = nextLabel != null
-                ? _dependencies.Selection.LabelInteractionPort.GetMechanicIdForLabel(nextLabel)
-                : null;
-            long visLabelScanBytes = GC.GetAllocatedBytesForCurrentThread() - visLabelScanStart;
-            double visLabelScanMs = GetElapsedMs(visLabelScanTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - visLabelScanSleepBefore);
-            _dependencies.Telemetry.RecordBreakdownStage?.Invoke(PerformanceMonitor.ClickLabelScanStageIndex, visLabelScanBytes, visLabelScanMs);
+            long labelScanBytes = GC.GetAllocatedBytesForCurrentThread() - labelScanStart;
+            double labelScanMs = GetElapsedMs(labelScanTimestamp) - (ClickPipelineTiming.ReadSleepTimeMs() - labelScanSleepBefore);
+            _dependencies.Telemetry.RecordBreakdownStage?.Invoke(PerformanceMonitor.ClickLabelScanStageIndex, labelScanBytes, labelScanMs);
 
-            if (nextLabel != null)
+            if (captureClickDebug)
             {
-                if (captureClickDebug)
-                    _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage("VisibleLabelFound",
-                        $"{labelSourceSummary} | mechanic={nextLabelMechanicId} {ClickLabelSelectionMath.DescribeLabel(nextLabel)} {ClickLabelSelectionMath.DescribeCursorPosition()}", nextLabelMechanicId);
-            }
-            else if (captureClickDebug)
-            {
-                _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage("VisibleLabelNull",
-                    $"{labelSourceSummary} | ResolveNextLabelCandidate returned null", null);
+                if (label != null)
+                    _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage(visible ? "VisibleLabelFound" : "HiddenLabelFound",
+                        $"{labelSourceSummary} | mechanic={mechanicId} {ClickLabelSelectionMath.DescribeLabel(label)} {ClickLabelSelectionMath.DescribeCursorPosition()}", mechanicId);
+                else
+                    _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage(visible ? "VisibleLabelNull" : "HiddenLabelNull",
+                        $"{labelSourceSummary} | ResolveNextLabelCandidate returned null{(visible ? string.Empty : $" despite {allLabelsCount} labels in context")}", null);
             }
 
-            nextLabelMechanicId = OffscreenPathingMath.ResolveLabelMechanicIdForVisibleCandidateComparison(
-                nextLabelMechanicId,
-                hasLabel: nextLabel != null,
-                isWorldItemLabel: nextLabel?.ItemOnGround?.Type == EntityType.WorldItem,
-                clickItemsEnabled: _dependencies.Policy.Settings.ClickItems.Value);
+            if (visible)
+                mechanicId = OffscreenPathingMath.ResolveLabelMechanicIdForVisibleCandidateComparison(
+                    mechanicId,
+                    hasLabel: label != null,
+                    isWorldItemLabel: label?.ItemOnGround?.Type == EntityType.WorldItem,
+                    clickItemsEnabled: _dependencies.Policy.Settings.ClickItems.Value);
 
-            return new ClickCandidates(visibleMechanicSelection.LostShipment, visibleMechanicSelection.Settlers, nextLabel, nextLabelMechanicId);
+            return new ClickCandidates(mechanics.LostShipment, mechanics.Settlers, label, mechanicId);
         }
 
         private void PublishChestSettleRejection(string decision)

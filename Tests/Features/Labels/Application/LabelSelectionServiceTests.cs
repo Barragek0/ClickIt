@@ -1,6 +1,7 @@
 namespace ClickIt.Tests.Features.Labels.Application
 {
     [TestClass]
+    [TestCategory("Parity")]
     public class LabelSelectionServiceTests
     {
         [TestMethod]
@@ -65,29 +66,6 @@ namespace ClickIt.Tests.Features.Labels.Application
             scanEvent.ConsideredCandidates.Should().Be(2);
             scanEvent.NoMechanicRejected.Should().Be(2);
             scanEvent.TotalLabels.Should().Be(2);
-        }
-
-        [TestMethod]
-        public void GetMechanicIdForLabel_ForwardsToCoreDelegate()
-        {
-            LabelOnGround label = CreateOpaqueLabel();
-            var service = new LabelSelectionService(new LabelSelectionServiceDependencies(
-                GameController: null,
-                CreateClickSettings: static _ => new ClickSettings(),
-                ShouldCaptureLabelDebug: static () => false,
-                PublishLabelDebugStage: static _ => { },
-                TryBuildLabelCandidate: static (LabelOnGround _, ClickSettings _, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
-                {
-                    item = null;
-                    mechanicId = null;
-                    rejectReason = LabelCandidateRejectReason.None;
-                    return false;
-                },
-                GetMechanicIdForLabelCore: current => current == label ? MechanicIds.Shrines : null));
-
-            string? mechanicId = service.GetMechanicIdForLabel(label);
-
-            mechanicId.Should().Be(MechanicIds.Shrines);
         }
 
         [TestMethod]

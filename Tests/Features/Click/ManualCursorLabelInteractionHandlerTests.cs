@@ -1,6 +1,7 @@
 namespace ClickIt.Tests.Features.Click
 {
     [TestClass]
+    [TestCategory("Parity")]
     public class ManualCursorLabelInteractionHandlerTests
     {
         [TestMethod]

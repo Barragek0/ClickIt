@@ -3,6 +3,36 @@ namespace ClickIt.Tests.Features.Click
     [TestClass]
     public class CandidateRankingEngineTests
     {
+        [DataTestMethod]
+        [TestCategory("Parity")]
+        [DataRow(true, false, false, false, false, false)]
+        [DataRow(false, false, false, true, false, false)]
+        [DataRow(true, true, false, false, true, false)]
+        [DataRow(false, true, false, false, true, false)]
+        [DataRow(true, false, true, false, false, true)]
+        [DataRow(false, false, true, false, false, true)]
+        [DataRow(true, true, true, false, false, true)]
+        [DataRow(false, true, true, false, false, true)]
+        public void Rank_PreservesPresenceAndExactTies(bool visible, bool settlers, bool shipment, bool shrine,
+            bool expectSettlers, bool expectShipment)
+        {
+            var (scan, interaction) = CreateEngine();
+            var priority = CreateContext(new Dictionary<string, int>(), priorityDistancePenalty: 0);
+            var context = new ClickTickContext(default, default, false, string.Empty, [],
+                shrine ? ExileCoreOpaqueFactory.CreateOpaqueEntity() : null, priority, visible);
+            var candidates = new ClickCandidates(
+                shipment ? CreateLostShipmentCandidate(Vector2.One, 10f) : null,
+                settlers ? CreateSettlersCandidate(Vector2.One, MechanicIds.SettlersVerisium, 10f) : null,
+                null, null);
+
+            var ranked = CandidateRankingEngine.Rank(scan, interaction, context, candidates);
+
+            ranked.TrySettlers.Should().Be(expectSettlers);
+            ranked.TryLostShipment.Should().Be(expectShipment);
+            ranked.TryShrine.Should().Be(shrine);
+            ranked.GroundItemsVisible.Should().Be(visible);
+        }
+
         [TestMethod]
         public void BuildRank_AppliesPriorityPenalty_ToWeightedDistance()
         {
@@ -81,7 +111,7 @@ namespace ClickIt.Tests.Features.Click
                 NextLabel: null,
                 NextLabelMechanicId: null);
 
-            RankingResult result = CandidateRankingEngine.Rank(scanEngine, labelInteraction, new ClickTickContext(
+            DecisionResult result = CandidateRankingEngine.Rank(scanEngine, labelInteraction, new ClickTickContext(
                 WindowTopLeft: Vector2.Zero,
                 CursorAbsolute: new Vector2(5f, 5f),
                 IsPostChestLootSettleBlocking: false,
@@ -92,9 +122,9 @@ namespace ClickIt.Tests.Features.Click
                 GroundItemsVisible: false),
                 candidates);
 
-            result.PreferSettlers.Should().BeTrue();
-            result.PreferLostShipment.Should().BeTrue();
-            result.PreferShrine.Should().BeFalse();
+            result.TrySettlers.Should().BeTrue();
+            result.TryLostShipment.Should().BeTrue();
+            result.TryShrine.Should().BeFalse();
             result.GroundItemsVisible.Should().BeFalse();
         }
 
@@ -113,7 +143,7 @@ namespace ClickIt.Tests.Features.Click
                 NextLabel: null,
                 NextLabelMechanicId: null);
 
-            RankingResult result = CandidateRankingEngine.Rank(scanEngine, labelInteraction, new ClickTickContext(
+            DecisionResult result = CandidateRankingEngine.Rank(scanEngine, labelInteraction, new ClickTickContext(
                 WindowTopLeft: Vector2.Zero,
                 CursorAbsolute: new Vector2(5f, 5f),
                 IsPostChestLootSettleBlocking: false,
@@ -124,9 +154,9 @@ namespace ClickIt.Tests.Features.Click
                 GroundItemsVisible: true),
                 candidates);
 
-            result.PreferSettlers.Should().BeFalse();
-            result.PreferLostShipment.Should().BeTrue();
-            result.PreferShrine.Should().BeFalse();
+            result.TrySettlers.Should().BeFalse();
+            result.TryLostShipment.Should().BeTrue();
+            result.TryShrine.Should().BeFalse();
             result.GroundItemsVisible.Should().BeTrue();
         }
 
@@ -135,7 +165,7 @@ namespace ClickIt.Tests.Features.Click
         {
             (LabelSelectionScanEngine scanEngine, ClickLabelInteractionService labelInteraction) = CreateEngine();
 
-            RankingResult result = CandidateRankingEngine.Rank(scanEngine, labelInteraction, new ClickTickContext(
+            DecisionResult result = CandidateRankingEngine.Rank(scanEngine, labelInteraction, new ClickTickContext(
                 WindowTopLeft: Vector2.Zero,
                 CursorAbsolute: Vector2.Zero,
                 IsPostChestLootSettleBlocking: false,
@@ -146,9 +176,9 @@ namespace ClickIt.Tests.Features.Click
                 GroundItemsVisible: true),
                 new ClickCandidates(null, null, null, null));
 
-            result.PreferSettlers.Should().BeFalse();
-            result.PreferLostShipment.Should().BeFalse();
-            result.PreferShrine.Should().BeFalse();
+            result.TrySettlers.Should().BeFalse();
+            result.TryLostShipment.Should().BeFalse();
+            result.TryShrine.Should().BeFalse();
             result.GroundItemsVisible.Should().BeTrue();
         }
 
