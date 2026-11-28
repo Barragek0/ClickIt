@@ -101,7 +101,8 @@ namespace ClickIt.Features.Click.Runtime
                 return true;
 
             return DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsTargetable, out bool targetable) && targetable
-                && (!MechanicIds.IsDelveAzuriteShardPath(path) || MechanicClassifier.CanClickGroundAzurite(entity));
+                && (!MechanicIds.IsDelveAzuriteShardPath(path) || MechanicClassifier.CanClickGroundAzurite(entity))
+                && (!MechanicIds.IsDelveRewardChestPath(path) || MechanicClassifier.IsUnopenedTargetableDelveChest(entity));
         }
 
         // Continue pathfinding until the label is clickable in place; blight additionally requires the full label on screen.

@@ -1024,7 +1024,7 @@ namespace ClickIt.Tests.Features.Click
             bool walked;
             if (stickyOutsideRadius)
             {
-                coordinator.SetStickyOffscreenTarget(preferredTarget);
+                stickyHandler.SetStickyOffscreenTarget(preferredTarget);
                 walked = coordinator.TryHandleStickyOffscreenTarget(new Vector2(100f, 200f),
                     [OffscreenStickyTargetGraphShaper.CreateVisibleLabel(preferredTarget)]);
             }
@@ -1295,7 +1295,6 @@ namespace ClickIt.Tests.Features.Click
                 LabelInteractionPort: labelInteractionPort,
                 VisibleLabelSnapshots: new VisibleLabelSnapshotProvider(new TimeCache<List<LabelOnGround>>(() => [], 50)),
                 IsClickableInEitherSpace: pointIsInClickableArea,
-                IsInsideWindowInEitherSpace: static _ => false,
                 PathfindingLabelSuppression: pathfindingLabelSuppression));
 
             return new OffscreenPathingCoordinator(new OffscreenPathingCoordinatorDependencies(

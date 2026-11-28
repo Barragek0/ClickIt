@@ -77,6 +77,21 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
+        [TestCategory("Parity")]
+        [DataRow("Chests/DelveChests/TangledFossil", true, true)]
+        [DataRow("Chests/DelveChests/TangledFossil", false, false)]
+        [DataRow("Terrain/Leagues/Delve/Objects/DelveAzuriteShard", true, false)]
+        [DataRow("Terrain/Leagues/Delve/Objects/EncounterSpawners/WaterSpawnerEffect", true, false)]
+        [DataRow("Terrain/Leagues/Delve/Objects/DelveNode", true, false)]
+        public void UnlabelledOnscreenApproach_UsesTheExactDelveAllowlist(string metadata, bool targetable, bool expected)
+        {
+            string path = "Metadata/" + metadata;
+            Entity entity = EntityProbeFactory.Create(path: path, address: 42, isTargetable: targetable);
+
+            OffscreenTraversalTargetResolver.CanApproachUnlabelledDelveTarget(entity, path, []).Should().Be(expected);
+        }
+
+        [TestMethod]
         public void ResolveNearestOffscreenWalkTarget_ReturnsNull_AndDoesNotRefreshPriorities_WhenNoCandidateSourcesExist()
         {
             var settings = new ClickItSettings();
@@ -145,7 +160,6 @@ namespace ClickIt.Tests.Features.Click
                 LabelInteractionPort: ClickTestServiceFactory.CreateNoOpLabelInteractionPort(),
                 VisibleLabelSnapshots: new VisibleLabelSnapshotProvider(new TimeCache<List<LabelOnGround>>(() => [], 50)),
                 IsClickableInEitherSpace: static (_, _) => false,
-                IsInsideWindowInEitherSpace: static _ => false,
                 PathfindingLabelSuppression: pathfindingLabelSuppression));
         }
 

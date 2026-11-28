@@ -71,9 +71,7 @@ namespace ClickIt.Features.Click.Application
                 return false;
             }
 
-            if (!OffscreenPathingMath.IsEligibleDelveTraversalTarget(target, stickyPath)
-                || (MechanicIds.IsDelveRewardChestPath(stickyPath)
-                    && !MechanicClassifier.IsUnopenedTargetableDelveChest(target)))
+            if (!OffscreenPathingMath.IsEligibleDelveTraversalTarget(target, stickyPath))
             {
                 ClearStickyOffscreenTarget();
                 target = null;
@@ -119,9 +117,6 @@ namespace ClickIt.Features.Click.Application
                 && resolvedIsTargetable;
             return true;
         }
-
-        internal bool TryClickStickyTargetIfPossible(Entity stickyTarget, Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels)
-            => TryClickStickyTargetIfPossible(stickyTarget, windowTopLeft, allLabels, out _);
 
         internal bool TryClickStickyTargetIfPossible(Entity stickyTarget, Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels, out bool needsApproach)
         {

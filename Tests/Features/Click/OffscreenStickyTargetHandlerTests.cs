@@ -4,6 +4,51 @@ namespace ClickIt.Tests.Features.Click
     public class OffscreenStickyTargetHandlerTests
     {
         [TestMethod]
+        [TestCategory("Parity")]
+        [DataRow(0, true)]
+        [DataRow(1, false)]
+        [DataRow(-1, false)]
+        public void StickyAzurite_RechecksMagneticForceOnEveryHandoff(int force, bool remainsEligible)
+        {
+            Entity target = EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/DelveAzuriteShard", address: 42);
+            var magnetic = new MagneticProbe { Force = 0 };
+            EntityProbeFactory.WithComponent<Magnetic>(target, magnetic);
+            var state = new ClickRuntimeState();
+            var handler = CreateHandler(state, ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(target));
+            handler.SetStickyOffscreenTarget(target);
+            handler.TryResolveStickyOffscreenTarget(out Entity? initial).Should().BeTrue();
+            initial.Should().BeSameAs(target);
+
+            magnetic.Force = force;
+
+            handler.TryResolveStickyOffscreenTarget(out Entity? resolved).Should().Be(remainsEligible);
+            resolved.Should().BeSameAs(remainsEligible ? target : null);
+            state.StickyOffscreenTargetAddress.Should().Be(remainsEligible ? 42 : 0);
+        }
+
+        [TestMethod]
+        [TestCategory("Parity")]
+        [DataRow(true, false, true)]
+        [DataRow(true, true, false)]
+        [DataRow(false, false, false)]
+        public void StickyDelveChest_RechecksOpenAndTargetableStateOnHandoff(bool targetable, bool opened, bool remainsEligible)
+        {
+            var target = (EntityProbe)EntityProbeFactory.Create(path: "Metadata/Chests/DelveChests/FossilTest", address: 42, type: EntityType.Chest);
+            var chest = new OffscreenTraversalTargetResolverTests.TraversalChestProbe();
+            EntityProbeFactory.WithComponent<Chest>(target, chest);
+            var state = new ClickRuntimeState();
+            var handler = CreateHandler(state, ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(target));
+            handler.SetStickyOffscreenTarget(target);
+            handler.TryResolveStickyOffscreenTarget(out _).Should().BeTrue();
+
+            target.IsTargetable = targetable;
+            chest.IsOpened = opened;
+
+            handler.TryResolveStickyOffscreenTarget(out _).Should().Be(remainsEligible);
+            state.StickyOffscreenTargetAddress.Should().Be(remainsEligible ? 42 : 0);
+        }
+
+        [TestMethod]
         [TestCategory("Regression")]
         public void UntargetableDelveAzurite_IsDroppedAsStickyTraversalTarget()
         {
@@ -39,7 +84,7 @@ namespace ClickIt.Tests.Features.Click
             EntityProbeFactory.WithComponent<Chest>(chest, new LockedChestProbe { IsLocked = true });
             var handler = CreateHandler(state, ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(chest));
 
-            handler.TryClickStickyTargetIfPossible(chest, default, []).Should().BeFalse();
+            handler.TryClickStickyTargetIfPossible(chest, default, [], out _).Should().BeFalse();
             state.StickyOffscreenTargetAddress.Should().Be(0);
         }
         [TestMethod]
@@ -227,7 +272,7 @@ namespace ClickIt.Tests.Features.Click
                 labelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(),
                 labelInteractionPort: new StubLabelInteractionPort());
 
-            bool clicked = handler.TryClickStickyTargetIfPossible(stickyTarget, new Vector2(100f, 200f), allLabels: null);
+            bool clicked = handler.TryClickStickyTargetIfPossible(stickyTarget, new Vector2(100f, 200f), allLabels: null, out _);
 
             clicked.Should().BeFalse();
             runtimeState.StickyOffscreenTargetAddress.Should().Be(0);
@@ -248,7 +293,7 @@ namespace ClickIt.Tests.Features.Click
                 labelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(),
                 labelInteractionPort: new StubLabelInteractionPort("   "));
 
-            bool clicked = handler.TryClickStickyTargetIfPossible(stickyTarget, new Vector2(100f, 200f), [label]);
+            bool clicked = handler.TryClickStickyTargetIfPossible(stickyTarget, new Vector2(100f, 200f), [label], out _);
 
             clicked.Should().BeFalse();
             runtimeState.StickyOffscreenTargetAddress.Should().Be(0);
@@ -270,7 +315,7 @@ namespace ClickIt.Tests.Features.Click
                     tryResolveClickPosition: static (_, _, _, _) => (false, default)),
                 labelInteractionPort: new StubLabelInteractionPort(MechanicIds.BasicChests));
 
-            bool clicked = handler.TryClickStickyTargetIfPossible(stickyTarget, new Vector2(100f, 200f), [label]);
+            bool clicked = handler.TryClickStickyTargetIfPossible(stickyTarget, new Vector2(100f, 200f), [label], out _);
 
             clicked.Should().BeFalse();
             runtimeState.StickyOffscreenTargetAddress.Should().Be(0);
@@ -293,7 +338,7 @@ namespace ClickIt.Tests.Features.Click
                     executeInteraction: static _ => false),
                 labelInteractionPort: new StubLabelInteractionPort(MechanicIds.BasicChests));
 
-            bool clicked = handler.TryClickStickyTargetIfPossible(stickyTarget, new Vector2(100f, 200f), [label]);
+            bool clicked = handler.TryClickStickyTargetIfPossible(stickyTarget, new Vector2(100f, 200f), [label], out _);
 
             clicked.Should().BeFalse();
             runtimeState.StickyOffscreenTargetAddress.Should().Be(0);
@@ -326,7 +371,7 @@ namespace ClickIt.Tests.Features.Click
                 labelInteractionPort: new StubLabelInteractionPort(MechanicIds.BasicChests),
                 chestState: chestState);
 
-            bool clicked = handler.TryClickStickyTargetIfPossible(stickyTarget, new Vector2(100f, 200f), [label]);
+            bool clicked = handler.TryClickStickyTargetIfPossible(stickyTarget, new Vector2(100f, 200f), [label], out _);
 
             clicked.Should().BeTrue();
             runtimeState.StickyOffscreenTargetAddress.Should().Be(0);
@@ -354,7 +399,7 @@ namespace ClickIt.Tests.Features.Click
                 labelInteractionPort: new StubLabelInteractionPort(MechanicIds.Essences),
                 handleSpecialLabel: (_, mechanic, _) => { mechanic.Should().Be(MechanicIds.Essences); specialCalls++; return true; });
 
-            handler.TryClickStickyTargetIfPossible(target, Vector2.Zero, [label]).Should().BeTrue();
+            handler.TryClickStickyTargetIfPossible(target, Vector2.Zero, [label], out _).Should().BeTrue();
             specialCalls.Should().Be(1);
             genericClicks.Should().Be(0);
         }

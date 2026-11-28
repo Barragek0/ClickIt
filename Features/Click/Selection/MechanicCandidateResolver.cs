@@ -44,37 +44,5 @@ namespace ClickIt.Features.Click.Selection
                 || (VisibleMechanicSelectionPolicy.ArePlayerDistancesEquivalent(candidateDistance, bestDistance)
                     && VisibleMechanicSelectionPolicy.IsFirstCandidateCloserToCursor(candidateClickPosition, bestClickPosition, cursorAbsolute, windowTopLeft));
         }
-
-        internal static bool TryPromoteOffscreenCandidate(
-            ref Entity? best,
-            ref string? bestMechanicId,
-            ref MechanicRank bestRank,
-            ref bool hasBest,
-            Entity? candidate,
-            string? mechanicId,
-            Func<float, string?, MechanicRank> buildRank)
-        {
-            if (candidate == null
-                || !DynamicAccess.TryReadBool(candidate, DynamicAccessProfiles.IsValid, out bool isValid)
-                || !isValid
-                || !DynamicAccess.TryReadBool(candidate, DynamicAccessProfiles.IsHidden, out bool isHidden)
-                || isHidden
-                || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(candidate)
-                || string.IsNullOrWhiteSpace(mechanicId)
-                || !DynamicAccess.TryReadFloat(candidate, DynamicAccessProfiles.DistancePlayer, out float distance))
-            {
-                return false;
-            }
-
-            MechanicRank rank = buildRank(distance, mechanicId);
-            return OffscreenTargetRanker.TryPromoteRankedCandidate(
-                ref best,
-                ref bestMechanicId,
-                ref bestRank,
-                ref hasBest,
-                candidate,
-                mechanicId,
-                rank);
-        }
     }
 }

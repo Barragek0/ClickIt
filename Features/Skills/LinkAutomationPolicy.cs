@@ -18,6 +18,9 @@ internal static class LinkAutomationPolicy
     internal static bool IsTargetBuffName(string? name, bool destructive = false)
         => string.Equals(name, destructive ? "critical_link_target" : TargetBuffName, StringComparison.OrdinalIgnoreCase);
 
+    internal static bool IsNonPlayerTarget(Entity target)
+        => DynamicAccess.TryHasComponent<PoEComponents.Player>(target, out bool hasPlayer) && !hasPlayer;
+
     internal static bool TryResolveAbsoluteScreenPoint(Vector2 clientPoint, RectangleF gameWindow, out Vector2 absolutePoint)
     {
         absolutePoint = default;
@@ -79,6 +82,7 @@ internal static class LinkAutomationPolicy
             Entity? target = targets[i];
             if (target == null
                 || !isOwnedTarget(target)
+                || !IsNonPlayerTarget(target)
                 || readBuffState(target) != LinkTargetBuffState.Missing)
                 continue;
             return target;

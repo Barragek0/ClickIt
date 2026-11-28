@@ -223,6 +223,12 @@ internal sealed class LinkAutomationService(
                 PublishDebugSnapshot(debug with { Status = "Skipped: game is paused" });
                 return;
             }
+            if (!LinkAutomationPolicy.IsNonPlayerTarget(target))
+            {
+                PublishDebugSnapshot(debug with { Status = "Skipped: could not confirm target is a non-player companion" });
+                return;
+            }
+
             attempted = true;
             Keyboard.KeyPress(binding.BoundKey, SkillBarBindingResolver.KeyTapDelayMs);
         }

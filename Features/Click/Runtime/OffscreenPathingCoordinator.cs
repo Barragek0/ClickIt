@@ -663,9 +663,6 @@ namespace ClickIt.Features.Click.Runtime
             return true;
         }
 
-        public void SetStickyOffscreenTarget(Entity target)
-            => _dependencies.StickyTargetHandler.SetStickyOffscreenTarget(target);
-
         public void ClearStickyOffscreenTarget()
             => _dependencies.StickyTargetHandler.ClearStickyOffscreenTarget();
 
@@ -894,7 +891,7 @@ namespace ClickIt.Features.Click.Runtime
             }
 
             // Keep the gate latched so a confirmed target does not re-enter the delay and wipe the path line every other tick.
-            SetStickyOffscreenTarget(target);
+            _dependencies.StickyTargetHandler.SetStickyOffscreenTarget(target);
             context = new OffscreenTraversalTargetContext(target, targetPath);
             return true;
         }
@@ -1048,9 +1045,7 @@ namespace ClickIt.Features.Click.Runtime
             bool isValid = reads.IsValid;
             bool isHidden = reads.IsHidden;
             if (!isValid || isHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target)
-                || !OffscreenPathingMath.IsEligibleDelveTraversalTarget(target, targetPath)
-                || (MechanicIds.IsDelveRewardChestPath(targetPath)
-                    && !MechanicClassifier.IsUnopenedTargetableDelveChest(target)))
+                || !OffscreenPathingMath.IsEligibleDelveTraversalTarget(target, targetPath))
             {
                 AddPathfindingStage($"Walk: target REJECTED path={targetPath} valid={isValid} hidden={isHidden} minimap={OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target)}");
                 _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] ResolveTraversalTarget: target rejected valid={isValid} hidden={isHidden}");

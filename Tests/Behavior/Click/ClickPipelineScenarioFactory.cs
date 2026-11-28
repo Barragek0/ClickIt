@@ -440,7 +440,6 @@ namespace ClickIt.Tests.Behavior.Click
                     labelInteractionPort,
                     new VisibleLabelSnapshotProvider(new TimeCache<List<LabelOnGround>>(() => CurrentLabels, 50)),
                     IsClickableInEitherSpace: (point, _) => ClickableArea(point),
-                    IsInsideWindowInEitherSpace: ClickableArea,
                     pathfindingLabelSuppression,
                     DebugLog: static _ => { },
                     IsLabelFullyOverlapped: ClickPointResolver.IsLabelFullyOverlapped));

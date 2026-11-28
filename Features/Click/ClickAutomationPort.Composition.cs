@@ -111,7 +111,6 @@ namespace ClickIt.Features.Click
             _labelInteractionPort,
             VisibleLabelSnapshots,
             ClickAutomationSupport.IsClickableInEitherSpace,
-            ClickAutomationSupport.IsInsideWindowInEitherSpace,
             PathfindingLabelSuppression,
             DebugLog: ClickAutomationSupport.DebugLog,
             IsLabelFullyOverlapped: _labelClickPointResolver.IsLabelFullyOverlapped,

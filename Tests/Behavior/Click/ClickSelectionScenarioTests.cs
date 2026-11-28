@@ -72,6 +72,38 @@ namespace ClickIt.Tests.Behavior.Click
         }
 
         [TestMethod]
+        [DataRow(null, 2L)]
+        [DataRow(MechanicIds.Fates, 3L)]
+        public void FreshTraversalProbe_RespectsExclusionsAndDoesNotReplaceNormalWinner(string? requiredMechanic, long expectedAddress)
+        {
+            var config = BaseConfig();
+            config.ClickDelveCrawler = true;
+            config.ClickFates = true;
+            var harness = new ClickPipelineScenarioFactory.ScenarioHarness(config);
+            Entity loot = ClickPipelineScenarioFactory.CreateWorldItem(10, 1);
+            Entity otherLoot = ClickPipelineScenarioFactory.CreateWorldItem(20, 2);
+            Entity card = EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Augury/Objects/AuguryCardObject",
+                distancePlayer: 70, address: 3);
+            harness.CurrentLabels =
+            [
+                ClickPipelineScenarioFactory.CreateLabel(new RectangleF(2200, 300, 100, 30), loot, 0x1001),
+                ClickPipelineScenarioFactory.CreateLabel(new RectangleF(2200, 400, 100, 30), otherLoot, 0x1002),
+                ClickPipelineScenarioFactory.CreateLabel(new RectangleF(2200, 500, 100, 30), card, 0x1003),
+            ];
+
+            DynamicAccess.TryReadEntityAddress(harness.TraversalResolver.ResolveNearestOffscreenWalkTarget(), out long initialAddress).Should().BeTrue();
+            initialAddress.Should().Be(1);
+            int tier = MechanicIds.GetFallbackTier(requiredMechanic == null ? MechanicIds.DelveCrawler : MechanicIds.FatesBoss);
+            Entity? winner = harness.TraversalResolver.ResolveHigherPriorityWalkTarget(new HashSet<long> { 1 }, tier, requiredMechanic);
+            DynamicAccess.TryReadEntityAddress(winner, out long winnerAddress).Should().BeTrue();
+            winnerAddress.Should().Be(expectedAddress);
+            harness.TraversalResolver.ResolveHigherPriorityWalkTarget(new HashSet<long> { 1, 2, 3 }, tier, requiredMechanic)
+                .Should().BeNull();
+            DynamicAccess.TryReadEntityAddress(harness.TraversalResolver.ResolveNearestOffscreenWalkTarget(), out long normalAddress).Should().BeTrue();
+            normalAddress.Should().Be(1);
+        }
+
+        [TestMethod]
         public void SingleWorldItem_IsSelected_WithItemsMechanic()
         {
             var harness = new ClickPipelineScenarioFactory.ScenarioHarness(BaseConfig());

@@ -139,6 +139,41 @@ public sealed class LinkAutomationPolicyTests
     }
 
     [TestMethod]
+    [TestCategory("Regression")]
+    [DataRow(true)]
+    [DataRow(false)]
+    public void SelectNextMissingTarget_SkipsPlayerComponentsAndUnreadableComponentState(bool includeEligibleCompanion)
+    {
+        Entity playerWithCompanionMetadata = EntityProbeFactory.Create(path: "mercenary");
+        EntityProbeFactory.WithComponent(playerWithCompanionMetadata,
+            (PoEMemoryComponents.Player)RuntimeHelpers.GetUninitializedObject(typeof(PoEMemoryComponents.Player)));
+        var unreadableCompanion = (EntityProbe)EntityProbeFactory.Create(path: "guardian");
+        unreadableCompanion.Components = null!;
+        Entity spectre = EntityProbeFactory.Create(path: "spectre");
+        var buffReads = new List<Entity>();
+
+        Entity? target = LinkAutomationPolicy.SelectNextMissingTarget(
+            [playerWithCompanionMetadata],
+            [unreadableCompanion],
+            castOnMercenaries: true,
+            castOnAnimateGuardian: true,
+            candidate =>
+            {
+                buffReads.Add(candidate);
+                return LinkTargetBuffState.Missing;
+            },
+            _ => true,
+            includeEligibleCompanion ? [spectre] : [],
+            castOnSpectres: true);
+
+        LinkAutomationPolicy.IsNonPlayerTarget(playerWithCompanionMetadata).Should().BeFalse();
+        LinkAutomationPolicy.IsNonPlayerTarget(unreadableCompanion).Should().BeFalse();
+        LinkAutomationPolicy.IsNonPlayerTarget(spectre).Should().BeTrue();
+        ReferenceEquals(target, includeEligibleCompanion ? spectre : null).Should().BeTrue();
+        buffReads.Count.Should().Be(includeEligibleCompanion ? 1 : 0);
+    }
+
+    [TestMethod]
     [TestCategory("Scenario")]
     public void SelectNextMissingTarget_ReturnsSpectre_WhenOnlySpectresAreEnabled()
     {
