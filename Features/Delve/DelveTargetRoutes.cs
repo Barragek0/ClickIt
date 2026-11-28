@@ -182,11 +182,14 @@ internal static class DelveTargetRoutes
         HashSet<(long, long)> routes = [];
         List<long> goals = [];
         List<(long Address, float Y, float X)> starts = [];
+        // The viewport is only needed by a combined trip, which has to drop goals it cannot
+        // currently show. Individual routes keep covering the whole captured chart.
+        RectangleF? viewport = options.CombineTargets ? goalViewport : null;
         foreach ((long address, var cell) in cells)
         {
             if (cell.Explored)
                 starts.Add((address, cell.Rect.Y, cell.Rect.X));
-            else if ((cell.Target & targets) != 0 && WithinGoalViewport(cell.Rect, goalViewport))
+            else if ((cell.Target & targets) != 0 && WithinGoalViewport(cell.Rect, viewport))
                 goals.Add(address);
         }
         if (goals.Count == 0 || starts.Count == 0)

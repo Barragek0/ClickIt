@@ -175,6 +175,14 @@ public sealed class DelveRevealOverlayTests
         narrow.TargetCounts.Should().BeEquivalentTo(new Dictionary<long, string> { [10] = "2" });
         narrow.Target.Should().HaveCount(2);
         narrow.LegLines.Should().BeNull();
+
+        var plainViewport = DelveRevealOverlay.BuildRouteLines(cells, selected, showTargetCounts: true,
+            goalViewport: new RectangleF(0, 0, 70, 20));
+        var plainFull = DelveRevealOverlay.BuildRouteLines(cells, selected, showTargetCounts: true);
+
+        plainFull.Detours.Should().BeNull();
+        plainViewport.TargetCounts.Should().BeEquivalentTo(plainFull.TargetCounts);
+        plainViewport.Target.Should().Equal(plainFull.Target);
     }
 
     [TestMethod]

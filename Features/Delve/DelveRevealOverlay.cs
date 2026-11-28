@@ -158,11 +158,10 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         ChartCapture? capture = _chartCapture;
         bool sameChart = capture != null && capture.Address == grid.Address && capture.Targets == targets
             && capture.ShowTargetCounts == showTargetCounts && capture.RouteOptions == routeOptions;
-        // Routes follow the viewport, so a pan invalidates the planned trip even when no
-        // new chunks stream in. The settle gates inside IsCaptureDue keep an active pan
-        // from thrashing full captures.
-        bool pannedSinceCapture = capture is { } previousCapture && targets != DelveRouteTarget.None
-            && _lastPan > previousCapture.CapturedAt;
+        // A combined trip depends on which goals are visible, so a pan invalidates it even
+        // when no new chunks stream in. Plain routes ignore the viewport and stay valid.
+        bool pannedSinceCapture = routeOptions.CombineTargets && capture is { } previousCapture
+            && targets != DelveRouteTarget.None && _lastPan > previousCapture.CapturedAt;
         if (!sameChart || (targets == DelveRouteTarget.None && !projection.Covers(capture!.Coverage, clip))
             || IsCaptureDue(chunkHash != _captureChunkHash || pannedSinceCapture, now - capture!.CapturedAt, now - _lastPan))
         {
@@ -231,8 +230,8 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         => new ChartProjection(projection.CurrentGrid, projection.OriginalGrid)
             .Project(Expand(clip, clip.Width * 0.25f, clip.Height * 0.25f));
 
-    // Routes may only target encounters the player can currently see, unlike the marker
-    // coverage margin that keeps icons near the viewport edge stable.
+    // A combined trip may only chain encounters the player can currently see, unlike the
+    // marker coverage margin that keeps icons near the viewport edge stable.
     private static RectangleF GetRouteViewport(ChartProjection projection, RectangleF clip)
         => new ChartProjection(projection.CurrentGrid, projection.OriginalGrid).Project(clip);
 
