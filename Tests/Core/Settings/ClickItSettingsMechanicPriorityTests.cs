@@ -184,6 +184,17 @@ namespace ClickIt.Tests.Core.Settings
         }
 
         [TestMethod]
+        public void MechanicsSubmenuLogic_GroundAzuriteIsImmediatelyAfterAzuriteVeins()
+        {
+            ClickItSettings settings = new();
+            var ids = settings.GetMechanicTableEntries().Select(entry => entry.Id).ToList();
+            int veinsIndex = ids.IndexOf(MechanicIds.DelveAzuriteVeins);
+            veinsIndex.Should().BeGreaterThanOrEqualTo(0);
+            ids[veinsIndex + 1].Should().Be(MechanicIds.DelveAzuriteOnGround);
+            settings.ClickAzuriteOnGround.Value.Should().BeTrue();
+        }
+
+        [TestMethod]
         public void MechanicsSubmenuLogic_LeftAndRightColumnRenderingFollowNodeValue()
         {
             var settings = new ClickItSettings();

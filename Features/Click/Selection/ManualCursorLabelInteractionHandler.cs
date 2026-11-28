@@ -56,7 +56,8 @@ namespace ClickIt.Features.Click.Selection
                 ? _dependencies.LabelInteraction.PerformResolvedLabelInteraction(clickPos, hoveredLabel, mechanicId,
                     allowWhenHotkeyInactive: true, clientClickPosition: clickPos - windowTopLeft)
                 : _dependencies.LabelInteraction.PerformManualCursorInteraction(cursorAbsolute,
-                    SettlersMechanicPolicy.RequiresHoldClick(mechanicId), clientClickPosition: cursorAbsolute - windowTopLeft);
+                    SettlersMechanicPolicy.RequiresHoldClick(mechanicId), clientClickPosition: cursorAbsolute - windowTopLeft,
+                    groundAzuriteLabel: mechanicId == MechanicIds.DelveAzuriteOnGround ? hoveredLabel : null);
             if (!clicked)
                 return false;
 

@@ -33,6 +33,25 @@ namespace ClickIt.Tests.Features.Labels.Classification
         }
 
         [TestMethod]
+        public void InteractionRuleCatalog_UsesAnIndependentToggleForGroundAzurite()
+        {
+            ClickSettings settings = new() { ClickAzurite = true, ClickItems = true };
+            var policy = CreateInventoryInteractionPolicy(allowClosedDoorPast: false);
+            const string shard = "Metadata/Terrain/Leagues/Delve/Objects/DelveAzuriteShard";
+            InteractionMechanicRuleCatalog.TryResolve(settings, shard, DummyLabel, null, policy).Should().BeNull();
+            MechanicClassifier.ShouldClickWorldItemCore(settings.ClickItems, EntityType.WorldItem, shard).Should().BeFalse();
+
+            settings.ClickAzurite = false;
+            settings.ClickAzuriteOnGround = true;
+            InteractionMechanicRuleCatalog.TryResolve(settings, shard, DummyLabel, null, policy).Should().Be(MechanicIds.DelveAzuriteOnGround);
+            InteractionMechanicRuleCatalog.TryResolve(settings, "Delve/Objects/DelveAzuriteShard", DummyLabel, null, policy)
+                .Should().Be(MechanicIds.DelveAzuriteOnGround);
+            InteractionMechanicRuleCatalog.TryResolve(settings, shard + "Effect", DummyLabel, null, policy).Should().BeNull();
+            InteractionMechanicRuleCatalog.TryResolve(settings, "Delve/Objects/EncounterControlObjects/AzuriteEncounterController", DummyLabel, null, policy)
+                .Should().BeNull();
+        }
+
+        [TestMethod]
         public void InteractionRuleCatalog_ResolvesStrongboxes_WhenMetadataAndDependencyAllow()
         {
             ClickSettings settings = CreateFullyEnabledInteractionSettings();

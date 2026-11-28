@@ -87,4 +87,9 @@ namespace ClickIt.Tests.Shared.TestUtils
         public new bool IsLocked { get; set; }
         public new bool IsStrongbox { get; set; }
     }
+
+    public sealed class MagneticProbe : Magnetic
+    {
+        public new int Force { get; set; }
+    }
 }

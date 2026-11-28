@@ -296,6 +296,8 @@ namespace ClickIt
         [Menu("Azurite Veins", "Click azurite veins.", 38, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickAzuriteVeins { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickAzuriteOnGround { get; set; } = new ToggleNode(true);
         [Menu("Sulphite Veins", "Click sulphite veins.", 39, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickSulphiteVeins { get; set; } = new ToggleNode(true);

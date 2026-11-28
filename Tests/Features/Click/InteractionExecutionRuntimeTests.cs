@@ -15,7 +15,7 @@ namespace ClickIt.Tests.Features.Click
                 _ => true,
                 point => point == clientPoint && clientPointAllowed,
                 _ => { },
-                (point, _, _, _, _, _, _) => { dispatchedPoint = point; return true; },
+                (point, _, _, _, _, _, _, _) => { dispatchedPoint = point; return true; },
                 (_, _, _, _, _, _) => false,
                 () => { }));
 
@@ -45,7 +45,7 @@ namespace ClickIt.Tests.Features.Click
                 _ => false,
                 _ => true,
                 _ => { },
-                (_, _, _, _, _, _, _) => { clickCalls++; return true; },
+                (_, _, _, _, _, _, _, _) => { clickCalls++; return true; },
                 (_, _, _, _, _, _) => { holdCalls++; return true; },
                 () => intervalCalls++));
 
@@ -76,7 +76,7 @@ namespace ClickIt.Tests.Features.Click
                 _ => true,
                 _ => true,
                 _ => { },
-                (_, _, _, _, _, _, _) => { clickCalls++; return true; },
+                (_, _, _, _, _, _, _, _) => { clickCalls++; return true; },
                 (_, _, _, _, _, _) => { holdCalls++; return true; },
                 () => intervalCalls++));
 
@@ -106,7 +106,7 @@ namespace ClickIt.Tests.Features.Click
                 _ => true,
                 _ => true,
                 _ => { },
-                (_, _, _, _, _, _, _) => { clickCalls++; return false; },
+                (_, _, _, _, _, _, _, _) => { clickCalls++; return false; },
                 (_, _, _, _, _, _) => { return false; },
                 () => intervalCalls++));
 
@@ -136,7 +136,7 @@ namespace ClickIt.Tests.Features.Click
                 _ => true,
                 _ => true,
                 _ => { },
-                (_, _, _, _, _, _, _) => { clickCalls++; return true; },
+                (_, _, _, _, _, _, _, _) => { clickCalls++; return true; },
                 (_, _, _, _, _, _) => { holdCalls++; return true; },
                 () => intervalCalls++));
 
@@ -168,7 +168,7 @@ namespace ClickIt.Tests.Features.Click
                 _ => true,
                 _ => false,
                 message => debugMessage = message,
-                (_, _, _, _, _, _, _) => { clickCalls++; return true; },
+                (_, _, _, _, _, _, _, _) => { clickCalls++; return true; },
                 (_, _, _, _, _, _) => { holdCalls++; return true; },
                 () => intervalCalls++));
 
@@ -197,7 +197,7 @@ namespace ClickIt.Tests.Features.Click
                 _ => true,
                 _ => true,
                 _ => { },
-                (_, _, _, _, _, _, interval) => { capturedInterval = interval; return true; },
+                (_, _, _, _, _, _, interval, _) => { capturedInterval = interval; return true; },
                 (_, _, _, _, _, _) => false,
                 static () => { }));
 
@@ -225,7 +225,7 @@ namespace ClickIt.Tests.Features.Click
                 _ => true,
                 _ => true,
                 _ => { },
-                (_, _, _, _, _, _, interval) => { capturedInterval = interval; return true; },
+                (_, _, _, _, _, _, interval, _) => { capturedInterval = interval; return true; },
                 (_, _, _, _, _, _) => false,
                 static () => { }));
 

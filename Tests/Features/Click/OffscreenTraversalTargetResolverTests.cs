@@ -5,6 +5,23 @@ namespace ClickIt.Tests.Features.Click
     {
         [DataTestMethod]
         [TestCategory("Regression")]
+        [DataRow(0, true)]
+        [DataRow(1, false)]
+        [DataRow(-1, false)]
+        [DataRow(null, false)]
+        public void DelveAzuriteShard_RequiresStationaryMagneticComponent(int? force, bool expected)
+        {
+            const string path = "Metadata/Terrain/Leagues/Delve/Objects/DelveAzuriteShard";
+            Entity shard = EntityProbeFactory.Create(path: path, isTargetable: true);
+            if (force.HasValue)
+                EntityProbeFactory.WithComponent<Magnetic>(shard, new MagneticProbe { Force = force.Value });
+
+            MechanicClassifier.CanClickGroundAzurite(shard).Should().Be(expected);
+            OffscreenPathingMath.IsEligibleDelveTraversalTarget(shard, path).Should().Be(expected);
+        }
+
+        [DataTestMethod]
+        [TestCategory("Regression")]
         [DataRow(true, true)]
         [DataRow(false, false)]
         public void DelveAzuriteTraversal_RequiresTargetableEntity(bool targetable, bool expected)

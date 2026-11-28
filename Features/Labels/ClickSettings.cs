@@ -33,6 +33,7 @@ namespace ClickIt.Features.Labels
         public bool ClickInitialUltimatum { get; set; }
         public bool ClickOtherUltimatum { get; set; }
         public bool ClickAzurite { get; set; }
+        public bool ClickAzuriteOnGround { get; set; }
         public bool ClickDelveSpawners { get; set; }
         public bool ClickDelveCrawler { get; set; }
         public bool HighlightEater { get; set; }

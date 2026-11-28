@@ -49,6 +49,7 @@ namespace ClickIt.Features.Labels.Selection
                 HarvestBossSeeds = _settings.HarvestBossSeeds.Value,
                 ClickSulphite = _settings.ClickSulphiteVeins.Value,
                 ClickAzurite = _settings.ClickAzuriteVeins.Value,
+                ClickAzuriteOnGround = _settings.ClickAzuriteOnGround.Value,
                 ClickDelveSpawners = _settings.ClickDelveSpawners.Value,
                 ClickDelveCrawler = _settings.ClickDelveCrawler.Value,
                 HighlightEater = _settings.HighlightEaterAltars.Value,

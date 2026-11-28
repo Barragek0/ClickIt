@@ -58,6 +58,8 @@ namespace ClickIt.Features.Mechanics
         public const string FatesBossPath = "Augury/Objects/AuguryBoss";
         public const string BeginMemoryLinePath = "MapAtlasMemory/Objects/BeginMemoryLine";
         public const string DelveAzuriteVeins = "delve-azurite-veins";
+        public const string DelveAzuriteOnGround = "delve-azurite-on-ground";
+        private const string DelveAzuriteShardPath = "Delve/Objects/DelveAzuriteShard";
         public const string UltimatumInitialOverlay = "ultimatum-initial-overlay";
         public const string UltimatumWindow = "ultimatum-window";
         public const string DelveEncounterInitiators = "delve-encounter-initiators";
@@ -67,6 +69,10 @@ namespace ClickIt.Features.Mechanics
 
         internal static bool IsIceCavesFossilPath(string? path)
             => path?.Contains("EncounterControlObjects/IceCavesFossil", StringComparison.OrdinalIgnoreCase) == true;
+
+        internal static bool IsDelveAzuriteShardPath(string? path)
+            => string.Equals(path, DelveAzuriteShardPath, StringComparison.OrdinalIgnoreCase)
+                || path?.EndsWith("/" + DelveAzuriteShardPath, StringComparison.OrdinalIgnoreCase) == true;
 
         internal static int GetFallbackTier(string? mechanicId)
             => mechanicId switch

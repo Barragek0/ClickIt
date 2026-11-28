@@ -46,6 +46,8 @@ namespace ClickIt.Features.Mechanics.Rules
             static ctx => ctx.Settings.ClickAzurite
                 && ctx.Path.Contains("AzuriteEncounterController", StringComparison.OrdinalIgnoreCase)
                     ? MechanicIds.DelveAzuriteVeins : null,
+            static ctx => ctx.Settings.ClickAzuriteOnGround && MechanicIds.IsDelveAzuriteShardPath(ctx.Path)
+                ? MechanicIds.DelveAzuriteOnGround : null,
             static ctx => ctx.Settings.ClickInitialUltimatum
                 && Constants.IsUltimatumInteractablePath(ctx.Path)
                     ? MechanicIds.UltimatumInitialOverlay : null,

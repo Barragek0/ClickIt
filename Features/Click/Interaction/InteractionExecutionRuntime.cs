@@ -11,13 +11,14 @@ namespace ClickIt.Features.Click.Interaction
         string OutsideWindowLogMessage,
         IntervalKind Interval = IntervalKind.Click,
         Func<Element?, bool>? ValidateSettledHover = null,
-        Vector2? ClientClickPosition = null);
+        Vector2? ClientClickPosition = null,
+        Func<bool>? CanDispatchClick = null);
 
     internal readonly record struct InteractionExecutionRuntimeDependencies(
         Func<string, bool> EnsureCursorInsideGameWindowForClick,
         Func<Vector2, bool> IsClickPositionAllowed,
         Action<string> DebugLog,
-        Func<Vector2, Element?, GameController?, bool, bool, bool, IntervalKind, bool> PerformLockedClick,
+        Func<Vector2, Element?, GameController?, bool, bool, bool, IntervalKind, Func<bool>?, bool> PerformLockedClick,
         Func<Vector2, Element?, GameController?, bool, bool, bool, bool> PerformLockedHoldClick,
         Action RecordClickInterval,
         Func<Vector2, GameController?, IntervalKind, Func<Element?, bool>, bool, bool>? PerformGuardedClick = null);
@@ -37,6 +38,9 @@ namespace ClickIt.Features.Click.Interaction
 
         public bool Execute(InteractionExecutionRequest request)
         {
+            if (request.CanDispatchClick != null && (request.UseHoldClick || request.ValidateSettledHover != null))
+                return false;
+
             if (!_dependencies.EnsureCursorInsideGameWindowForClick(request.OutsideWindowLogMessage))
                 return false;
 
@@ -65,7 +69,8 @@ namespace ClickIt.Features.Click.Interaction
                     request.ForceUiHoverVerification,
                     request.AllowWhenHotkeyInactive,
                     request.AvoidCursorMove,
-                    request.Interval);
+                    request.Interval,
+                    request.CanDispatchClick);
             if (!clicked)
                 return false;
 

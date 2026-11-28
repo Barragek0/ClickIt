@@ -21,11 +21,12 @@ namespace ClickIt.Features.Click.Interaction
             bool avoidCursorMove = false,
             IntervalKind interval = IntervalKind.Click,
             Func<Element?, bool>? validateSettledHover = null,
-            bool allowWhenPaused = false)
+            bool allowWhenPaused = false,
+            Func<bool>? canDispatchClick = null)
         {
             using (LockManager.AcquireStatic(ElementLock))
             {
-                return _interactionExecutor.PerformClick(clickPos, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove, interval, validateSettledHover, allowWhenPaused);
+                return _interactionExecutor.PerformClick(clickPos, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove, interval, validateSettledHover, allowWhenPaused, canDispatchClick);
             }
         }
 

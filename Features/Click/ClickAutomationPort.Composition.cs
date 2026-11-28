@@ -10,8 +10,9 @@ namespace ClickIt.Features.Click
             ClickAutomationSupport.EnsureCursorInsideGameWindowForClick,
             point => ForceRefreshPointIsInClickableArea(point, string.Empty),
             ClickAutomationSupport.DebugLog,
-            (clickPos, element, controller, forceHover, allowInactive, avoidMove, interval) =>
-                LockedInteractionDispatcher.PerformClick(clickPos, element, controller, forceHover, allowInactive, avoidMove, interval),
+            (clickPos, element, controller, forceHover, allowInactive, avoidMove, interval, canDispatchClick) =>
+                LockedInteractionDispatcher.PerformClick(clickPos, element, controller, forceHover, allowInactive, avoidMove, interval,
+                    canDispatchClick: canDispatchClick),
             LockedInteractionDispatcher.PerformHoldClick,
             _performanceMonitor.RecordClickInterval,
             LockedInteractionDispatcher.PerformGuardedClick));

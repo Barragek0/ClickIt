@@ -25,9 +25,10 @@ namespace ClickIt.Features.Click.Interaction
             bool avoidCursorMove = false,
             IntervalKind interval = IntervalKind.Click,
             Func<Element?, bool>? validateSettledHover = null,
-            bool allowWhenPaused = false)
+            bool allowWhenPaused = false,
+            Func<bool>? canDispatchClick = null)
         {
-            if (IsPausedInputBlocked(gameController, allowWhenPaused))
+            if (IsPausedInputBlocked(gameController, allowWhenPaused) || canDispatchClick?.Invoke() == false)
                 return false;
 
             _clickSleepStartMs = ClickPipelineTiming.ReadSleepTimeMs();
@@ -69,6 +70,13 @@ namespace ClickIt.Features.Click.Interaction
 
             if (IsPausedInputBlocked(gameController, allowWhenPaused))
                 return false;
+
+            if (canDispatchClick?.Invoke() == false)
+            {
+                RestoreCursorIfLazyMode(before, gameController, allowWhenPaused);
+                swTotal.Stop();
+                return false;
+            }
 
             if (_settings?.LeftHanded?.Value == true)
                 Mouse.RightClick();

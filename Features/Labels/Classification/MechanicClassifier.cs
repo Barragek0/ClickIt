@@ -63,12 +63,19 @@ namespace ClickIt.Features.Labels.Classification
                 : (DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
                     ? resolvedPath
                     : string.Empty);
+            if (type == EntityType.WorldItem && string.IsNullOrEmpty(path)
+                && DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string worldEntityPath)
+                && MechanicIds.IsDelveAzuriteShardPath(worldEntityPath))
+                path = worldEntityPath;
 
             string? mechanicId = ResolvePrimaryMechanicId(settings, path, label, gameController, inventoryInteractionPolicy);
+            if (mechanicId == MechanicIds.DelveAzuriteOnGround && !CanClickGroundAzurite(item))
+                return null;
             if (!string.IsNullOrWhiteSpace(mechanicId))
                 return mechanicId;
 
             if (IsHarvestBossSeedPath(path)
+                || MechanicIds.IsDelveAzuriteShardPath(path)
                 || MechanicIds.IsDelveCrawlerPath(path)
                 || MechanicIds.IsIceCavesFossilPath(path)
                 || MechanicIds.IsTangledFossilInitiatorPath(path)
@@ -96,6 +103,11 @@ namespace ClickIt.Features.Labels.Classification
 
             return ResolveFallbackMechanicId(settings, type, path, label);
         }
+
+        internal static bool CanClickGroundAzurite(Entity? item)
+            => DynamicAccess.TryGetComponent(item, out Magnetic? magnetic)
+                && DynamicAccess.TryReadInt(magnetic, static component => component.Force, out int force)
+                && force == 0;
 
         internal static string? GetAreaTransitionMechanicId(bool clickAreaTransitions, bool clickLabyrinthTrials, EntityType type, string path)
         {
@@ -134,7 +146,8 @@ namespace ClickIt.Features.Labels.Classification
                 return false;
 
             return string.IsNullOrEmpty(itemPath)
-                || !itemPath.Contains("strongbox", StringComparison.OrdinalIgnoreCase);
+                || (!itemPath.Contains("strongbox", StringComparison.OrdinalIgnoreCase)
+                    && !MechanicIds.IsDelveAzuriteShardPath(itemPath));
         }
 
         internal static string? GetChestMechanicIdFromConfiguredRules(

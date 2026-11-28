@@ -107,7 +107,8 @@ namespace ClickIt.Features.Click.Application
             string? outsideWindowLogMessage = null,
             IntervalKind interval = IntervalKind.Click,
             Func<Element?, bool>? validateSettledHover = null,
-            Vector2? clientClickPosition = null)
+            Vector2? clientClickPosition = null,
+            Func<bool>? canDispatchClick = null)
         {
             return _dependencies.ExecuteInteraction(new InteractionExecutionRequest(
                 ClickPosition: clickPos,
@@ -123,7 +124,8 @@ namespace ClickIt.Features.Click.Application
                         : "[PerformLabelClick] Skipping label click - cursor outside PoE window"),
                 Interval: interval,
                 ValidateSettledHover: validateSettledHover,
-                ClientClickPosition: clientClickPosition));
+                ClientClickPosition: clientClickPosition,
+                CanDispatchClick: canDispatchClick));
         }
 
         internal float? TryGetCursorDistanceSquaredToEntity(Entity? entity, Vector2 cursorAbsolute, Vector2 windowTopLeft)
@@ -617,9 +619,11 @@ namespace ClickIt.Features.Click.Application
         internal bool PerformMechanicInteraction(Vector2 clickPos, bool useHoldClick, Vector2? clientClickPosition = null)
             => ExecuteInteraction(clickPos, null, _dependencies.GameController, useHoldClick, clientClickPosition: clientClickPosition);
 
-        internal bool PerformManualCursorInteraction(Vector2 clickPos, bool useHoldClick, Vector2? clientClickPosition = null)
+        internal bool PerformManualCursorInteraction(Vector2 clickPos, bool useHoldClick, Vector2? clientClickPosition = null,
+            LabelOnGround? groundAzuriteLabel = null)
             => ExecuteInteraction(clickPos, null, _dependencies.GameController, useHoldClick, allowWhenHotkeyInactive: true,
-                avoidCursorMove: true, clientClickPosition: clientClickPosition);
+                avoidCursorMove: true, clientClickPosition: clientClickPosition,
+                canDispatchClick: groundAzuriteLabel == null ? null : () => CanDispatchGroundAzurite(groundAzuriteLabel));
 
         internal bool PerformResolvedLabelInteraction(Vector2 clickPos, LabelOnGround label, string? mechanicId,
             bool allowWhenHotkeyInactive = false, Vector2? clientClickPosition = null)
@@ -637,8 +641,14 @@ namespace ClickIt.Features.Click.Application
                 SettlersMechanicPolicy.RequiresHoldClick(mechanicId),
                 forceUiHoverVerification: OffscreenPathingMath.ShouldForceUiHoverVerificationForLabel(label),
                 allowWhenHotkeyInactive: allowWhenHotkeyInactive,
-                clientClickPosition: clientClickPosition);
+                clientClickPosition: clientClickPosition,
+                canDispatchClick: mechanicId == MechanicIds.DelveAzuriteOnGround ? () => CanDispatchGroundAzurite(label) : null);
         }
+
+        private bool CanDispatchGroundAzurite(LabelOnGround label)
+            => _dependencies.Settings.ClickAzuriteOnGround.Value
+                && DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item)
+                && MechanicClassifier.CanClickGroundAzurite(item);
 
         private void CaptureBlightChestDebug(LabelOnGround? label, string? mechanicId, string reason, bool requireChestMechanic)
         {

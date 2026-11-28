@@ -42,6 +42,7 @@ namespace ClickIt.Core.Settings.Mechanics
             new(MechanicIds.RitualCompleted, "Ritual (Completed)"),
             new(MechanicIds.DelveSulphiteVeins, "Sulphite Veins"),
             new(MechanicIds.DelveAzuriteVeins, "Azurite Veins"),
+            new(MechanicIds.DelveAzuriteOnGround, "Azurite on Ground"),
             new(MechanicIds.DelveEncounterInitiators, "Delve Encounter Initiators")
         ];
 
@@ -86,6 +87,7 @@ namespace ClickIt.Core.Settings.Mechanics
             MechanicIds.SettlersVerisium,
             MechanicIds.DelveSulphiteVeins,
             MechanicIds.DelveAzuriteVeins,
+            MechanicIds.DelveAzuriteOnGround,
             MechanicIds.DelveEncounterInitiators
         ];
 

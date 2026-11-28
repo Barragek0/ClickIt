@@ -133,6 +133,7 @@ namespace ClickIt.Core.Settings.Mechanics
                 new(MechanicIds.SettlersHourglass, "Hourglass", settings.ClickSettlersOre, "settlers", true),
                 new(MechanicIds.SettlersVerisium, "Verisium", settings.ClickSettlersVerisium, "settlers", true),
                 new(MechanicIds.DelveAzuriteVeins, "Azurite Veins", settings.ClickAzuriteVeins, "delve", true),
+                new(MechanicIds.DelveAzuriteOnGround, "Azurite on Ground", settings.ClickAzuriteOnGround, "delve", true),
                 new(MechanicIds.DelveSulphiteVeins, "Sulphite Veins", settings.ClickSulphiteVeins, "delve", true),
                 new(MechanicIds.DelveEncounterInitiators, "Encounter Initiators", settings.ClickDelveSpawners, "delve", true),
                 new(MechanicIds.DelveCrawler, "Crawler", settings.ClickDelveCrawler, "delve", true, Tooltip: "Eligible chests within pathfinding range are clicked or approached before the Crawler."),

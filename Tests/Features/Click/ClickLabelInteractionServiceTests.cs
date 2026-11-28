@@ -3,6 +3,32 @@ namespace ClickIt.Tests.Features.Click
     [TestClass]
     public class ClickLabelInteractionServiceTests
     {
+        [DataTestMethod]
+        [TestCategory("Regression")]
+        [DataRow(false)]
+        [DataRow(true)]
+        public void GroundAzuriteDispatch_RechecksForceAfterTheLabelWasSelected(bool manualCursor)
+        {
+            Entity shard = EntityProbeFactory.Create(path: "Delve/Objects/DelveAzuriteShard");
+            var magnetic = new MagneticProbe();
+            EntityProbeFactory.WithComponent<Magnetic>(shard, magnetic);
+            LabelOnGround label = OffscreenStickyTargetGraphShaper.CreateVisibleLabel(shard);
+            var service = CreateService(request =>
+            {
+                request.CanDispatchClick.Should().NotBeNull();
+                request.CanDispatchClick!().Should().BeTrue();
+                magnetic.Force = 1;
+                return request.CanDispatchClick();
+            }, settings: new ClickItSettings());
+
+            bool clicked = manualCursor
+                ? service.PerformManualCursorInteraction(Vector2.Zero, useHoldClick: false, groundAzuriteLabel: label)
+                : service.PerformResolvedLabelInteraction(Vector2.Zero, label, MechanicIds.DelveAzuriteOnGround);
+
+            clicked.Should().BeFalse();
+            magnetic.Force.Should().Be(1);
+        }
+
         [TestMethod]
         [TestCategory("Regression")]
         public void TooltipRetry_ChoosesAnInWindowPointOutsideTheIcon()
@@ -221,10 +247,11 @@ namespace ClickIt.Tests.Features.Click
             Func<InteractionExecutionRequest, bool> executeInteraction,
             Func<LabelOnGround, Vector2, IReadOnlyList<LabelOnGround>?, Func<Vector2, bool>?, (bool Success, Vector2 ClickPos)>? tryResolveClickPosition = null,
             ILabelInteractionPort? labelInteractionPort = null,
-            Func<bool>? groundItemsVisible = null)
+            Func<bool>? groundItemsVisible = null,
+            ClickItSettings? settings = null)
         {
             return new ClickLabelInteractionService(new ClickLabelInteractionServiceDependencies(
-                Settings: (ClickItSettings)RuntimeHelpers.GetUninitializedObject(typeof(ClickItSettings)),
+                Settings: settings ?? (ClickItSettings)RuntimeHelpers.GetUninitializedObject(typeof(ClickItSettings)),
                 GameController: (GameController)RuntimeHelpers.GetUninitializedObject(typeof(GameController)),
                 LabelInteractionPort: labelInteractionPort ?? (ILabelInteractionPort)RuntimeHelpers.GetUninitializedObject(typeof(LabelFilterPort)),
                 TryResolveClickPosition: tryResolveClickPosition ?? (static (_, _, _, _) => (false, default)),
