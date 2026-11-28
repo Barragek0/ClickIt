@@ -16,6 +16,8 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
     private const int TextureLoadsPerFrame = 4;
     private const int TextureRetryMs = 1000;
     private const float MarkerLiftPixels = 2f;
+    // The chart's own scale at the game's maximum zoom-out, read from DelveElement.Scale.
+    private const float FullyZoomedOutScale = 0.5f;
     private static readonly Color ConnectionColor = new(242, 54, 62, 230);
     private static readonly Color TargetRouteColor = new(61, 220, 109, 245);
     // One distinct hue per combined-route leg; the palette cycles for long chains.
@@ -158,8 +160,8 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         ChartCapture? capture = _chartCapture;
         bool sameChart = capture != null && capture.Address == grid.Address && capture.Targets == targets
             && capture.ShowTargetCounts == showTargetCounts && capture.RouteOptions == routeOptions;
-        // A combined trip depends on which goals are visible, so a pan invalidates it even
-        // when no new chunks stream in. Plain routes ignore the viewport and stay valid.
+        // A combined trip follows the visible area, so a pan invalidates it even when no new
+        // chunks stream in. Plain routes ignore the viewport and stay valid.
         bool pannedSinceCapture = routeOptions.CombineTargets && capture is { } previousCapture
             && targets != DelveRouteTarget.None && _lastPan > previousCapture.CapturedAt;
         if (!sameChart || (targets == DelveRouteTarget.None && !projection.Covers(capture!.Coverage, clip))
@@ -170,7 +172,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
                 PublishView(capture!, projection, clip, now, revealFullMap, showRouteNodes, showWalls);
 
             RectangleF coverage = GetLocalCoverage(projection, clip);
-            RectangleF routeViewport = GetRouteViewport(projection, clip);
+            RectangleF routeViewport = GetRouteViewport(projection, clip, grid.Scale);
             capture = CaptureChart(grid, coverage, routeViewport, now, targets, showTargetCounts, routeOptions);
             if (!TryReadView(viewport, grid, ctx.WindowArea, out projection, out clip))
             {
@@ -191,7 +193,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         else if (ShouldRefreshMarkers(chunkHash != _markerChunkHash, projection.Covers(_markerCoverage, clip), now - _lastMarkerScan))
         {
             RectangleF coverage = GetLocalCoverage(projection, clip);
-            RectangleF routeViewport = GetRouteViewport(projection, clip);
+            RectangleF routeViewport = GetRouteViewport(projection, clip, grid.Scale);
             ChartMarker[] markers = CaptureChart(grid, coverage, routeViewport, now, targets, showTargetCounts, routeOptions, markersOnly: true).Markers;
             if (!TryReadView(viewport, grid, ctx.WindowArea, out projection, out clip))
             {
@@ -230,10 +232,18 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         => new ChartProjection(projection.CurrentGrid, projection.OriginalGrid)
             .Project(Expand(clip, clip.Width * 0.25f, clip.Height * 0.25f));
 
-    // A combined trip may only chain encounters the player can currently see, unlike the
-    // marker coverage margin that keeps icons near the viewport edge stable.
-    private static RectangleF GetRouteViewport(ChartProjection projection, RectangleF clip)
-        => new ChartProjection(projection.CurrentGrid, projection.OriginalGrid).Project(clip);
+    // The chart is far larger than the window even when zoomed fully out, so the combined
+    // trip is planned against the area a fully zoomed-out chart would show rather than the
+    // current zoom. A closer zoom then still reveals the whole trip without zooming out.
+    internal static RectangleF GetRouteViewport(ChartProjection projection, RectangleF clip, float chartScale)
+    {
+        RectangleF visible = new ChartProjection(projection.CurrentGrid, projection.OriginalGrid).Project(clip);
+        float expand = float.IsFinite(chartScale) && chartScale > FullyZoomedOutScale ? chartScale / FullyZoomedOutScale : 1f;
+        if (expand <= 1f)
+            return visible;
+
+        return Expand(visible, visible.Width * (expand - 1f) * 0.5f, visible.Height * (expand - 1f) * 0.5f);
+    }
 
     private static bool TryReadView(Element viewport, DelveElement grid, RectangleF window,
         out ChartProjection projection, out RectangleF clip)

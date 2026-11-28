@@ -359,7 +359,7 @@ namespace ClickIt.UI.Settings.Panels
                 "Shows hidden encounter icons along the green routes to selected targets.");
             SettingsUiRenderHelpers.DrawToggleNodeControl("Combine Target Routes Into One Trip", _settings.CombineDelveTargetRoutes,
                 "Chains selected targets that are connected on the chart into one numbered trip.\n"
-                + "Only targets inside the current map view are routed, and the trip ends before a leg that would retrace a long stretch of explored tiles.\n"
+                + "Plans across the area a fully zoomed-out chart shows, so you do not have to zoom out yourself. It ends before a leg that would retrace a long stretch of explored tiles.\n"
                 + "Unchained targets keep a plain green route. Each unfinished encounter counts once, even if you walk back through it.\n"
                 + "Follow the numbered stops. Every leg gets its own colour.");
 

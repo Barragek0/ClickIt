@@ -145,7 +145,7 @@ public sealed class DelveRevealOverlayTests
 
     [TestMethod]
     [TestCategory("Regression")]
-    public void TargetRoutes_OnlyPlanGoalsInsideTheCurrentViewport()
+    public void CombinedTargetRoutes_OnlyChainGoalsInsideTheViewport()
     {
         var settings = new ClickItSettings();
         Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
@@ -158,31 +158,46 @@ public sealed class DelveRevealOverlayTests
         };
         const DelveRouteTarget selected = DelveRouteTarget.Aul | DelveRouteTarget.Lich | DelveRouteTarget.Architect;
 
-        var lines = DelveRevealOverlay.BuildRouteLines(cells, selected, showTargetCounts: true,
+        var near = DelveRevealOverlay.BuildRouteLines(cells, selected, showTargetCounts: true,
             routeOptions: DelveRouteOptions.FromSettings(settings), goalViewport: new RectangleF(0, 0, 70, 20));
 
-        lines.Detours!.Keys.Should().BeEquivalentTo(new long[] { 10, 11 });
-        lines.Detours[11].Stop.Should().Be(2);
-        lines.TargetCounts.Should().BeEquivalentTo(new Dictionary<long, string> { [10] = "2", [11] = "3" });
-        lines.Target.Should().BeEmpty();
-        lines.LegLines![0].Should().HaveCount(2);
-        lines.LegLines[1].Should().HaveCount(1);
+        near.Detours!.Keys.Should().BeEquivalentTo(new long[] { 10, 11 });
+        near.Detours[11].Stop.Should().Be(2);
+        near.TargetCounts.Should().BeEquivalentTo(new Dictionary<long, string> { [10] = "2", [11] = "3" });
 
-        var narrow = DelveRevealOverlay.BuildRouteLines(cells, selected, showTargetCounts: true,
+        var single = DelveRevealOverlay.BuildRouteLines(cells, selected, showTargetCounts: true,
             routeOptions: DelveRouteOptions.FromSettings(settings), goalViewport: new RectangleF(0, 0, 50, 20));
 
-        narrow.Detours.Should().BeEmpty();
-        narrow.TargetCounts.Should().BeEquivalentTo(new Dictionary<long, string> { [10] = "2" });
-        narrow.Target.Should().HaveCount(2);
-        narrow.LegLines.Should().BeNull();
+        single.Detours.Should().BeEmpty();
+        single.TargetCounts.Should().BeEquivalentTo(new Dictionary<long, string> { [10] = "2" });
+        single.Target.Should().HaveCount(2);
 
-        var plainViewport = DelveRevealOverlay.BuildRouteLines(cells, selected, showTargetCounts: true,
-            goalViewport: new RectangleF(0, 0, 70, 20));
-        var plainFull = DelveRevealOverlay.BuildRouteLines(cells, selected, showTargetCounts: true);
+        // The same goals are chained whenever the trip is not combined.
+        var separate = DelveRevealOverlay.BuildRouteLines(cells, selected, showTargetCounts: true,
+            goalViewport: new RectangleF(0, 0, 50, 20));
 
-        plainFull.Detours.Should().BeNull();
-        plainViewport.TargetCounts.Should().BeEquivalentTo(plainFull.TargetCounts);
-        plainViewport.Target.Should().Equal(plainFull.Target);
+        separate.Detours.Should().BeNull();
+        separate.TargetCounts.Should().BeEquivalentTo(new Dictionary<long, string> { [10] = "2", [11] = "3", [12] = "4" });
+    }
+
+    [TestMethod]
+    [TestCategory("Boundary")]
+    [DataRow(0.5f, 0f, 0f, 500f, 250f)]
+    [DataRow(1f, -250f, -125f, 750f, 375f)]
+    [DataRow(2f, -750f, -375f, 1250f, 625f)]
+    public void GetRouteViewport_ExpandsToTheFullyZoomedOutArea(float chartScale, float left, float top, float right, float bottom)
+    {
+        // The chart is drawn at 200px while the 100x50 clip shows a corner of it, so the
+        // visible local area is 500x250 and expansion grows it around its centre.
+        var projection = new DelveRevealOverlay.ChartProjection(new RectangleF(0, 0, 1000, 1000), new RectangleF(0, 0, 200, 200));
+        var clip = new RectangleF(0, 0, 100, 50);
+
+        var viewport = DelveRevealOverlay.GetRouteViewport(projection, clip, chartScale);
+
+        viewport.Left.Should().BeApproximately(left, 0.01f);
+        viewport.Top.Should().BeApproximately(top, 0.01f);
+        viewport.Right.Should().BeApproximately(right, 0.01f);
+        viewport.Bottom.Should().BeApproximately(bottom, 0.01f);
     }
 
     [TestMethod]

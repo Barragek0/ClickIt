@@ -182,8 +182,8 @@ internal static class DelveTargetRoutes
         HashSet<(long, long)> routes = [];
         List<long> goals = [];
         List<(long Address, float Y, float X)> starts = [];
-        // The viewport is only needed by a combined trip, which has to drop goals it cannot
-        // currently show. Individual routes keep covering the whole captured chart.
+        // Only a combined trip is limited to the viewport; individual routes keep covering
+        // the whole captured chart.
         RectangleF? viewport = options.CombineTargets ? goalViewport : null;
         foreach ((long address, var cell) in cells)
         {
@@ -338,8 +338,7 @@ internal static class DelveTargetRoutes
     internal static bool IsUnfinished(DelveRevealOverlay.ChartCell cell)
         => cell is { HasEncounter: true, Visited: false, Explored: false };
 
-    // Only encounters inside the player's current viewport are routed. The graph still
-    // spans the streamed chart so a visible target can be reached from off-screen origins.
+    // A null viewport means the caller does not restrict goals at all.
     internal static bool WithinGoalViewport(RectangleF rect, RectangleF? goalViewport)
         => goalViewport is not { } bounds || bounds.Intersects(rect);
 
