@@ -66,6 +66,7 @@ namespace ClickIt.Features.Mechanics
         public const string DelveCrawler = "delve-crawler";
         public const string DelveCrawlerPath = "Delve/Objects/DelveNode";
         public const string IceCavesFossil = "delve-ice-caves-fossil";
+        private const string DelveChestPathPrefix = "Metadata/Chests/DelveChests/";
 
         internal static bool IsIceCavesFossilPath(string? path)
             => path?.Contains("EncounterControlObjects/IceCavesFossil", StringComparison.OrdinalIgnoreCase) == true;
@@ -128,15 +129,15 @@ namespace ClickIt.Features.Mechanics
 
         public static bool IsDelveRewardChestPath(string? path)
             => !string.IsNullOrEmpty(path)
-                && path.StartsWith("Metadata/Chests/DelveChests/", StringComparison.OrdinalIgnoreCase)
+                && path.StartsWith(DelveChestPathPrefix, StringComparison.OrdinalIgnoreCase)
                 && !IsTangledFossilInitiatorPath(path);
 
         public static bool IsDelveOffscreenWalkTargetPath(string? path)
             => !string.IsNullOrEmpty(path)
-                && (path.StartsWith("Metadata/Chests/DelveChests/", StringComparison.OrdinalIgnoreCase)
+                && (path.StartsWith(DelveChestPathPrefix, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(
                         path,
-                        "Metadata/Terrain/Leagues/Delve/Objects/EncounterControlObjects/AzuriteEncounterController",
+                        "Metadata/Terrain/Leagues/" + Constants.DelveEncounter + "ControlObjects/" + Constants.AzuriteEncounterController,
                         StringComparison.OrdinalIgnoreCase));
     }
 }

@@ -14,7 +14,7 @@ namespace ClickIt.Features.Mechanics.Rules
             static ctx => ctx.Settings.ClickHarvest && (MechanicClassifier.IsHarvestPath(ctx.Path)
                 || (ctx.Settings.HarvestBossSeeds && MechanicClassifier.IsHarvestBossSeedPath(ctx.Path)))
                 ? MechanicIds.Harvest : null,
-            static ctx => ctx.Settings.ClickSulphite && ctx.Path.Contains("DelveMineral", StringComparison.OrdinalIgnoreCase)
+            static ctx => ctx.Settings.ClickSulphite && ctx.Path.Contains(Constants.DelveMineral, StringComparison.OrdinalIgnoreCase)
                 ? MechanicIds.DelveSulphiteVeins : null,
             static ctx => ctx.Settings.ClickStrongboxes
                 && (ctx.Settings.StrongboxClickMetadata?.Count ?? 0) > 0
@@ -44,7 +44,7 @@ namespace ClickIt.Features.Mechanics.Rules
             static ctx => ctx.Settings.ClickMemories && ctx.Path.Contains(MechanicIds.BeginMemoryLinePath, StringComparison.OrdinalIgnoreCase)
                 ? MechanicIds.Memories : null,
             static ctx => ctx.Settings.ClickAzurite
-                && ctx.Path.Contains("AzuriteEncounterController", StringComparison.OrdinalIgnoreCase)
+                && ctx.Path.Contains(Constants.AzuriteEncounterController, StringComparison.OrdinalIgnoreCase)
                     ? MechanicIds.DelveAzuriteVeins : null,
             static ctx => ctx.Settings.ClickAzuriteOnGround && MechanicIds.IsDelveAzuriteShardPath(ctx.Path)
                 ? MechanicIds.DelveAzuriteOnGround : null,
@@ -58,7 +58,7 @@ namespace ClickIt.Features.Mechanics.Rules
                 && MechanicIds.IsIceCavesFossilPath(ctx.Path)
                     ? MechanicIds.IceCavesFossil : null,
             static ctx => ctx.Settings.ClickDelveSpawners
-                && (ctx.Path.Contains("Delve/Objects/Encounter", StringComparison.OrdinalIgnoreCase)
+                && (ctx.Path.Contains(Constants.DelveEncounter, StringComparison.OrdinalIgnoreCase)
                     || MechanicIds.IsTangledFossilInitiatorPath(ctx.Path))
                     ? MechanicIds.DelveEncounterInitiators : null,
             static ctx => ctx.Settings.ClickCrafting

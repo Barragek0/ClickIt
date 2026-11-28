@@ -33,6 +33,22 @@ namespace ClickIt.Tests.Features.Labels.Classification
         }
 
         [TestMethod]
+        [TestCategory("Parity")]
+        [DataRow("Metadata/Terrain/Leagues/Delve/Objects/EncounterControlObjects/AzuriteEncounterController", true, MechanicIds.DelveAzuriteVeins, true)]
+        [DataRow("metadata/terrain/leagues/delve/objects/encountercontrolobjects/azuriteencountercontroller", false, MechanicIds.DelveEncounterInitiators, true)]
+        [DataRow("Other/AzuriteEncounterController", true, MechanicIds.DelveAzuriteVeins, false)]
+        [DataRow("Other/AzuriteEncounterController", false, null, false)]
+        [DataRow("Metadata/Terrain/Leagues/Delve/Objects/EncounterSpawners/WaterSpawnerEffect", true, MechanicIds.DelveEncounterInitiators, false)]
+        [DataRow("Metadata/Chests/delvechests/TangledFossil", true, MechanicIds.DelveEncounterInitiators, true)]
+        public void DelveMetadata_PreservesLabelRuleOrderAndNarrowWalkAllowlist(string path, bool clickAzurite, string? mechanicId, bool allowWalk)
+        {
+            var settings = new ClickSettings { ClickAzurite = clickAzurite, ClickDelveSpawners = true };
+            InteractionMechanicRuleCatalog.TryResolve(settings, path, DummyLabel, null, CreateInventoryInteractionPolicy(false))
+                .Should().Be(mechanicId);
+            MechanicIds.IsDelveOffscreenWalkTargetPath(path).Should().Be(allowWalk);
+        }
+
+        [TestMethod]
         public void InteractionRuleCatalog_UsesAnIndependentToggleForGroundAzurite()
         {
             ClickSettings settings = new() { ClickAzurite = true, ClickItems = true };

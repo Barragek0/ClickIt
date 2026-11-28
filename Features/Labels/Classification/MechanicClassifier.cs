@@ -261,13 +261,14 @@ namespace ClickIt.Features.Labels.Classification
             bool brinerotPlunderOpened = IsAllflameBrinerotPlunderPath(path)
                 && DynamicAccess.TryGetLabelItemOnGround(label, out Entity? brinerotItem)
                 && IsBrinerotPlunderChestOpened(brinerotItem);
-            string? chest = GetChestMechanicId(
+            string? chest = GetChestMechanicIdFromConfiguredRules(
                 settings.ClickBasicChests,
                 settings.ClickLeagueChests,
                 settings.ClickLeagueChestsOther,
                 settings.EnabledLeagueChestSpecificIds,
                 type,
-                metadata,
+                metadata.Path,
+                metadata.RenderName,
                 brinerotPlunderOpened);
             if (!string.IsNullOrWhiteSpace(chest))
                 return chest;
@@ -282,26 +283,6 @@ namespace ClickIt.Features.Labels.Classification
                 return named;
 
             return GetAreaTransitionMechanicId(settings.ClickAreaTransitions, settings.ClickLabyrinthTrials, type, path);
-        }
-
-        private static string? GetChestMechanicId(
-            bool clickBasicChests,
-            bool clickLeagueChests,
-            bool clickLeagueChestsOther,
-            IReadOnlySet<string>? enabledSpecificLeagueChestIds,
-            EntityType type,
-            LabelItemMetadata metadata,
-            bool brinerotPlunderOpened = false)
-        {
-            return GetChestMechanicIdFromConfiguredRules(
-                clickBasicChests,
-                clickLeagueChests,
-                clickLeagueChestsOther,
-                enabledSpecificLeagueChestIds,
-                type,
-                metadata.Path,
-                metadata.RenderName,
-                brinerotPlunderOpened);
         }
 
         private readonly record struct LabelItemMetadata(string Path, string RenderName);
@@ -503,16 +484,8 @@ namespace ClickIt.Features.Labels.Classification
         : null;
 
 
-            return ResolveSpecialNonSettlersMechanic(settings, path, label, gameController, inventoryInteractionPolicy);
+            return InteractionMechanicRuleCatalog.TryResolve(settings, path, label, gameController, inventoryInteractionPolicy);
         }
-
-        private static string? ResolveSpecialNonSettlersMechanic(
-            ClickSettings settings,
-            string path,
-            LabelOnGround label,
-            GameController? gameController,
-            InventoryInteractionPolicy inventoryInteractionPolicy)
-            => InteractionMechanicRuleCatalog.TryResolve(settings, path, label, gameController, inventoryInteractionPolicy);
 
         private static string? GetAltarMechanicId(ClickSettings settings, string path)
         {
@@ -634,7 +607,7 @@ namespace ClickIt.Features.Labels.Classification
                 if (DynamicAccess.TryGetLabelItemOnGround(label, out Entity? entity)
                     && entity != null
                     && DynamicAccess.TryReadString(entity, DynamicAccessProfiles.Path, out string path)
-                    && path.Contains(MechanicIds.DelveCrawlerPath, StringComparison.OrdinalIgnoreCase)
+                    && MechanicIds.IsDelveCrawlerPath(path)
                     && DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? element)
                     && element != null
                     && DynamicAccess.TryReadBool(element, DynamicAccessProfiles.IsVisible, out bool visible)
