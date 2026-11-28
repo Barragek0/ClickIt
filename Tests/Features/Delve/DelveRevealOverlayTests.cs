@@ -4,38 +4,226 @@ namespace ClickIt.Tests.Features.Delve;
 public sealed class DelveRevealOverlayTests
 {
     [TestMethod]
+    [TestCategory("Regression")]
+    [DataRow(false)]
+    [DataRow(true)]
+    public void CombinedTargetRoutes_BacktrackThroughClearedNodes_AndMatchLabelsToLegs(bool includeFourthTarget)
+    {
+        var settings = new ClickItSettings();
+        DelveRouteOptions.FromSettings(settings).CombineTargets.Should().BeTrue();
+        Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
+        {
+            [1] = new(new RectangleF(20, 40, 20, 20), [2], Explored: true),
+            [2] = new(new RectangleF(40, 40, 20, 20), [3, 4], HasEncounter: true),
+            [3] = new(new RectangleF(40, 20, 20, 20), [], HasEncounter: true, Target: DelveRouteTarget.Aul),
+            [4] = new(new RectangleF(60, 40, 20, 20), [5], HasEncounter: true),
+            [5] = new(new RectangleF(80, 40, 20, 20), [6], HasEncounter: true, Target: DelveRouteTarget.Lich),
+            [6] = new(new RectangleF(100, 40, 20, 20), includeFourthTarget ? [7] : [],
+                HasEncounter: true, Target: DelveRouteTarget.Architect),
+            [100] = new(new RectangleF(20, 80, 20, 20), [101], Explored: true),
+            [101] = new(new RectangleF(40, 80, 20, 20), [], HasEncounter: true, Target: DelveRouteTarget.CrystalSpire),
+        };
+        var targets = DelveRouteTarget.Aul | DelveRouteTarget.Lich | DelveRouteTarget.Architect | DelveRouteTarget.CrystalSpire;
+        if (includeFourthTarget)
+        {
+            cells[7] = new(new RectangleF(120, 40, 20, 20), [], HasEncounter: true, Target: DelveRouteTarget.MoltenCavity);
+            targets |= DelveRouteTarget.MoltenCavity;
+        }
+
+        var lines = DelveRevealOverlay.BuildRouteLines(cells, targets, showTargetCounts: true, routeOptions: DelveRouteOptions.FromSettings(settings));
+
+        lines.TargetCounts![3].Should().Be("2");
+        lines.TargetCounts[5].Should().Be("4");
+        lines.TargetCounts[6].Should().Be("5");
+        lines.TargetCounts[101].Should().Be("1");
+        lines.Detours![3].Stop.Should().Be(1);
+        lines.Detours[5].Stop.Should().Be(2);
+        lines.Detours[6].Stop.Should().Be(3);
+        lines.Detours.Should().NotContainKey(101);
+        lines.LegLines![0].Should().HaveCount(2);
+        lines.LegLines[1].Should().HaveCount(2);
+        lines.LegLines[2].Should().HaveCount(1);
+        if (includeFourthTarget)
+            lines.LegLines[3].Should().HaveCount(1);
+        lines.Target.Should().ContainSingle();
+
+        var chart = new RectangleF(0, 0, 180, 120);
+        var projection = new DelveRevealOverlay.ChartProjection(chart, chart);
+        var markers = lines.Detours.Keys.Select(address => new DelveRevealOverlay.ChartMarker(
+            cells[address].Rect, new NumVector2(.5f, .5f), DelveNodeIcon.Resolve("Fossil"),
+            Target: cells[address].Target, Address: address)).ToArray();
+        var nodes = DelveRevealOverlay.BuildMarkers(markers, chart, projection, targets: targets,
+            targetCounts: lines.TargetCounts, detours: lines.Detours);
+        nodes.Select(node => (node.DetourLabel, node.Leg)).Should().Contain(("#1 / 2", 0)).And
+            .Contain(("#2 / 4", 1)).And.Contain(("#3 / 5", 2));
+        if (includeFourthTarget)
+            nodes.Select(node => (node.DetourLabel, node.Leg)).Should().Contain(("#4 / 6", 3));
+
+        settings.CombineDelveTargetRoutes.Value = false;
+        var separate = DelveRevealOverlay.BuildRouteLines(cells, targets, showTargetCounts: true,
+            routeOptions: DelveRouteOptions.FromSettings(settings));
+        separate.Detours.Should().BeNull();
+        separate.TargetCounts![5].Should().Be("3");
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void CombinedTargetRoutes_StopBeforeALegThroughTooManyExploredTiles()
+    {
+        var settings = new ClickItSettings();
+        Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
+        {
+            [1] = new(new RectangleF(0, 0, 20, 20), [2, 20], Explored: true, Visited: true),
+            [2] = new(new RectangleF(20, 0, 20, 20), [10], HasEncounter: true),
+            [10] = new(new RectangleF(40, 0, 20, 20), [11], HasEncounter: true, Target: DelveRouteTarget.Aul),
+            [11] = new(new RectangleF(60, 0, 20, 20), [12], HasEncounter: true, Target: DelveRouteTarget.Lich),
+            [12] = new(new RectangleF(80, 0, 20, 20), [], HasEncounter: true, Target: DelveRouteTarget.Architect),
+            [30] = new(new RectangleF(0, 140, 20, 20), [], HasEncounter: true, Target: DelveRouteTarget.CrystalSpire)
+        };
+        for (int i = 0; i < 6; i++)
+            cells.Add(20 + i, new(new RectangleF(0, 20 * (i + 1), 20, 20), i < 5 ? [21 + i] : [30], Visited: true));
+        const DelveRouteTarget selected = DelveRouteTarget.Aul | DelveRouteTarget.Lich
+            | DelveRouteTarget.Architect | DelveRouteTarget.CrystalSpire;
+
+        var lines = DelveRevealOverlay.BuildRouteLines(cells, selected, showTargetCounts: true,
+            routeOptions: DelveRouteOptions.FromSettings(settings));
+
+        lines.Detours!.Keys.Should().BeEquivalentTo(new long[] { 10, 11, 12 });
+        lines.Detours[10].Stop.Should().Be(1);
+        lines.Detours[11].Stop.Should().Be(2);
+        lines.Detours[12].Stop.Should().Be(3);
+        lines.TargetCounts.Should().BeEquivalentTo(new Dictionary<long, string>
+        {
+            [10] = "2",
+            [11] = "3",
+            [12] = "4",
+            [30] = "1"
+        });
+        lines.LegLines![0].Should().HaveCount(2);
+        lines.LegLines[1].Should().HaveCount(1);
+        lines.LegLines[2].Should().HaveCount(1);
+        lines.Target.Should().HaveCount(7);
+    }
+
+    [TestMethod]
+    [TestCategory("Boundary")]
+    [DataRow(true)]
+    [DataRow(false)]
+    public void CombinedTargetRoutes_RespectTheLegBacktrackBudget(bool overBudget)
+    {
+        var settings = new ClickItSettings();
+        int depth = DelveCombinedRoutePlanner.MaxVisitedTilesPerLeg + (overBudget ? 1 : 0);
+        Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
+        {
+            [1] = new(new RectangleF(0, 0, 20, 20), [2], Explored: true, Visited: true),
+            [2] = new(new RectangleF(20, 0, 20, 20), [10], HasEncounter: true),
+            [10] = new(new RectangleF(40, 0, 20, 20), [20], HasEncounter: true, Target: DelveRouteTarget.Aul),
+            [30] = new(new RectangleF(40, 20 * (depth + 1), 20, 20), [], HasEncounter: true, Target: DelveRouteTarget.Lich)
+        };
+        for (int i = 0; i < depth; i++)
+            cells.Add(20 + i, new(new RectangleF(40, 20 * (i + 1), 20, 20), i + 1 < depth ? [21 + i] : [30], Visited: true));
+        const DelveRouteTarget selected = DelveRouteTarget.Aul | DelveRouteTarget.Lich;
+
+        var lines = DelveRevealOverlay.BuildRouteLines(cells, selected, showTargetCounts: true,
+            routeOptions: DelveRouteOptions.FromSettings(settings));
+
+        if (overBudget)
+        {
+            lines.Detours.Should().BeEmpty();
+            lines.LegLines.Should().BeNull();
+        }
+        else
+        {
+            lines.Detours!.Keys.Should().BeEquivalentTo(new long[] { 10, 30 });
+            lines.Detours[10].Stop.Should().Be(1);
+            lines.Detours[30].Stop.Should().Be(2);
+            lines.LegLines.Should().NotBeNull();
+        }
+        lines.TargetCounts![10].Should().Be("2");
+        lines.TargetCounts[30].Should().Be("3");
+    }
+
+    [TestMethod]
+    [TestCategory("Regression")]
+    public void TargetRoutes_OnlyPlanGoalsInsideTheCurrentViewport()
+    {
+        var settings = new ClickItSettings();
+        Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
+        {
+            [1] = new(new RectangleF(0, 0, 20, 20), [2], Explored: true),
+            [2] = new(new RectangleF(20, 0, 20, 20), [10], HasEncounter: true),
+            [10] = new(new RectangleF(40, 0, 20, 20), [11], HasEncounter: true, Target: DelveRouteTarget.Aul),
+            [11] = new(new RectangleF(60, 0, 20, 20), [12], HasEncounter: true, Target: DelveRouteTarget.Lich),
+            [12] = new(new RectangleF(80, 0, 20, 20), [], HasEncounter: true, Target: DelveRouteTarget.Architect)
+        };
+        const DelveRouteTarget selected = DelveRouteTarget.Aul | DelveRouteTarget.Lich | DelveRouteTarget.Architect;
+
+        var lines = DelveRevealOverlay.BuildRouteLines(cells, selected, showTargetCounts: true,
+            routeOptions: DelveRouteOptions.FromSettings(settings), goalViewport: new RectangleF(0, 0, 70, 20));
+
+        lines.Detours!.Keys.Should().BeEquivalentTo(new long[] { 10, 11 });
+        lines.Detours[11].Stop.Should().Be(2);
+        lines.TargetCounts.Should().BeEquivalentTo(new Dictionary<long, string> { [10] = "2", [11] = "3" });
+        lines.Target.Should().BeEmpty();
+        lines.LegLines![0].Should().HaveCount(2);
+        lines.LegLines[1].Should().HaveCount(1);
+
+        var narrow = DelveRevealOverlay.BuildRouteLines(cells, selected, showTargetCounts: true,
+            routeOptions: DelveRouteOptions.FromSettings(settings), goalViewport: new RectangleF(0, 0, 50, 20));
+
+        narrow.Detours.Should().BeEmpty();
+        narrow.TargetCounts.Should().BeEquivalentTo(new Dictionary<long, string> { [10] = "2" });
+        narrow.Target.Should().HaveCount(2);
+        narrow.LegLines.Should().BeNull();
+    }
+
+    [TestMethod]
+    [TestCategory("Boundary")]
+    public void BuildMarkers_CyclesLegColoursPastThePalette()
+    {
+        var chart = new RectangleF(0, 0, 400, 100);
+        var projection = new DelveRevealOverlay.ChartProjection(chart, chart);
+        DelveNodeIcon icon = DelveNodeIcon.Resolve("Fossil");
+        DelveRevealOverlay.ChartMarker[] markers = new DelveRevealOverlay.ChartMarker[9];
+        Dictionary<long, DelveTargetRoutes.Detour> detours = [];
+        for (int stop = 1; stop <= 9; stop++)
+        {
+            markers[stop - 1] = new(new RectangleF(40 * stop, 10, 20, 20), new NumVector2(.5f, .5f), icon, Address: stop);
+            detours.Add(stop, new DelveTargetRoutes.Detour(stop));
+        }
+
+        var nodes = DelveRevealOverlay.BuildMarkers(markers, chart, projection, detours: detours);
+
+        nodes.Select(node => node.Leg).Should().Equal(0, 1, 2, 3, 4, 5, 6, 7, 0);
+    }
+
+    [TestMethod]
     [TestCategory("Settings")]
-    public void AzuriteVaultPriority_AppendsToSavedOrderAndIsOptIn()
+    public void AzuritePriority_AppendsToSavedOrderAndIsOptIn()
     {
         ClickItSettings settings = new()
         {
             DelveEncounterPriorityOrder = ["Primeval Chamber", "Abyssal Chamber", "Ruined Chamber", "Azurite Cavity"]
         };
+        // Rows show the tier while the stored keys keep the chart names.
         DelveRouteOptions.GetPriorityOrder(settings).TakeLast(2).Should().Equal("Azurite Cavity", "Azurite Vault");
-        DelveRouteOptions.PriorityDisplayName("Azurite Vault").Should().Be("Azurite II (Vault)");
+        DelveRouteOptions.PriorityDisplayName("Azurite Cavity").Should().Be("Azurite I");
+        DelveRouteOptions.PriorityDisplayName("Azurite Vault").Should().Be("Azurite II");
         int kind = DelveRouteOptions.Classify("Azurite Vault");
         DelveRouteOptions.Classify("Contents Unknown", "AzuriteVeinII").Should().Be(kind);
         DelveRouteOptions.Classify("Azurite Vault", "AzuriteVeinIII").Should().Be(0);
-        DelveRouteOptions.FromSettings(settings).Preference(kind).Should().Be(UInt128.Zero);
+        DelveRouteOptions.FromSettings(settings).Discount(kind).Should().Be(0);
 
         settings.EnabledDelveEncounterPriorities.AddRange(["Azurite Cavity", "Azurite Vault"]);
         DelveRouteOptions options = DelveRouteOptions.FromSettings(settings);
-        options.Preference(kind).Should().NotBe(UInt128.Zero);
-        (options.Preference(DelveRouteOptions.Classify("Azurite Cavity")) > options.Preference(kind)).Should().BeTrue();
-        (options.Preference(DelveRouteOptions.Classify("Primeval Chamber")) * 16
-            > options.Preference(DelveRouteOptions.Classify("Primeval Chamber"))).Should().BeTrue();
-    }
+        options.Discount(kind).Should().Be(2);
+        options.Discount(DelveRouteOptions.Classify("Azurite Cavity")).Should().Be(3);
+        options.Discount(DelveRouteOptions.Classify("Primeval Chamber")).Should().Be(4);
 
-    [TestMethod]
-    [TestCategory("Settings")]
-    public void NearbyTargetDetour_DefaultsToThreeAndAllowsFive()
-    {
-        ClickItSettings settings = new();
-        DelveRouteOptions.FromSettings(settings).DetourLimit.Should().Be(0);
-        settings.IncludeNearbyDelveTargets.Value = true;
-        DelveRouteOptions.FromSettings(settings).DetourLimit.Should().Be(3);
-        settings.DelveTargetDetourLimit.Value = 5;
-        DelveRouteOptions.FromSettings(settings).DetourLimit.Should().Be(5);
+        settings.DelveEncounterPriorityOrder = ["Azurite Vault", "Primeval Chamber"];
+        options = DelveRouteOptions.FromSettings(settings);
+        options.Discount(kind).Should().Be(3);
+        options.Discount(DelveRouteOptions.Classify("Azurite Cavity")).Should().Be(2);
     }
 
     [TestMethod]
@@ -52,18 +240,18 @@ public sealed class DelveRevealOverlayTests
             EnabledDelveEncounterPriorities = [savedKey]
         };
         var options = DelveRouteOptions.FromSettings(settings);
-        DelveRouteOptions.GetPriorityOrder(settings).First().Should().Be(savedKey);
-        DelveRouteOptions.PriorityDisplayName(savedKey).Should().Be(chartName);
-        var expected = options.Preference(DelveRouteOptions.Classify(savedKey));
-        expected.Should().NotBe(UInt128.Zero);
-        options.Preference(DelveRouteOptions.Classify(chartName)).Should().Be(expected);
-        options.Preference(DelveRouteOptions.Classify("Contents Unknown", cityAsset)).Should().Be(expected);
+        DelveRouteOptions.GetPriorityOrder(settings).Should().Equal("City Encounters", "Azurite Cavity", "Azurite Vault");
+        int kind = DelveRouteOptions.Classify("City Encounters");
+        DelveRouteOptions.Classify(savedKey).Should().Be(kind);
+        DelveRouteOptions.Classify(chartName).Should().Be(kind);
+        DelveRouteOptions.Classify("Contents Unknown", cityAsset).Should().Be(kind);
+        options.Discount(kind).Should().Be(4);
         DelveRouteOptions.Classify(chartName, bossAsset).Should().Be(0);
     }
 
     [TestMethod]
     [TestCategory("Regression")]
-    public void TargetRoutes_PreferCheckedEncountersInSavedOrder_OnEquallyShortRoutes()
+    public void TargetRoutes_RespectCityRowPositionAndCanChooseALongerRoute()
     {
         Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
         {
@@ -78,8 +266,9 @@ public sealed class DelveRevealOverlayTests
         DelveTargetRoutes.FindShortestRoutes(cells, links, DelveRouteTarget.Aul, null, DelveRouteOptions.FromSettings(settings))
             .Should().BeEquivalentTo(new[] { (1L, 3L), (3L, 4L) });
 
-        settings.DelveEncounterPriorityOrder = ["Azurite Cavity", "Primeval Chamber"];
+        settings.DelveEncounterPriorityOrder = ["Azurite Cavity", "Azurite Vault", DelveRouteOptions.CityEncounters];
         settings.EnabledDelveEncounterPriorities.Add("Azurite Cavity");
+        DelveRouteOptions.GetPriorityOrder(settings).Should().Equal("Azurite Cavity", "Azurite Vault", DelveRouteOptions.CityEncounters);
         DelveTargetRoutes.FindShortestRoutes(cells, links, DelveRouteTarget.Aul, null, DelveRouteOptions.FromSettings(settings))
             .Should().BeEquivalentTo(new[] { (1L, 2L), (2L, 4L) });
 
@@ -91,102 +280,54 @@ public sealed class DelveRevealOverlayTests
         cells.Add(5, new(new RectangleF(40, 20, 20, 20), []));
         links.Add(new(3, 5, true));
         links.Add(new(5, 4, true));
+        var counts = new Dictionary<long, string>();
+        DelveTargetRoutes.FindShortestRoutes(cells, links, DelveRouteTarget.Aul, counts, DelveRouteOptions.FromSettings(settings))
+            .Should().BeEquivalentTo(new[] { (1L, 3L), (3L, 5L), (4L, 5L) });
+        counts[4].Should().Be("2");
+
+        settings.EnabledDelveEncounterPriorities.Clear();
         DelveTargetRoutes.FindShortestRoutes(cells, links, DelveRouteTarget.Aul, null, DelveRouteOptions.FromSettings(settings))
             .Should().BeEquivalentTo(new[] { (1L, 2L), (2L, 4L) });
     }
 
     [TestMethod]
     [TestCategory("Regression")]
-    [DataRow(false, 3, true, true, false)]
-    [DataRow(true, 3, false, true, false)]
-    [DataRow(true, 1, true, true, false)]
-    [DataRow(true, 1, true, false, true)]
-    [DataRow(true, 2, true, true, true)]
-    [DataRow(true, 3, true, true, true)]
-    public void BuildRouteLines_ReplacesTheDirectRouteWithAnOnwardPathWithinTheLimit(
-        bool enabled, int limit, bool hasOnwardConnection, bool hasExtraEncounter, bool expected)
+    [DataRow(false, 10, 100L)]
+    [DataRow(true, 8, 10L)]
+    public void PriorityRow_ChangesRouteChoiceWithoutDiscountingTheDisplayedCount(
+        bool moveCitiesToBottom, int actualCount, long selectedFirst)
     {
         Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
         {
-            [1] = new(new RectangleF(0, 0, 20, 20), [2], Explored: true),
-            [2] = new(new RectangleF(20, 0, 20, 20), [3, 6], HasEncounter: true),
-            [3] = new(new RectangleF(40, 0, 20, 20), [4], HasEncounter: true, Target: DelveRouteTarget.HumidFissure),
-            [4] = new(new RectangleF(60, 0, 20, 20), [5]),
-            [5] = new(new RectangleF(80, 0, 20, 20), [], HasEncounter: true, Target: DelveRouteTarget.Aul, EncounterName: "Aul"),
-            [6] = new(new RectangleF(20, 20, 20, 20), [7], HasEncounter: true),
-            [7] = new(new RectangleF(20, 40, 20, 20), hasOnwardConnection ? [8] : [],
-                HasEncounter: true, Target: DelveRouteTarget.MoltenCavity, EncounterName: "Molten Cavity"),
-            [8] = new(new RectangleF(40, 40, 20, 20), [9], HasEncounter: hasExtraEncounter),
-            [9] = new(new RectangleF(60, 40, 20, 20), [10]),
-            [10] = new(new RectangleF(80, 40, 20, 20), [11]),
-            [11] = new(new RectangleF(80, 20, 20, 20), [5])
+            [1] = new(new RectangleF(0, 0, 20, 20), [], Explored: true),
+            [2] = new(new RectangleF(200, 20, 20, 20), [], HasEncounter: true, Target: DelveRouteTarget.Aul)
         };
-        ClickItSettings settings = new();
-        settings.IncludeNearbyDelveTargets.Value = enabled;
-        settings.DelveTargetDetourLimit.Value = limit;
-        var lines = DelveRevealOverlay.BuildRouteLines(cells,
-            DelveRouteTarget.Aul | DelveRouteTarget.MoltenCavity,
-            showTargetCounts: true, routeOptions: DelveRouteOptions.FromSettings(settings));
+        List<DelveRevealOverlay.CellLink> links = [];
+        AddRoute(10, 7, 0, 0);
+        AddRoute(100, 9, 3, 20);
+        var settings = new ClickItSettings();
+        if (moveCitiesToBottom)
+            settings.DelveEncounterPriorityOrder = ["Azurite Cavity", "Azurite Vault", DelveRouteOptions.CityEncounters];
+        Dictionary<long, string> counts = [];
 
-        int extra = hasExtraEncounter ? 2 : 1;
-        lines.TargetCounts![5].Should().Be(expected ? (3 + extra).ToString(System.Globalization.CultureInfo.InvariantCulture) : "3");
-        (lines.Detours?.ContainsKey(7) == true).Should().Be(expected);
-        (lines.DetourLines is { Length: > 0 }).Should().Be(expected);
-        if (expected)
+        var route = DelveTargetRoutes.FindShortestRoutes(cells, links, DelveRouteTarget.Aul, counts, DelveRouteOptions.FromSettings(settings));
+
+        route.Should().Contain((1L, selectedFirst));
+        route.Should().HaveCount(actualCount);
+        counts[2].Should().Be(actualCount.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        void AddRoute(long first, int intermediateCount, int discountedCount, float y)
         {
-            lines.Detours![7].Should().Be(new DelveTargetRoutes.Detour(1, "Aul", extra));
-            lines.Detours![5].Should().Be(new DelveTargetRoutes.Detour(2, "Molten Cavity", extra, IsFinal: true));
-            lines.DetourLines.Should().Contain(new ScreenLine(new NumVector2(30, 50), new NumVector2(50, 50)));
-            lines.Target.Should().NotContain(new ScreenLine(new NumVector2(70, 10), new NumVector2(90, 10)));
-        }
-
-        cells[2] = cells[2] with { Explored = true, Visited = true };
-        var afterClearingJunction = DelveRevealOverlay.BuildRouteLines(cells,
-            DelveRouteTarget.Aul | DelveRouteTarget.MoltenCavity,
-            routeOptions: DelveRouteOptions.FromSettings(settings));
-        (afterClearingJunction.Detours?.ContainsKey(7) == true).Should().Be(expected);
-    }
-
-    [TestMethod]
-    [TestCategory("Regression")]
-    [DataRow(1, 2)]
-    [DataRow(2, 3)]
-    public void NearbyTargetRoutes_ChainMultipleDetoursWithinTheCombinedEncounterBudget(int limit, int expectedStops)
-    {
-        Dictionary<long, DelveRevealOverlay.ChartCell> cells = new()
-        {
-            [1] = new(new RectangleF(0, 0, 20, 20), [2], Explored: true),
-            [2] = new(new RectangleF(20, 0, 20, 20), [3, 20]),
-            [3] = new(new RectangleF(40, 0, 20, 20), [4]),
-            [4] = new(new RectangleF(60, 0, 20, 20), [5]),
-            [5] = new(new RectangleF(80, 0, 20, 20), [6]),
-            [6] = new(new RectangleF(100, 0, 20, 20), [7, 30]),
-            [7] = new(new RectangleF(120, 0, 20, 20), [8]),
-            [8] = new(new RectangleF(140, 0, 20, 20), [9]),
-            [9] = new(new RectangleF(160, 0, 20, 20), [], HasEncounter: true, Target: DelveRouteTarget.Aul, EncounterName: "Aul"),
-            [20] = new(new RectangleF(20, 20, 20, 20), [21]),
-            [21] = new(new RectangleF(40, 20, 20, 20), [22], HasEncounter: true, Target: DelveRouteTarget.MoltenCavity, EncounterName: "Molten Cavity"),
-            [22] = new(new RectangleF(60, 20, 20, 20), [4]),
-            [30] = new(new RectangleF(100, 20, 20, 20), [31]),
-            [31] = new(new RectangleF(120, 20, 20, 20), [32], HasEncounter: true, Target: DelveRouteTarget.HumidFissure, EncounterName: "Humid Fissure"),
-            [32] = new(new RectangleF(140, 20, 20, 20), [8])
-        };
-
-        var lines = DelveRevealOverlay.BuildRouteLines(cells,
-            DelveRouteTarget.Aul | DelveRouteTarget.MoltenCavity | DelveRouteTarget.HumidFissure,
-            showTargetCounts: true, routeOptions: new DelveRouteOptions(0, limit));
-
-        lines.Detours.Should().HaveCount(expectedStops);
-        lines.Detours![9].Stop.Should().Be(expectedStops);
-        lines.Detours[9].ExtraEncounters.Should().Be(limit);
-        lines.TargetCounts![9].Should().Be(expectedStops.ToString(System.Globalization.CultureInfo.InvariantCulture));
-        if (limit == 2)
-        {
-            lines.Detours[21].Should().Be(new DelveTargetRoutes.Detour(1, "Humid Fissure", 2));
-            lines.Detours[31].Should().Be(new DelveTargetRoutes.Detour(2, "Aul", 2));
-            lines.TargetCounts[21].Should().Be("1");
-            lines.TargetCounts[31].Should().Be("2");
-            lines.DetourLines.Should().Contain(new ScreenLine(new NumVector2(130, 30), new NumVector2(150, 30)));
+            long parent = 1;
+            for (int i = 0; i < intermediateCount; i++)
+            {
+                long address = first + i;
+                int kind = i < discountedCount ? DelveRouteOptions.Classify("Primeval Ruins") : 0;
+                cells.Add(address, new(new RectangleF((i + 1) * 20, y, 20, 20), [], HasEncounter: true, EncounterKind: kind));
+                links.Add(new(parent, address, true));
+                parent = address;
+            }
+            links.Add(new(parent, 2, true));
         }
     }
 

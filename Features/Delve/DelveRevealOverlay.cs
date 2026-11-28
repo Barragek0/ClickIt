@@ -18,7 +18,18 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
     private const float MarkerLiftPixels = 2f;
     private static readonly Color ConnectionColor = new(242, 54, 62, 230);
     private static readonly Color TargetRouteColor = new(61, 220, 109, 245);
-    private static readonly Color DetourRouteColor = new(157, 244, 130, 245);
+    // One distinct hue per combined-route leg; the palette cycles for long chains.
+    private static readonly Color[] RouteLegColors =
+    [
+        TargetRouteColor,
+        new(0, 224, 235, 245),
+        new(255, 80, 180, 245),
+        new(170, 90, 255, 245),
+        new(255, 160, 40, 245),
+        new(255, 220, 60, 245),
+        new(90, 130, 255, 245),
+        new(200, 200, 210, 245)
+    ];
     private static readonly Color UnknownNodeColor = new(230, 215, 190, 240);
     private ChartSnapshot? _snapshot;
     private ChartCapture? _chartCapture;
@@ -41,7 +52,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
 
     internal readonly record struct ChartCell(RectangleF Rect, long[] Links, bool Hidden = true, bool BehindWall = false,
         NumVector2? Anchor = null, bool HasEncounter = false, bool Explored = false, DelveRouteTarget Target = DelveRouteTarget.None,
-        WallApproach WallSide = WallApproach.None, bool Visited = false, int EncounterKind = 0, string? EncounterName = null)
+        WallApproach WallSide = WallApproach.None, bool Visited = false, int EncounterKind = 0)
     {
         internal bool NeedsRouteOverlay => Hidden || BehindWall;
         internal NumVector2? RouteAnchor => HasEncounter ? Anchor : null;
@@ -49,14 +60,14 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
     internal readonly record struct CellLink(long Start, long End, bool Horizontal);
     internal readonly record struct RouteLines(ScreenLine[] Revealed, ScreenLine[] Target, ScreenLine[] FracturedWalls,
         IReadOnlyDictionary<long, string>? TargetCounts = null, IReadOnlySet<long>? RouteEncounterAddresses = null,
-        IReadOnlyDictionary<long, DelveTargetRoutes.Detour>? Detours = null, ScreenLine[]? DetourLines = null);
+        IReadOnlyDictionary<long, DelveTargetRoutes.Detour>? Detours = null, ScreenLine[][]? LegLines = null);
     internal readonly record struct ChartMarker(RectangleF Rect, NumVector2 Anchor, DelveNodeIcon Icon, string? HoverText = null,
         DelveRouteTarget Target = DelveRouteTarget.None, long Address = 0, bool DrawIcon = true);
     internal readonly record struct Node(NumVector2 Center, float Radius, DelveNodeIcon Icon,
         string? HoverText = null, Task<DelveNodeIcon.TextureResult>? TextureFile = null,
-        string? RemainingNodeCount = null, bool DrawIcon = true, string? StopOrder = null, string? DetourLabel = null);
+        string? RemainingNodeCount = null, bool DrawIcon = true, string? StopOrder = null, string? DetourLabel = null, int Leg = 0);
     private sealed record ChartSnapshot(ScreenLine[] Connections, ScreenLine[] TargetRoutes, ScreenLine[] FracturedWalls,
-        Node[] Nodes, RectangleF Clip, ScreenLine[] DetourLines);
+        Node[] Nodes, RectangleF Clip, ScreenLine[][] LegLines);
     private sealed record ChartCapture(long Address, RectangleF Coverage,
         ChartMarker[] Markers, RouteLines Lines, DelveRouteTarget Targets, long CapturedAt, bool ShowTargetCounts, DelveRouteOptions RouteOptions);
 
@@ -147,15 +158,21 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         ChartCapture? capture = _chartCapture;
         bool sameChart = capture != null && capture.Address == grid.Address && capture.Targets == targets
             && capture.ShowTargetCounts == showTargetCounts && capture.RouteOptions == routeOptions;
+        // Routes follow the viewport, so a pan invalidates the planned trip even when no
+        // new chunks stream in. The settle gates inside IsCaptureDue keep an active pan
+        // from thrashing full captures.
+        bool pannedSinceCapture = capture is { } previousCapture && targets != DelveRouteTarget.None
+            && _lastPan > previousCapture.CapturedAt;
         if (!sameChart || (targets == DelveRouteTarget.None && !projection.Covers(capture!.Coverage, clip))
-            || IsCaptureDue(chunkHash != _captureChunkHash, now - capture!.CapturedAt, now - _lastPan))
+            || IsCaptureDue(chunkHash != _captureChunkHash || pannedSinceCapture, now - capture!.CapturedAt, now - _lastPan))
         {
             // Keep the previous graph moving while the more expensive full capture runs.
             if (sameChart && moved)
                 PublishView(capture!, projection, clip, now, revealFullMap, showRouteNodes, showWalls);
 
             RectangleF coverage = GetLocalCoverage(projection, clip);
-            capture = CaptureChart(grid, coverage, now, targets, showTargetCounts, routeOptions);
+            RectangleF routeViewport = GetRouteViewport(projection, clip);
+            capture = CaptureChart(grid, coverage, routeViewport, now, targets, showTargetCounts, routeOptions);
             if (!TryReadView(viewport, grid, ctx.WindowArea, out projection, out clip))
             {
                 ClearChart();
@@ -175,7 +192,8 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         else if (ShouldRefreshMarkers(chunkHash != _markerChunkHash, projection.Covers(_markerCoverage, clip), now - _lastMarkerScan))
         {
             RectangleF coverage = GetLocalCoverage(projection, clip);
-            ChartMarker[] markers = CaptureChart(grid, coverage, now, targets, showTargetCounts, routeOptions, markersOnly: true).Markers;
+            RectangleF routeViewport = GetRouteViewport(projection, clip);
+            ChartMarker[] markers = CaptureChart(grid, coverage, routeViewport, now, targets, showTargetCounts, routeOptions, markersOnly: true).Markers;
             if (!TryReadView(viewport, grid, ctx.WindowArea, out projection, out clip))
             {
                 ClearChart();
@@ -212,6 +230,11 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
     private static RectangleF GetLocalCoverage(ChartProjection projection, RectangleF clip)
         => new ChartProjection(projection.CurrentGrid, projection.OriginalGrid)
             .Project(Expand(clip, clip.Width * 0.25f, clip.Height * 0.25f));
+
+    // Routes may only target encounters the player can currently see, unlike the marker
+    // coverage margin that keeps icons near the viewport edge stable.
+    private static RectangleF GetRouteViewport(ChartProjection projection, RectangleF clip)
+        => new ChartProjection(projection.CurrentGrid, projection.OriginalGrid).Project(clip);
 
     private static bool TryReadView(Element viewport, DelveElement grid, RectangleF window,
         out ChartProjection projection, out RectangleF clip)
@@ -258,7 +281,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
             revealFullMap ? ProjectConnections(capture.Lines.Revealed, clip, projection) : [],
             ProjectConnections(capture.Lines.Target, clip, projection),
             showWalls ? ProjectConnections(capture.Lines.FracturedWalls, clip, projection) : [], nodes, clip,
-            capture.Lines.DetourLines is { Length: > 0 } detourLines ? ProjectConnections(detourLines, clip, projection) : []));
+            capture.Lines.LegLines?.Select(lines => ProjectConnections(lines, clip, projection)).ToArray() ?? []));
         Volatile.Write(ref _lastCapture, now);
     }
 
@@ -280,7 +303,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         return clip.Width > 0 && clip.Height > 0;
     }
 
-    private static ChartCapture CaptureChart(DelveElement grid, RectangleF coverage, long now,
+    private static ChartCapture CaptureChart(DelveElement grid, RectangleF coverage, RectangleF routeViewport, long now,
         DelveRouteTarget targets, bool showTargetCounts, DelveRouteOptions routeOptions, bool markersOnly = false)
     {
         if (!DynamicAccess.TryGetDynamicValue(grid, static element => element.Cells, out object? rawChunks)
@@ -316,7 +339,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
 
                 (bool gameDraws, bool visited) = status;
                 bool hidden = IsHidden(gameDraws, visited);
-                bool markVisibleTarget = (showTargetCounts || routeOptions.DetourLimit > 0) && !hidden && !visited;
+                bool markVisibleTarget = (showTargetCounts || routeOptions.CombineTargets) && !hidden && !visited;
                 if (markersOnly && !hidden && !markVisibleTarget)
                     continue;
 
@@ -337,7 +360,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
                     : DelveRouteTarget.None;
                 if (inMarkerCoverage && (hidden || (markVisibleTarget && (target & targets) != 0))
                     && anchor is { } markerAnchor && icon != null)
-                    markers.Add(new ChartMarker(rect, markerAnchor, icon, hidden || routeOptions.DetourLimit > 0 ? icon.GetTooltip(name) : null,
+                    markers.Add(new ChartMarker(rect, markerAnchor, icon, hidden || routeOptions.CombineTargets ? icon.GetTooltip(name) : null,
                         target, cell.Address, hidden));
                 if (markersOnly)
                     continue;
@@ -347,8 +370,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
                 cells.Add(cell.Address, new ChartCell(rect, links, hidden, behindWall, anchor, hasEncounter,
                     visited && !string.IsNullOrWhiteSpace(image), target,
                     behindWall ? ReadWallApproach(feature) : WallApproach.None, visited,
-                    planRoutes && routeOptions.PriorityOrder != 0 ? DelveRouteOptions.Classify(name, icon?.AssetName) : 0,
-                    target != DelveRouteTarget.None && routeOptions.DetourLimit > 0 ? name : null));
+                    planRoutes && routeOptions.Discounts != 0 ? DelveRouteOptions.Classify(name, icon?.AssetName) : 0));
                 if (!planRoutes && !hidden && !behindWall)
                     revealedCells.Add(cell);
             }
@@ -391,7 +413,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
             }
         }
 
-        RouteLines lines = markersOnly ? new RouteLines([], [], []) : BuildRouteLines(cells, targets, showTargetCounts, routeOptions);
+        RouteLines lines = markersOnly ? new RouteLines([], [], []) : BuildRouteLines(cells, targets, showTargetCounts, routeOptions, routeViewport);
         if (!markersOnly)
         {
             lines = lines with
@@ -399,7 +421,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
                 Revealed = MergeStraightRuns(lines.Revealed),
                 Target = MergeStraightRuns(lines.Target),
                 FracturedWalls = MergeStraightRuns(lines.FracturedWalls),
-                DetourLines = lines.DetourLines is { Length: > 0 } branches ? MergeStraightRuns(branches) : null
+                LegLines = lines.LegLines?.Select(MergeStraightRuns).ToArray()
             };
         }
 
@@ -446,7 +468,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
     }
 
     internal static RouteLines BuildRouteLines(IReadOnlyDictionary<long, ChartCell> cells, DelveRouteTarget targets,
-        bool showTargetCounts = false, DelveRouteOptions routeOptions = default)
+        bool showTargetCounts = false, DelveRouteOptions routeOptions = default, RectangleF? goalViewport = null)
     {
         const float tolerance = 0.75f;
         List<CellLink> links = [];
@@ -475,11 +497,11 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         // The red wall overlay needs a revealed approach. A green route can guide the
         // player through darkness to reach the approach, so plan it on the full graph.
         Dictionary<long, string>? counts = showTargetCounts && targets != DelveRouteTarget.None ? [] : null;
-        Dictionary<long, DelveTargetRoutes.Detour>? detours = routeOptions.DetourLimit > 0 && targets != DelveRouteTarget.None ? [] : null;
-        HashSet<(long, long)>? detourLinks = detours != null ? [] : null;
+        Dictionary<long, DelveTargetRoutes.Detour>? detours = routeOptions.CombineTargets && targets != DelveRouteTarget.None ? [] : null;
+        Dictionary<(long, long), int>? routeLegs = detours != null ? [] : null;
         HashSet<(long, long)> routes = targets == DelveRouteTarget.None
             ? []
-            : DelveTargetRoutes.FindShortestRoutes(cells, links, targets, counts, routeOptions, detours, detourLinks);
+            : DelveTargetRoutes.FindShortestRoutes(cells, links, targets, counts, routeOptions, detours, routeLegs, goalViewport);
 
         HashSet<(long, long)> accessibleWallLinks = FindAccessibleWallLinks(cells, links);
         links.RemoveAll(link =>
@@ -513,7 +535,13 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         List<ScreenLine> connections = new(links.Count);
         List<ScreenLine> targetLines = [];
         List<ScreenLine> wallLines = [];
-        List<ScreenLine>? detourLines = detourLinks is { Count: > 0 } ? [] : null;
+        List<ScreenLine>[]? legLines = null;
+        if (routeLegs is { Count: > 0 })
+        {
+            legLines = new List<ScreenLine>[RouteLegColors.Length];
+            for (int leg = 0; leg < legLines.Length; leg++)
+                legLines[leg] = [];
+        }
         HashSet<long>? routeEncounterAddresses = null;
         foreach (CellLink link in links)
         {
@@ -529,7 +557,9 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
                     (routeEncounterAddresses ??= []).Add(link.End);
             }
 
-            List<ScreenLine> lines = detourLines != null && detourLinks!.Contains(key) ? detourLines : onTargetRoute
+            List<ScreenLine> lines = legLines != null && routeLegs!.TryGetValue(key, out int leg)
+                ? legLines[leg % RouteLegColors.Length]
+                : onTargetRoute
                 ? targetLines
                 : startCell.BehindWall || endCell.BehindWall ? wallLines : connections;
             var start = new NumVector2(laneX.GetValueOrDefault(link.Start, startCell.Rect.Center.X),
@@ -561,7 +591,7 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         }
 
         return new RouteLines([.. connections], [.. targetLines], [.. wallLines], counts, routeEncounterAddresses,
-            detours, detourLines?.ToArray());
+            detours, legLines?.Select(lines => lines.ToArray()).ToArray());
     }
 
     private static HashSet<(long, long)> FindAccessibleWallLinks(IReadOnlyDictionary<long, ChartCell> cells,
@@ -832,19 +862,15 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
             {
                 string? hover = marker.HoverText;
                 string? stopOrder = null;
+                int leg = 0;
                 if (isDetour)
                 {
-                    var detour = detours![marker.Address];
-                    string otherStop = detour.OtherStop ?? (detour.IsFinal ? "the previous target" : "the next target");
-                    string encounterLabel = detour.ExtraEncounters == 1 ? "encounter" : "encounters";
-                    string instructions = detour.IsFinal ? $"Final stop, after {otherStop}."
-                        : $"Continue to {otherStop} after clearing this stop.";
-                    stopOrder = $"#{detour.Stop}";
-                    hover = $"{hover}\n{instructions}\nCombined route adds {detour.ExtraEncounters} {encounterLabel}.";
+                    stopOrder = $"#{detours![marker.Address].Stop}";
+                    leg = (detours[marker.Address].Stop - 1) % RouteLegColors.Length;
                 }
                 (nodes ??= new List<Node>(SystemMath.Min(markers.Length, 16))).Add(
                     new Node(anchor, radius, marker.Icon, hover, RemainingNodeCount: remaining, DrawIcon: marker.DrawIcon,
-                        StopOrder: stopOrder, DetourLabel: stopOrder != null && remaining != null ? $"{stopOrder} / {remaining}" : stopOrder));
+                        StopOrder: stopOrder, DetourLabel: stopOrder != null && remaining != null ? $"{stopOrder} / {remaining}" : stopOrder, Leg: leg));
             }
         }
 
@@ -865,8 +891,8 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
         if (ctx.Settings.ShowDelveTargetRoutes.Value)
         {
             ctx.DrawQueue.EnqueueLines(snapshot.TargetRoutes, 2, TargetRouteColor);
-            ctx.DrawQueue.EnqueueLines(snapshot.DetourLines, 2,
-                ctx.Settings.IncludeNearbyDelveTargets.Value ? DetourRouteColor : TargetRouteColor);
+            for (int leg = 0; leg < snapshot.LegLines.Length; leg++)
+                ctx.DrawQueue.EnqueueLines(snapshot.LegLines[leg], 2, RouteLegColors[leg]);
         }
 
         if (!ReferenceEquals(ctx.Graphics, _textureGraphics))
@@ -899,14 +925,14 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
             }
         }
 
-        if (ctx.Settings.ShowDelveTargetRoutes.Value && (ctx.Settings.ShowDelveTargetNodeCounts.Value || ctx.Settings.IncludeNearbyDelveTargets.Value)
+        if (ctx.Settings.ShowDelveTargetRoutes.Value && (ctx.Settings.ShowDelveTargetNodeCounts.Value || ctx.Settings.CombineDelveTargetRoutes.Value)
             && ctx.Graphics is { } countGraphics)
         {
             float? countHeight = null;
             foreach (Node node in snapshot.Nodes)
             {
                 bool showCount = ctx.Settings.ShowDelveTargetNodeCounts.Value;
-                string? count = ctx.Settings.IncludeNearbyDelveTargets.Value && node.DetourLabel != null
+                string? count = ctx.Settings.CombineDelveTargetRoutes.Value && node.DetourLabel != null
                     ? showCount ? node.DetourLabel : node.StopOrder
                     : showCount ? node.RemainingNodeCount : null;
                 if (count == null)
@@ -914,7 +940,8 @@ internal sealed class DelveRevealOverlay(Func<string> getConfigDirectory) : IOve
 
                 countHeight ??= countGraphics.MeasureText(count).Y;
                 Vector2 position = PositionRemainingNodeCount(node, countHeight.Value);
-                ctx.DrawQueue.EnqueueOutlinedText(count, position, Color.White, 16, FontAlign.Center, outline: 2);
+                Color color = ctx.Settings.CombineDelveTargetRoutes.Value && node.StopOrder != null ? RouteLegColors[node.Leg] : Color.White;
+                ctx.DrawQueue.EnqueueOutlinedText(count, position, color, 16, FontAlign.Center, outline: 2);
             }
         }
 

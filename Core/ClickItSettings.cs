@@ -318,10 +318,8 @@ namespace ClickIt
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ShowDelveTargetRouteNodes { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
-        public ToggleNode IncludeNearbyDelveTargets { get; set; } = new ToggleNode(false);
-        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
-        public RangeNode<int> DelveTargetDetourLimit { get; set; } = new RangeNode<int>(
-            DelveRouteOptions.DefaultDetourLimit, DelveRouteOptions.MinDetourLimit, DelveRouteOptions.MaxDetourLimit);
+        [JsonProperty("IncludeNearbyDelveTargets")]
+        public ToggleNode CombineDelveTargetRoutes { get; set; } = new ToggleNode(true);
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public List<string> DelveEncounterPriorityOrder { get; set; } = [];
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]

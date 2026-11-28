@@ -283,16 +283,23 @@ namespace ClickIt.UI.Settings.Panels
         {
             bool open = ImGui.TreeNode("Encounter Priorities##DelveRoutePriorities");
             SettingsUiRenderHelpers.DrawInlineTooltip(
-                "For routes with equal chart distance, prefer fewer unfinished encounters, then prefer checked encounters in order from top to bottom.");
+                "Checked encounters count as less work when choosing a route.\n"
+                + "The rows remove 1, 0.75, and 0.5 encounters from the route score.\n"
+                + "With all rows off, routes use chart distance.\n"
+                + "The icon still shows the actual number of unfinished encounters.");
             if (!open)
                 return;
 
+            SettingsUiRenderHelpers.DrawWrappedText(
+                "Not every encounter takes the same time to complete. City encounters can be instantly completed, Azurite I is very fast, and Azurite II is faster than most other nodes. Tick a row so routing prefers that encounter, and move it up if you want it to be chosen over other nodes.",
+                new Vector4(0.7f, 0.7f, 0.7f, 1f));
+
             float width = Math.Clamp(ImGui.GetContentRegionAvail().X, 160f, 460f);
-            if (SettingsUiRenderHelpers.BeginSingleColumnPriorityTable("DelvePriorityTable", "Encounter", width))
+            if (SettingsUiRenderHelpers.BeginSingleColumnPriorityTable("DelvePriorityTable", "Encounter / Route Score Discount", width))
             {
                 try
                 {
-                    string[] order = [.. DelveRouteOptions.GetPriorityOrder(_settings)];
+                    string[] order = DelveRouteOptions.GetPriorityOrder(_settings);
                     for (int i = 0; i < order.Length; i++)
                     {
                         string name = order[i];
@@ -302,19 +309,26 @@ namespace ClickIt.UI.Settings.Panels
                         ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(color));
 
                         string label = DelveRouteOptions.PriorityDisplayName(name);
-                        bool enabled = _settings.EnabledDelveEncounterPriorities?.Contains(name) == true;
+                        bool enabled = DelveRouteOptions.IsPriorityEnabled(_settings, name);
                         if (ImGui.Checkbox($"{label}##DelvePriority{name}", ref enabled))
                         {
                             List<string> priorities = _settings.EnabledDelveEncounterPriorities ?? [];
                             _settings.EnabledDelveEncounterPriorities = enabled
                                 ? [.. priorities, name]
-                                : priorities.FindAll(entry => entry != name);
+                                : priorities.FindAll(entry => DelveRouteOptions.Classify(entry) != DelveRouteOptions.Classify(name));
                         }
 
+                        ImGui.SameLine();
+                        float discount = (float)DelveRouteOptions.DiscountAtRow(i) / DelveRouteOptions.EncounterCost;
+                        ImGui.TextUnformatted($"-{discount:0.##}");
                         ImGui.SameLine();
                         bool up = SettingsUiRenderHelpers.DrawArrowButton(ImGuiDir.Up, $"DelvePriorityUp{name}", i > 0);
                         ImGui.SameLine();
                         bool down = SettingsUiRenderHelpers.DrawArrowButton(ImGuiDir.Down, $"DelvePriorityDown{name}", i < order.Length - 1);
+                        if (name == DelveRouteOptions.CityEncounters)
+                            SettingsUiRenderHelpers.DrawInlineTooltip(
+                                "Groups Primeval Ruins, Abyssal City, and Vaal Outpost.\n"
+                                + "All three use the discount shown on this row.");
                         if (up || down)
                         {
                             int other = up ? i - 1 : i + 1;
@@ -343,20 +357,11 @@ namespace ClickIt.UI.Settings.Panels
                 "Shows the number of unfinished encounters along each green route at the bottom of its target icon. Includes the destination.");
             SettingsUiRenderHelpers.DrawToggleNodeControl("Show Nodes Along Target Routes", _settings.ShowDelveTargetRouteNodes,
                 "Shows hidden encounter icons along the green routes to selected targets.");
-            SettingsUiRenderHelpers.DrawToggleNodeControl("Include Nearby Targets Along the Route", _settings.IncludeNearbyDelveTargets,
-                "Includes nearby selected targets that fit along a continuous route. The chart numbers the stops in order and highlights the detour.");
-            if (_settings.IncludeNearbyDelveTargets.Value)
-            {
-                float checkboxLabelOffset = ImGui.GetFrameHeight() + ImGui.GetStyle().ItemInnerSpacing.X;
-                ImGui.Indent(checkboxLabelOffset);
-                ImGui.AlignTextToFramePadding();
-                ImGui.TextUnformatted("Maximum Extra Unfinished Encounters");
-                ImGui.SameLine();
-                DrawIntegerStepper("##DelveTargetDetourLimit", _settings.DelveTargetDetourLimit,
-                    DelveRouteOptions.MinDetourLimit, DelveRouteOptions.MaxDetourLimit);
-                SettingsUiRenderHelpers.DrawInlineTooltip("Maximum extra unfinished encounters compared with the direct route to the final target.");
-                ImGui.Unindent(checkboxLabelOffset);
-            }
+            SettingsUiRenderHelpers.DrawToggleNodeControl("Combine Target Routes Into One Trip", _settings.CombineDelveTargetRoutes,
+                "Chains selected targets that are connected on the chart into one numbered trip.\n"
+                + "Only targets inside the current map view are routed, and the trip ends before a leg that would retrace a long stretch of explored tiles.\n"
+                + "Unchained targets keep a plain green route. Each unfinished encounter counts once, even if you walk back through it.\n"
+                + "Follow the numbered stops. Every leg gets its own colour.");
 
             bool bossOpen = ImGui.TreeNode("Boss##MechanicsDelveBossTargets");
             SettingsUiRenderHelpers.DrawInlineTooltip("Choose which Delve boss encounters to target.");
@@ -405,8 +410,14 @@ namespace ClickIt.UI.Settings.Panels
                 ImGui.TreePop();
             }
 
-            SettingsUiRenderHelpers.DrawToggleNodeControl("Minion or Aura Items", _settings.TargetDelveMinionAuraItems,
-                "Target encounters that contain items with Delve minion or aura modifiers.");
+            bool itemsOpen = ImGui.TreeNode("Items##MechanicsDelveItemTargets");
+            SettingsUiRenderHelpers.DrawInlineTooltip("Choose which item encounters to target.");
+            if (itemsOpen)
+            {
+                SettingsUiRenderHelpers.DrawToggleNodeControl("Minion or Aura Items", _settings.TargetDelveMinionAuraItems,
+                    "Target encounters that contain items with Delve minion or aura modifiers.");
+                ImGui.TreePop();
+            }
             ImGui.TreePop();
         }
 
