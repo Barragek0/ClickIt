@@ -89,6 +89,9 @@ namespace ClickIt.Tests.Features.Labels.Classification
         {
             var res = InvokeChestMechanicFromConfiguredRules(true, false, true, true, true, true, true, true, false, true, true, true, EntityType.Chest, "content/some/chest", "Tribal Chest");
             res.Should().Be("basic-chests");
+
+            var vase = InvokeChestMechanicFromConfiguredRules(true, false, true, true, true, true, true, true, false, true, true, true, EntityType.Chest, "content/some/vase", "Vase");
+            vase.Should().Be("basic-chests");
         }
 
         [TestMethod]

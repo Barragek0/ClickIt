@@ -211,7 +211,8 @@ namespace ClickIt.Features.Labels.Classification
                 || name.Equals("trunk", StringComparison.OrdinalIgnoreCase)
                 || name.Equals("sealed remains", StringComparison.OrdinalIgnoreCase)
                 || name.Equals("bindle", StringComparison.OrdinalIgnoreCase)
-                || name.Equals("amphora", StringComparison.OrdinalIgnoreCase);
+                || name.Equals("amphora", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("vase", StringComparison.OrdinalIgnoreCase);
         }
 
         private static string? ResolvePrimaryMechanicId(
