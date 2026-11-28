@@ -620,10 +620,10 @@ namespace ClickIt.Features.Click.Application
             => ExecuteInteraction(clickPos, null, _dependencies.GameController, useHoldClick, clientClickPosition: clientClickPosition);
 
         internal bool PerformManualCursorInteraction(Vector2 clickPos, bool useHoldClick, Vector2? clientClickPosition = null,
-            LabelOnGround? groundAzuriteLabel = null)
+            LabelOnGround? label = null, string? mechanicId = null)
             => ExecuteInteraction(clickPos, null, _dependencies.GameController, useHoldClick, allowWhenHotkeyInactive: true,
                 avoidCursorMove: true, clientClickPosition: clientClickPosition,
-                canDispatchClick: groundAzuriteLabel == null ? null : () => CanDispatchGroundAzurite(groundAzuriteLabel));
+                canDispatchClick: CreateGroundAzuriteDispatchCheck(label, mechanicId));
 
         internal bool PerformResolvedLabelInteraction(Vector2 clickPos, LabelOnGround label, string? mechanicId,
             bool allowWhenHotkeyInactive = false, Vector2? clientClickPosition = null)
@@ -642,13 +642,50 @@ namespace ClickIt.Features.Click.Application
                 forceUiHoverVerification: OffscreenPathingMath.ShouldForceUiHoverVerificationForLabel(label),
                 allowWhenHotkeyInactive: allowWhenHotkeyInactive,
                 clientClickPosition: clientClickPosition,
-                canDispatchClick: mechanicId == MechanicIds.DelveAzuriteOnGround ? () => CanDispatchGroundAzurite(label) : null);
+                canDispatchClick: CreateGroundAzuriteDispatchCheck(label, mechanicId));
         }
 
-        private bool CanDispatchGroundAzurite(LabelOnGround label)
-            => _dependencies.Settings.ClickAzuriteOnGround.Value
-                && DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item)
-                && MechanicClassifier.CanClickGroundAzurite(item);
+        private Func<bool>? CreateGroundAzuriteDispatchCheck(LabelOnGround? label, string? mechanicId)
+        {
+            // A cached label can lose its mechanic ID when force changes between selection and click.
+            if (label == null || (mechanicId != MechanicIds.DelveAzuriteOnGround
+                && ((!string.IsNullOrWhiteSpace(mechanicId) && mechanicId != MechanicIds.Items)
+                    || !MechanicIds.IsDelveAzuriteShardPath(ResolveLabelItemPath(label, explicitPath: null)))))
+                return null;
+
+            System.Numerics.Vector3? initialPosition = null;
+            return () =>
+            {
+                if (_dependencies.Settings.ClickAzuriteOnGround?.Value != true
+                    || !DynamicAccess.TryGetLabelItemOnGround(label, out Entity? item))
+                    return false;
+
+                if (!MechanicClassifier.TryReadGroundAzuriteForce(item, out int force))
+                {
+                    _dependencies.DebugLog(static () => "[GroundAzurite] Click skipped: Magnetic.Force unavailable.");
+                    return false;
+                }
+                if (force != 0)
+                {
+                    _dependencies.DebugLog(() => $"[GroundAzurite] Click skipped: Magnetic.Force={force}.");
+                    return false;
+                }
+
+                // World X/Y can still be changing when the reported force has dropped to zero.
+                if (DynamicAccess.TryGetDynamicValue(item, DynamicAccessProfiles.PosNum, out object? rawPosition)
+                    && rawPosition is System.Numerics.Vector3 position
+                    && float.IsFinite(position.X) && float.IsFinite(position.Y))
+                {
+                    if (initialPosition is { } previous && (previous.X != position.X || previous.Y != position.Y))
+                    {
+                        _dependencies.DebugLog(static () => "[GroundAzurite] Click skipped: shard moved while Magnetic.Force=0.");
+                        return false;
+                    }
+                    initialPosition ??= position;
+                }
+                return true;
+            };
+        }
 
         private void CaptureBlightChestDebug(LabelOnGround? label, string? mechanicId, string reason, bool requireChestMechanic)
         {

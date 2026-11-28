@@ -9,6 +9,7 @@ namespace ClickIt.Tests.Behavior.Click
             public bool ClickItems { get; set; } = true;
             public bool ClickStrongboxes { get; set; } = true;
             public bool ClickDelveCrawler { get; set; }
+            public bool ClickAzuriteOnGround { get; set; } = true;
             public bool ClickDelveSpawners { get; set; }
             public bool ClickEssences { get; set; }
             public bool ClickFates { get; set; }
@@ -47,6 +48,9 @@ namespace ClickIt.Tests.Behavior.Click
                 : string.Empty;
             if (MechanicIds.IsDelveCrawlerPath(path))
                 return settings.ClickDelveCrawler ? MechanicIds.DelveCrawler : null;
+            if (MechanicIds.IsDelveAzuriteShardPath(path))
+                return settings.ClickAzuriteOnGround && MechanicClassifier.CanClickGroundAzurite(item)
+                    ? MechanicIds.DelveAzuriteOnGround : null;
             if (MechanicIds.IsIceCavesFossilPath(path))
                 return settings.ClickDelveSpawners ? MechanicIds.IceCavesFossil : null;
             if (path == "Metadata/Monsters/TestEssence")
@@ -77,6 +81,7 @@ namespace ClickIt.Tests.Behavior.Click
                 ClickItems = config.ClickItems,
                 ClickStrongboxes = config.ClickStrongboxes,
                 ClickDelveCrawler = config.ClickDelveCrawler,
+                ClickAzuriteOnGround = config.ClickAzuriteOnGround,
                 ClickDelveSpawners = config.ClickDelveSpawners,
                 ClickEssences = config.ClickEssences,
                 ClickFates = config.ClickFates,
@@ -219,6 +224,7 @@ namespace ClickIt.Tests.Behavior.Click
                 Settings = new ClickItSettings();
                 Settings.WalkTowardOffscreenLabels.Value = config.WalkTowardOffscreenLabels;
                 Settings.ClickDelveCrawler.Value = config.ClickDelveCrawler;
+                Settings.ClickAzuriteOnGround.Value = config.ClickAzuriteOnGround;
                 Settings.ClickDelveSpawners.Value = config.ClickDelveSpawners;
                 Settings.ClickEssences.Value = config.ClickEssences;
                 Settings.ClickFates.Value = config.ClickFates;
@@ -260,6 +266,8 @@ namespace ClickIt.Tests.Behavior.Click
                     IsInsideWindowInEitherSpace: ClickableArea,
                     ExecuteInteraction: request =>
                     {
+                        if (request.CanDispatchClick?.Invoke() == false)
+                            return false;
                         InteractionsExecuted++;
                         LastClickPosition = request.ClickPosition;
                         return true;

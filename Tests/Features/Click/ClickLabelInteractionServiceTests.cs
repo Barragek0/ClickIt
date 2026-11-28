@@ -5,9 +5,13 @@ namespace ClickIt.Tests.Features.Click
     {
         [DataTestMethod]
         [TestCategory("Regression")]
-        [DataRow(false)]
-        [DataRow(true)]
-        public void GroundAzuriteDispatch_RechecksForceAfterTheLabelWasSelected(bool manualCursor)
+        [DataRow(false, MechanicIds.DelveAzuriteOnGround, false)]
+        [DataRow(true, MechanicIds.DelveAzuriteOnGround, false)]
+        [DataRow(false, null, false)]
+        [DataRow(false, MechanicIds.Items, false)]
+        [DataRow(false, null, true)]
+        public void GroundAzuriteDispatch_RechecksForceAndPositionEvenWithAStaleMechanicId(
+            bool manualCursor, string? mechanicId, bool moveWithZeroForce)
         {
             Entity shard = EntityProbeFactory.Create(path: "Delve/Objects/DelveAzuriteShard");
             var magnetic = new MagneticProbe();
@@ -17,16 +21,19 @@ namespace ClickIt.Tests.Features.Click
             {
                 request.CanDispatchClick.Should().NotBeNull();
                 request.CanDispatchClick!().Should().BeTrue();
-                magnetic.Force = 1;
+                if (moveWithZeroForce)
+                    ((EntityProbe)shard).PosNum = new System.Numerics.Vector3(3, 5, 0);
+                else
+                    magnetic.Force = 1;
                 return request.CanDispatchClick();
             }, settings: new ClickItSettings());
 
             bool clicked = manualCursor
-                ? service.PerformManualCursorInteraction(Vector2.Zero, useHoldClick: false, groundAzuriteLabel: label)
-                : service.PerformResolvedLabelInteraction(Vector2.Zero, label, MechanicIds.DelveAzuriteOnGround);
+                ? service.PerformManualCursorInteraction(Vector2.Zero, useHoldClick: false, label: label, mechanicId: mechanicId)
+                : service.PerformResolvedLabelInteraction(Vector2.Zero, label, mechanicId);
 
             clicked.Should().BeFalse();
-            magnetic.Force.Should().Be(1);
+            magnetic.Force.Should().Be(moveWithZeroForce ? 0 : 1);
         }
 
         [TestMethod]

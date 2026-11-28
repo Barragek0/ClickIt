@@ -31,7 +31,13 @@ namespace ClickIt.Features.Click.Runtime
                 && DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
                 ? resolvedPath
                 : string.Empty;
-            return $"label=0x{label.Address:X} entity={entityPath}";
+            string description = $"label=0x{label.Address:X} entity={entityPath}";
+            if (!MechanicIds.IsDelveAzuriteShardPath(entityPath))
+                return description;
+
+            return MechanicClassifier.TryReadGroundAzuriteForce(item, out int force)
+                ? $"{description} magneticForce={force}"
+                : $"{description} magneticForce=unavailable";
         }
 
         internal static string DescribeCursorPosition()

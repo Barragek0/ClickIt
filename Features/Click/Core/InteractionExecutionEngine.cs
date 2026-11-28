@@ -306,16 +306,32 @@ namespace ClickIt.Features.Click.Core
                 bool isChest = MechanicIds.IsDelveRewardChestPath(path);
                 if (isChest && !MechanicClassifier.IsUnopenedTargetableDelveChest(entity))
                     continue;
-                bool isWorldItem = DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.Type, out object? rawType)
+                bool isGroundAzurite = fallbackId == MechanicIds.DelveCrawler && MechanicIds.IsDelveAzuriteShardPath(path);
+                if (isGroundAzurite)
+                {
+                    if (!_dependencies.Policy.Settings.ClickAzuriteOnGround.Value)
+                        continue;
+                    bool hasForce = MechanicClassifier.TryReadGroundAzuriteForce(entity, out int force);
+                    if (!hasForce || force != 0)
+                    {
+                        if (_dependencies.Telemetry.ClickDebugPublisher.ShouldCaptureClickDebug())
+                            _dependencies.Telemetry.ClickDebugPublisher.PublishClickFlowDebugStage("GroundAzuriteSkipped",
+                                hasForce ? $"Magnetic.Force={force}" : "Magnetic.Force unavailable", MechanicIds.DelveAzuriteOnGround);
+                        continue;
+                    }
+                }
+                bool isWorldItem = !isGroundAzurite
+                    && DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.Type, out object? rawType)
                     && rawType is EntityType.WorldItem;
                 bool isFatesCard = MechanicIds.IsFatesCardPath(path);
-                if (!isChest && !isWorldItem && !isFatesCard && fallbackId != MechanicIds.IceCavesFossil)
+                if (!isChest && !isWorldItem && !isFatesCard && !isGroundAzurite && fallbackId != MechanicIds.IceCavesFossil)
                     continue;
 
                 string? mechanicId = _dependencies.Selection.LabelInteractionPort.GetMechanicIdForLabel(label);
                 if (string.IsNullOrWhiteSpace(mechanicId)
+                    || (isGroundAzurite && mechanicId != MechanicIds.DelveAzuriteOnGround)
                     || (isWorldItem && mechanicId != MechanicIds.Items)
-                    || (!isChest && !isWorldItem && (mechanicId != (isFatesCard ? MechanicIds.Fates : MechanicIds.Essences)
+                    || (!isChest && !isWorldItem && !isGroundAzurite && (mechanicId != (isFatesCard ? MechanicIds.Fates : MechanicIds.Essences)
                         || !DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsTargetable, out bool targetable) || !targetable))
                     || !_dependencies.Selection.LabelInteraction.CanSelectLabel(label, mechanicId)
                     || IsBlockedByPostChestLootSettlement(context, mechanicId, entity))

@@ -126,6 +126,37 @@ namespace ClickIt.Tests.Behavior.Click
         }
 
         [DataTestMethod]
+        [TestCategory("Regression")]
+        [DataRow(true, 0, false, true)]
+        [DataRow(true, 1, false, false)]
+        [DataRow(false, 0, false, false)]
+        [DataRow(true, 0, true, false)]
+        public void CrawlerFallback_RechecksGroundAzuriteBeforeDispatch(bool enabled, int force, bool blocked, bool expectShard)
+        {
+            var config = BaseConfig();
+            config.ClickDelveCrawler = true;
+            config.ClickAzuriteOnGround = enabled;
+            config.WalkTowardOffscreenLabels = false;
+            RectangleF crawlerRect = new(500, 300, 160, 40);
+            RectangleF shardRect = new(700, 410, 160, 40);
+            if (blocked)
+                config.BlockedRects.Add(shardRect);
+            var harness = new ClickPipelineScenarioFactory.ScenarioHarness(config);
+            var crawler = ClickPipelineScenarioFactory.CreateLabel(crawlerRect,
+                EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/DelveNode", distancePlayer: 1, address: 1), 0x1001);
+            var shardEntity = EntityProbeFactory.Create(path: "Metadata/Terrain/Leagues/Delve/Objects/DelveAzuriteShard",
+                distancePlayer: 10, address: 2);
+            EntityProbeFactory.WithComponent<Magnetic>(shardEntity, new MagneticProbe { Force = force });
+            var shard = ClickPipelineScenarioFactory.CreateLabel(shardRect, shardEntity, 0x1002);
+
+            harness.ExecutionEngine.Execute(harness.CreateContext(true, [crawler, shard]),
+                harness.CreateCandidates(crawler, MechanicIds.DelveCrawler), GroundItemsDecision());
+
+            harness.InteractionsExecuted.Should().Be(1);
+            AssertPointInside(expectShard ? shardRect : crawlerRect, harness.LastClickPosition!.Value);
+        }
+
+        [DataTestMethod]
         [TestCategory("Scenario")]
         [DataRow("DelveNode", false)]
         [DataRow("DelveNodeNoEncounter", false)]

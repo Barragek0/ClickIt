@@ -105,9 +105,14 @@ namespace ClickIt.Features.Labels.Classification
         }
 
         internal static bool CanClickGroundAzurite(Entity? item)
-            => DynamicAccess.TryGetComponent(item, out Magnetic? magnetic)
-                && DynamicAccess.TryReadInt(magnetic, static component => component.Force, out int force)
-                && force == 0;
+            => TryReadGroundAzuriteForce(item, out int force) && force == 0;
+
+        internal static bool TryReadGroundAzuriteForce(Entity? item, out int force)
+        {
+            force = default;
+            return DynamicAccess.TryGetComponent(item, out Magnetic? magnetic)
+                && DynamicAccess.TryReadInt(magnetic, static component => component.Force, out force);
+        }
 
         internal static string? GetAreaTransitionMechanicId(bool clickAreaTransitions, bool clickLabyrinthTrials, EntityType type, string path)
         {
