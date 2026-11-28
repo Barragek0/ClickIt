@@ -316,6 +316,15 @@ namespace ClickIt
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ShowDelveTargetRouteNodes { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode IncludeNearbyDelveTargets { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public RangeNode<int> DelveTargetDetourLimit { get; set; } = new RangeNode<int>(
+            DelveRouteOptions.DefaultDetourLimit, DelveRouteOptions.MinDetourLimit, DelveRouteOptions.MaxDetourLimit);
+        [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+        public List<string> DelveEncounterPriorityOrder { get; set; } = [];
+        [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+        public List<string> EnabledDelveEncounterPriorities { get; set; } = ["Primeval Chamber", "Abyssal Chamber", "Ruined Chamber"];
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode TargetDelveAul { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode TargetDelveLich { get; set; } = new ToggleNode(true);

@@ -112,15 +112,15 @@ namespace ClickIt.UI.Settings.Panels
                     if (ImGui.Checkbox("Stacked Decks##HarvestTargetStackedDecks", ref decks))
                         _settings.HarvestTargetStackedDecks.Value = decks = decks || !(threads || currency || unique || duplicated || lifeforce);
                     ImGui.SameLine(minimumColumnX);
-                    DrawHarvestMinimum("##HarvestMinStackedDecks", _settings.HarvestMinStackedDecks, 1, 3);
+                    DrawIntegerStepper("##HarvestMinStackedDecks", _settings.HarvestMinStackedDecks, 1, 3);
                     if (ImGui.Checkbox("Threads##HarvestTargetThreads", ref threads))
                         _settings.HarvestTargetThreads.Value = threads = threads || !(decks || currency || unique || duplicated || lifeforce);
                     ImGui.SameLine(minimumColumnX);
-                    DrawHarvestMinimum("##HarvestMinThreads", _settings.HarvestMinThreads, 1, 3);
+                    DrawIntegerStepper("##HarvestMinThreads", _settings.HarvestMinThreads, 1, 3);
                     if (ImGui.Checkbox("Currency Items##HarvestTargetCurrencyItems", ref currency))
                         _settings.HarvestTargetCurrencyItems.Value = currency = currency || !(decks || threads || unique || duplicated || lifeforce);
                     ImGui.SameLine(minimumColumnX);
-                    DrawHarvestMinimum("##HarvestMinCurrencyItems", _settings.HarvestMinCurrencyItems, 1, 4);
+                    DrawIntegerStepper("##HarvestMinCurrencyItems", _settings.HarvestMinCurrencyItems, 1, 4);
                     if (ImGui.Checkbox("Unique Items##HarvestTargetUniqueItems", ref unique))
                         _settings.HarvestTargetUniqueItems.Value = unique = unique || !(decks || threads || currency || duplicated || lifeforce);
                     if (ImGui.Checkbox("Duplicated Items##HarvestTargetDuplicatedItems", ref duplicated))
@@ -155,7 +155,7 @@ namespace ClickIt.UI.Settings.Panels
             ImGui.Unindent();
         }
 
-        private static void DrawHarvestMinimum(string id, RangeNode<int> node, int minimum, int maximum)
+        private static void DrawIntegerStepper(string id, RangeNode<int> node, int minimum, int maximum)
         {
             int value = Math.Clamp(node.Value, minimum, maximum);
             ImGui.SetNextItemWidth(70f);
@@ -243,6 +243,7 @@ namespace ClickIt.UI.Settings.Panels
                 "Draws green lines from the closest explored encounter to each selected target along the shortest known route.\n\nThe lines indicating paths won't be entirely accurate, as they are estimated based on known node connections, however the nodes themselves as well as the nodes they connect to should always be correct.");
             ImGui.Indent();
             DrawDelveTargets();
+            DrawDelveRoutePriorities();
             ImGui.Unindent();
             SettingsUiRenderHelpers.DrawToggleNodeControl(
                 "Fractured Walls##MechanicsDelveFracturedWalls", _settings.RevealDelveFracturedWalls,
@@ -278,6 +279,59 @@ namespace ClickIt.UI.Settings.Panels
             DrawDelveSupplyWarning("Dynamite", _settings.ShowLowDelveDynamiteWarning, _settings.LowDelveDynamiteThreshold);
         }
 
+        private void DrawDelveRoutePriorities()
+        {
+            bool open = ImGui.TreeNode("Encounter Priorities##DelveRoutePriorities");
+            SettingsUiRenderHelpers.DrawInlineTooltip(
+                "For routes with equal chart distance, prefer fewer unfinished encounters, then prefer checked encounters in order from top to bottom.");
+            if (!open)
+                return;
+
+            float width = Math.Clamp(ImGui.GetContentRegionAvail().X, 160f, 460f);
+            if (SettingsUiRenderHelpers.BeginSingleColumnPriorityTable("DelvePriorityTable", "Encounter", width))
+            {
+                try
+                {
+                    string[] order = [.. DelveRouteOptions.GetPriorityOrder(_settings)];
+                    for (int i = 0; i < order.Length; i++)
+                    {
+                        string name = order[i];
+                        ImGui.TableNextRow();
+                        ImGui.TableSetColumnIndex(0);
+                        Vector4 color = SettingsUiRenderHelpers.GetUltimatumPriorityRowColor(i, order.Length);
+                        ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(color));
+
+                        string label = DelveRouteOptions.PriorityDisplayName(name);
+                        bool enabled = _settings.EnabledDelveEncounterPriorities?.Contains(name) == true;
+                        if (ImGui.Checkbox($"{label}##DelvePriority{name}", ref enabled))
+                        {
+                            List<string> priorities = _settings.EnabledDelveEncounterPriorities ?? [];
+                            _settings.EnabledDelveEncounterPriorities = enabled
+                                ? [.. priorities, name]
+                                : priorities.FindAll(entry => entry != name);
+                        }
+
+                        ImGui.SameLine();
+                        bool up = SettingsUiRenderHelpers.DrawArrowButton(ImGuiDir.Up, $"DelvePriorityUp{name}", i > 0);
+                        ImGui.SameLine();
+                        bool down = SettingsUiRenderHelpers.DrawArrowButton(ImGuiDir.Down, $"DelvePriorityDown{name}", i < order.Length - 1);
+                        if (up || down)
+                        {
+                            int other = up ? i - 1 : i + 1;
+                            (order[i], order[other]) = (order[other], order[i]);
+                            _settings.DelveEncounterPriorityOrder = [.. order];
+                            break;
+                        }
+                    }
+                }
+                finally
+                {
+                    ImGui.EndTable();
+                }
+            }
+            ImGui.TreePop();
+        }
+
         private void DrawDelveTargets()
         {
             bool targetsOpen = ImGui.TreeNode("Targets##MechanicsDelveTargets");
@@ -289,6 +343,20 @@ namespace ClickIt.UI.Settings.Panels
                 "Shows the number of unfinished encounters along each green route at the bottom of its target icon. Includes the destination.");
             SettingsUiRenderHelpers.DrawToggleNodeControl("Show Nodes Along Target Routes", _settings.ShowDelveTargetRouteNodes,
                 "Shows hidden encounter icons along the green routes to selected targets.");
+            SettingsUiRenderHelpers.DrawToggleNodeControl("Include Nearby Targets Along the Route", _settings.IncludeNearbyDelveTargets,
+                "Includes nearby selected targets that fit along a continuous route. The chart numbers the stops in order and highlights the detour.");
+            if (_settings.IncludeNearbyDelveTargets.Value)
+            {
+                float checkboxLabelOffset = ImGui.GetFrameHeight() + ImGui.GetStyle().ItemInnerSpacing.X;
+                ImGui.Indent(checkboxLabelOffset);
+                ImGui.AlignTextToFramePadding();
+                ImGui.TextUnformatted("Maximum Extra Unfinished Encounters");
+                ImGui.SameLine();
+                DrawIntegerStepper("##DelveTargetDetourLimit", _settings.DelveTargetDetourLimit,
+                    DelveRouteOptions.MinDetourLimit, DelveRouteOptions.MaxDetourLimit);
+                SettingsUiRenderHelpers.DrawInlineTooltip("Maximum extra unfinished encounters compared with the direct route to the final target.");
+                ImGui.Unindent(checkboxLabelOffset);
+            }
 
             bool bossOpen = ImGui.TreeNode("Boss##MechanicsDelveBossTargets");
             SettingsUiRenderHelpers.DrawInlineTooltip("Choose which Delve boss encounters to target.");
