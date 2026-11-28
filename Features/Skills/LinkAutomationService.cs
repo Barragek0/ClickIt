@@ -206,7 +206,7 @@ internal sealed class LinkAutomationService(
             HasTargetPosition = true
         };
         PublishDebugSnapshot(debug);
-        if (GameInputSafety.IsPaused(_gameController))
+        if (GameInputSafety.ShouldBlockInput(_gameController, _settings))
         {
             PublishDebugSnapshot(debug with { Status = "Skipped: game is paused" });
             return;
@@ -218,7 +218,7 @@ internal sealed class LinkAutomationService(
         try
         {
             ClickPipelineTiming.Sleep(10);
-            if (GameInputSafety.IsPaused(_gameController))
+            if (GameInputSafety.ShouldBlockInput(_gameController, _settings))
             {
                 PublishDebugSnapshot(debug with { Status = "Skipped: game is paused" });
                 return;
@@ -229,7 +229,7 @@ internal sealed class LinkAutomationService(
         finally
         {
             // Skill automation always restores the user's cursor; the lazy-mode cursor setting only applies to ClickIt's item-click flow.
-            if (!GameInputSafety.IsPaused(_gameController))
+            if (!GameInputSafety.ShouldBlockInput(_gameController, _settings))
                 Input.SetCursorPos(new NumVector2(cursorBefore.X, cursorBefore.Y));
             if (attempted)
                 RecordCastAttempt(targetId);

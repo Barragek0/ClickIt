@@ -44,6 +44,9 @@ namespace ClickIt
         public ToggleNode VerifyCursorInGameWindowBeforeClick { get; set; } = new ToggleNode(true);
 
         [IgnoreMenu]
+        public ToggleNode AllowMouseInputWhilePaused { get; set; } = new ToggleNode(false);
+
+        [IgnoreMenu]
         public ToggleNode LeftHanded { get; set; } = new ToggleNode(false);
 
         [IgnoreMenu]

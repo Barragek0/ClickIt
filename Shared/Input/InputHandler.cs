@@ -52,8 +52,8 @@ namespace ClickIt.Shared.Input
             bool blockOnOpenPanels = _settings?.BlockOnOpenLeftRightPanel?.Value == true;
             bool escapeOpen = IsEscapeState(gameController);
             string? uiBlockingReason = GetUiBlockingReason(gameController);
-            bool isGamePaused = GameInputSafety.IsPaused(gameController);
-            return ShouldAllowBackgroundAutomation(foreground, blockOnOpenPanels, sidePanelOpen, escapeOpen, uiBlockingReason, isGamePaused);
+            bool isPausedInputBlocked = GameInputSafety.ShouldBlockInput(gameController, _settings);
+            return ShouldAllowBackgroundAutomation(foreground, blockOnOpenPanels, sidePanelOpen, escapeOpen, uiBlockingReason, isPausedInputBlocked);
         }
 
         internal static bool ShouldAllowBackgroundAutomation(
@@ -93,7 +93,7 @@ namespace ClickIt.Shared.Input
             bool isInTownOrHideout = IsInTownOrHideout(gameController);
             bool isInToggleItemsPostClickBlockWindow = IsInToggleItemsPostClickBlockWindow();
             bool isEscapeState = IsEscapeState(gameController);
-            bool isGamePaused = GameInputSafety.IsPaused(gameController);
+            bool isPausedInputBlocked = GameInputSafety.ShouldBlockInput(gameController, _settings, allowWhenPaused);
             string? uiBlockingReason = GetUiBlockingReason(gameController);
 
             bool allowed = keyState
@@ -105,8 +105,7 @@ namespace ClickIt.Shared.Input
                     isEscapeState,
                     uiBlockingReason,
                     blockOnOpenPanels,
-                    isGamePaused,
-                    allowWhenPaused)
+                    isPausedInputBlocked)
                 && (!isRitualActive || clickHotkeyHeld);
 
             if (!allowed)
@@ -118,7 +117,7 @@ namespace ClickIt.Shared.Input
                     isEscapeState,
                     uiBlockingReason,
                     blockOnOpenPanels,
-                    GameInputSafety.ShouldBlockInput(isGamePaused, allowWhenPaused));
+                    isPausedInputBlocked);
 
             return allowed;
         }
@@ -274,8 +273,7 @@ namespace ClickIt.Shared.Input
                 isEscapeState: IsEscapeState(gameController),
                 uiBlockingReason: GetUiBlockingReason(gameController),
                 blockOnOpenPanels: _settings?.BlockOnOpenLeftRightPanel?.Value == true,
-                isGamePaused: GameInputSafety.IsPaused(gameController),
-                allowWhenPaused: allowWhenPaused);
+                isGamePaused: GameInputSafety.ShouldBlockInput(gameController, _settings, allowWhenPaused));
         }
 
         internal static bool ShouldAllowClickWithoutInputState(

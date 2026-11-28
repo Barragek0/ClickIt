@@ -25,7 +25,7 @@ namespace ClickIt.Features.Click.Runtime
             castPoint = default;
             debugReason = string.Empty;
 
-            if (GameInputSafety.IsPaused(_dependencies.GameController))
+            if (GameInputSafety.ShouldBlockInput(_dependencies.GameController, _dependencies.Settings))
             {
                 debugReason = "Skipped: game is paused.";
                 return false;
@@ -84,7 +84,7 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
             }
 
-            if (GameInputSafety.IsPaused(_dependencies.GameController))
+            if (GameInputSafety.ShouldBlockInput(_dependencies.GameController, _dependencies.Settings))
             {
                 debugReason = "Skipped: game is paused.";
                 return false;
@@ -96,7 +96,7 @@ namespace ClickIt.Features.Click.Runtime
                 ClickPipelineTiming.Sleep(10);
             }
 
-            if (GameInputSafety.IsPaused(_dependencies.GameController))
+            if (GameInputSafety.ShouldBlockInput(_dependencies.GameController, _dependencies.Settings))
             {
                 debugReason = "Skipped: game is paused.";
                 return false;

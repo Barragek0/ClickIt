@@ -96,7 +96,7 @@ namespace ClickIt.Features.Click.Interaction
             bool allowWhenHotkeyInactive = false,
             bool avoidCursorMove = false)
         {
-            if (GameInputSafety.IsPaused(gameController))
+            if (GameInputSafety.ShouldBlockInput(gameController, _settings))
                 return false;
 
             _clickSleepStartMs = ClickPipelineTiming.ReadSleepTimeMs();
@@ -123,7 +123,7 @@ namespace ClickIt.Features.Click.Interaction
 
             try
             {
-                if (GameInputSafety.IsPaused(gameController))
+                if (GameInputSafety.ShouldBlockInput(gameController, _settings))
                     return false;
 
                 bool rightButton = _settings?.LeftHanded?.Value == true;
@@ -134,7 +134,7 @@ namespace ClickIt.Features.Click.Interaction
 
                 try
                 {
-                    while (Keyboard.IsKeyDown(clickKey) && !GameInputSafety.IsPaused(gameController))
+                    while (Keyboard.IsKeyDown(clickKey) && !GameInputSafety.ShouldBlockInput(gameController, _settings))
                         ClickPipelineTiming.Sleep(10);
                 }
                 finally
@@ -328,8 +328,8 @@ namespace ClickIt.Features.Click.Interaction
                 _lastClickTimestampMs = Environment.TickCount64;
         }
 
-        private static bool IsPausedInputBlocked(GameController? gameController, bool allowWhenPaused)
-            => GameInputSafety.ShouldBlockInput(GameInputSafety.IsPaused(gameController), allowWhenPaused);
+        private bool IsPausedInputBlocked(GameController? gameController, bool allowWhenPaused)
+            => GameInputSafety.ShouldBlockInput(gameController, _settings, allowWhenPaused);
 
         private void RestoreCursorIfLazyMode(SystemDrawingPoint before, GameController? gameController, bool allowWhenPaused = false)
         {

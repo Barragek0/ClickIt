@@ -438,7 +438,7 @@ namespace ClickIt.Features.Click.Application
                             bool retriedHover = false;
                             while (true)
                             {
-                                if (GameInputSafety.IsPaused(_dependencies.GameController))
+                                if (GameInputSafety.ShouldBlockInput(_dependencies.GameController, _dependencies.Settings))
                                 {
                                     outcome = "game is paused";
                                     return false;
@@ -486,13 +486,13 @@ namespace ClickIt.Features.Click.Application
                                 {
                                     SystemDrawingPoint cursor = Mouse.GetCursorPosition();
                                     if (!retriedHover && !Mouse.DisableNativeInput && Environment.TickCount64 + 200 < searchDeadline
-                                        && !GameInputSafety.IsPaused(_dependencies.GameController)
+                                        && !GameInputSafety.ShouldBlockInput(_dependencies.GameController, _dependencies.Settings)
                                         && LabelClickPointSearch.IsPointInsideRect(new Vector2(cursor.X, cursor.Y) - windowTopLeft, currentRect)
                                         && (canStillClick?.Invoke() ?? true)
                                         && TryFindTooltipResetPoint(currentRect, windowTopLeft, _dependencies.IsInsideWindowInEitherSpace, out Vector2 resetPoint))
                                     {
                                         retriedHover = true;
-                                        if (GameInputSafety.IsPaused(_dependencies.GameController))
+                                        if (GameInputSafety.ShouldBlockInput(_dependencies.GameController, _dependencies.Settings))
                                         {
                                             outcome = "game is paused";
                                             return false;
@@ -510,7 +510,7 @@ namespace ClickIt.Features.Click.Application
                                             outcome = "icon or interaction changed during tooltip retry";
                                             return false;
                                         }
-                                        if (GameInputSafety.IsPaused(_dependencies.GameController))
+                                        if (GameInputSafety.ShouldBlockInput(_dependencies.GameController, _dependencies.Settings))
                                         {
                                             outcome = "game is paused";
                                             return false;

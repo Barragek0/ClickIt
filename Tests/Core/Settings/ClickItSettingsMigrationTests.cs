@@ -5,6 +5,18 @@ namespace ClickIt.Tests.Core.Settings
     {
         [TestMethod]
         [TestCategory("Settings")]
+        public void AllowMouseInputWhilePaused_DefaultsOffAndPreservesSavedOptIn()
+        {
+            var settings = JsonConvert.DeserializeObject<ClickItSettings>("{}")!;
+            settings.AllowMouseInputWhilePaused.Value.Should().BeFalse();
+
+            settings.AllowMouseInputWhilePaused.Value = true;
+            string json = JsonConvert.SerializeObject(settings);
+            JsonConvert.DeserializeObject<ClickItSettings>(json)!.AllowMouseInputWhilePaused.Value.Should().BeTrue();
+        }
+
+        [TestMethod]
+        [TestCategory("Settings")]
         public void SettingsWithoutDelveRevealOptions_UseTheNewDefaults()
         {
             var settings = JsonConvert.DeserializeObject<ClickItSettings>("{}")!;

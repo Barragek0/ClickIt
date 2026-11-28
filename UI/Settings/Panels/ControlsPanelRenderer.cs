@@ -39,6 +39,7 @@ namespace ClickIt.UI.Settings.Panels
 
             SettingsUiRenderHelpers.DrawToggleNodeControl("Block when Left or Right Panel open##ControlsBlockOnOpenPanels", _settings.BlockOnOpenLeftRightPanel, "Prevent clicks when the inventory or character screen are open");
             SettingsUiRenderHelpers.DrawToggleNodeControl("Verify Cursor is within Game Window before Clicking##ControlsVerifyCursorInWindow", _settings.VerifyCursorInGameWindowBeforeClick, "When enabled, the plugin will verify the OS cursor is inside the Path of Exile window before performing any automated clicks. If the cursor is outside the window, the click will be skipped.");
+            SettingsUiRenderHelpers.DrawToggleNodeControl("Allow Mouse Movement and Clicking while the Game is Paused##ControlsAllowMouseInputWhilePaused", _settings.AllowMouseInputWhilePaused, "Allows ClickIt input while the game is paused. Other input restrictions still apply.");
             SettingsUiRenderHelpers.DrawToggleNodeControl("Left-handed##ControlsLeftHanded", _settings.LeftHanded, "Changes the primary mouse button the plugin uses from left to right.");
             SettingsUiRenderHelpers.DrawToggleNodeControl("Toggle Item View##ControlsToggleItems", _settings.ToggleItems, "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels.");
             SettingsUiRenderHelpers.DrawHotkeyNodeControl(_settings.ToggleItemsHotkey, "Toggle Items Hotkey##ControlsToggleItemsHotkey", "Hotkey to toggle the display of ground items / labels.");

@@ -5,6 +5,9 @@ namespace ClickIt.Shared.Input
         internal static bool ShouldBlockInput(bool isPaused, bool allowWhenPaused)
             => isPaused && !allowWhenPaused;
 
+        internal static bool ShouldBlockInput(GameController? gameController, ClickItSettings? settings, bool allowWhenPaused = false)
+            => !allowWhenPaused && settings?.AllowMouseInputWhilePaused?.Value != true && IsPaused(gameController);
+
         internal static bool IsPaused(GameController? gameController)
         {
             if (gameController == null
