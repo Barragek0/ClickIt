@@ -9,7 +9,7 @@ namespace ClickIt.Shared.Diagnostics
     {
         private readonly Lock _lock = new();
         private readonly List<string> _trail = [];
-        private readonly List<string> _dedupKeys = []; // parallel to _trail; the dedup key per entry (empty when dedup is off)
+        private readonly List<string>? _dedupKeys = dedupKeyExtractor != null ? [] : null;
         private readonly int _trailCapacity = SystemMath.Max(1, trailCapacity);
         private readonly Func<TSnapshot, long, TSnapshot> _withSequence = withSequence ?? throw new ArgumentNullException(nameof(withSequence));
         private readonly Func<TSnapshot, string> _trailFormatter = trailFormatter ?? throw new ArgumentNullException(nameof(trailFormatter));
@@ -48,12 +48,11 @@ namespace ClickIt.Shared.Diagnostics
                 _latest = sequenced;
 
                 string formatted = _trailFormatter(sequenced);
-                string dedupKey = _dedupKeyExtractor != null ? _dedupKeyExtractor(snapshot) : string.Empty;
-
                 // Global dedup: each key appears at most once with a running count, moved to the end on repeat.
-                if (_dedupKeyExtractor != null)
+                if (_dedupKeys != null && _dedupKeyExtractor != null)
                 {
-                    int existingIdx = FindDedupEntry(dedupKey);
+                    string dedupKey = _dedupKeyExtractor(snapshot);
+                    int existingIdx = _dedupKeys.LastIndexOf(dedupKey);
                     if (existingIdx >= 0)
                     {
                         string existing = _trail[existingIdx];
@@ -63,27 +62,16 @@ namespace ClickIt.Shared.Diagnostics
                         _dedupKeys.RemoveAt(existingIdx);
                         formatted = $"{formatted} (x{count})";
                     }
+                    _dedupKeys.Add(dedupKey);
                 }
 
                 _trail.Add(formatted);
-                _dedupKeys.Add(dedupKey);
                 while (_trail.Count > _trailCapacity)
                 {
                     _trail.RemoveAt(0);
-                    _dedupKeys.RemoveAt(0);
+                    _dedupKeys?.RemoveAt(0);
                 }
             }
-        }
-
-        private int FindDedupEntry(string dedupKey)
-        {
-            for (int i = _trail.Count - 1; i >= 0; i--)
-            {
-                // Compare the stored key directly — parsing the formatted string only works for channels whose display format starts with the key (the sequence-prefixed click/log channels); offscreen movement's "{Stage} Path=..." format would never round-trip.
-                if (_dedupKeys[i] == dedupKey)
-                    return i;
-            }
-            return -1;
         }
     }
 }
